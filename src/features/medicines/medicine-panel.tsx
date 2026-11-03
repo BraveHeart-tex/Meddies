@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { SchedulePanel } from '@/features/schedules/schedule-panel'
 import { Button } from '@/components/ui/button'
 import { parseMedicine, type Medicine } from './contract'
 
@@ -101,6 +102,7 @@ export function MedicinePanel() {
     'min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
   return (
     <div className="space-y-10">
+      <SchedulePanel medicines={medicines} />
       <section aria-labelledby="medicines-heading" className="space-y-4">
         <h2 id="medicines-heading" className="text-2xl font-semibold tracking-tight">
           Your medicines
@@ -136,7 +138,7 @@ export function MedicinePanel() {
                   <p className="text-sm">Product strength: {medicine.strength}</p>
                 )}
                 <p className="text-sm text-muted-foreground">
-                  {medicine.unit === 'tablet' ? 'Tablet' : 'Capsule'} · No schedule
+                  {medicine.unit === 'tablet' ? 'Tablet' : 'Capsule'}
                 </p>
               </li>
             ))}

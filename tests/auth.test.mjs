@@ -50,6 +50,9 @@ before(async () => {
   await db.exec(
     (await readFile('worker/migrations/0001_user_medications.sql', 'utf8')).replaceAll('\n', ' '),
   )
+  await db.exec(
+    (await readFile('worker/migrations/0002_daily_schedules.sql', 'utf8')).replaceAll('\n', ' '),
+  )
   const workerUrl = await worker.ready
   const listener = createServer()
   listener.listen(0, '127.0.0.1')
@@ -264,12 +267,39 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
   assert.deepEqual(await (await request('/api/medicines', { headers: bob })).json(), {
     medicines: [],
   })
+  const schedule = {
+    id: 'ad29d745-7ef1-4b26-91c2-ae9926d6b659',
+    medicineId: medicine.id,
+    startDate: '2099-12-31',
+    times: [{ time: '09:00', quantity: 0.5 }],
+  }
+  const scheduleSave = (headers, origin = base) =>
+    request('/api/schedules', {
+      method: 'POST',
+      headers: { ...headers, origin, 'content-type': 'application/json' },
+      body: JSON.stringify({ ...schedule, ownerId: 'google:bob' }),
+    })
+  assert.equal((await request('/api/schedules')).status, 401)
+  assert.equal((await scheduleSave({})).status, 401)
+  assert.equal((await scheduleSave(alice, 'https://other.example')).status, 403)
+  assert.equal((await scheduleSave(bob)).status, 400)
+  const confirmed = await scheduleSave(alice)
+  assert.equal(confirmed.status, 200)
+  const scheduled = await confirmed.json()
+  assert.deepEqual(await (await scheduleSave(alice)).json(), scheduled)
+  const routine = await request('/api/schedules', { headers: alice })
+  assert.match(routine.headers.get('cache-control'), /no-store/)
+  const routineBody = await routine.json()
+  assert.deepEqual(routineBody.schedules, scheduled.schedules)
+  assert.equal(routineBody.today.next.dueAt, '2099-12-31T06:00:00.000Z')
+  assert.deepEqual((await (await request('/api/schedules', { headers: bob })).json()).schedules, [])
   const oversized = await save({ ...medicine, label: 'x'.repeat(5000) })
   assert.equal(oversized.status, 413)
   await worker.dispose()
   const unavailable = await save({ ...medicine, id: '8c4ea91b-c9df-4d47-8cd0-54c1892c4e52' })
   assert.equal(unavailable.status, 503)
   assert.deepEqual(await unavailable.json(), { error: 'unavailable' })
+  assert.equal((await scheduleSave(alice)).status, 503)
 })
 
 test('missing private configuration disables sign-in and preserves accessible recovery', async () => {

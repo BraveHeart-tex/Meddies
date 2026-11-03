@@ -1,7 +1,9 @@
 import { drizzle } from 'drizzle-orm/d1'
 import { and, eq, asc } from 'drizzle-orm'
-import { userMedications } from './schema'
+import { dailySchedules, userMedications } from './schema'
 import { MedicineError, parseMedicine } from '../src/features/medicines/contract'
+
+import { istanbulDate, parseSchedule } from '../src/features/schedules/contract'
 
 type Env = { DB: D1Database; MEDICINES_WORKER_SECRET: string }
 const json = (body: unknown, status = 200) =>
@@ -21,7 +23,8 @@ export default {
     let mismatch = 0
     for (let i = 0; i < actual.length; i++) mismatch |= actual[i] ^ expected[i]
     if (mismatch) return json({ error: 'unauthorized' }, 401)
-    if (request.method !== 'POST' || new URL(request.url).pathname !== '/medicines')
+    const path = new URL(request.url).pathname
+    if (request.method !== 'POST' || !['/medicines', '/schedules'].includes(path))
       return json({ error: 'not_found' }, 404)
     try {
       // Bound bodies even when the caller uses chunked transfer.
@@ -54,6 +57,71 @@ export default {
       )
         return json({ error: 'validation' }, 400)
       const db = drizzle(env.DB)
+      if (path === '/schedules') {
+        const owner = eq(dailySchedules.ownerId, command.ownerId)
+        const select = {
+          id: dailySchedules.id,
+          medicineId: dailySchedules.medicineId,
+          startDate: dailySchedules.startDate,
+          times: dailySchedules.times,
+          confirmedAt: dailySchedules.confirmedAt,
+        }
+        if (command.operation === 'list') {
+          return json({
+            schedules: await db
+              .select(select)
+              .from(dailySchedules)
+              .where(owner)
+              .orderBy(asc(dailySchedules.id)),
+          })
+        }
+        if (command.operation !== 'save') throw new MedicineError('validation', 400)
+        const schedule = parseSchedule(command.schedule)
+        const existing = await db
+          .select(select)
+          .from(dailySchedules)
+          .where(and(owner, eq(dailySchedules.id, schedule.id)))
+          .get()
+        const matches = (saved: typeof existing) =>
+          saved &&
+          saved.medicineId === schedule.medicineId &&
+          saved.startDate === schedule.startDate &&
+          JSON.stringify(saved.times) === JSON.stringify(schedule.times)
+        // An identical retry remains valid after the initial start date has passed.
+        if (existing) {
+          if (!matches(existing)) throw new MedicineError('conflict', 409)
+          return json({ schedules: [existing] })
+        }
+        const medicine = await db
+          .select()
+          .from(userMedications)
+          .where(
+            and(
+              eq(userMedications.ownerId, command.ownerId),
+              eq(userMedications.id, schedule.medicineId),
+            ),
+          )
+          .get()
+        if (
+          !medicine ||
+          (medicine.unit === 'capsule' &&
+            schedule.times.some((slot) => !Number.isInteger(slot.quantity)))
+        )
+          throw new MedicineError('validation', 400)
+        const now = new Date()
+        if (schedule.startDate < istanbulDate(now)) throw new MedicineError('validation', 400)
+        await db
+          .insert(dailySchedules)
+          .values({ ...schedule, ownerId: command.ownerId, confirmedAt: now.toISOString() })
+          .onConflictDoNothing()
+        const saved = await db
+          .select(select)
+          .from(dailySchedules)
+          .where(and(owner, eq(dailySchedules.id, schedule.id)))
+          .get()
+        if (!matches(saved)) throw new MedicineError('conflict', 409)
+        return json({ schedules: [saved] })
+      }
       const owner = eq(userMedications.ownerId, command.ownerId)
       if (command.operation === 'save') {
         const medicine = parseMedicine(command.medicine)

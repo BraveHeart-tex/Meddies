@@ -1,3 +1,4 @@
+import { readJsonRequest } from '@/lib/json-request'
 import { medicines } from '@/features/medicines/server'
 import { MedicineError } from '@/features/medicines/contract'
 
@@ -26,28 +27,7 @@ export async function POST(request: Request) {
   if (request.headers.get('content-type')?.split(';')[0] !== 'application/json')
     return json({ error: 'validation' }, 415)
   try {
-    const reader = request.body?.getReader()
-    if (!reader) return json({ error: 'validation' }, 400)
-    let body = ''
-    let bytes = 0
-    const decoder = new TextDecoder()
-    while (true) {
-      const chunk = await reader.read()
-      if (chunk.done) break
-      bytes += chunk.value.byteLength
-      if (bytes > 4096) {
-        await reader.cancel()
-        return json({ error: 'validation' }, 413)
-      }
-      body += decoder.decode(chunk.value, { stream: true })
-    }
-    body += decoder.decode()
-    let input
-    try {
-      input = JSON.parse(body)
-    } catch {
-      return json({ error: 'validation' }, 400)
-    }
+    const input = await readJsonRequest(request)
     return json({ medicines: await medicines.save(input) })
   } catch (error) {
     return failure(error)
