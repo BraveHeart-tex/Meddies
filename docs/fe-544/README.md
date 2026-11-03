@@ -1,6 +1,6 @@
 # FE-544 - Encrypted backup restoration
 
-2026-11-03. Synthetic-data feasibility experiment only. No daily automation or downstream ticket implemented. Next.js remains on Vercel; no app deployment or architecture decision changed.
+2026-11-03. Synthetic-data feasibility experiment only. No daily automation or downstream ticket implemented. Next.js remains on Vercel; no app deployment or architecture decision changed. [Linear evidence attachment](https://linear.app/karacadev/document/fe-544-encrypted-backup-restore-evidence-2026-11-03-da92186eff5f).
 
 ## Findings
 
