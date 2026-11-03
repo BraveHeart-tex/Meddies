@@ -1,0 +1,16 @@
+{
+  "name": "meddies-fe-544-spike",
+  "version": "0.0.0",
+  "private": true,
+  "engines": { "node": "22.x" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/*.test.mjs",
+    "experiment": "node scripts/experiment.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5.9.3",
+    "wrangler": "4.157.0"
+  }
+}

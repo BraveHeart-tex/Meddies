@@ -1,0 +1,306 @@
+{
+  "outcome": "PASS",
+  "timestamp": "2026-11-03T12:49:11.520Z",
+  "node": "v22.22.0",
+  "platform": "darwin/arm64",
+  "wrangler": "4.157.0",
+  "mode": "--local",
+  "destination": "private-local-filesystem",
+  "ciphertextBytes": 4724,
+  "sha256": "18a594e0bc75a5ee22658a936edc81f1b0602d97e9b0591d055a47065aed6b9d",
+  "tables": 11,
+  "records": 23,
+  "schemaAndRecordsEqual": true,
+  "integrityChecks": "PASS",
+  "constraints": [
+    "foreign-key",
+    "check",
+    "unique",
+    "not-null"
+  ],
+  "activeKeyRemoved": true,
+  "recoveredKeyOutsideRepository": true,
+  "recoveryCustody": "separate-directory-simulation-on-same-host",
+  "schedulerConnected": false,
+  "deletedAccountHazardPresent": true,
+  "backupMs": 817,
+  "restoreAndVerifyMs": 27855,
+  "totalMs": 44503,
+  "stages": [
+    {
+      "stage": "query-SOURCE",
+      "ms": 3736,
+      "pass": true
+    },
+    {
+      "stage": "seed-source",
+      "ms": 746,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 719,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 724,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 778,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 724,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 723,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 772,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 722,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 724,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 825,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 787,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 755,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 746,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 740,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 776,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 833,
+      "pass": true
+    },
+    {
+      "stage": "export",
+      "ms": 815,
+      "pass": true
+    },
+    {
+      "stage": "restore-isolated",
+      "ms": 780,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 748,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 785,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 781,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 727,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 726,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 720,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 782,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 734,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 816,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 768,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 840,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 847,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 798,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 739,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 744,
+      "pass": false
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 748,
+      "pass": false
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 738,
+      "pass": false
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 721,
+      "pass": false
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 720,
+      "pass": false
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 728,
+      "pass": false
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 783,
+      "pass": false
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 750,
+      "pass": false
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 753,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 732,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 771,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 741,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 728,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 724,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 791,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 743,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 736,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 727,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 717,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 720,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 719,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 724,
+      "pass": true
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "outcome": "PASS",
+  "node": "v22.22.0",
+  "independentProcess": true,
+  "inheritedCloudflareOrAppCredentials": false,
+  "primaryDatabaseAccess": false,
+  "sqlDigestMatched": true,
+  "temporarySQLRemoved": true
+}

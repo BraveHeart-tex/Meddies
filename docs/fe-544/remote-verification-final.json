@@ -1,0 +1,311 @@
+{
+  "outcome": "PASS",
+  "timestamp": "2026-11-03T12:52:47.965Z",
+  "node": "v22.22.0",
+  "platform": "darwin/arm64",
+  "wrangler": "4.157.0",
+  "mode": "--remote",
+  "destination": "meddies-fe-544-backups/2026-11-03T12-52-12.965Z.enc",
+  "ciphertextBytes": 4725,
+  "sha256": "719c71ef5cd4bb2a8269fe3fc712a1c7d0a79b76930173267025dc969645bf96",
+  "tables": 11,
+  "records": 23,
+  "schemaAndRecordsEqual": true,
+  "integrityChecks": "PASS",
+  "constraints": [
+    "foreign-key",
+    "check",
+    "unique",
+    "not-null"
+  ],
+  "activeKeyRemoved": true,
+  "recoveredKeyOutsideRepository": true,
+  "recoveryCustody": "separate-directory-simulation-on-same-host",
+  "schedulerConnected": false,
+  "deletedAccountHazardPresent": true,
+  "backupMs": 4010,
+  "restoreAndVerifyMs": 33802,
+  "totalMs": 51481,
+  "stages": [
+    {
+      "stage": "query-SOURCE",
+      "ms": 959,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 905,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 773,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 784,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 799,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 951,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 872,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 814,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 914,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 780,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 927,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 950,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 876,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 795,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 803,
+      "pass": true
+    },
+    {
+      "stage": "query-SOURCE",
+      "ms": 765,
+      "pass": true
+    },
+    {
+      "stage": "export",
+      "ms": 2810,
+      "pass": true
+    },
+    {
+      "stage": "upload-ciphertext",
+      "ms": 1197,
+      "pass": true
+    },
+    {
+      "stage": "download-ciphertext",
+      "ms": 1089,
+      "pass": true
+    },
+    {
+      "stage": "restore-isolated",
+      "ms": 2746,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 828,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 814,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 931,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 834,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 786,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 789,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 778,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 798,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 767,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 857,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 817,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 883,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 876,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 1040,
+      "pass": true
+    },
+    {
+      "stage": "foreign-key-SOURCE-rejected-as-expected",
+      "ms": 783,
+      "pass": true
+    },
+    {
+      "stage": "foreign-key-RESTORE-rejected-as-expected",
+      "ms": 815,
+      "pass": true
+    },
+    {
+      "stage": "check-SOURCE-rejected-as-expected",
+      "ms": 831,
+      "pass": true
+    },
+    {
+      "stage": "check-RESTORE-rejected-as-expected",
+      "ms": 972,
+      "pass": true
+    },
+    {
+      "stage": "unique-SOURCE-rejected-as-expected",
+      "ms": 958,
+      "pass": true
+    },
+    {
+      "stage": "unique-RESTORE-rejected-as-expected",
+      "ms": 919,
+      "pass": true
+    },
+    {
+      "stage": "not-null-SOURCE-rejected-as-expected",
+      "ms": 833,
+      "pass": true
+    },
+    {
+      "stage": "not-null-RESTORE-rejected-as-expected",
+      "ms": 908,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 833,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 764,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 821,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 776,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 794,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 787,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 799,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 796,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 811,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 777,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 790,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 799,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 783,
+      "pass": true
+    },
+    {
+      "stage": "query-RESTORE",
+      "ms": 814,
+      "pass": true
+    }
+  ]
+}
