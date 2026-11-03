@@ -5,13 +5,13 @@ Owner: [FE-606](https://linear.app/karacadev/issue/FE-606/establish-the-producti
 
 ## Result and evidence
 
-| Check | Result | Evidence |
-| --- | --- | --- |
-| Clean install | PASS: frozen lockfile in a fresh temporary source copy without dependencies or generated files | [Install/build log](clean-install-build.txt) |
-| Strict typecheck before build | PASS: generates Next route types, then `tsc --noEmit` | [Install/build log](clean-install-build.txt) |
-| Production build | PASS: Next 16.4.4, static `/` and framework not-found route | [Install/build log](clean-install-build.txt) |
-| Root dev and start | PASS: HTTP 200, English document/title/heading/text, rendered browser snapshots | [Local routes](local-routes.txt) |
-| Existing local suites | PASS: all three experiment suites; no root suite added | [FE-541](regression-fe-541.txt), [FE-542](regression-fe-542.txt), [FE-544](regression-fe-544.txt) |
+| Check                         | Result                                                                                         | Evidence                                                                                          |
+| ----------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Clean install                 | PASS: frozen lockfile in a fresh temporary source copy without dependencies or generated files | [Install/build log](clean-install-build.txt)                                                      |
+| Strict typecheck before build | PASS: generates Next route types, then `tsc --noEmit`                                          | [Install/build log](clean-install-build.txt)                                                      |
+| Production build              | PASS: Next 16.4.4, static `/` and framework not-found route                                    | [Install/build log](clean-install-build.txt)                                                      |
+| Root dev and start            | PASS: HTTP 200, English document/title/heading/text, rendered browser snapshots                | [Local routes](local-routes.txt)                                                                  |
+| Existing local suites         | PASS: all three experiment suites; no root suite added                                         | [FE-541](regression-fe-541.txt), [FE-542](regression-fe-542.txt), [FE-544](regression-fe-544.txt) |
 
 Clean verification copies only the root package/lock/config/runtime files and `src`.
 The pnpm package cache was reused; no existing `node_modules`, `.next`,

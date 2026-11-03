@@ -1,3 +1,0 @@
-
-> meddies-fe-542-spike@0.0.0 typecheck
-> tsc --noEmit

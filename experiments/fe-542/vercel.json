@@ -1,1 +1,0 @@
-{ "framework": "nextjs", "regions": ["fra1"], "functions": { "app/api/probe/route.ts": { "maxDuration": 10 } } }

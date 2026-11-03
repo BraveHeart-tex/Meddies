@@ -6,13 +6,13 @@
 
 Keep D1 + Drizzle. The measured path is Next.js Node on Vercel -> authenticated HTTPS Worker -> Drizzle D1 binding -> isolated D1 database. Vercel has no D1 binding and holds no Cloudflare account/API token. No measured blocker justifies Neon. No architecture decision changed.
 
-| Acceptance criterion | Evidence |
-| --- | --- |
-| Vercel reaches D1 through a measured concrete integration | Production `/api/probe` forwards fixed operations to the Worker; complete HTTP verification passes, observed function region fra1 and Node v22.23.4. |
-| Migration and atomic intake/stock rollback | Wrangler applied `0001_spike.sql` remotely: seven statements, reported 0.94 ms SQL duration. Drizzle batch changes stock, inserts intake, then intentionally violates the movement CHECK. All three changes roll back: stock 20, no intake, no movement. |
-| Retry, concurrent claimants and lease recovery | Two identical concurrent intake actions plus a later retry leave stock 18, one intake, one movement. Reusing action with quantity 3 returns 409, preserving state. Two claimants yield exactly one winner. Expired lease can be reclaimed, old owner cannot complete, current owner can, completed work cannot be claimed again. |
-| Latency, quotas, credentials and ORM support | Measurements and limits below; direct Worker and Vercel path both pass. |
-| Focused reproducible evidence and blockers | Scripts, deployment outputs, raw synthetic verification, environment and limitations in this directory. No unresolved blocker for this narrow outcome. |
+| Acceptance criterion                                      | Evidence                                                                                                                                                                                                                                                                                                                         |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vercel reaches D1 through a measured concrete integration | Production `/api/probe` forwards fixed operations to the Worker; complete HTTP verification passes, observed function region fra1 and Node v22.23.4.                                                                                                                                                                             |
+| Migration and atomic intake/stock rollback                | Wrangler applied `0001_spike.sql` remotely: seven statements, reported 0.94 ms SQL duration. Drizzle batch changes stock, inserts intake, then intentionally violates the movement CHECK. All three changes roll back: stock 20, no intake, no movement.                                                                         |
+| Retry, concurrent claimants and lease recovery            | Two identical concurrent intake actions plus a later retry leave stock 18, one intake, one movement. Reusing action with quantity 3 returns 409, preserving state. Two claimants yield exactly one winner. Expired lease can be reclaimed, old owner cannot complete, current owner can, completed work cannot be claimed again. |
+| Latency, quotas, credentials and ORM support              | Measurements and limits below; direct Worker and Vercel path both pass.                                                                                                                                                                                                                                                          |
+| Focused reproducible evidence and blockers                | Scripts, deployment outputs, raw synthetic verification, environment and limitations in this directory. No unresolved blocker for this narrow outcome.                                                                                                                                                                           |
 
 ## Environment
 
@@ -27,13 +27,13 @@ Keep D1 + Drizzle. The measured path is Next.js Node on Vercel -> authenticated 
 
 First measured run, 18 authenticated calls per path (including intended database-failure and payload-conflict responses). These are small-sample observed order statistics, not a capacity or SLA claim. The unauthenticated 401 call is excluded. Local caller was this development machine; no claim about physical network location.
 
-| Path / wall-time measure | Min | Median | Nearest-rank p95 / max |
-| --- | --- | --- | --- |
-| Caller -> Worker -> D1 -> caller | 123 ms | 167 ms | 401 ms |
-| Worker handler wall time, direct path | 30 ms | 48 ms | 122 ms |
-| Caller -> Vercel -> Worker -> D1 -> caller | 148 ms | 219 ms | 924 ms |
-| Vercel outbound Worker fetch including response body | 41 ms | 100 ms | 272 ms |
-| Worker handler wall time, Vercel path | 19 ms | 47 ms | 160 ms |
+| Path / wall-time measure                             | Min    | Median | Nearest-rank p95 / max |
+| ---------------------------------------------------- | ------ | ------ | ---------------------- |
+| Caller -> Worker -> D1 -> caller                     | 123 ms | 167 ms | 401 ms                 |
+| Worker handler wall time, direct path                | 30 ms  | 48 ms  | 122 ms                 |
+| Caller -> Vercel -> Worker -> D1 -> caller           | 148 ms | 219 ms | 924 ms                 |
+| Vercel outbound Worker fetch including response body | 41 ms  | 100 ms | 272 ms                 |
+| Worker handler wall time, Vercel path                | 19 ms  | 47 ms  | 160 ms                 |
 
 Headers are measured in each runtime; worker wall time includes D1 waits and is **not CPU time**. Samples include startup/network variation and different synthetic runs. The Vercel proxy adds a measurable network boundary; this sample does not isolate its causal overhead. Warm versus cold behavior, sustained throughput, quota exhaustion and CPU headroom were not established. The only concurrency claims are the tested two-writer/two-claimant races.
 

@@ -38,13 +38,13 @@ Logs emit fixed `auth_failure`/`auth_warning` events only, intentionally omittin
 2. Create an OAuth client of type **Web application**. Register exactly `https://meddies-fe-541-spike.vercel.app/api/auth/callback/google` as an authorized redirect URI. Use the stable alias for this experiment; do not use random immutable deployment URLs. No custom domain change is needed. Requested scopes are only `openid email profile`.
 3. Open the isolated project's Vercel Settings > Environment Variables and set these for **Production only**, server-side, without NEXT_PUBLIC prefixes:
 
-| Variable | Private value |
-| --- | --- |
-| AUTH_URL | `https://meddies-fe-541-spike.vercel.app` |
-| AUTH_SECRET | Independently generated cryptographically random secret of at least 32 characters; e.g. `openssl rand -base64 33` locally |
-| AUTH_GOOGLE_ID | Web OAuth client ID |
-| AUTH_GOOGLE_SECRET | Web OAuth client secret |
-| AUTH_ALLOWED_EMAIL | Exact approved test email; one identity only |
+| Variable           | Private value                                                                                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| AUTH_URL           | `https://meddies-fe-541-spike.vercel.app`                                                                                 |
+| AUTH_SECRET        | Independently generated cryptographically random secret of at least 32 characters; e.g. `openssl rand -base64 33` locally |
+| AUTH_GOOGLE_ID     | Web OAuth client ID                                                                                                       |
+| AUTH_GOOGLE_SECRET | Web OAuth client secret                                                                                                   |
+| AUTH_ALLOWED_EMAIL | Exact approved test email; one identity only                                                                              |
 
 Never paste credentials into chat, commands with literal secret arguments, issue evidence or git. Use the Vercel private UI or CLI interactive input. `.env*` and `.vercel/` are ignored; only the blank `.env.example` is tracked. AUTH_TRUST_HOST is inferred by Auth.js on Vercel; the local test sets it explicitly. AUTH_URL deliberately pins the experiment origin. A valid provider-verified email is required in addition to exact allowlist matching; Google sub supplies stable user identity.
 
@@ -68,26 +68,26 @@ EXPECT_UNCONFIGURED=1 PROBE_URL=https://meddies-fe-541-spike.vercel.app npm run 
 PROBE_URL=https://meddies-fe-541-spike.vercel.app npm run test:deployed
 ```
 
-| Live test | Expected result | Current result |
-| --- | --- | --- |
-| Approved Google account, successful callback | `/api/private` 200, stable google-prefixed user ID, no provider tokens | PASS - user observed successful sign-in and userId/expires response |
-| Other Google account reaches application | AccessDenied, no session, `/api/private` 401 | PASS - user observed application AccessDenied and Unauthorized |
-| Reload and browser reopen before expiry | Same ID and original expiry | PASS - user reports all requested lifecycle checks passed |
-| After two minutes, including repeated session checks | Private route 401, reauthentication required | PASS - user reports lifecycle checks passed |
-| Sign out via confirmation page | Session cookie cleared; reload/private route 401 | PASS - user observed immediate Unauthorized; cookie deletion inferred from behavior |
-| Callback without state/PKCE | Error, no session | PASS - automated locally and on configured Vercel deployment |
-| Deny Google consent | Generic error, no session | NOT RUN - supplemental consent-denial case |
-| Wrong client secret / callback mismatch | Generic failure, no session or secret disclosure | NOT RUN - supplemental misconfiguration case; missing configuration was tested |
-| Browser cookie inspection | Secure, HttpOnly, SameSite=Lax; never record value | PASS for transient cookies via HTTP; session-cookie flags not independently inspected |
+| Live test                                            | Expected result                                                        | Current result                                                                        |
+| ---------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Approved Google account, successful callback         | `/api/private` 200, stable google-prefixed user ID, no provider tokens | PASS - user observed successful sign-in and userId/expires response                   |
+| Other Google account reaches application             | AccessDenied, no session, `/api/private` 401                           | PASS - user observed application AccessDenied and Unauthorized                        |
+| Reload and browser reopen before expiry              | Same ID and original expiry                                            | PASS - user reports all requested lifecycle checks passed                             |
+| After two minutes, including repeated session checks | Private route 401, reauthentication required                           | PASS - user reports lifecycle checks passed                                           |
+| Sign out via confirmation page                       | Session cookie cleared; reload/private route 401                       | PASS - user observed immediate Unauthorized; cookie deletion inferred from behavior   |
+| Callback without state/PKCE                          | Error, no session                                                      | PASS - automated locally and on configured Vercel deployment                          |
+| Deny Google consent                                  | Generic error, no session                                              | NOT RUN - supplemental consent-denial case                                            |
+| Wrong client secret / callback mismatch              | Generic failure, no session or secret disclosure                       | NOT RUN - supplemental misconfiguration case; missing configuration was tested        |
+| Browser cookie inspection                            | Secure, HttpOnly, SameSite=Lax; never record value                     | PASS for transient cookies via HTTP; session-cookie flags not independently inspected |
 
 ## Acceptance status
 
-| Criterion | Result |
-| --- | --- |
-| Approved identity allowed and other Google identity rejected | PASS - two real Google account journeys reported by user |
-| Deployed callbacks, persistence, expiry and sign-out | PASS - user performed requested deployed lifecycle checks; automated invalid callback rejection |
-| Library/runtime compatibility, config, failure behavior | PASS - build/runtime, Google exchange, invalid callback, missing config and app AccessDenied evidence; supplemental failure cases remain untested |
-| Focused evidence and unresolved blocker recorded | PASS - commands, deployment, automated outputs, user-observed results and limitations recorded |
+| Criterion                                                    | Result                                                                                                                                            |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Approved identity allowed and other Google identity rejected | PASS - two real Google account journeys reported by user                                                                                          |
+| Deployed callbacks, persistence, expiry and sign-out         | PASS - user performed requested deployed lifecycle checks; automated invalid callback rejection                                                   |
+| Library/runtime compatibility, config, failure behavior      | PASS - build/runtime, Google exchange, invalid callback, missing config and app AccessDenied evidence; supplemental failure cases remain untested |
+| Focused evidence and unresolved blocker recorded             | PASS - commands, deployment, automated outputs, user-observed results and limitations recorded                                                    |
 
 Recommendation: Auth.js 5.0.0-beta.32 is a demonstrated Google authentication candidate on this Next.js/Vercel Node runtime. No evidence currently justifies switching providers. If a reproducible beta/runtime incompatibility appears, evaluate Better Auth with Google on the same Node/Vercel runtime and repeat the identical matrix before selection. No unresolved blocker remains for this narrow spike. Production session lifetime, revocation, database identity integration and resource ownership enforcement belong to later work; no downstream ticket started.
 
@@ -105,7 +105,6 @@ Topic docs 06/07 still describe older Cloudflare-first proposals. FE-541 and the
 ## Review and saved outputs
 
 [Cloud build output](build.txt) and [focused verification output](verification.txt) contain no credentials. Code-review skill used baseline `0e82434` through `a5cd30a`, with independent Standards and Spec reviewers. Standards: 0 actionable findings. Spec: 0 actionable defects; real Google allow/deny and deployed lifecycle criteria remain blocked. Final typecheck and full focused suite passed after review. No functional code changed after deployed source `dd351f5`.
-
 
 ## Historical configured redeployment - 2026-11-03, 14:55 Europe/Istanbul
 
@@ -127,7 +126,6 @@ This supersedes the missing-configuration blocker above. It proves the authoriza
 User reports: "Sign-in succeeds; userId and expires shown" after following the deployed approved-account journey. Result: approved Google sign-in, successful callback and authenticated private endpoint PASS (user-observed evidence; not independently inspected by the agent). No identity or session values were collected.
 
 This supersedes the approved-account blocker above. Non-allowlisted Google rejection and deployed persistence/expiry/sign-out remain pending. Requested reproducible lifecycle check: fresh sign-in, reload/reopen before two minutes preserving ID and expiry; reload after two minutes returns Unauthorized; fresh sign-in followed by confirmed sign-out immediately returns Unauthorized. Requested a separate private-window Google sign-in with the non-allowlisted identity reaching application AccessDenied, followed by private endpoint Unauthorized. A Google audience restriction alone does not prove the application allowlist. FE-541 stays In Progress.
-
 
 ## Final interactive verification - 2026-11-03
 
