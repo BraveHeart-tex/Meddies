@@ -1,6 +1,6 @@
 # FE-541 - Google authentication runtime spike
 
-Experiment: 2026-11-03. **INCOMPLETE - Google integration has not been configured.** User confirmed no Google setup exists. Do not unblock FE-551 or select a production integration on this evidence.
+Experiment: 2026-11-03. **INCOMPLETE - Google configuration is now present; real-account verification remains outstanding.** Initial deployment lacked configuration; see the latest update below. Do not unblock FE-551 or select a production integration on this evidence.
 
 ## Environment and evidence
 
@@ -105,3 +105,19 @@ Topic docs 06/07 still describe older Cloudflare-first proposals. FE-541 and the
 ## Review and saved outputs
 
 [Cloud build output](build.txt) and [focused verification output](verification.txt) contain no credentials. Code-review skill used baseline `0e82434` through `a5cd30a`, with independent Standards and Spec reviewers. Standards: 0 actionable findings. Spec: 0 actionable defects; real Google allow/deny and deployed lifecycle criteria remain blocked. Final typecheck and full focused suite passed after review. No functional code changed after deployed source `dd351f5`.
+
+
+## Configured redeployment - 2026-11-03, 14:55 Europe/Istanbul
+
+User added the private environment variables and redeployed. New immutable deployment: https://meddies-fe-541-spike-eeoz12958-bravehearttexs-projects.vercel.app (`dpl_CKcnWhaW4JmRcC6j6XGy2zrSDdSt`). Vercel reports Ready, build duration 25 seconds, functions in fra1. No environment values were retrieved.
+
+Reproducible check:
+
+```sh
+cd experiments/fe-541
+EXPECT_CONFIGURED=1 PROBE_URL=https://meddies-fe-541-spike.vercel.app npm run test:deployed
+```
+
+PASS: anonymous private endpoint remains 401/no-store; Google provider endpoint returns 200; CSRF-protected sign-in POST redirects to accounts.google.com with the exact registered application callback, state, S256 PKCE; CSRF, state and PKCE cookies are Secure/HttpOnly/SameSite=Lax; invalid callback without matching cookies redirects to error without a session.
+
+This supersedes the missing-configuration blocker above. It proves the authorization request can be constructed, not that the OAuth client/secret are valid or registered correctly at Google. Real approved-account callback, non-allowlisted identity rejection, browser persistence, two-minute expiry and sign-out still require interactive verification. User has been asked to complete approved sign-in and report only success or a generic error name. No real-account criterion has been marked PASS.
