@@ -1,0 +1,81 @@
+# FE-549 - Clarify export and deletion scope
+
+Status: approved by Bora on November 3, 2026.
+Approval: "Agreed" in response to D1-D6 and all 16 acceptance examples.
+No export/deletion implementation or runtime behavior is established here.
+
+Sources: [FE-549](https://linear.app/karacadev/issue/FE-549/clarify-export-and-deletion-scope),
+[FE-539](https://linear.app/karacadev/issue/FE-539/meddies-private-mvp-product-and-engineering-specification),
+canonical wiki topics 02 (UX) and 06 (architecture), and approved FE-548 boundaries.
+
+## Approved decisions
+
+| ID | Approved rule | Reason |
+| -- | -- | -- |
+| D1 | Settings offers an online export of all retained server history, across all medicines, as a ZIP containing UTF-8 CSV files and a README. Include medicine identifiers/names, strength and quantity unit; scheduled occurrence identity/time, Taken/Skipped/Not logged state, actual intake time and quantity; unscheduled intake; retained correction history; unresolved server conflicts with both submissions clearly marked; and current stock, uncertainty, refills and count corrections. Include export time, schema version and Europe/Istanbul plus explicit timestamp offsets. Exclude future occurrences, deleted history, secrets, push endpoints and diagnostic/delivery logs. This is a personal copy, not an import/restore format. | Readable, complete retained history without exposing credentials or claiming recovery support. |
+| D2 | Export is a consistent server snapshot. Attempt to sync the requesting device first; if pending actions remain, require explicit acknowledgement that they are excluded. State that other offline devices may hold unsynced work. Never present unresolved conflict submissions as confirmed outcomes. No offline export or silent partial download. Files already downloaded remain under the user's control after deletion. | Separates server-confirmed data from offline work and conflict evidence. |
+| D3 | History deletion is online and deliberate: select one medicine or all medicines, then an inclusive calendar date range or all elapsed history. Select scheduled entries by scheduled date and unscheduled intake by actual intake date, in Europe/Istanbul. Preview exact scope and count, with a fixed server cutoff; final confirmation applies only to that preview and requires a fresh preview if affected records change. Include elapsed occurrences today, exclude future occurrences. Delete matching occurrences, outcomes, corrections and associated historical delivery detail; do not recreate them as Not logged. Preserve medicines, schedules and future reminders; cancel any remaining unsent dose/food reminders for deleted occurrences. Block confirmation while matching known pending actions or unresolved conflicts remain; explain sync/resolve first. | Predictable selection, no silent deletion of unresolved work or future routine. |
+| D4 | History deletion never reverses intake or changes current stock, uncertainty or the current low-stock episode. Remove deleted intake's detailed stock linkage and quantity/time trail; retain only the current stock baseline and minimal opaque replay/deletion markers needed to prevent duplicate effects or resurrection. Independent refill/count-correction history remains outside history deletion and is included in export. Deleted intake cannot later be corrected; use an explicit count correction for an inaccurate current count. Copy: "Delete these history entries? Your stock count will not change. This cannot be undone in Meddies." | Privacy deletion without falsely putting consumed medicine back in stock. |
+| D5 | Account deletion requires an authenticated online confirmation, warns to export first, and immediately disables access and future server processing. Report completion only once active personal data is removed: identity/session data, medicines, schedules, occurrences, outcomes/corrections/conflicts, inventory, preferences, device registrations, reminder jobs and delivery records, and any server-held export artifacts. A failed or interrupted cleanup remains visibly in progress and retryable with reminders disabled. Already submitted notifications may still arrive; downloaded files and notifications already on devices cannot be remotely recalled. Signing in again must not silently recreate the deleted account; fresh setup requires deliberate reauthorization. | Clear active-data deletion boundary without impossible recall promises. |
+| D6 | Deletion is server-confirmed, not guaranteed erasure of a disconnected device. Clear the requesting device's personal cache/pending queue after acknowledgement. Other offline devices may display stale data until reconnecting; advise clearing local app/site data on devices the user controls. On reconnect, validate account/deletion state before upload or cache reuse, clear deleted cached entries and reject stale actions for deleted history/accounts without changing stock. Show rejected work as not saved until acknowledged, without recreating deleted records. Keep minimal opaque deletion/replay markers outside ordinary restored snapshots, without medicine names, intake details, email or credentials, for as long as needed to reject old device actions and prevent restoration. Explain these limited markers separately from deleted personal content. Encrypted backups retain deleted content for up to 30 days; no instant backup purge or user undo. Before any restored service accepts traffic or sends reminders, reapply account and history deletions and replay protections. | Prevents stale devices or restored backups from reviving deleted data/reminders. |
+
+Marker storage, identifier choice, retention cleanup and restore mechanics need
+verification in downstream implementation. Opaque markers may still be linkable;
+do not describe them as anonymous or claim that absolutely no data remains.
+No medication details or secrets belong in ordinary diagnostics. The 30-day
+backup policy is unchanged. Account deletion removes refill/count-correction
+history too; history deletion alone does not.
+
+## Acceptance examples
+
+All dates/times use Europe/Istanbul. No example establishes implemented behavior.
+
+| Case | Input / timeline | Expected result |
+| -- | -- | -- |
+| Complete export | Export Nov 3 at 14:00 with old history, unscheduled intake, corrections and stock adjustments | ZIP includes all retained history and the stated metadata, not merely the 30-day offline cache; future occurrences and secrets excluded. |
+| Pending export | Requesting device has an unsynced 0.5-tablet intake; sync fails | Explicit incomplete-server-snapshot acknowledgement required; pending intake excluded and limitation stated. Other offline-device work is never promised included. |
+| Conflict export | Server holds Taken and Skipped submissions for one occurrence | Both included as unresolved; neither presented as confirmed; stock uncertainty explicit. |
+| Cross-midnight selection | Scheduled Nov 2 at 23:50, Taken Nov 3 at 00:10; unscheduled intake Nov 3 at 00:15 | Nov 2 deletion selects the scheduled entry; Nov 3 selects the unscheduled entry. Inclusive dates use Istanbul, independent of device timezone. |
+| Filter and cutoff | Preview medicine A, Nov 1-2; medicine B has entries on same dates | Only A's previewed entries deleted. A concurrent edit/new matching record requires a fresh preview. No unseen records silently included. |
+| Today and future | At 14:00 delete all elapsed history, including a 13:30 occurrence still eligible for follow-up | Preview stops at 14:00; remaining unsent reminders for deleted occurrences canceled. A 15:00 occurrence and its routine remain. Deleted rows do not return as Not logged. |
+| Stock preservation | Count 10, Taken 2, count now 8; delete that intake's history | Count stays 8 and low-stock episode unchanged; detailed intake trail removed. A later count correction is explicit and separate. |
+| Conflict/pending deletion | Selected history contains a known unresolved conflict or requesting-device pending action | Confirmation blocked with sync/resolve guidance; nothing silently discarded. |
+| Delayed device action | Device B offline before A deletes a historical occurrence; B later uploads an old Taken | Reject as deleted, show not saved, invalidate stale cache; no recreated occurrence or second stock effect. A genuinely new unscheduled intake outside deleted identities remains a new action. |
+| Account deletion | Confirm online while dose, food and refill work is queued | Access and processing disabled; all active personal data removed before completion shown. Already submitted notifications may arrive. No scheduled work resumes on retry. |
+| Interrupted cleanup | Deletion cleanup fails after account disabled | In-progress/retry state, not completed; no reminders or restored access while cleanup retries. |
+| Offline device | B stays disconnected after account deletion on A | B may still display stale data. No remote-erasure claim. On reconnect, account check rejects uploads and clears personal cache/queue before reuse. |
+| Backup expiry | Delete Nov 3; encrypted backup from Nov 2 exists | Active deletion does not wait for backup expiry. Deleted content may remain encrypted for up to 30 days; expired backups are removed under the existing policy. |
+| Restore | Restore Nov 2 backup after Nov 3 history/account deletion | Apply independent deletion/replay markers before serving data or scheduling work; deleted history/accounts and reminders do not revive. |
+| Existing download | Export downloaded, then delete history/account | Meddies cannot erase the user's downloaded copy; confirmation explains this. |
+| Offline request | Attempt export or either deletion without internet | Require connection; no completed export/deletion claim or queued destructive action. |
+
+## Approval and verification
+
+Bora approved D1-D6 and all 16 examples with "Agreed" on November 3, 2026.
+No unresolved product blocker remains within FE-549. FE-592, FE-593, FE-594
+and backup/restore implementation remain separate work; marker mechanics
+must be verified there before runtime readiness is claimed.
+
+Canonical publication: wiki topic 02, section "FE-549 - Approved export and
+deletion scope (November 3, 2026)", linked from topic 06 and the index.
+No runtime seam exists for TDD in this documentation-only outcome. Concrete
+examples are acceptance evidence; experiment regressions do not establish
+export/deletion behavior.
+
+Wiki publication was verified with complete read-back of topic 02 and both
+navigation updates; only Markdown link normalization and trailing whitespace
+were ignored. All three experiment typechecks passed. Full test results are
+recorded alongside this file. FE-541/FE-542 initially encountered local-server
+sandbox restrictions and were rerun with the required loopback access.
+
+All three full experiment test scripts passed (FE-541, FE-542, FE-544).
+
+## Review
+
+Used the code-review skill with independent standards and spec reviewers
+against starting commit `e9e385a47d1faba119db30efb906740b412fd94d`.
+Reviewers read complete new files because they were untracked at review time.
+
+- Standards: 0 findings; no documented-standard violations or applicable smells.
+- Spec: 0 findings; D1-D6, caveats and all 16 examples exactly match wiki topic 02;
+  both navigation entries and all six regression evidence files verified.

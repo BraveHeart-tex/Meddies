@@ -1,0 +1,11 @@
+
+> meddies-fe-541-spike@0.0.0 test
+> node scripts/test.mjs
+
+PASS anonymous denied, no-store
+PASS synthetic session persists across requests with stable user ID
+PASS non-allowlisted, expired, missing identity and corrupt sessions denied
+PASS session response omits email and provider tokens
+PASS sign-out without CSRF does not clear session
+PASS CSRF-protected sign-out clears cookie; anonymous request denied
+PASS invalid callback cannot create session
