@@ -47,8 +47,7 @@ No application environment variables or credentials are required by this scaffol
 Future feature tickets must document their variable names with placeholder values;
 store local values in ignored `.env.local`. Never expose secrets with `NEXT_PUBLIC_`.
 
-See [engineering standards](docs/engineering-standards.md) and
-[FE-606 verification](docs/fe-606/README.md).
+See [engineering standards](docs/engineering-standards.md).
 
 ## Vercel settings
 

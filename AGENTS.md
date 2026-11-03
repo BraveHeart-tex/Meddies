@@ -1,6 +1,10 @@
 Keep plans extremely concise. Sacrifice grammar for concision.
 Always use normal dashes instead of em dashes.
 
+Keep task progress and verification summaries in Linear. Create repo documentation
+only for durable setup, architecture or operating guidance. Do not create
+per-ticket READMEs unless requested.
+
 ## Agent skills
 
 ### Issue tracker
