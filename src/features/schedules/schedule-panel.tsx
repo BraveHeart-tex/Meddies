@@ -26,6 +26,7 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [attempted, setAttempted] = useState(false)
   const action = useRef<{ id: string; fingerprint: string } | null>(null)
   const locked = useRef(false)
   const mounted = useRef(false)
@@ -78,6 +79,7 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
     event.preventDefault()
     if (locked.current) return
     locked.current = true
+    setAttempted(true)
     setSaving(true)
     setError('')
     setMessage('')
@@ -115,6 +117,7 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
         data.schedules[0],
       ])
       action.current = null
+      setAttempted(false)
       setMedicineId('')
       setTimes([{ key: rowKey.current++, time: '', quantity: '' }])
       setMessage('Daily schedule saved.')
@@ -259,7 +262,7 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
                   id="schedule-start"
                   type="date"
                   required
-                  min={istanbulDate(new Date())}
+                  min={attempted ? undefined : istanbulDate(new Date())}
                   max="2099-12-31"
                   className={field}
                   value={startDate}

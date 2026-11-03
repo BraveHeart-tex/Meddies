@@ -54,7 +54,7 @@ test('Today keeps stable Istanbul doses across reload, date rollover and device 
     send: async () => [schedule],
     now: () => now,
   })
-  const today = await operations.today()
+  const today = (await operations.snapshot()).today
   assert.equal(today.date, '2026-11-03')
   assert.deepEqual(
     today.doses.map(({ dueAt, quantity, status }) => ({ dueAt, quantity, status })),
@@ -64,13 +64,13 @@ test('Today keeps stable Istanbul doses across reload, date rollover and device 
   const previousTz = process.env.TZ
   try {
     process.env.TZ = 'America/Los_Angeles'
-    assert.deepEqual(await operations.today(), today)
+    assert.deepEqual((await operations.snapshot()).today, today)
   } finally {
     if (previousTz === undefined) delete process.env.TZ
     else process.env.TZ = previousTz
   }
   now = new Date('2026-11-03T21:00:00Z')
-  const midnight = await operations.today()
+  const midnight = (await operations.snapshot()).today
   assert.equal(midnight.date, '2026-11-04')
   assert.equal(midnight.doses[0].status, 'Due now')
   assert.equal(midnight.doses[0].id, today.next.id)
@@ -95,15 +95,15 @@ test('initial confirmation excludes earlier and exactly equal times; future star
     now: () => now,
   })
   assert.deepEqual(
-    (await operations.today()).doses.map((dose) => dose.dueAt),
+    (await operations.snapshot()).today.doses.map((dose) => dose.dueAt),
     ['2026-11-03T07:00:00.000Z'],
   )
   now = new Date('2026-11-03T20:59:59Z')
   schedule = { ...schedule, startDate: '2026-12-31' }
-  const result = await operations.today()
+  const result = (await operations.snapshot()).today
   assert.deepEqual(result.doses, [])
   assert.equal(result.next.dueAt, '2026-12-31T05:00:00.000Z')
   now = new Date('2026-12-31T21:00:00Z')
-  assert.equal((await operations.today()).date, '2027-01-01')
-  assert.equal((await operations.today()).next.dueAt, '2027-01-01T05:00:00.000Z')
+  assert.equal((await operations.snapshot()).today.date, '2027-01-01')
+  assert.equal((await operations.snapshot()).today.next.dueAt, '2027-01-01T05:00:00.000Z')
 })

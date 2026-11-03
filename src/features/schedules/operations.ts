@@ -17,14 +17,5 @@ export function createScheduleOperations(dependencies: {
       const schedules = await dependencies.send({ operation: 'list', ownerId: user.id })
       return { schedules, today: scheduleToday(schedules, dependencies.now?.() ?? new Date()) }
     },
-    async today() {
-      const user = await dependencies.requireUser()
-      const schedules = await dependencies.send({ operation: 'list', ownerId: user.id })
-      return scheduleToday(schedules, dependencies.now?.() ?? new Date())
-    },
-    async list() {
-      const user = await dependencies.requireUser()
-      return dependencies.send({ operation: 'list', ownerId: user.id })
-    },
   }
 }

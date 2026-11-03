@@ -41,3 +41,23 @@ Configure `MEDICINES_WORKER_SECRET` through `wrangler secret put` and set the
 matching private secret and Worker origin in Vercel. Use HTTPS for the Worker
 origin outside local development. Redeploy Vercel after changing its environment
 variables.
+
+## Daily schedules
+
+Daily setup uses `src/features/schedules/operations.ts` and the same private
+Worker capability at `/schedules`. Apply migration `0002_daily_schedules.sql`
+before deploying the updated Worker and app. Existing medicines stay unscheduled.
+No additional environment variables are required.
+
+An initial schedule is immutable, owner scoped and unique per medicine. Identical
+client action retries return the original confirmation instant; changed payloads
+or a second initial schedule return conflict. Start dates use Europe/Istanbul and
+must be today or later on first save. Only times strictly after server confirmation
+produce occurrences. A retry retains that cutoff even across midnight.
+
+Today projects a bounded date window from persisted schedules. Occurrence identity
+is the immutable schedule UUID plus its UTC due instant, so reloads and device
+travel do not change it. Daily clock conversion uses Istanbul's UTC+03:00 rules;
+client device timezone is never used. Future schedule-edit work must retain old
+versions and occurrence identities. Logging, reminders and recurrence edits are
+separate operations, not implemented by daily setup.

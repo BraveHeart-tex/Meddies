@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, test } from 'node:test'
 import { readFile } from 'node:fs/promises'
+import { createWorker } from '../worker/index.ts'
 import { createScheduleOperations } from '../src/features/schedules/operations.ts'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
 
@@ -87,17 +88,80 @@ test('daily schedules persist in D1 with owner checks, capsule quantities and sa
   )
   const saved = await Promise.all([operations.save(input), operations.save(input)])
   assert.deepEqual(saved[0], saved[1])
-  assert.deepEqual(await operations.list(), saved[0])
+  assert.deepEqual((await operations.snapshot()).schedules, saved[0])
   assert.deepEqual(await operations.save(input), saved[0])
   assert.equal(saved[0][0].times[0].time, '00:00')
   assert(Number.isFinite(Date.parse(saved[0][0].confirmedAt)))
   await assert.rejects(() => operations.save({ ...input, startDate: '2099-12-30' }), /conflict/)
   await assert.rejects(() => operations.save({ ...input, id: randomUUID() }), /conflict/)
   const bob = createScheduleOperations({ requireUser: async () => ({ id: 'google:bob' }), send })
-  assert.deepEqual(await bob.list(), [])
+  assert.deepEqual((await bob.snapshot()).schedules, [])
   await assert.rejects(() => bob.save({ ...input, id: randomUUID() }), /validation/)
   await assert.rejects(
     () => operations.save({ ...input, id: randomUUID(), startDate: '2020-01-01' }),
     /validation/,
+  )
+})
+
+test('real D1 save confirmation enforces Istanbul start boundaries and survives an ambiguous midnight retry', async () => {
+  let now = new Date('2026-11-03T20:59:00.000Z')
+  const handler = createWorker(() => now)
+  const db = await runtime.getD1Database('DB')
+  const ownerId = 'google:controlled-clock'
+  const tablet = { ...medicine, id: randomUUID() }
+  await call({ operation: 'save', ownerId, medicine: tablet })
+  const send = async (command) => {
+    const response = await handler.fetch(
+      new Request('http://worker/schedules', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${secret}` },
+        body: JSON.stringify(command),
+      }),
+      { DB: db, MEDICINES_WORKER_SECRET: secret },
+    )
+    const body = await response.json()
+    if (!response.ok) throw new Error(body.error)
+    return body.schedules
+  }
+  const operations = createScheduleOperations({
+    requireUser: async () => ({ id: ownerId }),
+    send,
+    now: () => now,
+  })
+  const input = {
+    id: randomUUID(),
+    medicineId: tablet.id,
+    startDate: '2026-11-03',
+    times: [
+      { time: '23:58', quantity: 0.5 },
+      { time: '23:59', quantity: 1 },
+      { time: '00:00', quantity: 1 },
+    ],
+  }
+  const saved = await operations.save(input)
+  assert.equal(saved[0].confirmedAt, '2026-11-03T20:59:00.000Z')
+  const before = await operations.snapshot()
+  assert.deepEqual(before.today.doses, [])
+  assert.equal(before.today.next.dueAt, '2026-11-03T21:00:00.000Z')
+  now = new Date('2026-11-03T21:00:00.000Z')
+  assert.deepEqual(await operations.save(input), saved)
+  const midnight = await operations.snapshot()
+  assert.equal(midnight.today.doses[0].id, before.today.next.id)
+  const other = { ...medicine, id: randomUUID() }
+  await call({ operation: 'save', ownerId, medicine: other })
+  await assert.rejects(
+    () => operations.save({ ...input, id: randomUUID(), medicineId: other.id }),
+    /validation/,
+  )
+  const next = await operations.save({
+    ...input,
+    id: randomUUID(),
+    medicineId: other.id,
+    startDate: '2026-11-04',
+  })
+  assert.equal(next[0].confirmedAt, '2026-11-03T21:00:00.000Z')
+  assert.equal(
+    (await operations.snapshot()).today.doses.filter((dose) => dose.medicineId === other.id).length,
+    2,
   )
 })
