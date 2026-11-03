@@ -43,14 +43,25 @@ stage=smoke
 printf 'Release %s: smoke\n' "$GITHUB_SHA"
 # Generated URLs may require Vercel authentication. Verify the public alias points
 # to the deployment just created, then probe that alias without a bypass secret.
-pnpm exec vercel inspect "$PRODUCTION_APP_URL" --json --token "$VERCEL_TOKEN" > "$deployment_file"
-node --input-type=module - "$deployment_file" "$deployment_url" <<'JS'
-import { readFileSync } from 'node:fs'
-const deployment = JSON.parse(readFileSync(process.argv[2], 'utf8'))
+node --input-type=module - "$deployment_url" <<'JS'
+const { PRODUCTION_APP_URL, VERCEL_ORG_ID, VERCEL_PROJECT_ID, VERCEL_TOKEN, GITHUB_SHA } = process.env
+const endpoint = new URL(`https://api.vercel.com/v13/deployments/${new URL(PRODUCTION_APP_URL).hostname}`)
+endpoint.searchParams.set('teamId', VERCEL_ORG_ID)
+const response = await fetch(endpoint, {
+  headers: { Authorization: `Bearer ${VERCEL_TOKEN}` },
+  signal: AbortSignal.timeout(30000),
+})
+if (!response.ok) {
+  console.error(`Production deployment verification failed (HTTP ${response.status}).`)
+  process.exit(1)
+}
+const deployment = await response.json()
 if (
-  deployment.url !== new URL(process.argv[3]).hostname ||
+  deployment.url !== new URL(process.argv[2]).hostname ||
   deployment.readyState !== 'READY' ||
-  deployment.target !== 'production'
+  deployment.target !== 'production' ||
+  deployment.projectId !== VERCEL_PROJECT_ID ||
+  deployment.meta?.githubCommitSha !== GITHUB_SHA
 ) {
   console.error('Production alias does not point to the ready deployment for this release.')
   process.exit(1)

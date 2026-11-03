@@ -46,6 +46,11 @@ A single non-canceling concurrency group covers verification and the complete re
 The Vercel CLI is locked in the root dependencies. Its optional `koffi` build is
 disabled; releases use remote Vercel builds, not local native build tooling.
 No production environment files or build artifacts are uploaded by Actions.
+Alias verification calls Vercel's read-only deployment API with an explicit
+`teamId` from `VERCEL_ORG_ID`, using `VERCEL_TOKEN` from the environment. It checks
+the ready production deployment URL, project ID and commit SHA. This avoids the
+personal-user lookup performed by `vercel inspect`, which can fail with
+`User not found` for deployment credentials even after a successful deploy.
 CLI output identifies the stage and SHA; the Actions summary records the result
 and deployment URL. These smoke probes establish reachability and the Worker auth
 gate, not Google callback correctness, authenticated D1 reads or medication behavior.

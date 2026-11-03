@@ -23,11 +23,8 @@ esac
 if [[ "$FAIL_STAGE" == "$stage" ]]; then exit 1; fi
 if [[ "$stage" == app ]]; then echo https://synthetic.vercel.app; fi
 if [[ "$stage" == smoke ]]; then
-  if [[ "$FAIL_STAGE" == stale-alias ]]; then
-    echo '{"url":"previous.vercel.app","readyState":"READY","target":"production"}'
-  else
-    echo '{"url":"synthetic.vercel.app","readyState":"READY","target":"production"}'
-  fi
+  echo 'Error: User not found.' >&2
+  exit 1
 fi
 `,
     { mode: 0o755 },
@@ -46,6 +43,29 @@ esac
 `,
     { mode: 0o755 },
   )
+  const apiStub = join(dir, 'deployment-api.mjs')
+  await writeFile(
+    apiStub,
+    `
+import assert from 'node:assert/strict'
+import { appendFileSync } from 'node:fs'
+globalThis.fetch = async (input, options) => {
+  const url = new URL(input)
+  appendFileSync(process.env.COMMAND_LOG, 'deployment-api ' + url + '\\n')
+  assert.equal(url.origin, 'https://api.vercel.com')
+  assert.equal(url.pathname, '/v13/deployments/production.example.test')
+  assert.equal(url.searchParams.get('teamId'), 'synthetic')
+  assert.equal(options.headers.Authorization, 'Bearer synthetic')
+  if (process.env.FAIL_STAGE === 'smoke') return new Response(null, { status: 403 })
+  return Response.json({
+    url: process.env.FAIL_STAGE === 'stale-alias' ? 'previous.vercel.app' : 'synthetic.vercel.app',
+    readyState: 'READY', target: 'production',
+    projectId: process.env.FAIL_STAGE === 'wrong-project' ? 'other' : 'synthetic',
+    meta: { githubCommitSha: process.env.FAIL_STAGE === 'wrong-commit' ? 'other' : process.env.GITHUB_SHA },
+  })
+}
+`,
+  )
   return {
     run(fail = '') {
       return spawnSync('bash', [resolve('scripts/release.sh')], {
@@ -55,6 +75,7 @@ esac
           PATH: `${dir}:${process.env.PATH}`,
           COMMAND_LOG: log,
           FAIL_STAGE: fail,
+          NODE_OPTIONS: `--import ${apiStub}`,
           GITHUB_SHA: sha,
           RELEASE_SETUP_CONFIRMED: 'true',
           CLOUDFLARE_API_TOKEN: 'synthetic',
@@ -81,7 +102,10 @@ test('release migrates D1, deploys Worker then app, and smokes without mutations
   assert.match(commands[0], /wrangler d1 migrations apply meddies --remote/)
   assert.match(commands[1], new RegExp(`wrangler deploy .*--tag ${sha}`))
   assert.match(commands[2], new RegExp(`vercel deploy --prod .*githubCommitSha=${sha}`))
-  assert.match(commands[3], /vercel inspect https:\/\/production.example.test --json/)
+  assert.match(
+    commands[3],
+    /deployment-api https:\/\/api.vercel.com\/v13\/deployments\/production.example.test\?teamId=synthetic/,
+  )
   assert.match(commands[4], /curl .*https:\/\/production.example.test/)
   assert.match(commands[5], /curl .*https:\/\/worker.example.test/)
   assert.equal(commands.length, 6)
@@ -138,6 +162,8 @@ printf '%s\\n' "$*" >> "$COMMAND_LOG"
 
 for (const [failure, count] of [
   ['stale-alias', 4],
+  ['wrong-project', 4],
+  ['wrong-commit', 4],
   ['http', 5],
 ]) {
   test(`${failure} fails smoke instead of accepting an unverified production release`, async (t) => {
