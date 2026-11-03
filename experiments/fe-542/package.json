@@ -1,0 +1,29 @@
+{
+  "name": "meddies-fe-542-spike",
+  "version": "0.0.0",
+  "private": true,
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "next build",
+    "test": "node scripts/test-local.mjs",
+    "test:deployed": "node scripts/verify.mjs",
+    "migrate:local": "wrangler d1 migrations apply DB --local",
+    "dev:worker": "wrangler dev --port 8542"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.4",
+    "next": "16.4.4",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261103.1",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "typescript": "^5.9.3",
+    "wrangler": "4.157.0"
+  }
+}

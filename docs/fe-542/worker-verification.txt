@@ -1,0 +1,180 @@
+PASS migration + atomic rollback through Drizzle batch
+Retry D1 row usage {"rowsRead":2,"rowsWritten":0}
+PASS concurrent identical action + retry + payload mismatch; one stock effect
+PASS two claimants; expiry; recovery; stale-owner fencing; completed work not reclaimed
+{
+  "run": "271c62f6-7a65-433a-a77b-7294125a9092",
+  "timings": [
+    {
+      "op": "state",
+      "status": 401,
+      "ms": 404,
+      "workerMs": "0",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "fixture",
+      "status": 200,
+      "ms": 401,
+      "workerMs": "122",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "state",
+      "status": 200,
+      "ms": 149,
+      "workerMs": "38",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "intake",
+      "status": 409,
+      "ms": 182,
+      "workerMs": "65",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "state",
+      "status": 200,
+      "ms": 129,
+      "workerMs": "34",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "intake",
+      "status": 200,
+      "ms": 228,
+      "workerMs": "96",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "intake",
+      "status": 200,
+      "ms": 250,
+      "workerMs": "81",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "intake",
+      "status": 200,
+      "ms": 167,
+      "workerMs": "72",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "intake",
+      "status": 409,
+      "ms": 168,
+      "workerMs": "71",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "state",
+      "status": 200,
+      "ms": 123,
+      "workerMs": "36",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "claim",
+      "status": 200,
+      "ms": 177,
+      "workerMs": "48",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "claim",
+      "status": 200,
+      "ms": 179,
+      "workerMs": "55",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "complete",
+      "status": 200,
+      "ms": 163,
+      "workerMs": "33",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "claim",
+      "status": 200,
+      "ms": 168,
+      "workerMs": "42",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "complete",
+      "status": 200,
+      "ms": 153,
+      "workerMs": "34",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "claim",
+      "status": 200,
+      "ms": 158,
+      "workerMs": "60",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "complete",
+      "status": 200,
+      "ms": 150,
+      "workerMs": "30",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "complete",
+      "status": 200,
+      "ms": 214,
+      "workerMs": "63",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "claim",
+      "status": 200,
+      "ms": 140,
+      "workerMs": "30",
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+Vercel CLI 65.10.0
+  Inspect         https://vercel.com/bravehearttexs-projects/meddies-fe-542-spike/6GxVXXGhWij344bbbyoDVPigtigj
+  Production      https://meddies-fe-542-spike-55nerpiy8-bravehearttexs-projects.vercel.app
+▲ Aliased         https://meddies-fe-542-spike.vercel.app
+{
+  "status": "ok",
+  "deployment": {
+    "id": "dpl_6GxVXXGhWij344bbbyoDVPigtigj",
+    "url": "https://meddies-fe-542-spike-55nerpiy8-bravehearttexs-projects.vercel.app",
+    "productionUrl": "https://meddies-fe-542-spike.vercel.app",
+    "inspectorUrl": "https://vercel.com/bravehearttexs-projects/meddies-fe-542-spike/6GxVXXGhWij344bbbyoDVPigtigj",
+    "readyState": "READY",
+    "target": "production",
+    "deploymentApiUrl": "https://api.vercel.com/v13/deployments/dpl_6GxVXXGhWij344bbbyoDVPigtigj",
+    "buildMachine": {
+      "cores": 2,
+      "memory": 8192,
+      "machine": "basic",
+      "selectionType": "fixed",
+      "selectionSource": "plan-default"
+    },
+    "deploymentProtection": [
+      "vercel_authentication"
+    ]
+  },
+  "message": "Deployment meddies-fe-542-spike-55nerpiy8-bravehearttexs-projects.vercel.app ready. Production URL: https://meddies-fe-542-spike.vercel.app",
+  "next": [
+    {
+      "command": "vercel git connect --scope bravehearttexs-projects",
+      "when": "Automatically deploy changes on every push"
+    },
+    {
+      "command": "vercel curl https://meddies-fe-542-spike.vercel.app",
+      "when": "Verify deployment, including when Deployment Protection is enabled"
+    },
+    {
+      "command": "vercel inspect meddies-fe-542-spike-55nerpiy8-bravehearttexs-projects.vercel.app --scope bravehearttexs-projects",
+      "when": "Inspect deployment"
+    },
+    {
+      "command": "vercel deploy --prod --scope bravehearttexs-projects",
+      "when": "Promote to production"
+    }
+  ]
+}
