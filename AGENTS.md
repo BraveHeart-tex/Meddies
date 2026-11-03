@@ -17,3 +17,13 @@ Read `docs/agents/triage-labels.md` before applying triage labels.
 
 Single-context layout.
 Read `docs/agents/domain.md` before exploring domain concepts or decisions.
+
+### Production engineering
+
+Read `docs/engineering-standards.md` before changing application source,
+dependencies, configuration or tooling.
+
+### Next.js
+
+Read `docs/agents/nextjs.md` before implementing, reviewing or debugging Next.js
+routes, rendering, configuration or framework APIs.

@@ -1,0 +1,61 @@
+FE-606 clean source copy: no node_modules, .next, next-env.d.ts or tsbuildinfo.
+Source: package.json, pnpm-lock.yaml, tsconfig.json, next.config.ts, runtime pins, src/.
+
+$ node --version
+v22.22.0
+Exit: 0
+
+$ pnpm --version
+11.2.2
+Exit: 0
+
+$ pnpm install --frozen-lockfile
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +28
+++++++++++++++++++++++++++++
+Progress: resolved 28, reused 28, downloaded 0, added 27
+Progress: resolved 28, reused 28, downloaded 0, added 28, done
+
+dependencies:
++ next 16.4.4
++ react 19.3.1
++ react-dom 19.3.1
+
+devDependencies:
++ @types/node 22.20.5
++ @types/react 19.3.0
++ @types/react-dom 19.3.0
++ typescript 5.9.3
+
+Done in 1.6s using pnpm v11.2.2
+Exit: 0
+
+$ pnpm typecheck
+$ next typegen && tsc --noEmit
+Generating route types...
+✓ Types generated successfully
+Exit: 0
+
+$ pnpm build
+$ next build
+▲ Next.js 16.4.4 (Turbopack)
+✓ Running next.config.ts took 18ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 1134ms
+  Running TypeScript ...
+  Finished TypeScript in 781ms ...
+  Collecting page data using 4 workers ...
+  Generating static pages using 4 workers (0/3) ...
+✓ Generating static pages using 4 workers (3/3) in 240ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+└ ○ /_not-found
+
+
+○  (Static)  prerendered as static content
+
+Exit: 0
