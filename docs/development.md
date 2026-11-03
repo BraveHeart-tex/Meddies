@@ -35,11 +35,12 @@ Private Next.js variables (also listed in `.env.example`):
 - `MEDICINES_WORKER_SECRET`: independent random capability, at least 32 characters,
   configured with the same value as the Worker's secret binding.
 
-`worker/wrangler.jsonc` deliberately contains a placeholder database ID. Before
-remote deployment, create the intended D1 database, replace its ID, apply
-`worker/migrations` with Wrangler, and configure `MEDICINES_WORKER_SECRET` through
-`wrangler secret put`. Do not reuse the synthetic feasibility database or its
-credentials. Deploy only after these settings are reviewed.
+`worker/wrangler.jsonc` binds the production `meddies` D1 database to the
+`meddies-data` Worker. Apply `worker/migrations` with Wrangler before deploying
+schema changes. Configure `MEDICINES_WORKER_SECRET` through `wrangler secret put`
+and set the matching private secret and Worker origin in Vercel production.
+Redeploy Vercel after changing its environment variables. Do not reuse the
+synthetic feasibility database or its credentials.
 
 Local development uses a local D1 database:
 

@@ -9,7 +9,7 @@
     {
       "binding": "DB",
       "database_name": "meddies",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "b5c40c08-2e82-467b-8fcf-47f6deb1f555",
       "migrations_dir": "migrations",
     },
   ],
