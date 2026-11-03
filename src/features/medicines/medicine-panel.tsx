@@ -77,14 +77,15 @@ export function MedicinePanel() {
       const data = await response.json()
       const saved = parseMedicine(data.medicines[0])
       if (!mounted.current) return
-      // Invalidate any earlier list response so it cannot hide a confirmed save.
-      generation.current++
-      setLoading(false)
       setMedicines((previous) => [...previous.filter((item) => item.id !== saved.id), saved])
       setLabel('')
       setStrength('')
       action.current = null
       setMessage(`${saved.label} saved.`)
+      // A fresh read includes older medicines even if the initial list was still pending.
+      setLoadError(false)
+      setLoading(true)
+      void load()
     } catch {
       if (mounted.current)
         setError(
