@@ -5,29 +5,18 @@ Keep task progress and verification summaries in Linear. Create repo documentati
 only for durable setup, architecture or operating guidance. Do not create
 per-ticket READMEs unless requested.
 
-## Agent skills
+## Documentation index
 
-### Issue tracker
+Read the matching document before starting the listed work.
 
-Use Linear through the `linearis` skill for issue work.
-Read `docs/agents/issue-tracker.md` before reading or writing issues.
-
-### Triage labels
-
-Use the five default triage labels.
-Read `docs/agents/triage-labels.md` before applying triage labels.
-
-### Domain docs
-
-Single-context layout.
-Read `docs/agents/domain.md` before exploring domain concepts or decisions.
-
-### Production engineering
-
-Read `docs/engineering-standards.md` before changing application source,
-dependencies, configuration or tooling.
-
-### Next.js
-
-Read `docs/agents/nextjs.md` before implementing, reviewing or debugging Next.js
-routes, rendering, configuration or framework APIs.
+| Work                                                                                            | Document                                                |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Issue work: use the `linearis` skill and CLI                                                    | [Issue tracker](docs/agents/issue-tracker.md)           |
+| Applying triage labels                                                                          | [Triage labels](docs/agents/triage-labels.md)           |
+| Exploring domain concepts or decisions                                                          | [Domain docs](docs/agents/domain.md)                    |
+| Changing application source, dependencies, configuration or tooling                             | [Production engineering](docs/engineering-standards.md) |
+| Implementing, reviewing or debugging Next.js routes, rendering, configuration or framework APIs | [Next.js](docs/agents/nextjs.md)                        |
+| Adding source files, configuring local environments or installing dependencies                  | [Development conventions](docs/development.md)          |
+| Running checks or verifying changes                                                             | [Verification](docs/verification.md)                    |
+| Configuring, changing or verifying sign-in, sessions or authorization                           | [Authentication](docs/authentication.md)                |
+| Configuring Vercel builds or deployment                                                         | [Deployment](docs/deployment.md)                        |
