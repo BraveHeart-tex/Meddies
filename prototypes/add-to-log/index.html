@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f7f4e9" />
+    <title>Meddies - Add to log prototype</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="flow.js" defer></script>
+  </head>
+  <body>
+    <aside class="prototype" aria-label="Prototype controls">
+      <span>FE-550 · Throwaway prototype · Fictional routine</span>
+      <details>
+        <summary>Review controls</summary>
+        <p>Memory only. Refresh clears everything. Saves and failures are simulated.</p>
+        <label><input id="fail" type="checkbox" /> Fail next save</label>
+        <button id="reset" type="button">Reset flow</button>
+      </details>
+    </aside>
+    <div class="app">
+      <header>
+        <a href="#today" class="brand">meddies<span aria-hidden="true">.</span></a
+        ><span>Your little routine</span>
+      </header>
+      <main id="main" tabindex="-1"></main>
+      <footer>One small step at a time.</footer>
+    </div>
+  </body>
+</html>
