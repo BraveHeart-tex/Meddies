@@ -1,0 +1,36 @@
+name: Verify
+
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint, format, types, build, full suite
+        run: bash scripts/verify.sh
+      - name: Verification result
+        if: always()
+        env:
+          COMMIT: ${{ github.sha }}
+          RESULT: ${{ job.status }}
+        run: echo "Verification for $COMMIT - $RESULT" >> "$GITHUB_STEP_SUMMARY"

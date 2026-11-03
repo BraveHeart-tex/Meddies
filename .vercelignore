@@ -1,0 +1,6 @@
+.env*
+**/.env*
+worker/.dev.vars*
+.wrangler/
+worker/.wrangler/
+.worker-build/

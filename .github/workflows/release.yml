@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One lock covers checks and every mutation. GitHub may replace pending runs;
+# it never cancels the running release. The latest-main guard rejects stale reruns.
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/verify.yml
+
+  release:
+    name: Ordered production release
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Reject superseded commits before mutations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [[ "$current" != "$GITHUB_SHA" ]]; then
+            echo "Release $GITHUB_SHA superseded by $current. Run Release on main."
+            exit 1
+          fi
+      - name: D1, Worker, Vercel, smoke
+        env:
+          CI: 'true'
+          RELEASE_SETUP_CONFIRMED: ${{ vars.RELEASE_SETUP_CONFIRMED }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          MEDICINES_WORKER_URL: ${{ vars.MEDICINES_WORKER_URL }}
+        run: bash scripts/release.sh
+      - name: Release result and recovery
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          echo "Release $GITHUB_SHA - $RESULT. Recovery: docs/deployment.md. Rerun all jobs to repeat checks before mutations." >> "$GITHUB_STEP_SUMMARY"

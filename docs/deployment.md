@@ -20,3 +20,124 @@ Use `.node-version` for the local Node version.
 
 Configure private authentication variables and callbacks using [Authentication](authentication.md).
 Configure the medicine Worker and database using [Storage](storage.md#deployment).
+
+## Ordered releases
+
+`.github/workflows/verify.yml` runs `Checks` on pull requests, using `.node-version`,
+`packageManager`, a frozen install and `scripts/verify.sh`. It has read-only repository
+access and no production environment or secrets. Build precedes the full test suite.
+Require the `Checks` status in main branch protection after its first successful run;
+verify the actual status context in GitHub before configuring it. Repository files
+alone do not enforce branch protection.
+
+`.github/workflows/release.yml` runs on `main` pushes or manual dispatch on `main`.
+It reruns verification for the event SHA, then enters the `production` environment.
+A single non-canceling concurrency group covers verification and the complete release:
+
+1. Reject a SHA that is no longer main's head before any mutation.
+2. Apply pending remote D1 migrations with Wrangler's migration ledger.
+3. Deploy that SHA's Worker, tagged with the SHA.
+4. Deploy that checkout to Vercel Production with `githubCommitSha` metadata.
+5. GET the new immutable Vercel deployment (expect 200) and the unauthenticated
+   Worker medicine endpoint (expect 401). No medicine data is read or written.
+
+The Vercel CLI is locked in the root dependencies. Its optional `koffi` build is
+disabled; releases use remote Vercel builds, not local native build tooling.
+No production environment files or build artifacts are uploaded by Actions.
+CLI output identifies the stage and SHA; the Actions summary records the result
+and deployment URL. These smoke probes establish reachability and the Worker auth
+gate, not Google callback correctness, authenticated D1 reads or medication behavior.
+Check those separately when their configuration changes.
+
+GitHub concurrency can replace pending releases and does not guarantee FIFO order.
+The running release is never canceled by a newer push. Superseded pending commits
+may be skipped; the latest main commit includes their migrations. Do not manually
+cancel an active release or run manual production commands concurrently.
+
+### Initial setup
+
+As inspected on 2026-11-03, GitHub `BraveHeart-tex/Meddies` defaults to `main`;
+Vercel project `meddies` is linked to that repository with production branch `main`
+and no deploy hooks. Auth and Worker capability variables are Production-only.
+`vercel.json` sets `git.deploymentEnabled.main` to `false`, preserving other branches'
+Git previews while disabling independent Git production deployments. This does not
+restrict administrators, other API clients, old revisions or dashboard redeploys.
+
+Before enabling the first release, an authorized maintainer must:
+
+- Verify Vercel honors the main rule on the first merged commit; cancel any older
+  queued independent deployments before beginning the ordered release. Confirm
+  previews lack production auth/Worker variables. Keep them unavailable, or give
+  them separate synthetic credentials and isolated Worker/D1 resources. Do not
+  copy production variables into Preview. Set Corepack for Preview if needed.
+- Create a GitHub `production` environment, restrict deployment branches to main,
+  and add required reviewers if available. Reviewers must verify the setup and SHA.
+- Add environment secrets `CLOUDFLARE_API_TOKEN` (Workers Scripts Edit and D1 Edit,
+  scoped to the intended account/resources), `CLOUDFLARE_ACCOUNT_ID`, and
+  `VERCEL_TOKEN` (smallest available scope granting deployment to this project).
+  Scope tokens as narrowly as each provider permits and rotate them separately.
+- Add environment variables `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, and
+  `MEDICINES_WORKER_URL` (the production HTTPS Worker origin).
+- Configure the matching Worker secret and Vercel Production variables using
+  [Storage](storage.md#deployment) and [Authentication](authentication.md).
+  The Actions job does not need the medicine capability or Google secrets.
+- Set environment variable `RELEASE_SETUP_CONFIRMED=true` only after the above
+  checks. The release command fails before migrations while this gate is absent.
+- Verify branch protection, environment access and reviewer settings in GitHub.
+  Restrict production tokens to the environment, never repository-wide PR secrets.
+
+Account settings and the first live Actions release require implementation-session
+authorization. Until inspected after setup and a live release, remote enforcement
+and deployment verification remain incomplete. See FE-610 for current evidence.
+
+The Git rule follows [Vercel Git configuration](https://vercel.com/docs/project-configuration/git-configuration).
+CLI deployments follow [Vercel deploy](https://vercel.com/docs/cli/deploy).
+
+### Failure and recovery
+
+Checks failing prevents the release job from starting. A missing setup variable or
+credential stops preflight. Migration failure stops Worker and app; Worker failure
+stops app; app or smoke failure leaves already completed stages in production.
+Inspect the run's SHA and stage before retrying. A smoke failure may mean the app
+is already live. Inspect Vercel deployment status and Worker version before acting.
+Do not infer rollback from a failed run.
+
+Prefer **Re-run all jobs** on the failed run while its SHA is still main's head.
+This repeats verification and the entire ordered sequence for the same checkout.
+Wrangler skips applied migrations, including releases with no pending migrations.
+Do not use **Re-run failed jobs** as the normal recovery path since it skips checks.
+If main has advanced, release the latest reviewed main commit instead; stale reruns
+are rejected before mutation. Dispatch Release on main to recover a skipped run.
+
+For manual recovery, coordinate with maintainers so no Actions release is active
+or can begin, then use a clean checkout of the intended reviewed SHA:
+
+```sh
+pnpm install --frozen-lockfile
+bash scripts/verify.sh
+export GITHUB_SHA="$(git rev-parse HEAD)"
+# Supply the same scoped secrets/variables as the production environment.
+# RELEASE_SETUP_CONFIRMED=true asserts the same setup review for manual execution.
+bash scripts/release.sh
+```
+
+Individual commands remain available when diagnosing a failed stage:
+
+```sh
+pnpm exec wrangler d1 migrations list meddies --remote --config worker/wrangler.jsonc
+pnpm exec wrangler d1 migrations apply meddies --remote --config worker/wrangler.jsonc
+pnpm exec wrangler deploy --config worker/wrangler.jsonc --tag "$GITHUB_SHA"
+pnpm exec vercel deploy --prod --yes --token "$VERCEL_TOKEN" --meta "githubCommitSha=$GITHUB_SHA" --meta githubCommitRef=main
+```
+
+Run the same public GET probes against the returned deployment URL and Worker
+origin. Keep credentials out of shell tracing, command logs, issue comments and
+artifacts. Never use `set -x` with release commands.
+
+D1 migrations, Worker deployment and Vercel deployment are separate operations.
+Use additive, backward-compatible migrations: old app/new Worker and old Worker/new
+schema must coexist during release and recovery. Never edit an applied migration.
+Do not automatically reverse schema changes or roll an old Worker over a schema
+it cannot read. Repair forward with a reviewed additive migration or a compatible
+Worker/app version. Destructive changes need a separately planned expand/contract
+rollout and backup/recovery review.

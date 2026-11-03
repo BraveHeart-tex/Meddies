@@ -3,8 +3,8 @@
 ## Service contracts
 
 Next.js on Vercel calls a narrow HTTPS Worker; Drizzle runs inside that Worker
-with its D1 binding. Cloudflare management credentials stay on the maintainer
-machine. The browser receives neither the Worker capability nor database credentials.
+with its D1 binding. Cloudflare management credentials stay in the protected release environment
+or on the maintainer machine. The browser receives neither the Worker capability nor database credentials.
 
 Manual medicine operations live in `src/features/medicines/operations.ts`.
 Every invocation authenticates through `requireUser`; owner IDs sent to the Worker
@@ -35,7 +35,14 @@ pnpm exec wrangler dev --config worker/wrangler.jsonc
 
 Use the production database binding in `worker/wrangler.jsonc`. Apply
 `worker/migrations` with Wrangler before deploying schema changes. Keep synthetic
-feasibility databases separate from production.
+feasibility databases separate from production. Production releases use the
+[ordered GitHub Actions workflow](deployment.md#ordered-releases): checks, pending
+remote migrations, Worker, Vercel, then public smoke. The root release command uses
+the pinned Wrangler version and the `meddies` database binding. Applied migrations
+are tracked in D1 and skipped on rerun; no pending migrations is a successful no-op.
+Use additive changes compatible with both currently deployed and new code. Never
+reverse applied schema automatically; follow the documented recovery path after a
+partial release. Keep manual Wrangler commands for coordinated recovery only.
 
 Configure `MEDICINES_WORKER_SECRET` through `wrangler secret put` and set the
 matching private secret and Worker origin in Vercel. Use HTTPS for the Worker
