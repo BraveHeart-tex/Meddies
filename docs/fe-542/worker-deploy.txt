@@ -4,8 +4,8 @@
 Total Upload: 177.91 KiB / gzip: 34.93 KiB
 Worker Startup Time: 3 ms
 Your Worker has access to the following bindings:
-Binding                            Resource         
-env.DB (meddies-fe-542-spike)      D1 Database      
+Binding                            Resource
+env.DB (meddies-fe-542-spike)      D1 Database
 
 Uploaded meddies-fe-542-spike (7.20 sec)
 Deployed meddies-fe-542-spike triggers (2.08 sec)

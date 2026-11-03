@@ -1,0 +1,181 @@
+PASS migration + atomic rollback through Drizzle batch
+Concurrent D1 batch row usage [{"rowsRead":1,"rowsWritten":7},{"rowsRead":2,"rowsWritten":0}]
+Retry D1 row usage {"rowsRead":2,"rowsWritten":0}
+PASS concurrent identical action + retry + payload mismatch; one stock effect
+PASS two claimants; expiry; recovery; stale-owner fencing; completed work not reclaimed
+{
+  "run": "6bb9cc4d-f588-4d4a-b40a-b53e0a6f1891",
+  "timings": [
+    {
+      "op": "state",
+      "status": 401,
+      "ms": 306,
+      "workerMs": null,
+      "upstreamMs": null,
+      "region": null,
+      "node": null
+    },
+    {
+      "op": "fixture",
+      "status": 200,
+      "ms": 370,
+      "workerMs": "95",
+      "upstreamMs": "189",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "state",
+      "status": 200,
+      "ms": 167,
+      "workerMs": "23",
+      "upstreamMs": "51",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "intake",
+      "status": 409,
+      "ms": 150,
+      "workerMs": "48",
+      "upstreamMs": "67",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "state",
+      "status": 200,
+      "ms": 144,
+      "workerMs": "20",
+      "upstreamMs": "65",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "intake",
+      "status": 200,
+      "ms": 214,
+      "workerMs": "64",
+      "upstreamMs": "90",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "intake",
+      "status": 200,
+      "ms": 282,
+      "workerMs": "55",
+      "upstreamMs": "176",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "intake",
+      "status": 200,
+      "ms": 179,
+      "workerMs": "49",
+      "upstreamMs": "104",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "intake",
+      "status": 409,
+      "ms": 167,
+      "workerMs": "51",
+      "upstreamMs": "95",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "state",
+      "status": 200,
+      "ms": 163,
+      "workerMs": "23",
+      "upstreamMs": "88",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "claim",
+      "status": 200,
+      "ms": 166,
+      "workerMs": "43",
+      "upstreamMs": "96",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "claim",
+      "status": 200,
+      "ms": 313,
+      "workerMs": "18",
+      "upstreamMs": "132",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "complete",
+      "status": 200,
+      "ms": 154,
+      "workerMs": "26",
+      "upstreamMs": "69",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "claim",
+      "status": 200,
+      "ms": 125,
+      "workerMs": "27",
+      "upstreamMs": "49",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "complete",
+      "status": 200,
+      "ms": 168,
+      "workerMs": "26",
+      "upstreamMs": "64",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "claim",
+      "status": 200,
+      "ms": 141,
+      "workerMs": "41",
+      "upstreamMs": "65",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "complete",
+      "status": 200,
+      "ms": 136,
+      "workerMs": "24",
+      "upstreamMs": "63",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "complete",
+      "status": 200,
+      "ms": 248,
+      "workerMs": "41",
+      "upstreamMs": "71",
+      "region": "fra1",
+      "node": "v22.23.4"
+    },
+    {
+      "op": "claim",
+      "status": 200,
+      "ms": 133,
+      "workerMs": "18",
+      "upstreamMs": "63",
+      "region": "fra1",
+      "node": "v22.23.4"
+    }
+  ]
+}
