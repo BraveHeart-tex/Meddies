@@ -22,6 +22,16 @@ const cookie = async (claims, maxAge = 120) =>
   `${salt}=${await encode({ secret, salt, token: claims, maxAge })}`
 const request = (path, options = {}) => fetch(`${base}${path}`, { redirect: 'manual', ...options })
 
+async function csrfSession() {
+  const response = await request('/api/auth/csrf')
+  const { csrfToken } = await response.json()
+  const cookies = response.headers
+    .getSetCookie()
+    .map((value) => value.split(';')[0])
+    .join('; ')
+  return { csrfToken, cookies }
+}
+
 before(async () => {
   const listener = createServer()
   listener.listen(0, '127.0.0.1')
@@ -130,12 +140,7 @@ test('wrong identity, revoked, expired and malformed sessions are rejected', asy
 
 test('client session updates cannot replace the authenticated identity or extend expiry', async () => {
   const claims = valid()
-  const csrf = await request('/api/auth/csrf')
-  const { csrfToken } = await csrf.json()
-  const cookies = csrf.headers
-    .getSetCookie()
-    .map((value) => value.split(';')[0])
-    .join('; ')
+  const { csrfToken, cookies } = await csrfSession()
   const response = await request('/api/auth/session', {
     method: 'POST',
     headers: { cookie: `${await cookie(claims)}; ${cookies}`, 'Content-Type': 'application/json' },
@@ -150,12 +155,7 @@ test('client session updates cannot replace the authenticated identity or extend
 })
 
 test('Google initiation uses state and PKCE; invalid callbacks do not create sessions', async () => {
-  const csrf = await request('/api/auth/csrf')
-  const { csrfToken } = await csrf.json()
-  const cookies = csrf.headers
-    .getSetCookie()
-    .map((value) => value.split(';')[0])
-    .join('; ')
+  const { csrfToken, cookies } = await csrfSession()
   const response = await request('/api/auth/signin/google', {
     method: 'POST',
     headers: { cookie: cookies, 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -185,12 +185,7 @@ test('sign-out requires CSRF, clears the browser session and prevents subsequent
     headers: { cookie: signedInCookie },
   })
   assert(!rejected.headers.getSetCookie().some((value) => value.startsWith(`${salt}=`)))
-  const csrf = await request('/api/auth/csrf')
-  const { csrfToken } = await csrf.json()
-  const cookies = csrf.headers
-    .getSetCookie()
-    .map((value) => value.split(';')[0])
-    .join('; ')
+  const { csrfToken, cookies } = await csrfSession()
   const response = await request('/api/auth/signout', {
     method: 'POST',
     headers: {
