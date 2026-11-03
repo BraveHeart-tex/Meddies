@@ -1,0 +1,17 @@
+2026-11-03 - local Node 22.22.0
+npm run typecheck: PASS
+npm run build: PASS (Next 16.4.4)
+npm test: PASS
+  anonymous denied, no-store
+  synthetic session persists across requests with stable user ID
+  non-allowlisted, expired, missing identity and corrupt sessions denied
+  session response omits email and provider tokens
+  sign-out without CSRF does not clear session
+  CSRF-protected sign-out clears cookie; anonymous request denied
+  invalid callback cannot create session
+
+EXPECT_UNCONFIGURED=1 PROBE_URL=https://meddies-fe-541-spike.vercel.app npm run test:deployed
+  PASS anonymous access denied, no-store
+  PASS missing configuration fails closed for GET and POST
+
+Google authentication and deployed authenticated lifecycle: NOT RUN - no Google client configured.
