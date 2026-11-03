@@ -121,3 +121,9 @@ EXPECT_CONFIGURED=1 PROBE_URL=https://meddies-fe-541-spike.vercel.app npm run te
 PASS: anonymous private endpoint remains 401/no-store; Google provider endpoint returns 200; CSRF-protected sign-in POST redirects to accounts.google.com with the exact registered application callback, state, S256 PKCE; CSRF, state and PKCE cookies are Secure/HttpOnly/SameSite=Lax; invalid callback without matching cookies redirects to error without a session.
 
 This supersedes the missing-configuration blocker above. It proves the authorization request can be constructed, not that the OAuth client/secret are valid or registered correctly at Google. Real approved-account callback, non-allowlisted identity rejection, browser persistence, two-minute expiry and sign-out still require interactive verification. User has been asked to complete approved sign-in and report only success or a generic error name. No real-account criterion has been marked PASS.
+
+## Interactive approved-account result - 2026-11-03
+
+User reports: "Sign-in succeeds; userId and expires shown" after following the deployed approved-account journey. Result: approved Google sign-in, successful callback and authenticated private endpoint PASS (user-observed evidence; not independently inspected by the agent). No identity or session values were collected.
+
+This supersedes the approved-account blocker above. Non-allowlisted Google rejection and deployed persistence/expiry/sign-out remain pending. Requested reproducible lifecycle check: fresh sign-in, reload/reopen before two minutes preserving ID and expiry; reload after two minutes returns Unauthorized; fresh sign-in followed by confirmed sign-out immediately returns Unauthorized. Requested a separate private-window Google sign-in with the non-allowlisted identity reaching application AccessDenied, followed by private endpoint Unauthorized. A Google audience restriction alone does not prove the application allowlist. FE-541 stays In Progress.
