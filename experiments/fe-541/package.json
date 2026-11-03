@@ -1,0 +1,16 @@
+{
+  "name": "meddies-fe-541-spike",
+  "private": true,
+  "version": "0.0.0",
+  "engines": { "node": "22.x" },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/test.mjs",
+    "test:deployed": "node scripts/verify-deployed.mjs"
+  },
+  "dependencies": { "next": "16.4.4", "next-auth": "5.0.0-beta.32", "react": "19.2.0", "react-dom": "19.2.0" },
+  "devDependencies": { "typescript": "^5.9.3", "@types/node": "^22", "@types/react": "^19", "@types/react-dom": "^19" }
+}
