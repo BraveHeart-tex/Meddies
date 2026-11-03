@@ -2,21 +2,24 @@ Keep plans extremely concise. Sacrifice grammar for concision.
 Always use normal dashes instead of em dashes.
 
 Keep task progress and verification summaries in Linear. Create repo documentation
-only for durable setup, architecture or operating guidance. Do not create
-per-ticket READMEs unless requested.
+only for durable setup, architecture or operating guidance.
+
+## Issues
+
+Use the `linearis` skill and CLI for Linear work. Read the issue and discussions
+before changing them. Record meaningful progress and verification in the active
+issue, and keep its description consistent with status changes.
 
 ## Documentation index
 
-Read the matching document before starting the listed work.
+Read matching documents before starting the listed work.
 
-| Work                                                                                            | Document                                                |
-| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| Issue work: use the `linearis` skill and CLI                                                    | [Issue tracker](docs/agents/issue-tracker.md)           |
-| Applying triage labels                                                                          | [Triage labels](docs/agents/triage-labels.md)           |
-| Exploring domain concepts or decisions                                                          | [Domain docs](docs/agents/domain.md)                    |
-| Changing application source, dependencies, configuration or tooling                             | [Production engineering](docs/engineering-standards.md) |
-| Implementing, reviewing or debugging Next.js routes, rendering, configuration or framework APIs | [Next.js](docs/agents/nextjs.md)                        |
-| Adding source files, configuring local environments or installing dependencies                  | [Development conventions](docs/development.md)          |
-| Running checks or verifying changes                                                             | [Verification](docs/verification.md)                    |
-| Configuring, changing or verifying sign-in, sessions or authorization                           | [Authentication](docs/authentication.md)                |
-| Configuring Vercel builds or deployment                                                         | [Deployment](docs/deployment.md)                        |
+| Work                                                                                                                           | Document                                       |
+| ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| Triage: applying issue labels                                                                                                  | [Triage labels](docs/agents/triage-labels.md)  |
+| Next.js: implementing, reviewing or debugging routes, rendering, configuration or framework APIs                               | [Next.js](docs/agents/nextjs.md)               |
+| Development: adding source files, configuring local environments or installing dependencies                                    | [Development conventions](docs/development.md) |
+| Storage: implementing, reviewing or debugging the Worker, persistence or medicine operations; configuring storage environments | [Storage](docs/storage.md)                     |
+| Verification: running checks or verifying changes                                                                              | [Verification](docs/verification.md)           |
+| Authentication: configuring, implementing, reviewing or debugging sign-in, sessions or authorization                           | [Authentication](docs/authentication.md)       |
+| Vercel: configuring, reviewing or debugging builds or deployment                                                               | [Deployment](docs/deployment.md)               |

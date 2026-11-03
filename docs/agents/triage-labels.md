@@ -1,13 +1,11 @@
-# Triage Labels
+# Triage labels
 
-Map canonical roles to these Linear issue labels.
+Use these Linear labels when a workflow refers to the corresponding triage role.
 
-| Role            | Linear label    | Meaning                                 |
-| --------------- | --------------- | --------------------------------------- |
-| needs-triage    | needs-triage    | Maintainer evaluation needed            |
-| needs-info      | needs-info      | Waiting for reporter information        |
-| ready-for-agent | ready-for-agent | Fully specified for an autonomous agent |
-| ready-for-human | ready-for-human | Requires human implementation           |
-| wontfix         | wontfix         | Will not be actioned                    |
-
-Use the mapped label whenever a skill refers to a triage role.
+| Label           | Apply when                                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------------------------ |
+| needs-triage    | Maintainer evaluation is needed.                                                                             |
+| needs-info      | Progress depends on missing reporter information.                                                            |
+| ready-for-agent | Scope and acceptance criteria are explicit, required context is linked, and blocking questions are resolved. |
+| ready-for-human | Implementation requires human judgment, access or intervention.                                              |
+| wontfix         | A decision has been made not to action the issue.                                                            |
