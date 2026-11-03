@@ -15,3 +15,5 @@ next-env.d.ts
 *.pem
 *.key
 .DS_Store
+
+.worker-build/

@@ -6,11 +6,15 @@ import { createServer } from 'node:net'
 import { setTimeout as delay } from 'node:timers/promises'
 import { after, before, test } from 'node:test'
 import { encode } from 'next-auth/jwt'
+import { readFile } from 'node:fs/promises'
+import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
 
 // Synthetic signed cookies prove session authorization, never Google identity verification.
 const secret = randomBytes(32).toString('base64url')
 const salt = 'authjs.session-token'
 let child
+let worker
+const workerSecret = randomBytes(32).toString('base64url')
 let base
 const valid = () => ({
   sub: 'google:synthetic-subject',
@@ -33,6 +37,20 @@ async function csrfSession() {
 }
 
 before(async () => {
+  worker = new Miniflare(
+    convertV4MiniflareOptions({
+      modules: true,
+      scriptPath: '.worker-build/index.js',
+      compatibilityDate: '2026-11-03',
+      d1Databases: ['DB'],
+      bindings: { MEDICINES_WORKER_SECRET: workerSecret },
+    }),
+  )
+  const db = await worker.getD1Database('DB')
+  await db.exec(
+    (await readFile('worker/migrations/0001_user_medications.sql', 'utf8')).replaceAll('\n', ' '),
+  )
+  const workerUrl = await worker.ready
   const listener = createServer()
   listener.listen(0, '127.0.0.1')
   await once(listener, 'listening')
@@ -49,6 +67,8 @@ before(async () => {
     {
       env: {
         ...env,
+        MEDICINES_WORKER_URL: workerUrl.toString(),
+        MEDICINES_WORKER_SECRET: workerSecret,
         AUTH_URL: base,
         AUTH_SECRET: secret,
         AUTH_GOOGLE_ID: 'synthetic-client',
@@ -72,6 +92,7 @@ before(async () => {
 })
 
 after(async () => {
+  await worker?.dispose()
   if (child && child.exitCode === null) {
     child.kill('SIGTERM')
     await once(child, 'exit')
@@ -206,6 +227,49 @@ test('sign-out requires CSRF, clears the browser session and prevents subsequent
     .map((value) => value.split(';')[0])
     .join('; ')
   assert.equal((await request('/api/session', { headers: { cookie: cleared } })).status, 401)
+})
+
+test('medicine HTTP boundary confirms saves, rejects cross-user access and unsafe requests', async () => {
+  const alice = { cookie: await cookie(valid()) }
+  const bob = { cookie: await cookie({ ...valid(), sub: 'google:bob' }) }
+  const medicine = {
+    id: '4ce08b21-58da-4e81-adb1-c156356a2c1a',
+    label: 'Vitamin D3',
+    strength: '1000 IU',
+    unit: 'tablet',
+  }
+  const save = (input, headers = alice) =>
+    request('/api/medicines', {
+      method: 'POST',
+      headers: { ...headers, origin: base, 'content-type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+  assert.equal((await request('/api/medicines')).status, 401)
+  assert.equal((await save(medicine, {})).status, 401)
+  const unsafe = await request('/api/medicines', {
+    method: 'POST',
+    headers: { ...alice, origin: 'https://other.example', 'content-type': 'application/json' },
+    body: JSON.stringify(medicine),
+  })
+  assert.equal(unsafe.status, 403)
+  assert.equal((await save({ ...medicine, label: ' ' })).status, 400)
+  const saved = await save({ ...medicine, ownerId: 'google:bob' })
+  assert.equal(saved.status, 200)
+  assert.deepEqual(await saved.json(), { medicines: [medicine] })
+  assert.equal((await save(medicine)).status, 200)
+  assert.equal((await save({ ...medicine, strength: '5 mg' })).status, 409)
+  const reload = await request('/api/medicines', { headers: alice })
+  assert.match(reload.headers.get('cache-control'), /no-store/)
+  assert.deepEqual(await reload.json(), { medicines: [medicine] })
+  assert.deepEqual(await (await request('/api/medicines', { headers: bob })).json(), {
+    medicines: [],
+  })
+  const oversized = await save({ ...medicine, label: 'x'.repeat(5000) })
+  assert.equal(oversized.status, 413)
+  await worker.dispose()
+  const unavailable = await save({ ...medicine, id: '8c4ea91b-c9df-4d47-8cd0-54c1892c4e52' })
+  assert.equal(unavailable.status, 503)
+  assert.deepEqual(await unavailable.json(), { error: 'unavailable' })
 })
 
 test('missing private configuration disables sign-in and preserves accessible recovery', async () => {

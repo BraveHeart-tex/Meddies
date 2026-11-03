@@ -1,3 +1,4 @@
+import { MedicinePanel } from '@/features/medicines/medicine-panel'
 import { auth, authConfigured } from '@/features/auth/server'
 import { AuthControl } from '@/features/auth/controls'
 import { SessionBoundary } from '@/features/auth/session-boundary'
@@ -11,13 +12,13 @@ export default async function HomePage({
   const session = configured ? await auth() : null
   const { error, reason } = await searchParams
   return (
-    <main className="mx-auto flex min-h-svh max-w-lg flex-col justify-center gap-6 px-6 py-12">
+    <main className="mx-auto flex min-h-svh max-w-lg flex-col gap-6 px-6 py-12">
       <h1 className="text-3xl font-semibold tracking-tight">Meddies</h1>
       {session?.user?.id ? (
         <SessionBoundary expires={session.expires}>
           <div className="space-y-6">
             <h2 className="text-xl font-medium">Welcome back</h2>
-            <p>You’re signed in privately. Your medication tools are being built.</p>
+            <MedicinePanel />
             <AuthControl signedIn />
           </div>
         </SessionBoundary>

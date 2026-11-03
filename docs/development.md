@@ -21,3 +21,43 @@ store local values in ignored `.env.local`. Never expose secrets with `NEXT_PUBL
 
 Use `pnpm install --frozen-lockfile` for reproducible installs. The root has one
 pnpm lockfile. Experiment manifests and npm locks remain independent.
+
+## Medicine storage
+
+The application uses the FE-542 validated path: Next.js on Vercel calls a narrow
+HTTPS Worker; Drizzle runs inside that Worker with its D1 binding. Cloudflare
+management credentials stay on the maintainer machine. The browser receives
+neither the Worker capability nor database credentials.
+
+Private Next.js variables (also listed in `.env.example`):
+
+- `MEDICINES_WORKER_URL`: deployed Worker origin, HTTPS outside local development.
+- `MEDICINES_WORKER_SECRET`: independent random capability, at least 32 characters,
+  configured with the same value as the Worker's secret binding.
+
+`worker/wrangler.jsonc` deliberately contains a placeholder database ID. Before
+remote deployment, create the intended D1 database, replace its ID, apply
+`worker/migrations` with Wrangler, and configure `MEDICINES_WORKER_SECRET` through
+`wrangler secret put`. Do not reuse the synthetic feasibility database or its
+credentials. Deploy only after these settings are reviewed.
+
+Local development uses a local D1 database:
+
+```sh
+pnpm exec wrangler d1 migrations apply DB --local --config worker/wrangler.jsonc
+pnpm exec wrangler dev --config worker/wrangler.jsonc
+```
+
+Put the Worker secret in ignored `worker/.dev.vars`, and the matching secret and
+local Worker URL in ignored `.env.local`. Missing database configuration produces
+an explicit unavailable state. Saves require a server response; setup is not
+queued offline.
+
+Manual medicine operations live in `src/features/medicines/operations.ts`.
+Every invocation authenticates through `requireUser`; owner IDs sent to the Worker
+come from the signed session. The Worker accepts only list/save commands, uses
+bound Drizzle queries and scopes every operation by owner. Save IDs are immutable
+and unique per owner: identical retries return the saved medicine; changed payloads
+return conflict. The shared capability authenticates the Next.js service, which
+is responsible for authenticating the end user. The Worker has no public browser
+API or arbitrary SQL endpoint.

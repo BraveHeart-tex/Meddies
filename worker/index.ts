@@ -1,0 +1,100 @@
+import { drizzle } from 'drizzle-orm/d1'
+import { and, eq, asc } from 'drizzle-orm'
+import { userMedications } from './schema'
+import { MedicineError, parseMedicine } from '../src/features/medicines/contract'
+
+type Env = { DB: D1Database; MEDICINES_WORKER_SECRET: string }
+const json = (body: unknown, status = 200) =>
+  Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } })
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    if (!env.MEDICINES_WORKER_SECRET || env.MEDICINES_WORKER_SECRET.length < 32)
+      return json({ error: 'unavailable' }, 503)
+    // Compare fixed-length digests rather than secret strings with an early-return comparison.
+    const digest = async (value: string) =>
+      new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))
+    const [actual, expected] = await Promise.all([
+      digest(request.headers.get('authorization') || ''),
+      digest(`Bearer ${env.MEDICINES_WORKER_SECRET}`),
+    ])
+    let mismatch = 0
+    for (let i = 0; i < actual.length; i++) mismatch |= actual[i] ^ expected[i]
+    if (mismatch) return json({ error: 'unauthorized' }, 401)
+    if (request.method !== 'POST' || new URL(request.url).pathname !== '/medicines')
+      return json({ error: 'not_found' }, 404)
+    try {
+      // Bound bodies even when the caller uses chunked transfer.
+      const reader = request.body?.getReader()
+      if (!reader) return json({ error: 'validation' }, 400)
+      let body = ''
+      let bytes = 0
+      const decoder = new TextDecoder()
+      while (true) {
+        const chunk = await reader.read()
+        if (chunk.done) break
+        bytes += chunk.value.byteLength
+        if (bytes > 4096) {
+          await reader.cancel()
+          return json({ error: 'validation' }, 413)
+        }
+        body += decoder.decode(chunk.value, { stream: true })
+      }
+      body += decoder.decode()
+      let command
+      try {
+        command = JSON.parse(body)
+      } catch {
+        return json({ error: 'validation' }, 400)
+      }
+      if (
+        !command ||
+        typeof command.ownerId !== 'string' ||
+        !/^google:.{1,248}$/.test(command.ownerId)
+      )
+        return json({ error: 'validation' }, 400)
+      const db = drizzle(env.DB)
+      const owner = eq(userMedications.ownerId, command.ownerId)
+      if (command.operation === 'save') {
+        const medicine = parseMedicine(command.medicine)
+        await db
+          .insert(userMedications)
+          .values({ ...medicine, ownerId: command.ownerId })
+          .onConflictDoNothing({ target: [userMedications.ownerId, userMedications.id] })
+        const saved = await db
+          .select()
+          .from(userMedications)
+          .where(and(owner, eq(userMedications.id, medicine.id)))
+          .get()
+        if (
+          !saved ||
+          saved.label !== medicine.label ||
+          saved.strength !== medicine.strength ||
+          saved.unit !== medicine.unit
+        )
+          throw new MedicineError('conflict', 409)
+        return json({
+          medicines: [
+            { id: saved.id, label: saved.label, strength: saved.strength, unit: saved.unit },
+          ],
+        })
+      }
+      if (command.operation !== 'list') return json({ error: 'validation' }, 400)
+      const medicines = await db
+        .select({
+          id: userMedications.id,
+          label: userMedications.label,
+          strength: userMedications.strength,
+          unit: userMedications.unit,
+        })
+        .from(userMedications)
+        .where(owner)
+        .orderBy(asc(userMedications.label), asc(userMedications.id))
+      return json({ medicines })
+    } catch (error) {
+      if (error instanceof MedicineError) return json({ error: error.code }, error.status)
+      console.error('medicine_storage_failure')
+      return json({ error: 'unavailable' }, 503)
+    }
+  },
+} satisfies ExportedHandler<Env>

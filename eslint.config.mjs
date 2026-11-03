@@ -7,6 +7,7 @@ const eslintConfig = defineConfig([
   prettier,
   // Override default ignores of eslint-config-next.
   globalIgnores([
+    '.worker-build/**',
     // Default ignores of eslint-config-next:
     '.next/**',
     'out/**',
