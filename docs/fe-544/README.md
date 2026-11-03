@@ -105,4 +105,16 @@ The first remote run measured 4.5 seconds export/encrypt/upload and 32.8 seconds
 
 Keep the synthetic resources during review. After acceptance, delete only the R2 objects listed in the reports, then the empty `meddies-fe-544-backups` bucket, and the three D1 databases named above. Use `wrangler r2 object delete`, `wrangler r2 bucket delete` and `wrangler d1 delete` after confirming exact names. Remove this experiment's `.private`, `.wrangler` state and the OS recovery directories located by `recovery-location.txt`. This permanently removes only spike artifacts. Preserve shared accounts/credentials and FE-540/541/542 resources. Cleanup has not run.
 
-The initial TDD tracer failed `Not implemented`, then passed after encryption/decryption was added. Unit verification covers recovered-key round trip and damaged/wrong-key rejection. Local and remote integration reports cover the actual adapter/storage path. Final verification and independent Standards/Spec review results are recorded with the final evidence.
+Tested source is commit `45b9ba0`, reviewed against `bc514b4`. Final evidence-only additions do not change the tested implementation. The initial TDD tracer failed `Not implemented`, then passed after encryption/decryption was added. Unit verification covers recovered-key round trip and damaged/wrong-key rejection. Local and remote integration reports cover the actual adapter/storage path. Initial local/remote reports predate final diagnostic handling; use [final local](local-verification-final.json) and [final remote](remote-verification-final.json) reports for final behavior. Expected constraint rejections are explicitly classified as passing checks in final reports.
+
+All three experiment packages pass strict typechecking: [FE-541](typecheck-fe541.txt), [FE-542](typecheck-fe542.txt), [FE-544](typecheck-fe544.txt). The full available test suites pass: [authentication](test-fe541.txt), [atomic D1/leases](test-fe542.txt), [backup encryption](test-fe544.txt). FE-544 is a Node script experiment with no separate application build.
+
+### Standards
+
+Independent read-only review of `bc514b4...45b9ba0`: 0 actionable findings. No documented-standard violations; no baseline smells warrant changes in this narrow spike.
+
+### Spec
+
+Independent read-only review of the same diff against FE-544: 0 actionable defects, 0 scope-creep findings. Same-host key custody, production deletion/retention gates and end-to-end recovery remain disclosed limitations. Reviewers inspected source and saved evidence; no remote reruns performed.
+
+Review summary: Standards 0 findings; Spec 0 findings. FE-544 is ready for user review of the narrow feasibility outcome. No claim of production readiness or approval to start FE-595/596/597 is made.
