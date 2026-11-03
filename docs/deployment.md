@@ -38,8 +38,10 @@ A single non-canceling concurrency group covers verification and the complete re
 2. Apply pending remote D1 migrations with Wrangler's migration ledger.
 3. Deploy that SHA's Worker, tagged with the SHA.
 4. Deploy that checkout to Vercel Production with `githubCommitSha` metadata.
-5. GET the new immutable Vercel deployment (expect 200) and the unauthenticated
-   Worker medicine endpoint (expect 401). No medicine data is read or written.
+5. Inspect the public production alias and require it to point to the ready
+   immutable deployment just created. GET that alias (expect 200) and the
+   unauthenticated Worker medicine endpoint (expect 401). No medicine data is
+   read or written. Generated deployment URLs may remain protected by Vercel.
 
 The Vercel CLI is locked in the root dependencies. Its optional `koffi` build is
 disabled; releases use remote Vercel builds, not local native build tooling.
@@ -59,6 +61,8 @@ cancel an active release or run manual production commands concurrently.
 As inspected on 2026-11-03, GitHub `BraveHeart-tex/Meddies` defaults to `main`;
 Vercel project `meddies` is linked to that repository with production branch `main`
 and no deploy hooks. Auth and Worker capability variables are Production-only.
+Vercel authentication protects generated deployment URLs (`all_except_custom_domains`);
+the public custom production domain is `meddies.borakaraca.dev`.
 `vercel.json` sets `git.deploymentEnabled.main` to `false`, preserving other branches'
 Git previews while disabling independent Git production deployments. This does not
 restrict administrators, other API clients, old revisions or dashboard redeploys.
@@ -77,7 +81,10 @@ Before enabling the first release, an authorized maintainer must:
   `VERCEL_TOKEN` (smallest available scope granting deployment to this project).
   Scope tokens as narrowly as each provider permits and rotate them separately.
 - Add environment variables `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, and
-  `MEDICINES_WORKER_URL` (the production HTTPS Worker origin).
+  `MEDICINES_WORKER_URL` (the production HTTPS Worker origin), and
+  `PRODUCTION_APP_URL` (the public custom production origin, currently
+  `https://meddies.borakaraca.dev`). Keep deployment protection enabled; no
+  bypass token is needed. Both origins must be HTTPS without a trailing slash.
 - Configure the matching Worker secret and Vercel Production variables using
   [Storage](storage.md#deployment) and [Authentication](authentication.md).
   The Actions job does not need the medicine capability or Google secrets.
@@ -130,7 +137,8 @@ pnpm exec wrangler deploy --config worker/wrangler.jsonc --tag "$GITHUB_SHA"
 pnpm exec vercel deploy --prod --yes --token "$VERCEL_TOKEN" --meta "githubCommitSha=$GITHUB_SHA" --meta githubCommitRef=main
 ```
 
-Run the same public GET probes against the returned deployment URL and Worker
+Inspect the production alias to confirm it points to the returned deployment,
+then run the same public GET probes against `PRODUCTION_APP_URL` and the Worker
 origin. Keep credentials out of shell tracing, command logs, issue comments and
 artifacts. Never use `set -x` with release commands.
 

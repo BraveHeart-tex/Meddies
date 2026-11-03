@@ -53,6 +53,7 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          PRODUCTION_APP_URL: ${{ vars.PRODUCTION_APP_URL }}
           MEDICINES_WORKER_URL: ${{ vars.MEDICINES_WORKER_URL }}
         run: bash scripts/release.sh
       - name: Release result and recovery

@@ -18,9 +18,17 @@ case "$*" in
   *'migrations apply'*) stage=migrations ;;
   *'wrangler deploy'*) stage=worker ;;
   *'vercel deploy'*) stage=app ;;
+  *'vercel inspect'*) stage=smoke ;;
 esac
 if [[ "$FAIL_STAGE" == "$stage" ]]; then exit 1; fi
 if [[ "$stage" == app ]]; then echo https://synthetic.vercel.app; fi
+if [[ "$stage" == smoke ]]; then
+  if [[ "$FAIL_STAGE" == stale-alias ]]; then
+    echo '{"url":"previous.vercel.app","readyState":"READY","target":"production"}'
+  else
+    echo '{"url":"synthetic.vercel.app","readyState":"READY","target":"production"}'
+  fi
+fi
 `,
     { mode: 0o755 },
   )
@@ -28,7 +36,9 @@ if [[ "$stage" == app ]]; then echo https://synthetic.vercel.app; fi
     join(dir, 'curl'),
     `#!/bin/bash
 printf '%s\\n' "curl $*" >> "$COMMAND_LOG"
-if [[ "$FAIL_STAGE" == smoke ]]; then exit 22; fi
+if [[ "$FAIL_STAGE" == http ]]; then exit 22; fi
+# The generated deployment is protected; only its public production alias works.
+if [[ "$*" == *synthetic.vercel.app* ]]; then printf 401; exit 22; fi
 case "$*" in
   *worker.example.test*) printf 401 ;;
   *) printf 200 ;;
@@ -53,6 +63,7 @@ esac
           VERCEL_ORG_ID: 'synthetic',
           VERCEL_PROJECT_ID: 'synthetic',
           MEDICINES_WORKER_URL: 'https://worker.example.test',
+          PRODUCTION_APP_URL: 'https://production.example.test',
         },
       })
     },
@@ -70,9 +81,10 @@ test('release migrates D1, deploys Worker then app, and smokes without mutations
   assert.match(commands[0], /wrangler d1 migrations apply meddies --remote/)
   assert.match(commands[1], new RegExp(`wrangler deploy .*--tag ${sha}`))
   assert.match(commands[2], new RegExp(`vercel deploy --prod .*githubCommitSha=${sha}`))
-  assert.match(commands[3], /curl .*https:\/\/synthetic.vercel.app/)
-  assert.match(commands[4], /curl .*https:\/\/worker.example.test/)
-  assert.equal(commands.length, 5)
+  assert.match(commands[3], /vercel inspect https:\/\/production.example.test --json/)
+  assert.match(commands[4], /curl .*https:\/\/production.example.test/)
+  assert.match(commands[5], /curl .*https:\/\/worker.example.test/)
+  assert.equal(commands.length, 6)
 })
 
 for (const [stage, commandCount] of [
@@ -123,3 +135,16 @@ printf '%s\\n' "$*" >> "$COMMAND_LOG"
     'typecheck',
   ])
 })
+
+for (const [failure, count] of [
+  ['stale-alias', 4],
+  ['http', 5],
+]) {
+  test(`${failure} fails smoke instead of accepting an unverified production release`, async (t) => {
+    const f = await fixture(t)
+    const result = f.run(failure)
+    assert.notEqual(result.status, 0)
+    assert.match(result.stderr, new RegExp(`Release ${sha} failed at smoke`))
+    assert.equal((await f.commands()).length, count)
+  })
+}

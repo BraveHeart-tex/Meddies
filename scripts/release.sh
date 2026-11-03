@@ -9,7 +9,7 @@ report_failure() {
   fi
 }
 trap report_failure ERR
-for name in GITHUB_SHA CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID MEDICINES_WORKER_URL; do
+for name in GITHUB_SHA CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID MEDICINES_WORKER_URL PRODUCTION_APP_URL; do
   if [[ -z "${!name:-}" ]]; then
     printf 'Missing release configuration: %s\n' "$name" >&2
     false
@@ -17,7 +17,8 @@ for name in GITHUB_SHA CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID VERCEL_TOKEN V
 done
 [[ "${RELEASE_SETUP_CONFIRMED:-}" == true ]]
 [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]
-[[ "$MEDICINES_WORKER_URL" == https://* ]]
+[[ "$MEDICINES_WORKER_URL" =~ ^https://[a-zA-Z0-9.-]+$ ]]
+[[ "$PRODUCTION_APP_URL" =~ ^https://[a-zA-Z0-9.-]+$ ]]
 
 deployment_file=$(mktemp)
 trap 'rm -f "$deployment_file"' EXIT
@@ -40,9 +41,24 @@ deployment_url=$(tail -n 1 "$deployment_file")
 
 stage=smoke
 printf 'Release %s: smoke\n' "$GITHUB_SHA"
+# Generated URLs may require Vercel authentication. Verify the public alias points
+# to the deployment just created, then probe that alias without a bypass secret.
+pnpm exec vercel inspect "$PRODUCTION_APP_URL" --json --token "$VERCEL_TOKEN" > "$deployment_file"
+node --input-type=module - "$deployment_file" "$deployment_url" <<'JS'
+import { readFileSync } from 'node:fs'
+const deployment = JSON.parse(readFileSync(process.argv[2], 'utf8'))
+if (
+  deployment.url !== new URL(process.argv[3]).hostname ||
+  deployment.readyState !== 'READY' ||
+  deployment.target !== 'production'
+) {
+  console.error('Production alias does not point to the ready deployment for this release.')
+  process.exit(1)
+}
+JS
 # Public GETs only. No identity, capability, medicine reads or writes.
 app_status=$(curl --silent --show-error --fail --retry 5 --retry-all-errors --retry-delay 2 \
-  --connect-timeout 10 --max-time 30 --output /dev/null --write-out '%{http_code}' "$deployment_url/")
+  --connect-timeout 10 --max-time 30 --output /dev/null --write-out '%{http_code}' "$PRODUCTION_APP_URL/")
 [[ "$app_status" == 200 ]]
 worker_status=$(curl --silent --show-error --retry 5 --retry-connrefused --retry-delay 2 \
   --connect-timeout 10 --max-time 30 --output /dev/null --write-out '%{http_code}' "${MEDICINES_WORKER_URL%/}/medicines")
