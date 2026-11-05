@@ -1,5 +1,6 @@
 .worktrees/
 .dev-stack/
+.browser-artifacts/
 node_modules/
 .next/
 out/
