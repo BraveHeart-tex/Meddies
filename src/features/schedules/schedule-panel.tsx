@@ -3,17 +3,18 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import type { Medicine } from '@/features/medicines/contract'
-import { istanbulDate, type DailySchedule, type DoseOccurrence, type Today } from './contract'
+import {
+  istanbulDate,
+  type DailySchedule,
+  type DoseOccurrence,
+  type DoseRecord,
+  type Today,
+} from './contract'
+
+import { doseClock as clock, TakenForm } from './taken-form'
 
 const field =
   'min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
-const clock = (instant: string) =>
-  new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Istanbul',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(instant))
-
 export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
   const [schedules, setSchedules] = useState<DailySchedule[]>([])
   const [today, setToday] = useState<Today | null>(null)
@@ -26,6 +27,7 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [intakeMessage, setIntakeMessage] = useState('')
   const [attempted, setAttempted] = useState(false)
   const action = useRef<{ id: string; fingerprint: string } | null>(null)
   const locked = useRef(false)
@@ -71,9 +73,26 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
     (medicine) => !schedules.some((schedule) => schedule.medicineId === medicine.id),
   )
   const name = (id: string) => medicines.find((medicine) => medicine.id === id)?.label ?? 'Medicine'
-  const doseText = (dose: DoseOccurrence) => {
+  const doseText = (dose: DoseOccurrence, quantity = dose.quantity) => {
     const medicine = medicines.find((item) => item.id === dose.medicineId)
-    return `${dose.quantity} ${medicine?.unit ?? 'unit'}${dose.quantity === 1 ? '' : 's'}`
+    return `${quantity} ${medicine?.unit ?? 'unit'}${quantity === 1 ? '' : 's'}`
+  }
+  function showTaken(dose: DoseOccurrence, record: DoseRecord) {
+    document.getElementById(`dose-${dose.id}`)?.focus()
+    setIntakeMessage(
+      `Recorded ${name(dose.medicineId)} scheduled for ${clock(dose.dueAt)} as taken.`,
+    )
+    setToday((current) => {
+      if (!current?.doses.some((item) => item.id === dose.id)) return current
+      const doses = current.doses.map((item): DoseOccurrence =>
+        item.id === dose.id ? { ...item, status: 'Taken', record } : item,
+      )
+      const next =
+        current.next?.id === dose.id
+          ? (doses.find((item) => item.status !== 'Taken' && item.dueAt >= current.now) ?? null)
+          : current.next
+      return { ...current, doses, next }
+    })
   }
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -143,42 +162,63 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
         <p className="text-sm text-muted-foreground">
           All dates and times use Europe/Istanbul, wherever your device is.
         </p>
-        {loading ? (
-          <p role="status">Loading your daily doses...</p>
-        ) : loadError ? (
+        <p role="status" className="sr-only">
+          {intakeMessage}
+        </p>
+        {loading && <p role="status">Loading your daily doses...</p>}
+        {loadError && (
           <p role="alert">Today could not be refreshed. Connect to the internet and retry.</p>
-        ) : (
-          today && (
-            <>
-              <p className="text-sm">{today.date}</p>
-              {today.next && (
-                <p>
-                  <strong>Next dose:</strong> {name(today.next.medicineId)},{' '}
-                  {clock(today.next.dueAt)}
-                  {istanbulDate(new Date(today.next.dueAt)) !== today.date
-                    ? ` on ${istanbulDate(new Date(today.next.dueAt))}`
-                    : ''}
-                </p>
-              )}
-              {today.doses.length ? (
-                <ul className="divide-y border-y">
-                  {today.doses.map((dose) => (
+        )}
+        {today && (
+          <>
+            <p className="text-sm">{today.date}</p>
+            {today.next && (
+              <p>
+                <strong>Next dose:</strong> {name(today.next.medicineId)}, {clock(today.next.dueAt)}
+                {istanbulDate(new Date(today.next.dueAt)) !== today.date
+                  ? ` on ${istanbulDate(new Date(today.next.dueAt))}`
+                  : ''}
+              </p>
+            )}
+            {today.doses.length ? (
+              <ul className="divide-y border-y">
+                {today.doses.map((dose) => {
+                  const medicine = medicines.find((item) => item.id === dose.medicineId)
+                  return (
                     <li key={dose.id} className="space-y-1 py-4 [overflow-wrap:anywhere]">
-                      <h3 className="font-semibold">
+                      <h3 id={`dose-${dose.id}`} tabIndex={-1} className="font-semibold">
                         <time dateTime={dose.dueAt}>{clock(dose.dueAt)}</time> ·{' '}
                         {name(dose.medicineId)}
                       </h3>
                       <p>
                         {doseText(dose)} · {dose.status}
                       </p>
+                      {dose.status === 'Taken' ? (
+                        <p>
+                          Taken {doseText(dose, dose.record.quantity)} at{' '}
+                          <time dateTime={dose.record.takenAt}>{clock(dose.record.takenAt)}</time>
+                          {istanbulDate(new Date(dose.record.takenAt)) !== today.date
+                            ? ` on ${istanbulDate(new Date(dose.record.takenAt))}`
+                            : ''}
+                        </p>
+                      ) : (
+                        medicine && (
+                          <TakenForm
+                            dose={dose}
+                            medicine={medicine}
+                            refresh={load}
+                            onRecorded={(record) => showTaken(dose, record)}
+                          />
+                        )
+                      )}
                     </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No daily doses scheduled for today.</p>
-              )}
-            </>
-          )
+                  )
+                })}
+              </ul>
+            ) : (
+              <p>No daily doses scheduled for today.</p>
+            )}
+          </>
         )}
         <Button
           variant="outline"

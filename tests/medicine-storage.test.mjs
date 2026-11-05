@@ -32,6 +32,11 @@ before(async () => {
   await db.exec(
     (await readFile('worker/migrations/0002_daily_schedules.sql', 'utf8')).replaceAll('\n', ' '),
   )
+  for (const statement of (await readFile('worker/migrations/0003_dose_records.sql', 'utf8')).split(
+    ';',
+  )) {
+    if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
+  }
 })
 after(async () => {
   await runtime?.dispose()
@@ -67,7 +72,7 @@ test('daily schedules persist in D1 with owner checks, capsule quantities and sa
     })
     const body = await response.json()
     if (!response.ok) throw new Error(body.error)
-    return body.schedules
+    return body
   }
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: 'google:scheduler' }),
@@ -121,7 +126,7 @@ test('real D1 save confirmation enforces Istanbul start boundaries and survives 
     )
     const body = await response.json()
     if (!response.ok) throw new Error(body.error)
-    return body.schedules
+    return body
   }
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: ownerId }),
@@ -164,4 +169,97 @@ test('real D1 save confirmation enforces Istanbul start boundaries and survives 
     (await operations.snapshot()).today.doses.filter((dose) => dose.medicineId === other.id).length,
     2,
   )
+})
+
+test('late half-tablet intake persists once without moving the next dose', async () => {
+  let now = new Date('2026-11-04T05:00:00.000Z')
+  const handler = createWorker(() => now)
+  const db = await runtime.getD1Database('DB')
+  const ownerId = 'google:intake'
+  const tablet = { ...medicine, id: randomUUID() }
+  await call({ operation: 'save', ownerId, medicine: tablet })
+  const send = async (command) => {
+    const response = await handler.fetch(
+      new Request('http://worker/schedules', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${secret}` },
+        body: JSON.stringify(command),
+      }),
+      { DB: db, MEDICINES_WORKER_SECRET: secret },
+    )
+    const body = await response.json()
+    if (!response.ok) throw new Error(body.error)
+    return body
+  }
+  const operations = createScheduleOperations({
+    requireUser: async () => ({ id: ownerId }),
+    send,
+    now: () => now,
+  })
+  const scheduleId = randomUUID()
+  await operations.save({
+    id: scheduleId,
+    medicineId: tablet.id,
+    startDate: '2026-11-04',
+    times: [
+      { time: '09:00', quantity: 1 },
+      { time: '18:00', quantity: 1 },
+    ],
+  })
+  now = new Date('2026-11-04T08:00:00.000Z')
+  const before = (await operations.snapshot()).today
+  assert.equal(before.doses[0].status, 'Not logged')
+  const input = {
+    scheduleId,
+    dueAt: before.doses[0].dueAt,
+    takenAt: '2026-11-04T07:30:00.000Z',
+    quantity: 0.5,
+  }
+  const other = createScheduleOperations({
+    requireUser: async () => ({ id: 'google:other' }),
+    send,
+    now: () => now,
+  })
+  await assert.rejects(
+    () => operations.recordTaken({ ...input, takenAt: '+010000-01-01T00:00:00.000Z' }),
+    /validation/,
+  )
+  await assert.rejects(() => other.recordTaken(input), /validation/)
+  await assert.rejects(
+    () => operations.recordTaken({ ...input, dueAt: '2026-11-04T06:01:00.000Z' }),
+    /validation/,
+  )
+  await assert.rejects(() => send({ operation: 'delivered', ownerId, record: input }), /validation/)
+  assert.equal((await operations.snapshot()).today.doses[0].status, 'Not logged')
+  const [first, retry] = await Promise.all([
+    operations.recordTaken(input),
+    operations.recordTaken(input),
+  ])
+  assert.deepEqual(first, retry)
+  await assert.rejects(() => operations.recordTaken({ ...input, quantity: 1 }), /conflict/)
+  const today = (await operations.snapshot()).today
+  assert.equal(today.doses[0].status, 'Taken')
+  assert.equal(today.doses[0].dueAt, '2026-11-04T06:00:00.000Z')
+  assert.equal(today.doses[0].quantity, 1)
+  assert.equal(today.doses[0].record.takenAt, input.takenAt)
+  assert.equal(today.doses[0].record.quantity, 0.5)
+  assert.deepEqual(today.next, before.next)
+
+  const capsule = { ...medicine, id: randomUUID(), unit: 'capsule' }
+  await call({ operation: 'save', ownerId, medicine: capsule })
+  const [capsuleSchedule] = await operations.save({
+    id: randomUUID(),
+    medicineId: capsule.id,
+    startDate: '2026-11-04',
+    times: [{ time: '22:00', quantity: 1 }],
+  })
+  const capsuleIntake = {
+    ...input,
+    scheduleId: capsuleSchedule.id,
+    dueAt: '2026-11-04T19:00:00.000Z',
+  }
+  await assert.rejects(() => operations.recordTaken(capsuleIntake), /validation/)
+  assert.equal((await operations.recordTaken({ ...capsuleIntake, quantity: 1 })).outcome, 'Taken')
+  now = new Date('2026-11-04T21:00:00.000Z')
+  assert.deepEqual(await operations.recordTaken(input), first)
 })

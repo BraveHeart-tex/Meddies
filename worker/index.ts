@@ -3,7 +3,8 @@ import { and, eq, asc } from 'drizzle-orm'
 import { dailySchedules, userMedications } from './schema'
 import { MedicineError, parseMedicine } from '../src/features/medicines/contract'
 
-import { istanbulDate, parseSchedule } from '../src/features/schedules/contract'
+import { listDoseRecords, recordTaken } from './dose-records'
+import { isScheduleDate, istanbulDate, parseSchedule } from '../src/features/schedules/contract'
 
 type Env = { DB: D1Database; MEDICINES_WORKER_SECRET: string }
 const json = (body: unknown, status = 200) =>
@@ -67,8 +68,20 @@ export function createWorker(clock: () => Date = () => new Date()) {
             times: dailySchedules.times,
             confirmedAt: dailySchedules.confirmedAt,
           }
-          if (command.operation === 'list') {
+          if (command.operation === 'recordTaken') {
             return json({
+              records: [await recordTaken(db, command.ownerId, command.record, clock())],
+            })
+          }
+          if (command.operation === 'list') {
+            if (command.date !== undefined && !isScheduleDate(command.date))
+              throw new MedicineError('validation', 400)
+            const records =
+              command.date === undefined
+                ? undefined
+                : await listDoseRecords(db, command.ownerId, command.date)
+            return json({
+              records,
               schedules: await db
                 .select(select)
                 .from(dailySchedules)

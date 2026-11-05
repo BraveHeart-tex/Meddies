@@ -7,6 +7,8 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { after, before, test } from 'node:test'
 import { encode } from 'next-auth/jwt'
 import { readFile } from 'node:fs/promises'
+import { createWorker } from '../worker/index.ts'
+import { istanbulDate } from '../src/features/schedules/contract.ts'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
 
 // Synthetic signed cookies prove session authorization, never Google identity verification.
@@ -53,6 +55,11 @@ before(async () => {
   await db.exec(
     (await readFile('worker/migrations/0002_daily_schedules.sql', 'utf8')).replaceAll('\n', ' '),
   )
+  for (const statement of (await readFile('worker/migrations/0003_dose_records.sql', 'utf8')).split(
+    ';',
+  )) {
+    if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
+  }
   const workerUrl = await worker.ready
   const listener = createServer()
   listener.listen(0, '127.0.0.1')
@@ -293,6 +300,60 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
   assert.deepEqual(routineBody.schedules, scheduled.schedules)
   assert.equal(routineBody.today.next.dueAt, '2099-12-31T06:00:00.000Z')
   assert.deepEqual((await (await request('/api/schedules', { headers: bob })).json()).schedules, [])
+  const intakeMedicine = {
+    ...medicine,
+    id: '3b57b05e-6d43-4c7a-9da8-16d9f1d36c11',
+    label: 'Intake fixture',
+  }
+  assert.equal((await save(intakeMedicine)).status, 200)
+  const todayDate = istanbulDate(new Date())
+  const intakeSchedule = {
+    ...schedule,
+    id: '6cc12abe-66bc-486b-8ed5-7264979c926f',
+    medicineId: intakeMedicine.id,
+    startDate: todayDate,
+    times: [{ time: '00:00', quantity: 1 }],
+  }
+  const dueAt = new Date(`${todayDate}T00:00+03:00`).toISOString()
+  const seed = await createWorker(() => new Date(Date.parse(dueAt) - 1)).fetch(
+    new Request('http://worker/schedules', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${workerSecret}` },
+      body: JSON.stringify({
+        operation: 'save',
+        ownerId: valid().sub,
+        schedule: { ...intakeSchedule, startDate: istanbulDate(new Date(Date.parse(dueAt) - 1)) },
+      }),
+    }),
+    { DB: await worker.getD1Database('DB'), MEDICINES_WORKER_SECRET: workerSecret },
+  )
+  assert.equal(seed.status, 200)
+  const intake = {
+    scheduleId: intakeSchedule.id,
+    dueAt,
+    takenAt: new Date().toISOString(),
+    quantity: 0.5,
+    ownerId: valid().sub,
+  }
+  const markTaken = (headers, origin = base) =>
+    request('/api/schedules', {
+      method: 'PUT',
+      headers: { ...headers, origin, 'content-type': 'application/json' },
+      body: JSON.stringify(intake),
+    })
+  assert.equal((await markTaken({})).status, 401)
+  assert.equal((await markTaken(alice, 'https://other.example')).status, 403)
+  assert.equal((await markTaken(bob)).status, 400)
+  const taken = await markTaken(alice)
+  assert.equal(taken.status, 200)
+  assert.match(taken.headers.get('cache-control'), /no-store/)
+  const recorded = await taken.json()
+  assert.deepEqual(await (await markTaken(alice)).json(), recorded)
+  const current = await (await request('/api/schedules', { headers: alice })).json()
+  assert.deepEqual(
+    current.today.doses.find((dose) => dose.scheduleId === intake.scheduleId)?.record,
+    current.today.date === todayDate ? recorded.record : undefined,
+  )
   const oversized = await save({ ...medicine, label: 'x'.repeat(5000) })
   assert.equal(oversized.status, 413)
   await worker.dispose()
@@ -300,6 +361,7 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
   assert.equal(unavailable.status, 503)
   assert.deepEqual(await unavailable.json(), { error: 'unavailable' })
   assert.equal((await scheduleSave(alice)).status, 503)
+  assert.equal((await markTaken(alice)).status, 503)
 })
 
 test('missing private configuration disables sign-in and preserves accessible recovery', async () => {

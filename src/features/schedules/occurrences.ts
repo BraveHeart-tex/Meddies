@@ -1,8 +1,21 @@
-import { istanbulDate, type DailySchedule, type DoseOccurrence, type Today } from './contract'
+import {
+  istanbulDate,
+  type DailySchedule,
+  type DoseOccurrence,
+  type DoseRecord,
+  type Today,
+} from './contract'
 
 // Immutable initial schedule versions are the source of occurrence identities.
 // Generation is bounded to Today and the next configured date, never a growing backlog.
-export function scheduleToday(schedules: DailySchedule[], now: Date): Today {
+export function scheduledInstant(date: string, time: string) {
+  // Istanbul uses UTC+03:00 for the supported schedule dates.
+  return new Date(`${date}T${time}:00+03:00`).toISOString()
+}
+
+export function scheduleToday(schedules: DailySchedule[], now: Date, records: DoseRecord[]): Today {
+  const taken = new Map(records.map((record) => [`${record.scheduleId}:${record.dueAt}`, record]))
+
   const date = istanbulDate(now)
   const nowIso = now.toISOString()
   const occurrences: DoseOccurrence[] = []
@@ -13,16 +26,21 @@ export function scheduleToday(schedules: DailySchedule[], now: Date): Today {
       localDate.setUTCDate(localDate.getUTCDate() + day)
       const dateString = localDate.toISOString().slice(0, 10)
       for (const slot of schedule.times) {
-        // Istanbul uses UTC+03:00. Device-local Date parsing is never used.
-        const dueAt = new Date(`${dateString}T${slot.time}:00+03:00`).toISOString()
+        const dueAt = scheduledInstant(dateString, slot.time)
         if (dueAt <= schedule.confirmedAt) continue
+        const id = `${schedule.id}:${dueAt}`
+        const record = taken.get(id)
         occurrences.push({
-          id: `${schedule.id}:${dueAt}`,
+          id,
           scheduleId: schedule.id,
           medicineId: schedule.medicineId,
           dueAt,
           quantity: slot.quantity,
-          status: dueAt < nowIso ? 'Not logged' : dueAt === nowIso ? 'Due now' : 'Upcoming',
+          ...(record
+            ? { status: 'Taken', record }
+            : {
+                status: dueAt < nowIso ? 'Not logged' : dueAt === nowIso ? 'Due now' : 'Upcoming',
+              }),
         })
       }
     }
@@ -32,6 +50,6 @@ export function scheduleToday(schedules: DailySchedule[], now: Date): Today {
     date,
     now: nowIso,
     doses: occurrences.filter((dose) => istanbulDate(new Date(dose.dueAt)) === date),
-    next: occurrences.find((dose) => dose.dueAt >= nowIso) ?? null,
+    next: occurrences.find((dose) => dose.dueAt >= nowIso && dose.status !== 'Taken') ?? null,
   }
 }

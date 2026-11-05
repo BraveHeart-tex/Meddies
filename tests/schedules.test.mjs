@@ -51,7 +51,7 @@ test('Today keeps stable Istanbul doses across reload, date rollover and device 
   }
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: 'google:alice' }),
-    send: async () => [schedule],
+    send: async () => ({ schedules: [schedule], records: [] }),
     now: () => now,
   })
   const today = (await operations.snapshot()).today
@@ -91,7 +91,7 @@ test('initial confirmation excludes earlier and exactly equal times; future star
   }
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: 'google:alice' }),
-    send: async () => [schedule],
+    send: async () => ({ schedules: [schedule], records: [] }),
     now: () => now,
   })
   assert.deepEqual(

@@ -66,5 +66,14 @@ Today projects a bounded date window from persisted schedules. Occurrence identi
 is the immutable schedule UUID plus its UTC due instant, so reloads and device
 travel do not change it. Daily clock conversion uses Istanbul's UTC+03:00 rules;
 client device timezone is never used. Future schedule-edit work must retain old
-versions and occurrence identities. Logging, reminders and recurrence edits are
-separate operations, not implemented by daily setup.
+versions and occurrence identities.
+
+## Scheduled intake
+
+Today records explicit Taken confirmations through `PUT /api/schedules`. Apply
+`0003_dose_records.sql` before deploying the Worker and app. The Worker validates
+the occurrence against the owner's schedule and stores the actual time and
+quantity separately. The owner, schedule version and due instant identify one
+record. Identical retries return that record, and a changed submission conflicts.
+Today reads the records for its Istanbul date and excludes confirmed occurrences
+from the next-dose calculation.

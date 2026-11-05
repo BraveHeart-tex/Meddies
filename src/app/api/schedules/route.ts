@@ -20,7 +20,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+async function mutate(request: Request, operation: (input: unknown) => Promise<unknown>) {
   // Cookie-authenticated mutations require an exact same-origin browser request.
   if (request.headers.get('origin') !== new URL(request.url).origin)
     return json({ error: 'forbidden' }, 403)
@@ -28,8 +28,16 @@ export async function POST(request: Request) {
     return json({ error: 'validation' }, 415)
   try {
     const input = await readJsonRequest(request)
-    return json({ schedules: await schedules.save(input) })
+    return json(await operation(input))
   } catch (error) {
     return failure(error)
   }
+}
+
+export async function POST(request: Request) {
+  return mutate(request, async (input) => ({ schedules: await schedules.save(input) }))
+}
+
+export async function PUT(request: Request) {
+  return mutate(request, async (input) => ({ record: await schedules.recordTaken(input) }))
 }

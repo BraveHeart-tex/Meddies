@@ -9,16 +9,24 @@ export type DailyScheduleInput = {
 }
 export type DailySchedule = DailyScheduleInput & { confirmedAt: string }
 export type ScheduleCommand =
-  | { operation: 'list'; ownerId: string }
+  | { operation: 'list'; ownerId: string; date: string }
   | { operation: 'save'; ownerId: string; schedule: DailyScheduleInput }
+  | { operation: 'recordTaken'; ownerId: string; record: TakenDoseInput }
+export type TakenDoseInput = {
+  scheduleId: string
+  dueAt: string
+  takenAt: string
+  quantity: number
+}
+export type DoseRecord = TakenDoseInput & { outcome: 'Taken' }
+export type ScheduleResponse = { schedules?: DailySchedule[]; records?: DoseRecord[] }
 export type DoseOccurrence = {
   id: string
   scheduleId: string
   medicineId: string
   dueAt: string
   quantity: number
-  status: 'Not logged' | 'Due now' | 'Upcoming'
-}
+} & ({ status: 'Not logged' | 'Due now' | 'Upcoming' } | { status: 'Taken'; record: DoseRecord })
 export type Today = {
   date: string
   now: string
@@ -34,9 +42,8 @@ export function parseSchedule(value: unknown): DailyScheduleInput {
     !uuid.test(input.id) ||
     typeof input.medicineId !== 'string' ||
     !uuid.test(input.medicineId) ||
-    typeof input.startDate !== 'string' ||
-    !/^20\d{2}-\d{2}-\d{2}$/.test(input.startDate) ||
-    new Date(`${input.startDate}T00:00:00Z`).toJSON()?.slice(0, 10) !== input.startDate ||
+    !isScheduleDate(input.startDate) ||
+    !input.startDate.startsWith('20') ||
     !Array.isArray(input.times) ||
     input.times.length < 1 ||
     input.times.length > 24
@@ -49,10 +56,7 @@ export function parseSchedule(value: unknown): DailyScheduleInput {
       if (
         typeof time !== 'string' ||
         !/^([01]\d|2[0-3]):[0-5]\d$/.test(time) ||
-        typeof quantity !== 'number' ||
-        !Number.isFinite(quantity) ||
-        quantity <= 0 ||
-        !Number.isSafeInteger(quantity * 2)
+        !isDoseQuantity(quantity)
       )
         throw new MedicineError('validation', 400)
       return { time, quantity }
@@ -75,4 +79,34 @@ export function istanbulDate(now: Date): string {
     month: '2-digit',
     day: '2-digit',
   }).format(now)
+}
+
+export function isScheduleDate(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    new Date(`${value}T00:00:00Z`).toJSON()?.slice(0, 10) === value
+  )
+}
+
+export function isInstant(value: unknown): value is string {
+  return typeof value === 'string' && /^\d{4}-/.test(value) && new Date(value).toJSON() === value
+}
+
+export function parseTakenDose(value: unknown): TakenDoseInput {
+  if (!value || typeof value !== 'object') throw new MedicineError('validation', 400)
+  const { scheduleId, dueAt, takenAt, quantity } = value as Record<string, unknown>
+  if (
+    typeof scheduleId !== 'string' ||
+    !uuid.test(scheduleId) ||
+    !isInstant(dueAt) ||
+    !isInstant(takenAt) ||
+    !isDoseQuantity(quantity)
+  )
+    throw new MedicineError('validation', 400)
+  return { scheduleId: scheduleId.toLowerCase(), dueAt, takenAt, quantity }
+}
+
+function isDoseQuantity(value: unknown): value is number {
+  return typeof value === 'number' && value > 0 && Number.isSafeInteger(value * 2)
 }

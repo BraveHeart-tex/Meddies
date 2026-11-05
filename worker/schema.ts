@@ -1,4 +1,14 @@
-import { sqliteTable, text, primaryKey, unique, foreignKey } from 'drizzle-orm/sqlite-core'
+import {
+  sqliteTable,
+  text,
+  primaryKey,
+  unique,
+  foreignKey,
+  real,
+  index,
+  check,
+} from 'drizzle-orm/sqlite-core'
+import { sql } from 'drizzle-orm'
 
 export const userMedications = sqliteTable(
   'user_medications',
@@ -29,5 +39,26 @@ export const dailySchedules = sqliteTable(
       columns: [table.ownerId, table.medicineId],
       foreignColumns: [userMedications.ownerId, userMedications.id],
     }),
+  ],
+)
+
+export const doseRecords = sqliteTable(
+  'dose_records',
+  {
+    ownerId: text('owner_id').notNull(),
+    scheduleId: text('schedule_id').notNull(),
+    dueAt: text('due_at').notNull(),
+    takenAt: text('taken_at').notNull(),
+    quantity: real('quantity').notNull(),
+    outcome: text('outcome', { enum: ['Taken'] }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.scheduleId, table.dueAt] }),
+    foreignKey({
+      columns: [table.ownerId, table.scheduleId],
+      foreignColumns: [dailySchedules.ownerId, dailySchedules.id],
+    }),
+    index('dose_records_owner_due').on(table.ownerId, table.dueAt),
+    check('dose_records_outcome', sql`${table.outcome} = 'Taken'`),
   ],
 )
