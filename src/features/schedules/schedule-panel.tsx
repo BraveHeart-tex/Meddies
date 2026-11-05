@@ -233,29 +233,33 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
                         {doseText(dose)} · {dose.status}
                       </p>
                       {dose.status === 'Taken' ? (
-                        <p>
-                          Taken {doseText(dose, dose.record.quantity)} at{' '}
-                          <time dateTime={dose.record.takenAt}>{clock(dose.record.takenAt)}</time>
-                          {istanbulDate(new Date(dose.record.takenAt)) !== today.date
-                            ? ` on ${istanbulDate(new Date(dose.record.takenAt))}`
-                            : ''}
-                        </p>
+                        <>
+                          <p>
+                            Taken {doseText(dose, dose.record.quantity)} at{' '}
+                            <time dateTime={dose.record.takenAt}>{clock(dose.record.takenAt)}</time>
+                            {istanbulDate(new Date(dose.record.takenAt)) !== today.date
+                              ? ` on ${istanbulDate(new Date(dose.record.takenAt))}`
+                              : ''}
+                          </p>
+                        </>
                       ) : dose.status === 'Skipped' ? (
-                        <p>
-                          Skipped at{' '}
-                          <time dateTime={dose.record.recordedAt}>
-                            {clock(dose.record.recordedAt)}
-                          </time>
-                        </p>
-                      ) : (
-                        medicine && (
-                          <DoseActions
-                            dose={dose}
-                            medicine={medicine}
-                            refresh={() => reconcileOutcome(dose)}
-                            onRecorded={(record) => showOutcome(dose, record)}
-                          />
-                        )
+                        <>
+                          <p>
+                            Skipped at{' '}
+                            <time dateTime={dose.record.recordedAt}>
+                              {clock(dose.record.recordedAt)}
+                            </time>
+                          </p>
+                        </>
+                      ) : null}
+                      {medicine && (
+                        <DoseActions
+                          key={`${dose.id}:${dose.status}:${dose.status === 'Taken' || dose.status === 'Skipped' ? (dose.record.revision ?? 0) : 0}`}
+                          dose={dose}
+                          medicine={medicine}
+                          refresh={() => reconcileOutcome(dose)}
+                          onRecorded={(record) => showOutcome(dose, record)}
+                        />
                       )}
                     </li>
                   )

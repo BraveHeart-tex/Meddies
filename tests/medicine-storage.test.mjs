@@ -74,6 +74,9 @@ before(async () => {
   const baseStatements = migration.replace(/CREATE TRIGGER[\s\S]*?END;/g, '').split(';')
   for (const statement of [...baseStatements, ...triggers])
     if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
+  await db.exec(
+    (await readFile('worker/migrations/0005_dose_corrections.sql', 'utf8')).replaceAll('\n', ' '),
+  )
 })
 after(async () => {
   await runtime?.dispose()
@@ -480,4 +483,113 @@ test('real D1 history reload preserves a past Taken outcome and actual intake de
     now: () => now,
   })
   assert.deepEqual(await bob.history('2026-11-04'), [])
+})
+
+test('D1 correction ledger flips outcomes, replays exact actions and rejects stale revisions', async () => {
+  let now = new Date('2026-11-04T04:00:00.000Z')
+  const handler = createWorker(() => now)
+  const db = await runtime.getD1Database('DB')
+  const ownerId = 'google:correction-ledger'
+  const tablet = { ...medicine, id: randomUUID() }
+  await call({ operation: 'save', ownerId, medicine: tablet })
+  const send = async (command) => {
+    const response = await handler.fetch(
+      new Request('http://worker/schedules', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${secret}` },
+        body: JSON.stringify(command),
+      }),
+      { DB: db, MEDICINES_WORKER_SECRET: secret },
+    )
+    const body = await response.json()
+    if (!response.ok) throw new Error(body.error)
+    return body
+  }
+  const operations = createScheduleOperations({
+    requireUser: async () => ({ id: ownerId }),
+    send,
+    now: () => now,
+  })
+  const [schedule] = await operations.save({
+    id: randomUUID(),
+    medicineId: tablet.id,
+    startDate: '2026-11-04',
+    times: [
+      { time: '09:00', quantity: 1 },
+      { time: '10:00', quantity: 1 },
+    ],
+  })
+  now = new Date('2026-11-05T07:00:00.000Z')
+  const occurrence = { scheduleId: schedule.id, dueAt: '2026-11-04T06:00:00.000Z' }
+  await operations.recordTaken({ ...occurrence, takenAt: '2026-11-04T06:10:00.000Z', quantity: 1 })
+  const first = {
+    ...occurrence,
+    actionId: randomUUID(),
+    expectedRevision: 0,
+    expectedOutcome: 'Taken',
+    outcome: 'Skipped',
+  }
+  const firstResults = await Promise.all([
+    operations.correctOutcome(first),
+    operations.correctOutcome(first),
+  ])
+  assert.deepEqual(
+    firstResults.map((result) => result.revision),
+    [1, 1],
+  )
+  assert.equal((await operations.history('2026-11-04'))[0].status, 'Skipped')
+  await assert.rejects(
+    () => operations.correctOutcome({ ...first, actionId: randomUUID() }),
+    /conflict/,
+  )
+  const second = {
+    ...occurrence,
+    actionId: randomUUID(),
+    expectedRevision: 1,
+    expectedOutcome: 'Skipped',
+    outcome: 'Taken',
+    takenAt: '2026-11-04T06:20:00.000Z',
+    quantity: 0.5,
+  }
+  const competing = { ...second, actionId: randomUUID(), takenAt: '2026-11-04T06:25:00.000Z' }
+  const competingResults = await Promise.allSettled([
+    operations.correctOutcome(second),
+    operations.correctOutcome(competing),
+  ])
+  assert.equal(competingResults.filter((result) => result.status === 'fulfilled').length, 1)
+  assert.equal(competingResults.filter((result) => result.status === 'rejected').length, 1)
+  const winner = competingResults[0].status === 'fulfilled' ? second : competing
+  assert.equal((await operations.correctOutcome(winner)).revision, 2)
+  assert.equal((await operations.history('2026-11-04'))[0].record.takenAt, winner.takenAt)
+  assert.equal((await operations.correctOutcome(first)).revision, 1)
+  await assert.rejects(
+    () => operations.correctOutcome({ ...second, actionId: randomUUID() }),
+    /conflict/,
+  )
+  await assert.rejects(
+    () =>
+      operations.correctOutcome({
+        ...second,
+        actionId: randomUUID(),
+        expectedRevision: 1,
+        expectedOutcome: 'Skipped',
+        quantity: 0.25,
+      }),
+    /validation/,
+  )
+  const bob = createScheduleOperations({
+    requireUser: async () => ({ id: 'google:other-correction-user' }),
+    send,
+    now: () => now,
+  })
+  await assert.rejects(() => bob.correctOutcome(first), /validation/)
+  await assert.rejects(
+    () =>
+      operations.correctOutcome({
+        ...first,
+        actionId: randomUUID(),
+        dueAt: '2026-11-04T07:00:00.000Z',
+      }),
+    /conflict/,
+  )
 })

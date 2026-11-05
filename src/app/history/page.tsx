@@ -6,6 +6,7 @@ import { MedicineError, type Medicine } from '@/features/medicines/contract'
 import { schedules } from '@/features/schedules/server'
 import { isScheduleDate, istanbulDate, SCHEDULE_TIMEZONE } from '@/features/schedules/contract'
 import type { DoseOccurrence } from '@/features/schedules/contract'
+import { HistoryDoseActions } from '@/features/schedules/history-dose-actions'
 
 function displayTime(instant: string, includeDate = false) {
   const options: Intl.DateTimeFormatOptions = includeDate
@@ -128,19 +129,7 @@ export default async function HistoryPage({
                   <p className="text-sm">
                     Scheduled <time dateTime={dose.dueAt}>{displayTime(dose.dueAt)}</time>
                   </p>
-                  <p className="text-sm">{dose.status}</p>
-                  {dose.status === 'Taken' && (
-                    <p className="text-sm">
-                      Taken{' '}
-                      <time dateTime={dose.record.takenAt}>
-                        {displayTime(
-                          dose.record.takenAt,
-                          date !== istanbulDate(new Date(dose.record.takenAt)),
-                        )}
-                      </time>{' '}
-                      - quantity {quantityLabel(dose.record.quantity, medicine)}
-                    </p>
-                  )}
+                  <HistoryDoseActions dose={dose} medicine={medicine} date={date} />
                 </li>
               )
             })}

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 
 export const dependencies = { auth: true, storage: true }
 
-export async function run({ origin, browser, request }) {
+export async function run({ origin, browser, request, artifactDir }) {
   browser.step('seed authenticated fixtures')
   const uuid = randomUUID()
   const medicine = { id: uuid, label: 'Browser Harness Medicine', strength: null, unit: 'tablet' }
@@ -73,4 +73,16 @@ export async function run({ origin, browser, request }) {
     /Browser Harness Medicine/,
     'persisted dose must remain tied to seeded medicine',
   )
+
+  browser.step('correct the Today outcome back to Taken')
+  await browser.run('find', 'text', 'Correct outcome', 'click', '--exact')
+  await browser.run('find', 'text', 'Mark as taken', 'click', '--exact')
+  await browser.run('wait', '--text', 'Save taken dose')
+  await browser.run('find', 'text', 'Save taken dose', 'click', '--exact')
+  await browser.run('wait', '--text', 'Taken')
+  assert.match(await browser.run('eval', "document.querySelector('li').innerText"), /Taken/)
+  await browser.run('screenshot', `${artifactDir}/today-corrected.png`)
+  await browser.run('reload')
+  await browser.run('wait', '--text', 'Taken')
+  assert.match(await browser.run('eval', "document.querySelector('li').innerText"), /Taken/)
 }

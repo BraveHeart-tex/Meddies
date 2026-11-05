@@ -71,10 +71,13 @@ versions and occurrence identities.
 ## Scheduled intake
 
 Today records explicit Taken and Skipped confirmations through `PUT /api/schedules`.
-Apply pending migrations through `0004_skipped_dose_records.sql`, then deploy the
+Apply pending migrations through `0005_dose_corrections.sql`, then deploy the
 Worker, then the Vercel app. The Worker validates the occurrence against the
 owner's schedule. Taken stores the actual intake time and quantity. Skipped stores
 the confirmation time. The owner, schedule version and due instant identify one
 outcome. Identical retries return the stored outcome, and conflicting submissions
-return HTTP 409. Today reads the outcomes for its Istanbul date and excludes both
-confirmed outcomes from the next-dose calculation.
+return HTTP 409. Deliberate corrections use `PATCH /api/schedules` and append a
+revision to the owner-scoped correction ledger. The expected revision and outcome
+provide compare-and-set protection; an action UUID makes retries idempotent. The
+original dose row remains intact, while Today and History project the latest
+revision. Today excludes either confirmed outcome from the next-dose calculation.

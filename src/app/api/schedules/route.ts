@@ -57,3 +57,7 @@ export async function PUT(request: Request) {
     return { record: await schedules.recordTaken(value) }
   })
 }
+
+export async function PATCH(request: Request) {
+  return mutate(request, async (input) => ({ record: await schedules.correctOutcome(input) }))
+}

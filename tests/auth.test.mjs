@@ -67,6 +67,9 @@ before(async () => {
   const baseStatements = migration.replace(/CREATE TRIGGER[\s\S]*?END;/g, '').split(';')
   for (const statement of [...baseStatements, ...triggers])
     if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
+  await db.exec(
+    (await readFile('worker/migrations/0005_dose_corrections.sql', 'utf8')).replaceAll('\n', ' '),
+  )
   const workerUrl = await worker.ready
   const listener = createServer()
   listener.listen(0, '127.0.0.1')
@@ -356,6 +359,28 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
   assert.match(taken.headers.get('cache-control'), /no-store/)
   const recorded = await taken.json()
   assert.deepEqual(await (await markTaken(alice)).json(), recorded)
+  const correction = {
+    actionId: 'cb7169e8-6e81-4f61-b981-ff7448ae01aa',
+    scheduleId: intake.scheduleId,
+    dueAt: intake.dueAt,
+    expectedRevision: 0,
+    expectedOutcome: 'Taken',
+    outcome: 'Skipped',
+  }
+  const correct = (headers, origin = base, body = correction) =>
+    request('/api/schedules', {
+      method: 'PATCH',
+      headers: { ...headers, origin, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  assert.equal((await correct({})).status, 401)
+  assert.equal((await correct(alice, 'https://other.example')).status, 403)
+  const correctedResponse = await correct(alice)
+  assert.equal(correctedResponse.status, 200)
+  const corrected = await correctedResponse.json()
+  assert.equal(corrected.record.outcome, 'Skipped')
+  assert.equal(corrected.record.revision, 1)
+  assert.deepEqual(await (await correct(alice)).json(), corrected)
   const skipMedicine = {
     ...intakeMedicine,
     id: '9c2c50d8-c9e9-4635-90da-28f5c6ea177a',
@@ -431,10 +456,9 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
   })
   assert.equal(takenOnSkip.status, 409)
   const current = await (await request('/api/schedules', { headers: alice })).json()
-  assert.deepEqual(
-    current.today.doses.find((dose) => dose.scheduleId === intake.scheduleId)?.record,
-    current.today.date === todayDate ? recorded.record : undefined,
-  )
+  const currentIntake = current.today.doses.find((dose) => dose.scheduleId === intake.scheduleId)
+  assert.equal(currentIntake?.status, 'Skipped')
+  assert.equal(currentIntake?.record.revision, 1)
   assert.equal(
     current.today.doses.find((dose) => dose.scheduleId === skipSchedule.id)?.status,
     'Skipped',

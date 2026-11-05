@@ -3,7 +3,13 @@ import { and, eq, asc } from 'drizzle-orm'
 import { dailySchedules, userMedications } from './schema'
 import { MedicineError, parseMedicine } from '../src/features/medicines/contract'
 
-import { listDoseOutcomes, listDoseRecords, recordSkipped, recordTaken } from './dose-records'
+import {
+  correctDoseOutcome,
+  listDoseOutcomes,
+  listDoseRecords,
+  recordSkipped,
+  recordTaken,
+} from './dose-records'
 import { isScheduleDate, istanbulDate, parseSchedule } from '../src/features/schedules/contract'
 
 type Env = { DB: D1Database; MEDICINES_WORKER_SECRET: string }
@@ -76,6 +82,11 @@ export function createWorker(clock: () => Date = () => new Date()) {
           if (command.operation === 'recordSkipped') {
             return json({
               records: [await recordSkipped(db, command.ownerId, command.record, clock())],
+            })
+          }
+          if (command.operation === 'correctOutcome') {
+            return json({
+              records: [await correctDoseOutcome(db, command.ownerId, command.correction, clock())],
             })
           }
           if (command.operation === 'list' || command.operation === 'listOutcomes') {

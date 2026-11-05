@@ -13,14 +13,25 @@ export type ScheduleCommand =
   | { operation: 'save'; ownerId: string; schedule: DailyScheduleInput }
   | { operation: 'recordTaken'; ownerId: string; record: TakenDoseInput }
   | { operation: 'recordSkipped'; ownerId: string; record: SkippedDoseInput }
+  | { operation: 'correctOutcome'; ownerId: string; correction: DoseCorrectionInput }
 export type DoseOccurrenceKey = { scheduleId: string; dueAt: string }
+export type DoseCorrectionInput = DoseOccurrenceKey & {
+  actionId: string
+  expectedRevision: number
+  expectedOutcome: DoseOutcomeRecord['outcome']
+} & ({ outcome: 'Taken'; takenAt: string; quantity: number } | { outcome: 'Skipped' })
 export type TakenDoseInput = DoseOccurrenceKey & {
   takenAt: string
   quantity: number
 }
-export type DoseRecord = TakenDoseInput & { outcome: 'Taken' }
+export type DoseRecord = TakenDoseInput & { outcome: 'Taken'; revision?: number; actionId?: string }
 export type SkippedDoseInput = DoseOccurrenceKey
-export type SkippedDoseRecord = SkippedDoseInput & { outcome: 'Skipped'; recordedAt: string }
+export type SkippedDoseRecord = SkippedDoseInput & {
+  outcome: 'Skipped'
+  recordedAt: string
+  revision?: number
+  actionId?: string
+}
 export type DoseOutcomeRecord = DoseRecord | SkippedDoseRecord
 export type ScheduleResponse = { schedules?: DailySchedule[]; records?: DoseOutcomeRecord[] }
 export type DoseOccurrence = {
@@ -107,6 +118,42 @@ export function parseTakenDose(value: unknown): TakenDoseInput {
   return { ...occurrence, takenAt, quantity }
 }
 
+export function parseDoseCorrection(value: unknown): DoseCorrectionInput {
+  const occurrence = parseOccurrenceKey(value)
+  const input = value as Record<string, unknown>
+  if (
+    typeof input.actionId !== 'string' ||
+    !uuid.test(input.actionId) ||
+    !Number.isSafeInteger(input.expectedRevision) ||
+    (input.expectedRevision as number) < 0 ||
+    (input.expectedOutcome !== 'Taken' && input.expectedOutcome !== 'Skipped') ||
+    (input.outcome !== 'Taken' && input.outcome !== 'Skipped') ||
+    input.expectedOutcome === input.outcome
+  )
+    throw new MedicineError('validation', 400)
+  if (input.outcome === 'Taken') {
+    if (!isInstant(input.takenAt) || !isDoseQuantity(input.quantity))
+      throw new MedicineError('validation', 400)
+    return {
+      ...occurrence,
+      actionId: input.actionId.toLowerCase(),
+      expectedRevision: input.expectedRevision as number,
+      expectedOutcome: input.expectedOutcome as DoseOutcomeRecord['outcome'],
+      outcome: 'Taken',
+      takenAt: input.takenAt,
+      quantity: input.quantity,
+    }
+  }
+  if ('takenAt' in input || 'quantity' in input) throw new MedicineError('validation', 400)
+  return {
+    ...occurrence,
+    actionId: input.actionId.toLowerCase(),
+    expectedRevision: input.expectedRevision as number,
+    expectedOutcome: input.expectedOutcome as DoseOutcomeRecord['outcome'],
+    outcome: 'Skipped',
+  }
+}
+
 export const parseSkippedDose = parseOccurrenceKey
 
 function parseOccurrenceKey(value: unknown): DoseOccurrenceKey {
@@ -120,14 +167,31 @@ function parseOccurrenceKey(value: unknown): DoseOccurrenceKey {
 export function parseDoseOutcomeRecord(value: unknown): DoseOutcomeRecord {
   if (!value || typeof value !== 'object') throw new MedicineError('validation', 400)
   const input = value as Record<string, unknown>
+  const revision = input.revision === undefined ? undefined : input.revision
+  if (revision !== undefined && (!Number.isSafeInteger(revision) || (revision as number) < 0))
+    throw new MedicineError('validation', 400)
+  const actionId = input.actionId == null ? undefined : input.actionId
+  if (actionId !== undefined && (typeof actionId !== 'string' || !uuid.test(actionId)))
+    throw new MedicineError('validation', 400)
   if (input.outcome === 'Taken') {
     const record = parseTakenDose(input)
-    return { ...record, outcome: 'Taken' }
+    return {
+      ...record,
+      outcome: 'Taken',
+      ...(revision === undefined ? {} : { revision: revision as number }),
+      ...(actionId ? { actionId: actionId as string } : {}),
+    }
   }
   if (input.outcome === 'Skipped') {
     const record = parseSkippedDose(input)
     if (!isInstant(input.recordedAt)) throw new MedicineError('validation', 400)
-    return { ...record, recordedAt: input.recordedAt, outcome: 'Skipped' }
+    return {
+      ...record,
+      recordedAt: input.recordedAt,
+      outcome: 'Skipped',
+      ...(revision === undefined ? {} : { revision: revision as number }),
+      ...(actionId ? { actionId: actionId as string } : {}),
+    }
   }
   throw new MedicineError('validation', 400)
 }

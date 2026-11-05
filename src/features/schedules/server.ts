@@ -16,7 +16,11 @@ async function send(command: ScheduleCommand): Promise<ScheduleResponse> {
   const data = await sendStorage('/schedules', command)
   try {
     const result: ScheduleResponse = {}
-    if (command.operation !== 'recordTaken' && command.operation !== 'recordSkipped') {
+    if (
+      command.operation !== 'recordTaken' &&
+      command.operation !== 'recordSkipped' &&
+      command.operation !== 'correctOutcome'
+    ) {
       if (!Array.isArray(data.schedules)) throw new Error('contract')
       result.schedules = data.schedules.map((value: unknown) => {
         const schedule = parseSchedule(value)

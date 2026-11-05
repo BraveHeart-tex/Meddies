@@ -98,8 +98,24 @@ export async function run({ origin, browser, artifactDir }) {
   assert.match(page, /Back to Today/)
   await browser.run('screenshot', `${artifactDir}/dose-history.png`)
 
+  browser.step('correct a Taken history outcome to Skipped')
+  await browser.run('find', 'text', 'Correct outcome', 'click', '--exact')
+  await browser.run('find', 'text', 'Mark as skipped', 'click', '--exact')
+  await browser.run('wait', '--text', 'Confirm skipped')
+  await browser.run('find', 'text', 'Confirm skipped', 'click', '--exact')
+  await browser.run('wait', '--text', 'Skipped')
+  assert.match(
+    await browser.run('eval', "document.querySelector('ol li:first-child').innerText"),
+    /Skipped/,
+  )
+  await browser.run('screenshot', `${artifactDir}/dose-history-corrected.png`)
+
   browser.step('reload and preserve persisted history')
   await browser.run('reload')
   await browser.run('wait', '--text', 'History Fixture Medicine')
+  assert.match(
+    await browser.run('eval', "document.querySelector('ol li:first-child').innerText"),
+    /Skipped/,
+  )
   assert.match(browser.snapshot(), /Not logged/)
 }

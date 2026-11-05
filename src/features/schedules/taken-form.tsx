@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useState, type FormEvent } from 'react'
+import { useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import type { Medicine } from '@/features/medicines/contract'
 import {
@@ -40,6 +40,7 @@ export function TakenForm({
   onSubmit: (details: { takenAt: TakenDoseInput['takenAt'] | null; quantity: number }) => void
 }) {
   const id = useId()
+  const trigger = useRef<HTMLButtonElement>(null)
   const [takenAt, setTakenAt] = useState('')
   const [quantity, setQuantity] = useState(String(dose.quantity))
   const step = medicine.unit === 'capsule' ? 1 : 0.5
@@ -52,9 +53,15 @@ export function TakenForm({
     })
   }
 
+  function close() {
+    onOpen(false)
+    trigger.current?.focus()
+  }
+
   return (
     <>
       <Button
+        ref={trigger}
         type="button"
         variant="outline"
         className="min-h-11"
@@ -72,7 +79,18 @@ export function TakenForm({
       >
         Mark as taken
       </Button>
-      <form id={id} hidden={!open} onSubmit={save} aria-busy={saving}>
+      <form
+        id={id}
+        hidden={!open}
+        onSubmit={save}
+        aria-busy={saving}
+        onKeyDown={(event: KeyboardEvent<HTMLFormElement>) => {
+          if (event.key === 'Escape' && !saving) {
+            event.preventDefault()
+            close()
+          }
+        }}
+      >
         <fieldset
           disabled={saving}
           aria-describedby={error ? `${id}-error` : undefined}
@@ -104,9 +122,20 @@ export function TakenForm({
               onChange={(event) => setQuantity(event.target.value)}
             />
           </div>
-          <Button type="submit" className="min-h-11" disabled={saving}>
-            {saving ? 'Saving intake...' : 'Save taken dose'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" className="min-h-11" disabled={saving}>
+              {saving ? 'Saving intake...' : 'Save taken dose'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              disabled={saving}
+              onClick={close}
+            >
+              Cancel
+            </Button>
+          </div>
         </fieldset>
         {error && (
           <p id={`${id}-error`} role="alert">

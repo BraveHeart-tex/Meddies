@@ -3,6 +3,7 @@ import {
   istanbulDate,
   isScheduleDate,
   parseSchedule,
+  parseDoseCorrection,
   parseSkippedDose,
   parseTakenDose,
   type ScheduleCommand,
@@ -55,6 +56,30 @@ export function createScheduleOperations(dependencies: {
         saved.outcome !== 'Skipped' ||
         saved.scheduleId !== record.scheduleId ||
         saved.dueAt !== record.dueAt
+      )
+        throw new MedicineError('unavailable', 503)
+      return saved
+    },
+    async correctOutcome(input: unknown) {
+      const user = await dependencies.requireUser()
+      const correction = parseDoseCorrection(input)
+      const response = await dependencies.send({
+        operation: 'correctOutcome',
+        ownerId: user.id,
+        correction,
+      })
+      const saved = response.records?.[0]
+      if (
+        !saved ||
+        saved.outcome !== correction.outcome ||
+        saved.scheduleId !== correction.scheduleId ||
+        saved.dueAt !== correction.dueAt ||
+        saved.revision !== correction.expectedRevision + 1 ||
+        saved.actionId !== correction.actionId ||
+        (correction.outcome === 'Taken' &&
+          (saved.outcome !== 'Taken' ||
+            saved.takenAt !== correction.takenAt ||
+            saved.quantity !== correction.quantity))
       )
         throw new MedicineError('unavailable', 503)
       return saved

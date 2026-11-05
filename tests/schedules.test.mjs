@@ -263,3 +263,37 @@ test('recordSkipped authenticates and validates before dispatch, deriving owner 
   })
   await assert.rejects(() => anonymous.recordSkipped(input), /unauthorized/)
 })
+
+test('correctOutcome dispatches a stable action id with the expected prior revision', async () => {
+  const actionId = '83c390c1-bab7-48b7-84c5-08d3e99b414d'
+  let command
+  const operations = createScheduleOperations({
+    requireUser: async () => ({ id: 'google:alice' }),
+    send: async (value) => {
+      command = value
+      return {
+        records: [
+          {
+            outcome: 'Skipped',
+            scheduleId: input.id,
+            dueAt: '2026-11-05T06:00:00.000Z',
+            recordedAt: '2026-11-05T06:30:00.000Z',
+            revision: 1,
+            actionId,
+          },
+        ],
+      }
+    },
+  })
+  const saved = await operations.correctOutcome({
+    actionId,
+    scheduleId: input.id,
+    dueAt: '2026-11-05T06:00:00.000Z',
+    expectedRevision: 0,
+    expectedOutcome: 'Taken',
+    outcome: 'Skipped',
+  })
+  assert.equal(command.operation, 'correctOutcome')
+  assert.equal(command.ownerId, 'google:alice')
+  assert.equal(saved.revision, 1)
+})
