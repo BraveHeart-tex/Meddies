@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { connection } from 'next/server'
 import { AppShell } from '@/components/layout/app-shell'
 import { AppHeader } from '@/components/layout/app-header'
 import { AuthControl } from '@/features/auth/controls'
@@ -6,6 +7,8 @@ import { auth, authConfigured } from '@/features/auth/server'
 import { SessionBoundary } from '@/features/auth/session-boundary'
 
 export default async function SettingsPage() {
+  // Session-dependent: never prerender, even when auth env is absent at build time.
+  await connection()
   const configured = authConfigured()
   const session = configured ? await auth() : null
   if (!session?.user?.id)
