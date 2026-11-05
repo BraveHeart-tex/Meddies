@@ -6,6 +6,7 @@ import {
   parseSkippedDose,
   parseTakenDose,
   parseDoseCorrection,
+  scheduleRunsOn,
   type DoseOutcomeRecord,
 } from '../src/features/schedules/contract'
 import { scheduledInstant } from '../src/features/schedules/occurrences'
@@ -150,6 +151,8 @@ async function getOccurrence(db: DrizzleD1Database, ownerId: string, scheduleId:
   return db
     .select({
       startDate: dailySchedules.startDate,
+      weekdays: dailySchedules.weekdays,
+      endDate: dailySchedules.endDate,
       confirmedAt: dailySchedules.confirmedAt,
       times: dailySchedules.times,
       unit: userMedications.unit,
@@ -174,7 +177,7 @@ function validOccurrence(
   const dueDate = istanbulDate(new Date(record.dueAt))
   return Boolean(
     schedule &&
-    dueDate >= schedule.startDate &&
+    scheduleRunsOn(schedule, dueDate) &&
     dueDate <= istanbulDate(now) &&
     record.dueAt > schedule.confirmedAt &&
     schedule.times.some((slot) => scheduledInstant(dueDate, slot.time) === record.dueAt),

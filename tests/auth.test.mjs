@@ -70,6 +70,10 @@ before(async () => {
   await db.exec(
     (await readFile('worker/migrations/0005_dose_corrections.sql', 'utf8')).replaceAll('\n', ' '),
   )
+  for (const statement of (
+    await readFile('worker/migrations/0006_weekday_schedules.sql', 'utf8')
+  ).split(';'))
+    if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
   const workerUrl = await worker.ready
   const listener = createServer()
   listener.listen(0, '127.0.0.1')

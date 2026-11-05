@@ -6,8 +6,10 @@ export type DailyScheduleInput = {
   medicineId: string
   startDate: string
   times: { time: string; quantity: number }[]
+  weekdays?: number[]
+  endDate?: string | null
 }
-export type DailySchedule = DailyScheduleInput & { confirmedAt: string }
+export type DailySchedule = DailyScheduleInput & { confirmedAt: string; weekdays: number[] }
 export type ScheduleCommand =
   | { operation: 'list' | 'listOutcomes'; ownerId: string; date: string }
   | { operation: 'save'; ownerId: string; schedule: DailyScheduleInput }
@@ -67,6 +69,17 @@ export function parseSchedule(value: unknown): DailyScheduleInput {
     input.times.length > 24
   )
     throw new MedicineError('validation', 400)
+  const weekdays = input.weekdays === undefined ? [0, 1, 2, 3, 4, 5, 6] : input.weekdays
+  if (
+    !Array.isArray(weekdays) ||
+    weekdays.length < 1 ||
+    weekdays.some((day) => !Number.isInteger(day) || day < 0 || day > 6) ||
+    new Set(weekdays).size !== weekdays.length
+  )
+    throw new MedicineError('validation', 400)
+  const endDate = input.endDate === undefined ? null : input.endDate
+  if (endDate !== null && (!isScheduleDate(endDate) || endDate < input.startDate))
+    throw new MedicineError('validation', 400)
   const times = input.times
     .map((slot: unknown) => {
       if (!slot || typeof slot !== 'object') throw new MedicineError('validation', 400)
@@ -87,6 +100,8 @@ export function parseSchedule(value: unknown): DailyScheduleInput {
     medicineId: input.medicineId,
     startDate: input.startDate,
     times,
+    weekdays: [...weekdays].sort((a, b) => a - b),
+    endDate,
   }
 }
 
@@ -105,6 +120,16 @@ export function isScheduleDate(value: unknown): value is string {
     /^\d{4}-\d{2}-\d{2}$/.test(value) &&
     new Date(`${value}T00:00:00Z`).toJSON()?.slice(0, 10) === value
   )
+}
+
+export function scheduleRunsOn(
+  schedule: Pick<DailySchedule, 'startDate' | 'endDate' | 'weekdays'>,
+  date: string,
+): boolean {
+  if (date < schedule.startDate || (schedule.endDate && date > schedule.endDate)) return false
+  const [year, month, day] = date.split('-').map(Number)
+  const weekday = new Date(Date.UTC(year, month - 1, day, 12)).getUTCDay()
+  return (schedule.weekdays ?? [0, 1, 2, 3, 4, 5, 6]).includes(weekday)
 }
 
 export function isInstant(value: unknown): value is string {

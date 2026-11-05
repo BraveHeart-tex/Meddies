@@ -73,6 +73,8 @@ export function createWorker(clock: () => Date = () => new Date()) {
             startDate: dailySchedules.startDate,
             times: dailySchedules.times,
             confirmedAt: dailySchedules.confirmedAt,
+            weekdays: dailySchedules.weekdays,
+            endDate: dailySchedules.endDate,
           }
           if (command.operation === 'recordTaken') {
             return json({
@@ -120,6 +122,8 @@ export function createWorker(clock: () => Date = () => new Date()) {
             saved &&
             saved.medicineId === schedule.medicineId &&
             saved.startDate === schedule.startDate &&
+            JSON.stringify(saved.weekdays) === JSON.stringify(schedule.weekdays) &&
+            saved.endDate === schedule.endDate &&
             JSON.stringify(saved.times) === JSON.stringify(schedule.times)
           // An identical retry remains valid after the initial start date has passed.
           if (existing) {

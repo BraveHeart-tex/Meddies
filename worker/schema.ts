@@ -32,6 +32,11 @@ export const dailySchedules = sqliteTable(
     startDate: text('start_date').notNull(),
     times: text('times', { mode: 'json' }).$type<{ time: string; quantity: number }[]>().notNull(),
     confirmedAt: text('confirmed_at').notNull(),
+    weekdays: text('weekdays', { mode: 'json' })
+      .$type<number[]>()
+      .notNull()
+      .default([0, 1, 2, 3, 4, 5, 6]),
+    endDate: text('end_date'),
   },
   (table) => [
     primaryKey({ columns: [table.ownerId, table.id] }),

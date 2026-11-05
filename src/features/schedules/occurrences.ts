@@ -4,6 +4,7 @@ import {
   type DoseOccurrence,
   type DoseOutcomeRecord,
   type Today,
+  scheduleRunsOn,
 } from './contract'
 
 // Immutable initial schedule versions are the source of occurrence identities.
@@ -54,15 +55,18 @@ export function scheduleToday(
   const occurrences: DoseOccurrence[] = []
   for (const schedule of schedules) {
     const firstDate = schedule.startDate > date ? schedule.startDate : date
-    for (let day = 0; day < 2; day++) {
+    // Scan a bounded week to find the next configured occurrence, including a sole weekday.
+    for (let day = 0; day < 8; day++) {
       const localDate = new Date(`${firstDate}T12:00:00Z`)
       localDate.setUTCDate(localDate.getUTCDate() + day)
       const dateString = localDate.toISOString().slice(0, 10)
+      if (!scheduleRunsOn(schedule, dateString)) continue
       for (const slot of schedule.times) {
         const dueAt = scheduledInstant(dateString, slot.time)
         const occurrence = occurrenceFor(schedule, dueAt, slot, nowIso, outcomes)
         if (occurrence) occurrences.push(occurrence)
       }
+      if (dateString > date) break
     }
   }
   occurrences.sort((a, b) => a.dueAt.localeCompare(b.dueAt) || a.id.localeCompare(b.id))
@@ -89,7 +93,7 @@ export function scheduleHistoryDay(
   const nowIso = now.toISOString()
   const doses: DoseOccurrence[] = []
   for (const schedule of schedules) {
-    if (schedule.startDate > date) continue
+    if (!scheduleRunsOn(schedule, date)) continue
     for (const slot of schedule.times) {
       const dueAt = scheduledInstant(date, slot.time)
       if (dueAt >= nowIso) continue

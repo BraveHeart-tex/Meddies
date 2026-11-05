@@ -77,6 +77,10 @@ before(async () => {
   await db.exec(
     (await readFile('worker/migrations/0005_dose_corrections.sql', 'utf8')).replaceAll('\n', ' '),
   )
+  for (const statement of (
+    await readFile('worker/migrations/0006_weekday_schedules.sql', 'utf8')
+  ).split(';'))
+    if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
 })
 after(async () => {
   await runtime?.dispose()
@@ -209,6 +213,81 @@ test('real D1 save confirmation enforces Istanbul start boundaries and survives 
     (await operations.snapshot()).today.doses.filter((dose) => dose.medicineId === other.id).length,
     2,
   )
+})
+
+test('real D1 weekday schedules normalize retries, preserve confirmation and reject non-occurrence logging', async () => {
+  let now = new Date('2026-11-08T12:00:00.000Z')
+  const handler = createWorker(() => now)
+  const db = await runtime.getD1Database('DB')
+  const ownerId = 'google:weekday-schedule'
+  const tablet = { ...medicine, id: randomUUID() }
+  await call({ operation: 'save', ownerId, medicine: tablet })
+  const send = async (command) => {
+    const response = await handler.fetch(
+      new Request('http://worker/schedules', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${secret}` },
+        body: JSON.stringify(command),
+      }),
+      { DB: db, MEDICINES_WORKER_SECRET: secret },
+    )
+    const body = await response.json()
+    if (!response.ok) throw new Error(body.error)
+    return body
+  }
+  const operations = createScheduleOperations({
+    requireUser: async () => ({ id: ownerId }),
+    send,
+    now: () => now,
+  })
+  const input = {
+    id: randomUUID(),
+    medicineId: tablet.id,
+    startDate: '2026-11-08',
+    endDate: '2026-11-09',
+    weekdays: [5, 1],
+    times: [{ time: '09:00', quantity: 1 }],
+  }
+  const saved = await operations.save(input)
+  assert.deepEqual(saved[0].weekdays, [1, 5])
+  now = new Date('2026-11-09T12:00:00.000Z')
+  const retry = await operations.save({ ...input, weekdays: [1, 5] })
+  assert.equal(retry[0].confirmedAt, saved[0].confirmedAt)
+  const mondayDose = await operations.recordTaken({
+    scheduleId: input.id,
+    dueAt: '2026-11-09T06:00:00.000Z',
+    takenAt: now.toISOString(),
+    quantity: 1,
+  })
+  assert.equal(mondayDose.outcome, 'Taken')
+  await assert.rejects(() => operations.save({ ...input, weekdays: [2] }), /conflict/)
+  await assert.rejects(
+    () => operations.save({ ...input, id: randomUUID(), weekdays: [1, 1] }),
+    /validation/,
+  )
+  now = new Date('2026-11-10T12:00:00.000Z')
+  await assert.rejects(
+    () =>
+      operations.recordTaken({
+        scheduleId: input.id,
+        dueAt: '2026-11-10T06:00:00.000Z',
+        takenAt: now.toISOString(),
+        quantity: 1,
+      }),
+    /validation/,
+  )
+  await assert.rejects(
+    () =>
+      operations.recordTaken({
+        scheduleId: input.id,
+        dueAt: '2026-11-13T06:00:00.000Z',
+        takenAt: now.toISOString(),
+        quantity: 1,
+      }),
+    /validation/,
+  )
+  const otherOwner = await send({ operation: 'list', ownerId: 'google:other-weekday-owner' })
+  assert.deepEqual(otherOwner.schedules, [])
 })
 
 test('late half-tablet intake persists once without moving the next dose', async () => {

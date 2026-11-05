@@ -17,6 +17,7 @@ import { scheduleToday } from './occurrences'
 
 const field =
   'min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 type Snapshot = { schedules: DailySchedule[]; records: DoseOutcomeRecord[]; today: Today | null }
 
 export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
@@ -30,6 +31,7 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
   const [medicineId, setMedicineId] = useState('')
   const [startDate, setStartDate] = useState(() => istanbulDate(new Date()))
   const [times, setTimes] = useState([{ key: 0, time: '', quantity: '' }])
+  const [weekdays, setWeekdays] = useState([0, 1, 2, 3, 4, 5, 6])
   const rowKey = useRef(1)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -135,6 +137,10 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (locked.current) return
+    if (weekdays.length === 0) {
+      setAttempted(true)
+      return
+    }
     locked.current = true
     setAttempted(true)
     setSaving(true)
@@ -144,7 +150,9 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
       medicineId,
       startDate,
       times: times.map((slot) => ({ time: slot.time, quantity: Number(slot.quantity) })),
+      weekdays,
     }
+    details.weekdays = [...details.weekdays].sort((a, b) => a - b)
     const fingerprint = JSON.stringify(details)
     if (action.current?.fingerprint !== fingerprint)
       action.current = { id: crypto.randomUUID(), fingerprint }
@@ -158,7 +166,7 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
       if (!response.ok) {
         throw new Error(
           response.status === 400
-            ? 'Check the start date, unique daily times and quantities. Use whole or half tablets, or whole capsules.'
+            ? 'Check the start date, selected weekdays, unique times and quantities. Use whole or half tablets, or whole capsules.'
             : response.status === 401
               ? 'Your session ended. Sign in again to save your schedule.'
               : response.status === 409
@@ -178,7 +186,8 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
       setAttempted(false)
       setMedicineId('')
       setTimes([{ key: rowKey.current++, time: '', quantity: '' }])
-      setMessage('Daily schedule saved.')
+      setWeekdays([0, 1, 2, 3, 4, 5, 6])
+      setMessage('Schedule saved.')
       await load()
     } catch (failure) {
       if (mounted.current)
@@ -204,7 +213,7 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
         <p role="status" className="sr-only">
           {intakeMessage}
         </p>
-        {loading && <p role="status">Loading your daily doses...</p>}
+        {loading && <p role="status">Loading your scheduled doses...</p>}
         {loadError && (
           <p role="alert">Today could not be refreshed. Connect to the internet and retry.</p>
         )}
@@ -266,7 +275,7 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
                 })}
               </ul>
             ) : (
-              <p>No daily doses scheduled for today.</p>
+              <p>No doses scheduled for today.</p>
             )}
           </>
         )}
@@ -283,17 +292,19 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
         </Button>
       </section>
       {schedules.length > 0 && (
-        <section aria-labelledby="daily-heading" className="space-y-3">
-          <h2 id="daily-heading" className="text-xl font-semibold">
-            Daily schedules
+        <section aria-labelledby="schedule-list-heading" className="space-y-3">
+          <h2 id="schedule-list-heading" className="text-xl font-semibold">
+            Saved schedules
           </h2>
           <ul className="space-y-4">
             {schedules.map((schedule) => (
               <li key={schedule.id} className="[overflow-wrap:anywhere]">
                 <h3 className="font-semibold">{name(schedule.medicineId)}</h3>
                 <p>
-                  Daily at{' '}
-                  {schedule.times.map((slot) => `${slot.time} (${slot.quantity})`).join(', ')} ·
+                  {(schedule.weekdays ?? [0, 1, 2, 3, 4, 5, 6]).length === 7
+                    ? 'Daily'
+                    : `On ${(schedule.weekdays ?? []).map((day) => WEEKDAY_NAMES[day]).join(', ')}`}{' '}
+                  at {schedule.times.map((slot) => `${slot.time} (${slot.quantity})`).join(', ')} ·
                   Starts {schedule.startDate}
                 </p>
                 <p className="text-sm text-muted-foreground">
@@ -307,16 +318,16 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
       )}
       <section aria-labelledby="schedule-heading" className="space-y-5">
         <h2 id="schedule-heading" className="text-xl font-semibold">
-          Set daily doses
+          Set dose schedule
         </h2>
         <p className="text-sm text-muted-foreground">
           Save online. Starts at the next configured time after confirmation. Earlier times today
           are not added.
         </p>
         {medicines.length === 0 ? (
-          <p>Add a medicine below to set its daily doses.</p>
+          <p>Add a medicine below to set its schedule.</p>
         ) : !loading && !loadError && available.length === 0 ? (
-          <p>Your medicines already have daily schedules.</p>
+          <p>Your medicines already have schedules.</p>
         ) : (
           <form onSubmit={save} aria-busy={saving} className="space-y-5">
             <fieldset
@@ -324,7 +335,7 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
               className="space-y-5 disabled:opacity-70"
               aria-describedby={error ? 'schedule-error' : undefined}
             >
-              <legend className="sr-only">Daily dose details</legend>
+              <legend className="sr-only">Dose schedule details</legend>
               <div className="space-y-2">
                 <label htmlFor="schedule-medicine" className="block font-medium">
                   Medicine
@@ -344,6 +355,38 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
                   ))}
                 </select>
               </div>
+              <fieldset
+                id="schedule-weekdays"
+                aria-describedby={attempted && weekdays.length === 0 ? 'weekdays-error' : undefined}
+                className="space-y-2"
+              >
+                <legend className="font-medium">Repeat on</legend>
+                <div className="flex flex-wrap gap-3">
+                  {WEEKDAY_NAMES.map((day, index) => (
+                    <label key={day} className="flex min-h-11 items-center gap-2">
+                      <input
+                        id={`schedule-weekday-${index}`}
+                        type="checkbox"
+                        checked={weekdays.includes(index)}
+                        aria-invalid={attempted && weekdays.length === 0}
+                        onChange={() =>
+                          setWeekdays((value) =>
+                            value.includes(index)
+                              ? value.filter((item) => item !== index)
+                              : [...value, index],
+                          )
+                        }
+                      />
+                      {day}
+                    </label>
+                  ))}
+                </div>
+                {attempted && weekdays.length === 0 && (
+                  <p id="weekdays-error" role="alert">
+                    Choose at least one weekday.
+                  </p>
+                )}
+              </fieldset>
               <div className="space-y-2">
                 <label htmlFor="schedule-start" className="block font-medium">
                   Start date in Istanbul
@@ -367,7 +410,7 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
                 <div key={slot.key} className="space-y-3 border-t pt-4">
                   <div className="space-y-2">
                     <label htmlFor={`dose-time-${slot.key}`} className="block font-medium">
-                      Daily time {index + 1}
+                      Time {index + 1}
                     </label>
                     <input
                       id={`dose-time-${slot.key}`}
@@ -431,7 +474,7 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
                     ])
                   }
                 >
-                  Add daily time
+                  Add time
                 </Button>
               )}
             </fieldset>
@@ -446,11 +489,7 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
               disabled={saving || loading || loadError}
               aria-describedby={error ? 'schedule-error' : undefined}
             >
-              {saving
-                ? 'Saving schedule...'
-                : error
-                  ? 'Retry saving schedule'
-                  : 'Save daily schedule'}
+              {saving ? 'Saving schedule...' : error ? 'Retry saving schedule' : 'Save schedule'}
             </Button>
           </form>
         )}

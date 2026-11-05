@@ -27,6 +27,10 @@ test('daily setup requires authentication and rejects malformed times, dates and
     },
     { startDate: '2026-02-30' },
     { medicineId: 'invalid' },
+    { weekdays: [] },
+    { weekdays: [1, 1] },
+    { weekdays: [7] },
+    { endDate: '2026-11-03' },
   ])
     await assert.rejects(() => operations.save({ ...input, ...patch }), /validation/)
   const anonymous = createScheduleOperations({
@@ -36,6 +40,43 @@ test('daily setup requires authentication and rejects malformed times, dates and
     send: async () => assert.fail('unauthorized'),
   })
   await assert.rejects(() => anonymous.save(input), /unauthorized/)
+})
+
+test('selected weekdays find the next dose across the week and retain the inclusive end day', async () => {
+  const schedule = {
+    ...input,
+    startDate: '2026-11-08',
+    weekdays: [1],
+    endDate: '2026-11-09',
+    times: [{ time: '09:00', quantity: 1 }],
+    confirmedAt: '2026-11-07T21:00:00.000Z',
+  }
+  const operations = createScheduleOperations({
+    requireUser: async () => ({ id: 'google:alice' }),
+    send: async () => ({ schedules: [schedule], records: [] }),
+    now: () => new Date('2026-11-08T12:00:00.000Z'),
+  })
+  const today = (await operations.snapshot()).today
+  assert.deepEqual(today.doses, [])
+  assert.equal(today.next.dueAt, '2026-11-09T06:00:00.000Z')
+  assert.equal(today.next.id, `${schedule.id}:2026-11-09T06:00:00.000Z`)
+  const later = createScheduleOperations({
+    requireUser: async () => ({ id: 'google:alice' }),
+    send: async () => ({ schedules: [schedule], records: [] }),
+    now: () => new Date('2026-11-10T12:00:00.000Z'),
+  })
+  assert.equal((await later.history('2026-11-09'))[0].dueAt, '2026-11-09T06:00:00.000Z')
+  assert.deepEqual(await later.history('2026-11-10'), [])
+
+  const noEnd = { ...schedule, endDate: null }
+  const afterMonday = createScheduleOperations({
+    requireUser: async () => ({ id: 'google:alice' }),
+    send: async () => ({ schedules: [noEnd], records: [] }),
+    now: () => new Date('2026-11-09T07:00:00.000Z'),
+  })
+  const nextWeek = (await afterMonday.snapshot()).today.next
+  assert.equal(nextWeek.dueAt, '2026-11-16T06:00:00.000Z')
+  assert.equal(nextWeek.id, `${schedule.id}:2026-11-16T06:00:00.000Z`)
 })
 
 test('history reads an earlier Istanbul day with elapsed explicit and unlogged outcomes only', async () => {
