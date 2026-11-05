@@ -314,6 +314,7 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
     ...medicine,
     id: '3b57b05e-6d43-4c7a-9da8-16d9f1d36c11',
     label: 'Intake fixture',
+    unit: 'capsule',
   }
   assert.equal((await save(intakeMedicine)).status, 200)
   const todayDate = istanbulDate(new Date())
@@ -342,7 +343,7 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
     scheduleId: intakeSchedule.id,
     dueAt,
     takenAt: new Date().toISOString(),
-    quantity: 0.5,
+    quantity: 1,
     ownerId: valid().sub,
   }
   const markTaken = (headers, origin = base, body = intake) =>
@@ -375,12 +376,67 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
     })
   assert.equal((await correct({})).status, 401)
   assert.equal((await correct(alice, 'https://other.example')).status, 403)
-  const correctedResponse = await correct(alice)
+  const amendment = {
+    ...correction,
+    actionId: 'f8f3755e-4e37-492f-80e9-9c6e036da98b',
+    takenAt: new Date(Date.parse(dueAt) - 15 * 60_000).toISOString(),
+    quantity: 1,
+    outcome: 'Taken',
+  }
+  const amendedResponse = await correct(alice, base, amendment)
+  assert.equal(amendedResponse.status, 200)
+  const amended = await amendedResponse.json()
+  assert.equal(amended.record.outcome, 'Taken')
+  assert.equal(amended.record.revision, 1)
+  assert.equal(amended.record.takenAt, amendment.takenAt)
+  assert.equal(amended.record.quantity, 1)
+  assert.deepEqual(await (await correct(alice, base, amendment)).json(), amended)
+  assert.equal((await correct(alice, base, { ...amendment, quantity: 2 })).status, 409)
+  assert.equal(
+    (
+      await correct(alice, base, {
+        ...amendment,
+        actionId: '7b00f7aa-8249-4fd2-bdae-96ec8081a0ce',
+        expectedRevision: 0,
+      })
+    ).status,
+    409,
+  )
+  assert.equal((await correct(bob, base, amendment)).status, 400)
+  assert.equal(
+    (
+      await correct(alice, base, {
+        ...amendment,
+        actionId: '009aaa6c-7e64-47a6-9e1f-431218960248',
+        takenAt: new Date(Date.now() + 60_000).toISOString(),
+        expectedRevision: 1,
+      })
+    ).status,
+    400,
+  )
+  assert.equal(
+    (
+      await correct(alice, base, {
+        ...amendment,
+        actionId: '0e9aace9-8c24-4fd0-b401-4258806b4357',
+        quantity: 0.5,
+        expectedRevision: 1,
+      })
+    ).status,
+    400,
+  )
+  const unchangedSchedule = await (await request('/api/schedules', { headers: alice })).json()
+  assert.equal(
+    unchangedSchedule.schedules.find((entry) => entry.id === intakeSchedule.id).times[0].quantity,
+    1,
+  )
+  const flipToSkipped = { ...correction, expectedRevision: 1 }
+  const correctedResponse = await correct(alice, base, flipToSkipped)
   assert.equal(correctedResponse.status, 200)
   const corrected = await correctedResponse.json()
   assert.equal(corrected.record.outcome, 'Skipped')
-  assert.equal(corrected.record.revision, 1)
-  assert.deepEqual(await (await correct(alice)).json(), corrected)
+  assert.equal(corrected.record.revision, 2)
+  assert.deepEqual(await (await correct(alice, base, flipToSkipped)).json(), corrected)
   const skipMedicine = {
     ...intakeMedicine,
     id: '9c2c50d8-c9e9-4635-90da-28f5c6ea177a',
@@ -458,7 +514,7 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
   const current = await (await request('/api/schedules', { headers: alice })).json()
   const currentIntake = current.today.doses.find((dose) => dose.scheduleId === intake.scheduleId)
   assert.equal(currentIntake?.status, 'Skipped')
-  assert.equal(currentIntake?.record.revision, 1)
+  assert.equal(currentIntake?.record.revision, 2)
   assert.equal(
     current.today.doses.find((dose) => dose.scheduleId === skipSchedule.id)?.status,
     'Skipped',

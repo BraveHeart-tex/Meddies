@@ -128,7 +128,7 @@ export function parseDoseCorrection(value: unknown): DoseCorrectionInput {
     (input.expectedRevision as number) < 0 ||
     (input.expectedOutcome !== 'Taken' && input.expectedOutcome !== 'Skipped') ||
     (input.outcome !== 'Taken' && input.outcome !== 'Skipped') ||
-    input.expectedOutcome === input.outcome
+    (input.expectedOutcome === input.outcome && input.outcome !== 'Taken')
   )
     throw new MedicineError('validation', 400)
   if (input.outcome === 'Taken') {

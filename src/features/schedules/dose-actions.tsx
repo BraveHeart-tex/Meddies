@@ -23,9 +23,11 @@ export function DoseActions({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [correcting, setCorrecting] = useState(false)
+  const [editingDose, setEditingDose] = useState<DoseOccurrence | null>(null)
   const locked = useRef(false)
   const retryAction = useRef<{ fingerprint: string; id: string } | null>(null)
   const correctionTrigger = useRef<HTMLButtonElement>(null)
+  const editTrigger = useRef<HTMLButtonElement>(null)
   const pinnedCorrection = useRef<{ outcome: 'Taken' | 'Skipped'; revision: number } | null>(null)
 
   function edit(outcome: Outcome | null) {
@@ -44,7 +46,7 @@ export function DoseActions({
         : 'Save could not be confirmed. Retry with the same scheduled dose or refresh Today.'
     try {
       const correctingExisting =
-        correcting && (dose.status === 'Taken' || dose.status === 'Skipped')
+        pinnedCorrection.current !== null && (dose.status === 'Taken' || dose.status === 'Skipped')
       const currentRevision = pinnedCorrection.current?.revision ?? 0
       const expectedOutcome = pinnedCorrection.current?.outcome ?? outcome
       const fingerprint = JSON.stringify({
@@ -108,9 +110,14 @@ export function DoseActions({
         onRecorded(record)
         retryAction.current = null
         setCorrecting(false)
+        const wasEditingIntake = editingDose !== null
+        setEditingDose(null)
         pinnedCorrection.current = null
         setEditor(null)
-        requestAnimationFrame(() => correctionTrigger.current?.focus())
+        requestAnimationFrame(() => {
+          if (wasEditingIntake && record.outcome === 'Taken') editTrigger.current?.focus()
+          else correctionTrigger.current?.focus()
+        })
       } else {
         setError(retry)
       }
@@ -125,22 +132,56 @@ export function DoseActions({
   return (
     <div className="space-y-2">
       {(dose.status === 'Taken' || dose.status === 'Skipped') && !correcting && (
-        <button
-          ref={correctionTrigger}
-          type="button"
-          className="min-h-11 rounded-md border px-3 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          aria-label={`Correct outcome for ${medicine.label} at ${doseClock(dose.dueAt)}`}
-          onClick={() => {
-            if (dose.status === 'Taken' || dose.status === 'Skipped')
-              pinnedCorrection.current = {
-                outcome: dose.status,
-                revision: dose.record.revision ?? 0,
-              }
-            setCorrecting(true)
-          }}
-        >
-          Correct outcome
-        </button>
+        <>
+          {(dose.status === 'Taken' || editingDose !== null) &&
+            (editingDose ?? dose).status === 'Taken' && (
+              <TakenForm
+                dose={editingDose ?? dose}
+                medicine={medicine}
+                open={editingDose !== null}
+                blocked={false}
+                saving={saving}
+                error={editingDose ? error : ''}
+                editing
+                onTrigger={(node) => {
+                  editTrigger.current = node
+                }}
+                onOpen={(open) => {
+                  setError('')
+                  if (open && dose.status === 'Taken') {
+                    setEditingDose(dose)
+                    pinnedCorrection.current = {
+                      outcome: 'Taken',
+                      revision: dose.record.revision ?? 0,
+                    }
+                  }
+                  if (!open) {
+                    retryAction.current = null
+                    pinnedCorrection.current = null
+                    setEditingDose(null)
+                  }
+                }}
+                onSubmit={(details) => void submit('Taken', details)}
+              />
+            )}
+          {editingDose === null && (dose.status === 'Taken' || dose.status === 'Skipped') && (
+            <button
+              ref={correctionTrigger}
+              type="button"
+              className="min-h-11 rounded-md border px-3 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              aria-label={`Correct outcome for ${medicine.label} at ${doseClock(dose.dueAt)}`}
+              onClick={() => {
+                pinnedCorrection.current = {
+                  outcome: dose.status,
+                  revision: dose.record.revision ?? 0,
+                }
+                setCorrecting(true)
+              }}
+            >
+              Correct outcome
+            </button>
+          )}
+        </>
       )}
       {correcting && (dose.status === 'Taken' || dose.status === 'Skipped') && (
         <p className="text-sm">Change {dose.status.toLowerCase()} to:</p>

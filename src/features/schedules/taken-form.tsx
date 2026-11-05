@@ -29,6 +29,8 @@ export function TakenForm({
   error,
   onOpen,
   onSubmit,
+  onTrigger,
+  editing = false,
 }: {
   dose: DoseOccurrence
   medicine: Medicine
@@ -38,20 +40,32 @@ export function TakenForm({
   error: string
   onOpen: (open: boolean) => void
   onSubmit: (details: { takenAt: TakenDoseInput['takenAt'] | null; quantity: number }) => void
+  onTrigger?: (trigger: HTMLButtonElement | null) => void
+  editing?: boolean
 }) {
   const id = useId()
   const trigger = useRef<HTMLButtonElement>(null)
   const [takenAt, setTakenAt] = useState('')
-  const [quantity, setQuantity] = useState(String(dose.quantity))
+  const [quantity, setQuantity] = useState(
+    String(dose.status === 'Taken' ? dose.record.quantity : dose.quantity),
+  )
   const step = medicine.unit === 'capsule' ? 1 : 0.5
 
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     onSubmit({
-      takenAt: new Date(`${takenAt}+03:00`).toJSON(),
+      takenAt:
+        takenAt === originalLocalTime && dose.status === 'Taken'
+          ? dose.record.takenAt
+          : new Date(`${takenAt}+03:00`).toJSON(),
       quantity: Number(quantity),
     })
   }
+
+  const originalLocalTime =
+    dose.status === 'Taken'
+      ? `${istanbulDate(new Date(dose.record.takenAt))}T${doseClock(dose.record.takenAt)}`
+      : ''
 
   function close() {
     onOpen(false)
@@ -61,23 +75,29 @@ export function TakenForm({
   return (
     <>
       <Button
-        ref={trigger}
+        ref={(node) => {
+          trigger.current = node
+          onTrigger?.(node)
+        }}
         type="button"
         variant="outline"
         className="min-h-11"
         aria-expanded={open}
         aria-controls={id}
-        aria-label={`Mark ${medicine.label} at ${doseClock(dose.dueAt)} as taken`}
+        aria-label={`${editing ? `Edit intake for ${medicine.label} at ${doseClock(dose.dueAt)}` : `Mark ${medicine.label} at ${doseClock(dose.dueAt)} as taken`}`}
         disabled={saving || blocked}
         onClick={() => {
-          if (!takenAt) {
+          if (editing && dose.status === 'Taken') {
+            setTakenAt(originalLocalTime)
+            setQuantity(String(dose.record.quantity))
+          } else if (!takenAt) {
             const now = new Date()
             setTakenAt(`${istanbulDate(now)}T${doseClock(now.toISOString())}`)
           }
           onOpen(!open)
         }}
       >
-        Mark as taken
+        {editing ? 'Edit intake' : 'Mark as taken'}
       </Button>
       <form
         id={id}
@@ -124,7 +144,7 @@ export function TakenForm({
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="submit" className="min-h-11" disabled={saving}>
-              {saving ? 'Saving intake...' : 'Save taken dose'}
+              {saving ? 'Saving intake...' : editing ? 'Save intake changes' : 'Save taken dose'}
             </Button>
             <Button
               type="button"

@@ -98,6 +98,55 @@ export async function run({ origin, browser, artifactDir }) {
   assert.match(page, /Back to Today/)
   await browser.run('screenshot', `${artifactDir}/dose-history.png`)
 
+  browser.step('edit actual intake details without changing the schedule')
+  const actualTimeSelector = 'ol li:first-child p:nth-of-type(4) time'
+  const originalTakenAt = (await browser.run('get', 'attr', actualTimeSelector, 'datetime')).trim()
+  await browser.run('find', 'text', 'Edit intake', 'click', '--exact')
+  assert.equal((await browser.run('get', 'value', 'input[type=number]')).trim(), '0.5')
+  assert.ok((await browser.run('get', 'value', 'input[type=datetime-local]')).trim())
+  await browser.run(
+    'eval',
+    "(() => { const input = document.querySelector('input[type=number]'); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; setter.call(input, '1.5'); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); })()",
+  )
+  await browser.run('find', 'text', 'Save intake changes', 'click', '--exact')
+  await browser.run('wait', '--text', 'quantity 1.5 tablet')
+  assert.match(
+    await browser.run('eval', "document.querySelector('ol li:first-child').innerText"),
+    /1\.5 tablet/,
+  )
+  assert.equal(
+    (await browser.run('get', 'attr', actualTimeSelector, 'datetime')).trim(),
+    originalTakenAt,
+  )
+  browser.step('edit actual time while preserving quantity')
+  await browser.run('find', 'text', 'Edit intake', 'click', '--exact')
+  await browser.run(
+    'eval',
+    `(() => { const input = document.querySelector('input[type=datetime-local]'); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; setter.call(input, '${historyDate}T12:00'); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); })()`,
+  )
+  await browser.run('find', 'text', 'Save intake changes', 'click', '--exact')
+  await browser.run('wait', '--text', '12:00 PM')
+  assert.match(
+    await browser.run('eval', "document.querySelector('ol li:first-child').innerText"),
+    /1\.5 tablet/,
+  )
+  assert.equal(
+    (await browser.run('get', 'attr', actualTimeSelector, 'datetime')).trim(),
+    `${historyDate}T09:00:00.000Z`,
+  )
+  await browser.run('screenshot', `${artifactDir}/dose-history-edited.png`)
+  await browser.run('reload')
+  await browser.run('wait', '--text', 'History Fixture Medicine')
+  await browser.run('wait', '--text', 'quantity 1.5 tablet')
+  assert.match(
+    await browser.run('eval', "document.querySelector('ol li:first-child').innerText"),
+    /1\.5 tablet/,
+  )
+  assert.equal(
+    (await browser.run('get', 'attr', actualTimeSelector, 'datetime')).trim(),
+    `${historyDate}T09:00:00.000Z`,
+  )
+
   browser.step('correct a Taken history outcome to Skipped')
   await browser.run('find', 'text', 'Correct outcome', 'click', '--exact')
   await browser.run('find', 'text', 'Mark as skipped', 'click', '--exact')

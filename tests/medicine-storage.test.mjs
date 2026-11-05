@@ -561,6 +561,25 @@ test('D1 correction ledger flips outcomes, replays exact actions and rejects sta
   const winner = competingResults[0].status === 'fulfilled' ? second : competing
   assert.equal((await operations.correctOutcome(winner)).revision, 2)
   assert.equal((await operations.history('2026-11-04'))[0].record.takenAt, winner.takenAt)
+  const amended = {
+    ...occurrence,
+    actionId: randomUUID(),
+    expectedRevision: 2,
+    expectedOutcome: 'Taken',
+    outcome: 'Taken',
+    takenAt: winner.takenAt,
+    quantity: 1.5,
+  }
+  const amendedResults = await Promise.all([
+    operations.correctOutcome(amended),
+    operations.correctOutcome(amended),
+  ])
+  assert.deepEqual(
+    amendedResults.map((record) => record.revision),
+    [3, 3],
+  )
+  assert.equal((await operations.history('2026-11-04'))[0].record.quantity, 1.5)
+  assert.equal((await operations.snapshot()).schedules[0].times[0].quantity, 1)
   assert.equal((await operations.correctOutcome(first)).revision, 1)
   await assert.rejects(
     () => operations.correctOutcome({ ...second, actionId: randomUUID() }),
