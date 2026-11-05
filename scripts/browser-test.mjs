@@ -89,6 +89,44 @@ const runBrowser = (browserArgs, { cleanup = false } = {}) => {
     throw new Error(`agent-browser ${browserArgs[0]} failed (${error.code ?? 'non-zero exit'})`)
   }
 }
+const expireSession = async () => {
+  const expiredToken = await encode({
+    secret,
+    salt: 'authjs.session-token',
+    token: {
+      sub: 'google:browser-harness',
+      email: 'approved@example.test',
+      version: '1',
+      deadline: Math.floor(Date.now() / 1000) - 1,
+    },
+    maxAge: 900,
+  })
+  const expiredState = resolve(artifactDir, 'expired-session-state.json')
+  await writeFile(
+    expiredState,
+    JSON.stringify({
+      cookies: [
+        {
+          name: 'authjs.session-token',
+          value: expiredToken,
+          domain: 'localhost',
+          path: '/',
+          expires: Math.floor(Date.now() / 1000) + 900,
+          httpOnly: true,
+          secure: false,
+          sameSite: 'Lax',
+        },
+      ],
+      origins: [],
+    }),
+    { mode: 0o600 },
+  )
+  try {
+    runBrowser(['state', 'load', expiredState])
+  } finally {
+    await unlink(expiredState).catch(() => {})
+  }
+}
 const browser = {
   run: (...browserArgs) => runBrowser(browserArgs),
   step: (name) => {
@@ -96,6 +134,7 @@ const browser = {
   },
   open: (url) => runBrowser(['open', url]),
   setTime: (selector, value) => setTime(browser.run, selector, value),
+  expireSession,
   snapshot: () => runBrowser(['snapshot']),
   close: () => {
     if (browserStarted)

@@ -37,8 +37,14 @@ test('selected weekdays stops immediately and reports an empty time readback', a
     join(bin, 'agent-browser'),
     `#!/usr/bin/env node
 const args = process.argv.slice(4)
-require('node:fs').appendFileSync(process.env.BROWSER_TEST_LOG, JSON.stringify(args) + '\\n')
-if (args[0] === 'get') console.log('')
+const fs = require('node:fs')
+const log = process.env.BROWSER_TEST_LOG
+fs.appendFileSync(log, JSON.stringify(args) + '\\n')
+if (args[0] === 'get') {
+  const preceding = fs.readFileSync(log, 'utf8').trim().split('\\n').at(-2)
+  const [, script] = JSON.parse(preceding)
+  console.log(args[2] === '#schedule-start' ? script.match(/"([0-9]{4}-[0-9]{2}-[0-9]{2})"/)[1] : '')
+}
 `,
     { mode: 0o700 },
   )
@@ -69,7 +75,9 @@ if (args[0] === 'get') console.log('')
     result.stderr,
     /FAIL step "journey setup: Time input #dose-time-0: expected "23:59", actual ""/,
   )
-  const readback = commands.findIndex(([command]) => command === 'get')
+  const readback = commands.findIndex(
+    ([command, , selector]) => command === 'get' && selector === '#dose-time-0',
+  )
   assert.ok(readback > 0)
   assert.equal(commands[readback - 1][0], 'eval')
   assert.deepEqual(commands[readback], ['get', 'value', '#dose-time-0'])

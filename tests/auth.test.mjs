@@ -107,6 +107,17 @@ test('anonymous requests cannot read the account; entry offers private Google si
   assert.match(await page.text(), /Continue with Google/)
 })
 
+test('private deep links offer sign-in while retaining the requested destination', async () => {
+  for (const path of ['/medications', '/history?date=2026-10-30', '/settings']) {
+    const page = await request(path)
+    const html = await page.text()
+    const location = page.headers.get('location')
+    const signInTarget = location || html
+    assert.ok(signInTarget.includes(`returnTo=${encodeURIComponent(path)}`), path)
+    assert.doesNotMatch(html, /Save medicine|Correct outcome|Sign out/)
+  }
+})
+
 test('session reads preserve provider identity and absolute expiry without disclosing email', async () => {
   const claims = valid()
   const headers = { cookie: await cookie(claims) }
@@ -126,8 +137,13 @@ test('session reads preserve provider identity and absolute expiry without discl
   assert(!JSON.stringify(session).includes('approved@example.test'))
   const page = await request('/', { headers })
   const html = await page.text()
-  assert.match(html, /Welcome back/)
-  assert.match(html, /Sign out/)
+  assert.match(html, /aria-current="page"[^>]*>Today<\/a>/)
+  assert.match(html, /href="\/medications"/)
+  assert.match(html, /href="\/history"/)
+  assert.match(html, /href="\/settings"/)
+  const settings = await request('/settings', { headers })
+  assert.equal(settings.status, 200)
+  assert.match(await settings.text(), /Sign out/)
   assert(!html.includes('approved@example.test'))
 })
 

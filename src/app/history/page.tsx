@@ -7,6 +7,7 @@ import { schedules } from '@/features/schedules/server'
 import { isScheduleDate, istanbulDate, SCHEDULE_TIMEZONE } from '@/features/schedules/contract'
 import type { DoseOccurrence } from '@/features/schedules/contract'
 import { HistoryDoseActions } from '@/features/schedules/history-dose-actions'
+import { AppShell } from '@/components/layout/app-shell'
 
 function displayTime(instant: string, includeDate = false) {
   const options: Intl.DateTimeFormatOptions = includeDate
@@ -26,6 +27,13 @@ export default async function HistoryPage({
 }: {
   searchParams: Promise<{ date?: string | string[] }>
 }) {
+  const query = await searchParams
+  const today = istanbulDate(new Date())
+  const requestedDate = typeof query.date === 'string' ? query.date : today
+  const returnDate =
+    typeof query.date === 'string' && isScheduleDate(query.date) && query.date <= today
+      ? query.date
+      : ''
   const configured = authConfigured()
   const session = configured ? await auth() : null
   if (!configured || !session?.user?.id) {
@@ -34,16 +42,17 @@ export default async function HistoryPage({
         <p>
           {configured ? 'Sign in to view dose history.' : 'Sign-in is temporarily unavailable.'}
         </p>
-        <Link className="underline" href="/">
-          Home
+        <Link
+          className="underline"
+          href={`/?returnTo=${encodeURIComponent(returnDate ? `/history?date=${returnDate}` : '/history')}`}
+        >
+          Sign in
         </Link>
       </main>
     )
   }
 
-  const query = await searchParams
-  const today = istanbulDate(new Date())
-  const date = typeof query.date === 'string' ? query.date : today
+  const date = requestedDate
   const validDate = typeof query.date !== 'object' && isScheduleDate(date) && date <= today
   let result:
     | { status: 'loaded'; doses: DoseOccurrence[]; medicines: Map<string, Medicine> }
@@ -68,21 +77,21 @@ export default async function HistoryPage({
   }
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-lg flex-col gap-6 px-6 py-12">
-      <SessionBoundary expires={session.expires}>
+    <SessionBoundary expires={session.expires}>
+      <AppShell>
         <header className="space-y-2">
           <h1 className="text-3xl font-semibold tracking-tight">Dose history</h1>
           <Link className="text-sm underline" href="/">
             Back to Today
           </Link>
         </header>
-        <form action="/history" method="get" className="flex items-end gap-3">
-          <div className="flex-1 space-y-2">
+        <form action="/history" method="get" className="flex min-w-0 items-end gap-3">
+          <div className="min-w-0 flex-1 space-y-2">
             <label className="block text-sm font-medium" htmlFor="history-date">
               Choose a date
             </label>
             <input
-              className="h-11 w-full rounded-md border px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              className="h-11 min-w-0 w-full rounded-md border px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               id="history-date"
               name="date"
               type="date"
@@ -122,7 +131,7 @@ export default async function HistoryPage({
             {result.doses.map((dose) => {
               const medicine = result.medicines.get(dose.medicineId)
               return (
-                <li key={dose.id} className="space-y-1 p-4">
+                <li key={dose.id} className="space-y-1 p-4 [overflow-wrap:anywhere]">
                   <p className="font-medium">
                     {medicine?.label ?? 'Medicine'} - {quantityLabel(dose.quantity, medicine)}
                   </p>
@@ -135,7 +144,7 @@ export default async function HistoryPage({
             })}
           </ol>
         )}
-      </SessionBoundary>
-    </main>
+      </AppShell>
+    </SessionBoundary>
   )
 }

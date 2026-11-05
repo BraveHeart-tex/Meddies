@@ -9,6 +9,15 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 export const metadata: Metadata = {
   title: 'Meddies',
   description: 'Your private medication routine.',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Meddies' },
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover' as const,
+  themeColor: '#f7f5ed',
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {

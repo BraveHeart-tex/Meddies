@@ -52,13 +52,24 @@ export async function run({ origin, browser, request, artifactDir }) {
   browser.step('open Today and show skip confirmation with keyboard')
   await browser.open(origin)
   await browser.run('wait', '--text', 'Today')
-  const trigger = 'button[aria-label^="Mark Browser Harness Medicine"][aria-label$="as skipped"]'
+  const trigger = 'button[aria-label^="Record dose for Browser Harness Medicine"]'
   await browser.run('wait', trigger)
   await browser.run('focus', trigger)
   await browser.run('press', 'Enter')
+  await browser.run('wait', '--text', 'Mark as skipped')
+  await browser.run('find', 'text', 'Mark as skipped', 'click', '--exact')
   await browser.run('wait', '--text', 'Confirm skipped')
   const confirmation = browser.snapshot()
   assert.match(confirmation, /Confirm skipping Browser Harness Medicine/)
+  assert.match(confirmation, /dialog/)
+  await browser.run('press', 'Escape')
+  const focusedLabel = JSON.parse(
+    (await browser.run('eval', 'document.activeElement.getAttribute("aria-label")')).trim(),
+  )
+  assert.equal(focusedLabel, (await browser.run('get', 'attr', trigger, 'aria-label')).trim())
+  await browser.run('press', 'Enter')
+  await browser.run('find', 'text', 'Mark as skipped', 'click', '--exact')
+  await browser.run('wait', '--text', 'Confirm skipped')
   await browser.run('press', 'Shift+Tab')
   await browser.run('press', 'Enter')
   browser.step('confirm skipped outcome')
@@ -75,14 +86,27 @@ export async function run({ origin, browser, request, artifactDir }) {
   )
 
   browser.step('correct the Today outcome back to Taken')
+  await browser.run('find', 'text', 'Review dose', 'click', '--exact')
   await browser.run('find', 'text', 'Correct outcome', 'click', '--exact')
   await browser.run('find', 'text', 'Mark as taken', 'click', '--exact')
   await browser.run('wait', '--text', 'Save taken dose')
   await browser.run('find', 'text', 'Save taken dose', 'click', '--exact')
   await browser.run('wait', '--text', 'Taken')
-  assert.match(await browser.run('eval', "document.querySelector('li').innerText"), /Taken/)
+  assert.match(
+    await browser.run(
+      'eval',
+      "document.querySelector('main ul[aria-label] li[data-dose-id]').innerText",
+    ),
+    /Taken/,
+  )
   await browser.run('screenshot', `${artifactDir}/today-corrected.png`)
   await browser.run('reload')
   await browser.run('wait', '--text', 'Taken')
-  assert.match(await browser.run('eval', "document.querySelector('li').innerText"), /Taken/)
+  assert.match(
+    await browser.run(
+      'eval',
+      "document.querySelector('main ul[aria-label] li[data-dose-id]').innerText",
+    ),
+    /Taken/,
+  )
 }

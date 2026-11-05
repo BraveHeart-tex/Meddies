@@ -8,12 +8,19 @@ export function SessionBoundary({ expires, children }: { expires: string; childr
   useEffect(() => {
     const expire = () => {
       setExpired(true)
-      window.location.replace('/?reason=expired')
+      const current = `${window.location.pathname}${window.location.search}`
+      const knownTarget = ['/', '/history', '/medications', '/settings'].includes(
+        window.location.pathname,
+      )
+      window.location.replace(
+        `/?reason=expired&returnTo=${encodeURIComponent(knownTarget ? current : '/')}`,
+      )
     }
     const deadline = new Date(expires).getTime()
     const timer = window.setTimeout(expire, Math.max(0, deadline - Date.now()))
     const controller = new AbortController()
     async function check() {
+      if (document.visibilityState !== 'visible') return
       if (Date.now() >= deadline) return expire()
       try {
         const response = await fetch('/api/session', {
@@ -26,10 +33,14 @@ export function SessionBoundary({ expires, children }: { expires: string; childr
       }
     }
     window.addEventListener('focus', check)
+    window.addEventListener('pageshow', check)
+    document.addEventListener('visibilitychange', check)
     return () => {
       clearTimeout(timer)
       controller.abort()
       window.removeEventListener('focus', check)
+      window.removeEventListener('pageshow', check)
+      document.removeEventListener('visibilitychange', check)
     }
   }, [expires])
   return expired ? <p role="status">Your session ended. Please sign in again.</p> : children

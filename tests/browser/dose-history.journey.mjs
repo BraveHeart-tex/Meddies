@@ -70,7 +70,7 @@ export async function run({ origin, browser, artifactDir }) {
 
   browser.step('open history from the signed-in home page')
   await browser.open(origin)
-  await browser.run('wait', '--text', 'Dose history')
+  await browser.run('wait', '--text', 'Today')
   await browser.run('click', 'a[href="/history"]')
   await browser.run('wait', '--text', 'Dose history')
   browser.step('submit historical date from the keyboard')
@@ -101,6 +101,7 @@ export async function run({ origin, browser, artifactDir }) {
   browser.step('edit actual intake details without changing the schedule')
   const actualTimeSelector = 'ol li:first-child p:nth-of-type(4) time'
   const originalTakenAt = (await browser.run('get', 'attr', actualTimeSelector, 'datetime')).trim()
+  await browser.run('find', 'text', 'Review dose', 'click', '--exact')
   await browser.run('find', 'text', 'Edit intake', 'click', '--exact')
   assert.equal((await browser.run('get', 'value', 'input[type=number]')).trim(), '0.5')
   assert.ok((await browser.run('get', 'value', 'input[type=datetime-local]')).trim())
@@ -119,6 +120,7 @@ export async function run({ origin, browser, artifactDir }) {
     originalTakenAt,
   )
   browser.step('edit actual time while preserving quantity')
+  await browser.run('find', 'text', 'Review dose', 'click', '--exact')
   await browser.run('find', 'text', 'Edit intake', 'click', '--exact')
   await browser.run(
     'eval',
@@ -148,6 +150,7 @@ export async function run({ origin, browser, artifactDir }) {
   )
 
   browser.step('correct a Taken history outcome to Skipped')
+  await browser.run('find', 'text', 'Review dose', 'click', '--exact')
   await browser.run('find', 'text', 'Correct outcome', 'click', '--exact')
   await browser.run('find', 'text', 'Mark as skipped', 'click', '--exact')
   await browser.run('wait', '--text', 'Confirm skipped')

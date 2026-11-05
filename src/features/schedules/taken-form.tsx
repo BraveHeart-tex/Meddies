@@ -29,7 +29,6 @@ export function TakenForm({
   error,
   onOpen,
   onSubmit,
-  onTrigger,
   editing = false,
 }: {
   dose: DoseOccurrence
@@ -40,7 +39,6 @@ export function TakenForm({
   error: string
   onOpen: (open: boolean) => void
   onSubmit: (details: { takenAt: TakenDoseInput['takenAt'] | null; quantity: number }) => void
-  onTrigger?: (trigger: HTMLButtonElement | null) => void
   editing?: boolean
 }) {
   const id = useId()
@@ -77,7 +75,6 @@ export function TakenForm({
       <Button
         ref={(node) => {
           trigger.current = node
-          onTrigger?.(node)
         }}
         type="button"
         variant="outline"

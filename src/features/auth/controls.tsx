@@ -4,7 +4,13 @@ import { useState } from 'react'
 import { signIn, signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 
-export function AuthControl({ signedIn = false }: { signedIn?: boolean }) {
+export function AuthControl({
+  signedIn = false,
+  returnTo = '/',
+}: {
+  signedIn?: boolean
+  returnTo?: string
+}) {
   const [pending, setPending] = useState(false)
   const [failed, setFailed] = useState(false)
 
@@ -19,7 +25,8 @@ export function AuthControl({ signedIn = false }: { signedIn?: boolean }) {
         if (response.status !== 401) throw new Error('Sign-out not confirmed')
         window.location.replace('/?reason=signed-out')
       } else {
-        const result = await signIn('google', { redirect: false, redirectTo: '/' })
+        const localTarget = returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/'
+        const result = await signIn('google', { redirect: false, redirectTo: localTarget })
         if (!result?.ok || result.error || !result.url) throw new Error('Sign-in not available')
         window.location.assign(result.url)
       }
