@@ -4,6 +4,7 @@ import { requireUser } from '@/features/auth/server'
 import { MedicineError } from '@/features/medicines/contract'
 import {
   isInstant,
+  parseDoseOutcomeRecord,
   parseSchedule,
   parseTakenDose,
   type ScheduleCommand,
@@ -15,7 +16,7 @@ async function send(command: ScheduleCommand): Promise<ScheduleResponse> {
   const data = await sendStorage('/schedules', command)
   try {
     const result: ScheduleResponse = {}
-    if (command.operation !== 'recordTaken') {
+    if (command.operation !== 'recordTaken' && command.operation !== 'recordSkipped') {
       if (!Array.isArray(data.schedules)) throw new Error('contract')
       result.schedules = data.schedules.map((value: unknown) => {
         const schedule = parseSchedule(value)
@@ -26,11 +27,16 @@ async function send(command: ScheduleCommand): Promise<ScheduleResponse> {
     }
     if (command.operation !== 'save') {
       if (!Array.isArray(data.records)) throw new Error('contract')
-      result.records = data.records.map((value: unknown) => {
-        const record = parseTakenDose(value)
-        if ((value as Record<string, unknown>).outcome !== 'Taken') throw new Error('contract')
-        return { ...record, outcome: 'Taken' }
-      })
+      result.records = data.records.map((value: unknown) =>
+        command.operation === 'list' || command.operation === 'recordTaken'
+          ? (() => {
+              const record = parseTakenDose(value)
+              if ((value as Record<string, unknown>).outcome !== 'Taken')
+                throw new Error('contract')
+              return { ...record, outcome: 'Taken' as const }
+            })()
+          : parseDoseOutcomeRecord(value),
+      )
     }
     return result
   } catch {

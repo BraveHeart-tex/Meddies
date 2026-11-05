@@ -62,3 +62,23 @@ export const doseRecords = sqliteTable(
     check('dose_records_outcome', sql`${table.outcome} = 'Taken'`),
   ],
 )
+
+export const skippedDoseRecords = sqliteTable(
+  'skipped_dose_records',
+  {
+    ownerId: text('owner_id').notNull(),
+    scheduleId: text('schedule_id').notNull(),
+    dueAt: text('due_at').notNull(),
+    recordedAt: text('recorded_at').notNull(),
+    outcome: text('outcome', { enum: ['Skipped'] }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.scheduleId, table.dueAt] }),
+    foreignKey({
+      columns: [table.ownerId, table.scheduleId],
+      foreignColumns: [dailySchedules.ownerId, dailySchedules.id],
+    }),
+    index('skipped_dose_records_owner_due').on(table.ownerId, table.dueAt),
+    check('skipped_dose_records_outcome', sql`${table.outcome} = 'Skipped'`),
+  ],
+)

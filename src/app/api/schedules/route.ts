@@ -39,5 +39,21 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  return mutate(request, async (input) => ({ record: await schedules.recordTaken(input) }))
+  return mutate(request, async (input) => {
+    if (!input || typeof input !== 'object' || Array.isArray(input))
+      throw new MedicineError('validation', 400)
+    const value = input as Record<string, unknown>
+    if (value.outcome === 'Skipped') {
+      if (
+        Object.keys(value).some(
+          (key) => !['outcome', 'scheduleId', 'dueAt', 'ownerId'].includes(key),
+        )
+      )
+        throw new MedicineError('validation', 400)
+      return { record: await schedules.recordSkipped(value) }
+    }
+    if (value.outcome !== undefined && value.outcome !== 'Taken')
+      throw new MedicineError('validation', 400)
+    return { record: await schedules.recordTaken(value) }
+  })
 }

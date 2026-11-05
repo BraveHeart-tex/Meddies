@@ -7,17 +7,24 @@ import {
   istanbulDate,
   type DailySchedule,
   type DoseOccurrence,
-  type DoseRecord,
+  type DoseOutcomeRecord,
   type Today,
 } from './contract'
 
-import { doseClock as clock, TakenForm } from './taken-form'
+import { doseClock as clock } from './taken-form'
+import { DoseActions } from './dose-actions'
+import { scheduleToday } from './occurrences'
 
 const field =
   'min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
+type Snapshot = { schedules: DailySchedule[]; records: DoseOutcomeRecord[]; today: Today | null }
+
 export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
-  const [schedules, setSchedules] = useState<DailySchedule[]>([])
-  const [today, setToday] = useState<Today | null>(null)
+  const [{ schedules, today }, setSnapshot] = useState<Snapshot>({
+    schedules: [],
+    records: [],
+    today: null,
+  })
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [medicineId, setMedicineId] = useState('')
@@ -33,7 +40,7 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
   const locked = useRef(false)
   const mounted = useRef(false)
   const generation = useRef(0)
-  const load = useCallback(async () => {
+  const load = useCallback(async (beforeApply?: (snapshot: Snapshot) => void) => {
     const current = ++generation.current
     try {
       const response = await fetch('/api/schedules', {
@@ -41,10 +48,10 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
         signal: AbortSignal.timeout(12000),
       })
       if (!response.ok) throw new Error('load')
-      const data = await response.json()
+      const data: Snapshot = await response.json()
       if (!mounted.current || current !== generation.current) return
-      setSchedules(data.schedules)
-      setToday(data.today)
+      beforeApply?.(data)
+      setSnapshot(data)
       setLoadError(false)
     } catch {
       if (mounted.current && current === generation.current) setLoadError(true)
@@ -77,23 +84,54 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
     const medicine = medicines.find((item) => item.id === dose.medicineId)
     return `${quantity} ${medicine?.unit ?? 'unit'}${quantity === 1 ? '' : 's'}`
   }
-  function showTaken(dose: DoseOccurrence, record: DoseRecord) {
-    document.getElementById(`dose-${dose.id}`)?.focus()
+  function announceOutcome(dose: DoseOccurrence, record: DoseOutcomeRecord, reconciled = false) {
+    const heading = document.getElementById(`dose-${dose.id}`)
+    const active = document.activeElement
+    if (active === document.body || heading?.parentElement?.contains(active)) heading?.focus()
+    const description = `${name(dose.medicineId)} scheduled for ${clock(dose.dueAt)}`
+    const outcome = record.outcome.toLowerCase()
     setIntakeMessage(
-      `Recorded ${name(dose.medicineId)} scheduled for ${clock(dose.dueAt)} as taken.`,
+      reconciled
+        ? `${description} was already recorded as ${outcome}.`
+        : `Recorded ${description} as ${outcome}.`,
     )
-    setToday((current) => {
-      if (!current?.doses.some((item) => item.id === dose.id)) return current
-      const doses = current.doses.map((item): DoseOccurrence =>
-        item.id === dose.id ? { ...item, status: 'Taken', record } : item,
-      )
-      const next =
-        current.next?.id === dose.id
-          ? (doses.find((item) => item.status !== 'Taken' && item.dueAt >= current.now) ?? null)
-          : current.next
-      return { ...current, doses, next }
-    })
   }
+
+  function showOutcome(dose: DoseOccurrence, record: DoseOutcomeRecord) {
+    if (!mounted.current) return
+    ++generation.current
+    announceOutcome(dose, record)
+    setSnapshot((current) => {
+      const records = [
+        ...current.records.filter(
+          (item) => item.scheduleId !== record.scheduleId || item.dueAt !== record.dueAt,
+        ),
+        record,
+      ]
+      return {
+        ...current,
+        records,
+        today: current.today
+          ? scheduleToday(current.schedules, new Date(current.today.now), records)
+          : null,
+      }
+    })
+    void load()
+  }
+
+  async function reconcileOutcome(dose: DoseOccurrence) {
+    let resolved = false
+    await load((snapshot) => {
+      const record = snapshot.records.find(
+        (item) => item.scheduleId === dose.scheduleId && item.dueAt === dose.dueAt,
+      )
+      if (!record) return
+      announceOutcome(dose, record, true)
+      resolved = true
+    })
+    return resolved
+  }
+
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (locked.current) return
@@ -131,10 +169,11 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
       const data = await response.json()
       if (!mounted.current) return
       ++generation.current
-      setSchedules((previous) => [
-        ...previous.filter((item) => item.id !== data.schedules[0].id),
-        data.schedules[0],
-      ])
+      const schedule: DailySchedule = data.schedules[0]
+      setSnapshot((current) => ({
+        ...current,
+        schedules: [...current.schedules.filter((item) => item.id !== schedule.id), schedule],
+      }))
       action.current = null
       setAttempted(false)
       setMedicineId('')
@@ -201,13 +240,20 @@ export function SchedulePanel({ medicines }: { medicines: Medicine[] }) {
                             ? ` on ${istanbulDate(new Date(dose.record.takenAt))}`
                             : ''}
                         </p>
+                      ) : dose.status === 'Skipped' ? (
+                        <p>
+                          Skipped at{' '}
+                          <time dateTime={dose.record.recordedAt}>
+                            {clock(dose.record.recordedAt)}
+                          </time>
+                        </p>
                       ) : (
                         medicine && (
-                          <TakenForm
+                          <DoseActions
                             dose={dose}
                             medicine={medicine}
-                            refresh={load}
-                            onRecorded={(record) => showTaken(dose, record)}
+                            refresh={() => reconcileOutcome(dose)}
+                            onRecorded={(record) => showOutcome(dose, record)}
                           />
                         )
                       )}

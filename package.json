@@ -19,6 +19,7 @@
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "dev": "next dev",
+    "dev:stack": "node scripts/dev-stack.mjs",
     "build": "next build",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit && pnpm worker:typecheck",

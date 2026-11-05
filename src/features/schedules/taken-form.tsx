@@ -1,9 +1,14 @@
 'use client'
 
-import { useId, useRef, useState, type FormEvent } from 'react'
+import { useId, useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import type { Medicine } from '@/features/medicines/contract'
-import { istanbulDate, SCHEDULE_TIMEZONE, type DoseOccurrence, type DoseRecord } from './contract'
+import {
+  istanbulDate,
+  SCHEDULE_TIMEZONE,
+  type DoseOccurrence,
+  type TakenDoseInput,
+} from './contract'
 
 const field =
   'min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
@@ -18,61 +23,33 @@ export const doseClock = (instant: string) =>
 export function TakenForm({
   dose,
   medicine,
-  refresh,
-  onRecorded,
+  open,
+  blocked,
+  saving,
+  error,
+  onOpen,
+  onSubmit,
 }: {
   dose: DoseOccurrence
   medicine: Medicine
-  refresh: () => Promise<void>
-  onRecorded: (record: DoseRecord) => void
+  open: boolean
+  blocked: boolean
+  saving: boolean
+  error: string
+  onOpen: (open: boolean) => void
+  onSubmit: (details: { takenAt: TakenDoseInput['takenAt'] | null; quantity: number }) => void
 }) {
   const id = useId()
-  const [open, setOpen] = useState(false)
   const [takenAt, setTakenAt] = useState('')
   const [quantity, setQuantity] = useState(String(dose.quantity))
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const locked = useRef(false)
   const step = medicine.unit === 'capsule' ? 1 : 0.5
 
-  async function save(event: FormEvent<HTMLFormElement>) {
+  function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (locked.current) return
-    locked.current = true
-    setSaving(true)
-    setError('')
-    try {
-      const response = await fetch('/api/schedules', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(12000),
-        body: JSON.stringify({
-          scheduleId: dose.scheduleId,
-          dueAt: dose.dueAt,
-          takenAt: new Date(`${takenAt}+03:00`).toJSON(),
-          quantity: Number(quantity),
-        }),
-      })
-      if (response.status === 400) {
-        setError('Check the quantity and enter a time that has already passed.')
-      } else if (response.status === 401) {
-        setError('Your session ended. Sign in again to record this dose.')
-      } else if (response.status === 409) {
-        setError('This dose already has a different intake record.')
-        await refresh()
-      } else if (response.ok) {
-        const { record } = (await response.json()) as { record: DoseRecord }
-        onRecorded(record)
-        await refresh()
-      } else {
-        setError('Save could not be confirmed. Connect and retry with the same details.')
-      }
-    } catch {
-      setError('Save could not be confirmed. Connect and retry with the same details.')
-    } finally {
-      locked.current = false
-      setSaving(false)
-    }
+    onSubmit({
+      takenAt: new Date(`${takenAt}+03:00`).toJSON(),
+      quantity: Number(quantity),
+    })
   }
 
   return (
@@ -84,13 +61,13 @@ export function TakenForm({
         aria-expanded={open}
         aria-controls={id}
         aria-label={`Mark ${medicine.label} at ${doseClock(dose.dueAt)} as taken`}
-        disabled={saving}
+        disabled={saving || blocked}
         onClick={() => {
           if (!takenAt) {
             const now = new Date()
             setTakenAt(`${istanbulDate(now)}T${doseClock(now.toISOString())}`)
           }
-          setOpen(!open)
+          onOpen(!open)
         }}
       >
         Mark as taken
@@ -127,7 +104,7 @@ export function TakenForm({
               onChange={(event) => setQuantity(event.target.value)}
             />
           </div>
-          <Button type="submit" className="min-h-11">
+          <Button type="submit" className="min-h-11" disabled={saving}>
             {saving ? 'Saving intake...' : 'Save taken dose'}
           </Button>
         </fieldset>

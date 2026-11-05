@@ -2,6 +2,7 @@ import { scheduleToday } from './occurrences'
 import {
   istanbulDate,
   parseSchedule,
+  parseSkippedDose,
   parseTakenDose,
   type ScheduleCommand,
   type ScheduleResponse,
@@ -30,19 +31,43 @@ export function createScheduleOperations(dependencies: {
         record,
       })
       const saved = response.records?.[0]
-      if (!saved) throw new MedicineError('unavailable', 503)
+      if (
+        !saved ||
+        saved.outcome !== 'Taken' ||
+        saved.scheduleId !== record.scheduleId ||
+        saved.dueAt !== record.dueAt
+      )
+        throw new MedicineError('unavailable', 503)
+      return saved
+    },
+    async recordSkipped(input: unknown) {
+      const user = await dependencies.requireUser()
+      const record = parseSkippedDose(input)
+      const response = await dependencies.send({
+        operation: 'recordSkipped',
+        ownerId: user.id,
+        record,
+      })
+      const saved = response.records?.[0]
+      if (
+        !saved ||
+        saved.outcome !== 'Skipped' ||
+        saved.scheduleId !== record.scheduleId ||
+        saved.dueAt !== record.dueAt
+      )
+        throw new MedicineError('unavailable', 503)
       return saved
     },
     async snapshot() {
       const user = await dependencies.requireUser()
       const now = dependencies.now?.() ?? new Date()
       const { schedules, records } = await dependencies.send({
-        operation: 'list',
+        operation: 'listOutcomes',
         ownerId: user.id,
         date: istanbulDate(now),
       })
       if (!schedules || !records) throw new MedicineError('unavailable', 503)
-      return { schedules, today: scheduleToday(schedules, now, records) }
+      return { schedules, records, today: scheduleToday(schedules, now, records) }
     },
   }
 }

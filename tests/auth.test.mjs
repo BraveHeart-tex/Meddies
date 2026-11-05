@@ -60,6 +60,13 @@ before(async () => {
   )) {
     if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
   }
+  const migration = await readFile('worker/migrations/0004_skipped_dose_records.sql', 'utf8')
+  const triggers = [...migration.matchAll(/CREATE TRIGGER[\s\S]*?END;/g)].map(
+    ([statement]) => statement,
+  )
+  const baseStatements = migration.replace(/CREATE TRIGGER[\s\S]*?END;/g, '').split(';')
+  for (const statement of [...baseStatements, ...triggers])
+    if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
   const workerUrl = await worker.ready
   const listener = createServer()
   listener.listen(0, '127.0.0.1')
@@ -335,11 +342,11 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
     quantity: 0.5,
     ownerId: valid().sub,
   }
-  const markTaken = (headers, origin = base) =>
+  const markTaken = (headers, origin = base, body = intake) =>
     request('/api/schedules', {
       method: 'PUT',
       headers: { ...headers, origin, 'content-type': 'application/json' },
-      body: JSON.stringify(intake),
+      body: JSON.stringify(body),
     })
   assert.equal((await markTaken({})).status, 401)
   assert.equal((await markTaken(alice, 'https://other.example')).status, 403)
@@ -349,10 +356,88 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
   assert.match(taken.headers.get('cache-control'), /no-store/)
   const recorded = await taken.json()
   assert.deepEqual(await (await markTaken(alice)).json(), recorded)
+  const skipMedicine = {
+    ...intakeMedicine,
+    id: '9c2c50d8-c9e9-4635-90da-28f5c6ea177a',
+    label: 'Skip fixture',
+  }
+  assert.equal((await save(skipMedicine)).status, 200)
+  const skipSchedule = {
+    ...intakeSchedule,
+    id: 'a5b79faa-72fd-42d1-8d31-5f3ae41652b4',
+    medicineId: skipMedicine.id,
+    times: [{ time: '00:01', quantity: 1 }],
+  }
+  const skipDueAt = new Date(`${todayDate}T00:01+03:00`).toISOString()
+  const skipSeed = await createWorker(() => new Date(Date.parse(skipDueAt) - 1)).fetch(
+    new Request('http://worker/schedules', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${workerSecret}` },
+      body: JSON.stringify({
+        operation: 'save',
+        ownerId: valid().sub,
+        schedule: {
+          ...skipSchedule,
+          startDate: istanbulDate(new Date(Date.parse(skipDueAt) - 1)),
+        },
+      }),
+    }),
+    { DB: await worker.getD1Database('DB'), MEDICINES_WORKER_SECRET: workerSecret },
+  )
+  assert.equal(skipSeed.status, 200)
+  const skipInput = {
+    outcome: 'Skipped',
+    scheduleId: skipSchedule.id,
+    dueAt: skipDueAt,
+    ownerId: 'google:bob',
+  }
+  const markSkipped = (headers, body = skipInput, origin = base) =>
+    request('/api/schedules', {
+      method: 'PUT',
+      headers: { ...headers, origin, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  assert.equal((await markSkipped({})).status, 401)
+  assert.equal((await markSkipped(alice, skipInput, 'https://other.example')).status, 403)
+  assert.equal(
+    (await markSkipped(alice, { ...skipInput, takenAt: new Date().toISOString() })).status,
+    400,
+  )
+  assert.equal((await markSkipped(bob)).status, 400)
+  const skippedResponse = await markSkipped(alice)
+  assert.equal(skippedResponse.status, 200)
+  const skipped = await skippedResponse.json()
+  assert.equal(skipped.record.outcome, 'Skipped')
+  assert.equal(skipped.record.scheduleId, skipSchedule.id)
+  assert.deepEqual(await (await markSkipped(alice)).json(), skipped)
+  assert.equal(
+    (
+      await markSkipped(alice, {
+        outcome: 'Skipped',
+        scheduleId: intake.scheduleId,
+        dueAt: intake.dueAt,
+        ownerId: 'google:bob',
+      })
+    ).status,
+    409,
+  )
+  assert.equal((await markSkipped(alice, { ...intake, outcome: 'Maybe' })).status, 400)
+  assert.equal((await markSkipped(alice, { ...intake, outcome: 'Skipped' })).status, 400)
+  const takenOnSkip = await markTaken(alice, base, {
+    scheduleId: skipSchedule.id,
+    dueAt: skipDueAt,
+    takenAt: new Date().toISOString(),
+    quantity: 1,
+  })
+  assert.equal(takenOnSkip.status, 409)
   const current = await (await request('/api/schedules', { headers: alice })).json()
   assert.deepEqual(
     current.today.doses.find((dose) => dose.scheduleId === intake.scheduleId)?.record,
     current.today.date === todayDate ? recorded.record : undefined,
+  )
+  assert.equal(
+    current.today.doses.find((dose) => dose.scheduleId === skipSchedule.id)?.status,
+    'Skipped',
   )
   const oversized = await save({ ...medicine, label: 'x'.repeat(5000) })
   assert.equal(oversized.status, 413)
@@ -362,6 +447,7 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
   assert.deepEqual(await unavailable.json(), { error: 'unavailable' })
   assert.equal((await scheduleSave(alice)).status, 503)
   assert.equal((await markTaken(alice)).status, 503)
+  assert.equal((await markSkipped(alice)).status, 503)
 })
 
 test('missing private configuration disables sign-in and preserves accessible recovery', async () => {

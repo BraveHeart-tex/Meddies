@@ -107,3 +107,81 @@ test('initial confirmation excludes earlier and exactly equal times; future star
   assert.equal((await operations.snapshot()).today.date, '2027-01-01')
   assert.equal((await operations.snapshot()).today.next.dueAt, '2027-01-01T05:00:00.000Z')
 })
+
+test('Today projects both persisted outcomes, leaves elapsed doses Not logged and advances next', async () => {
+  const now = new Date('2026-11-05T07:00:00.000Z')
+  const schedule = {
+    ...input,
+    startDate: '2026-11-05',
+    times: [
+      { time: '08:00', quantity: 1 },
+      { time: '09:00', quantity: 1 },
+      { time: '09:30', quantity: 0.5 },
+    ],
+    confirmedAt: '2026-11-04T20:00:00.000Z',
+  }
+  const skipped = {
+    outcome: 'Skipped',
+    scheduleId: schedule.id,
+    dueAt: '2026-11-05T06:00:00.000Z',
+    recordedAt: '2026-11-05T06:30:00.000Z',
+  }
+  const taken = {
+    outcome: 'Taken',
+    scheduleId: schedule.id,
+    dueAt: '2026-11-05T06:30:00.000Z',
+    takenAt: '2026-11-05T06:20:00.000Z',
+    quantity: 0.5,
+  }
+  let command
+  const operations = createScheduleOperations({
+    requireUser: async () => ({ id: 'google:alice' }),
+    send: async (value) => {
+      command = value
+      return { schedules: [schedule], records: [skipped, taken] }
+    },
+    now: () => now,
+  })
+  const today = (await operations.snapshot()).today
+  assert.equal(command.operation, 'listOutcomes')
+  assert.deepEqual(
+    today.doses.map((dose) => dose.status),
+    ['Not logged', 'Skipped', 'Taken'],
+  )
+  assert.equal(today.next.dueAt, '2026-11-06T05:00:00.000Z')
+})
+
+test('recordSkipped authenticates and validates before dispatch, deriving owner from session', async () => {
+  const sent = []
+  const operations = createScheduleOperations({
+    requireUser: async () => ({ id: 'google:alice' }),
+    send: async (command) => {
+      sent.push(command)
+      return {
+        records: [
+          { ...command.record, outcome: 'Skipped', recordedAt: '2026-11-05T06:30:00.000Z' },
+        ],
+      }
+    },
+  })
+  const input = {
+    outcome: 'Skipped',
+    scheduleId: 'c8850347-dda8-4ecb-9d4a-c1821dbe182d',
+    dueAt: '2026-11-05T06:00:00.000Z',
+    ownerId: 'google:attacker',
+  }
+  assert.equal((await operations.recordSkipped(input)).outcome, 'Skipped')
+  assert.equal(sent[0].ownerId, 'google:alice')
+  await assert.rejects(
+    () => operations.recordSkipped({ ...input, dueAt: 'not-an-instant' }),
+    /validation/,
+  )
+  assert.equal(sent.length, 1)
+  const anonymous = createScheduleOperations({
+    requireUser: async () => {
+      throw new Error('unauthorized')
+    },
+    send: async () => assert.fail('anonymous skip must not dispatch'),
+  })
+  await assert.rejects(() => anonymous.recordSkipped(input), /unauthorized/)
+})

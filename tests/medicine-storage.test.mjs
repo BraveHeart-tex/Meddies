@@ -37,6 +37,43 @@ before(async () => {
   )) {
     if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
   }
+  const legacy = {
+    ownerId: 'google:legacy-migration',
+    medicineId: '10000000-0000-4000-8000-000000000001',
+    scheduleId: '10000000-0000-4000-8000-000000000002',
+    dueAt: '2026-11-05T06:00:00.000Z',
+    takenAt: '2026-11-05T05:50:00.000Z',
+  }
+  await db
+    .prepare('INSERT INTO user_medications(owner_id,id,label,strength,unit) VALUES(?,?,?,?,?)')
+    .bind(legacy.ownerId, legacy.medicineId, 'Legacy dose', null, 'tablet')
+    .run()
+  await db
+    .prepare(
+      'INSERT INTO daily_schedules(owner_id,id,medicine_id,start_date,times,confirmed_at) VALUES(?,?,?,?,?,?)',
+    )
+    .bind(
+      legacy.ownerId,
+      legacy.scheduleId,
+      legacy.medicineId,
+      '2026-11-05',
+      '[{"time":"09:00","quantity":1}]',
+      '2026-11-04T20:00:00.000Z',
+    )
+    .run()
+  await db
+    .prepare(
+      'INSERT INTO dose_records(owner_id,schedule_id,due_at,taken_at,quantity,outcome) VALUES(?,?,?,?,?,?)',
+    )
+    .bind(legacy.ownerId, legacy.scheduleId, legacy.dueAt, legacy.takenAt, 0.5, 'Taken')
+    .run()
+  const migration = await readFile('worker/migrations/0004_skipped_dose_records.sql', 'utf8')
+  const triggers = [...migration.matchAll(/CREATE TRIGGER[\s\S]*?END;/g)].map(
+    ([statement]) => statement,
+  )
+  const baseStatements = migration.replace(/CREATE TRIGGER[\s\S]*?END;/g, '').split(';')
+  for (const statement of [...baseStatements, ...triggers])
+    if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
 })
 after(async () => {
   await runtime?.dispose()
@@ -237,6 +274,10 @@ test('late half-tablet intake persists once without moving the next dose', async
   ])
   assert.deepEqual(first, retry)
   await assert.rejects(() => operations.recordTaken({ ...input, quantity: 1 }), /conflict/)
+  await assert.rejects(
+    () => operations.recordSkipped({ scheduleId: input.scheduleId, dueAt: input.dueAt }),
+    /conflict/,
+  )
   const today = (await operations.snapshot()).today
   assert.equal(today.doses[0].status, 'Taken')
   assert.equal(today.doses[0].dueAt, '2026-11-04T06:00:00.000Z')
@@ -262,4 +303,114 @@ test('late half-tablet intake persists once without moving the next dose', async
   assert.equal((await operations.recordTaken({ ...capsuleIntake, quantity: 1 })).outcome, 'Taken')
   now = new Date('2026-11-04T21:00:00.000Z')
   assert.deepEqual(await operations.recordTaken(input), first)
+})
+
+test('0004 preserves pre-existing Taken rows, legacy list shape and identical Taken retries', async () => {
+  const response = await runtime.dispatchFetch('http://worker/schedules', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${secret}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      operation: 'list',
+      ownerId: 'google:legacy-migration',
+      date: '2026-11-05',
+    }),
+  })
+  assert.equal(response.status, 200)
+  const body = await response.json()
+  assert.deepEqual(Object.keys(body).sort(), ['records', 'schedules'])
+  assert.equal(body.records[0].outcome, 'Taken')
+  assert.equal(body.records[0].quantity, 0.5)
+  const handler = createWorker(() => new Date('2026-11-05T08:00:00.000Z'))
+  const db = await runtime.getD1Database('DB')
+  const retry = await handler.fetch(
+    new Request('http://worker/schedules', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${secret}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        operation: 'recordTaken',
+        ownerId: 'google:legacy-migration',
+        record: {
+          scheduleId: '10000000-0000-4000-8000-000000000002',
+          dueAt: '2026-11-05T06:00:00.000Z',
+          takenAt: '2026-11-05T05:50:00.000Z',
+          quantity: 0.5,
+        },
+      }),
+    }),
+    { DB: db, MEDICINES_WORKER_SECRET: secret },
+  )
+  assert.equal(retry.status, 200)
+  assert.equal((await retry.json()).records[0].takenAt, '2026-11-05T05:50:00.000Z')
+})
+
+test('Skipped D1 records are idempotent across midnight and triggers arbitrate cross-outcome races', async () => {
+  let now = new Date('2026-11-05T08:00:00.000Z')
+  const handler = createWorker(() => now)
+  const db = await runtime.getD1Database('DB')
+  const ownerId = 'google:skip-d1'
+  const tablet = { ...medicine, id: randomUUID() }
+  await call({ operation: 'save', ownerId, medicine: tablet })
+  const send = async (command) => {
+    const response = await handler.fetch(
+      new Request('http://worker/schedules', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${secret}`, 'content-type': 'application/json' },
+        body: JSON.stringify(command),
+      }),
+      { DB: db, MEDICINES_WORKER_SECRET: secret },
+    )
+    const body = await response.json()
+    if (!response.ok) throw new Error(body.error)
+    return body
+  }
+  const operations = createScheduleOperations({
+    requireUser: async () => ({ id: ownerId }),
+    send,
+    now: () => now,
+  })
+  const [schedule] = await operations.save({
+    id: randomUUID(),
+    medicineId: tablet.id,
+    startDate: '2026-11-05',
+    times: [
+      { time: '11:05', quantity: 1 },
+      { time: '11:10', quantity: 0.5 },
+    ],
+  })
+  const dueAt = '2026-11-05T08:05:00.000Z'
+  const input = { scheduleId: schedule.id, dueAt }
+  const [first, retry] = await Promise.all([
+    operations.recordSkipped(input),
+    operations.recordSkipped(input),
+  ])
+  assert.deepEqual(first, retry)
+  assert.equal(first.recordedAt, now.toISOString())
+  now = new Date('2026-11-05T21:00:00.000Z')
+  assert.deepEqual(await operations.recordSkipped(input), first)
+  await assert.rejects(
+    () => operations.recordTaken({ ...input, takenAt: now.toISOString(), quantity: 1 }),
+    /conflict/,
+  )
+  const bob = createScheduleOperations({
+    requireUser: async () => ({ id: 'google:bob' }),
+    send,
+    now: () => now,
+  })
+  await assert.rejects(() => bob.recordSkipped(input), /validation/)
+  await assert.rejects(
+    () => operations.recordSkipped({ ...input, dueAt: '2026-11-05T08:06:00.000Z' }),
+    /validation/,
+  )
+
+  const raceInput = { ...input, dueAt: '2026-11-05T08:10:00.000Z' }
+  const outcomes = await Promise.allSettled([
+    operations.recordSkipped(raceInput),
+    operations.recordTaken({ ...raceInput, takenAt: now.toISOString(), quantity: 0.5 }),
+  ])
+  assert.equal(outcomes.filter((item) => item.status === 'fulfilled').length, 1)
+  assert.equal(outcomes.filter((item) => item.status === 'rejected').length, 1)
+  const listed = await send({ operation: 'listOutcomes', ownerId, date: '2026-11-05' })
+  assert.equal(listed.records.filter((record) => record.dueAt === dueAt).length, 1)
+  assert.equal(listed.records.find((record) => record.dueAt === dueAt).recordedAt, first.recordedAt)
+  assert.equal(listed.records.filter((record) => record.dueAt === raceInput.dueAt).length, 1)
 })

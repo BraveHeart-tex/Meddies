@@ -3,6 +3,7 @@ import {
   type DailySchedule,
   type DoseOccurrence,
   type DoseRecord,
+  type DoseOutcomeRecord,
   type Today,
 } from './contract'
 
@@ -13,8 +14,14 @@ export function scheduledInstant(date: string, time: string) {
   return new Date(`${date}T${time}:00+03:00`).toISOString()
 }
 
-export function scheduleToday(schedules: DailySchedule[], now: Date, records: DoseRecord[]): Today {
-  const taken = new Map(records.map((record) => [`${record.scheduleId}:${record.dueAt}`, record]))
+export function scheduleToday(
+  schedules: DailySchedule[],
+  now: Date,
+  records: DoseOutcomeRecord[],
+): Today {
+  const outcomes = new Map(
+    records.map((record) => [`${record.scheduleId}:${record.dueAt}`, record]),
+  )
 
   const date = istanbulDate(now)
   const nowIso = now.toISOString()
@@ -29,19 +36,36 @@ export function scheduleToday(schedules: DailySchedule[], now: Date, records: Do
         const dueAt = scheduledInstant(dateString, slot.time)
         if (dueAt <= schedule.confirmedAt) continue
         const id = `${schedule.id}:${dueAt}`
-        const record = taken.get(id)
-        occurrences.push({
-          id,
-          scheduleId: schedule.id,
-          medicineId: schedule.medicineId,
-          dueAt,
-          quantity: slot.quantity,
-          ...(record
-            ? { status: 'Taken', record }
+        const record = outcomes.get(id)
+        const occurrence: DoseOccurrence = !record
+          ? {
+              id,
+              scheduleId: schedule.id,
+              medicineId: schedule.medicineId,
+              dueAt,
+              quantity: slot.quantity,
+              status: dueAt < nowIso ? 'Not logged' : dueAt === nowIso ? 'Due now' : 'Upcoming',
+            }
+          : record.outcome === 'Taken'
+            ? {
+                id,
+                scheduleId: schedule.id,
+                medicineId: schedule.medicineId,
+                dueAt,
+                quantity: slot.quantity,
+                status: 'Taken',
+                record,
+              }
             : {
-                status: dueAt < nowIso ? 'Not logged' : dueAt === nowIso ? 'Due now' : 'Upcoming',
-              }),
-        })
+                id,
+                scheduleId: schedule.id,
+                medicineId: schedule.medicineId,
+                dueAt,
+                quantity: slot.quantity,
+                status: 'Skipped',
+                record,
+              }
+        occurrences.push(occurrence)
       }
     }
   }
@@ -50,6 +74,9 @@ export function scheduleToday(schedules: DailySchedule[], now: Date, records: Do
     date,
     now: nowIso,
     doses: occurrences.filter((dose) => istanbulDate(new Date(dose.dueAt)) === date),
-    next: occurrences.find((dose) => dose.dueAt >= nowIso && dose.status !== 'Taken') ?? null,
+    next:
+      occurrences.find(
+        (dose) => dose.dueAt >= nowIso && dose.status !== 'Taken' && dose.status !== 'Skipped',
+      ) ?? null,
   }
 }

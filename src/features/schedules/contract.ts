@@ -9,24 +9,31 @@ export type DailyScheduleInput = {
 }
 export type DailySchedule = DailyScheduleInput & { confirmedAt: string }
 export type ScheduleCommand =
-  | { operation: 'list'; ownerId: string; date: string }
+  | { operation: 'list' | 'listOutcomes'; ownerId: string; date: string }
   | { operation: 'save'; ownerId: string; schedule: DailyScheduleInput }
   | { operation: 'recordTaken'; ownerId: string; record: TakenDoseInput }
-export type TakenDoseInput = {
-  scheduleId: string
-  dueAt: string
+  | { operation: 'recordSkipped'; ownerId: string; record: SkippedDoseInput }
+export type DoseOccurrenceKey = { scheduleId: string; dueAt: string }
+export type TakenDoseInput = DoseOccurrenceKey & {
   takenAt: string
   quantity: number
 }
 export type DoseRecord = TakenDoseInput & { outcome: 'Taken' }
-export type ScheduleResponse = { schedules?: DailySchedule[]; records?: DoseRecord[] }
+export type SkippedDoseInput = DoseOccurrenceKey
+export type SkippedDoseRecord = SkippedDoseInput & { outcome: 'Skipped'; recordedAt: string }
+export type DoseOutcomeRecord = DoseRecord | SkippedDoseRecord
+export type ScheduleResponse = { schedules?: DailySchedule[]; records?: DoseOutcomeRecord[] }
 export type DoseOccurrence = {
   id: string
   scheduleId: string
   medicineId: string
   dueAt: string
   quantity: number
-} & ({ status: 'Not logged' | 'Due now' | 'Upcoming' } | { status: 'Taken'; record: DoseRecord })
+} & (
+  | { status: 'Not logged' | 'Due now' | 'Upcoming' }
+  | { status: 'Taken'; record: DoseRecord }
+  | { status: 'Skipped'; record: SkippedDoseRecord }
+)
 export type Today = {
   date: string
   now: string
@@ -94,17 +101,35 @@ export function isInstant(value: unknown): value is string {
 }
 
 export function parseTakenDose(value: unknown): TakenDoseInput {
+  const occurrence = parseOccurrenceKey(value)
+  const { takenAt, quantity } = value as Record<string, unknown>
+  if (!isInstant(takenAt) || !isDoseQuantity(quantity)) throw new MedicineError('validation', 400)
+  return { ...occurrence, takenAt, quantity }
+}
+
+export const parseSkippedDose = parseOccurrenceKey
+
+function parseOccurrenceKey(value: unknown): DoseOccurrenceKey {
   if (!value || typeof value !== 'object') throw new MedicineError('validation', 400)
-  const { scheduleId, dueAt, takenAt, quantity } = value as Record<string, unknown>
-  if (
-    typeof scheduleId !== 'string' ||
-    !uuid.test(scheduleId) ||
-    !isInstant(dueAt) ||
-    !isInstant(takenAt) ||
-    !isDoseQuantity(quantity)
-  )
+  const { scheduleId, dueAt } = value as Record<string, unknown>
+  if (typeof scheduleId !== 'string' || !uuid.test(scheduleId) || !isInstant(dueAt))
     throw new MedicineError('validation', 400)
-  return { scheduleId: scheduleId.toLowerCase(), dueAt, takenAt, quantity }
+  return { scheduleId: scheduleId.toLowerCase(), dueAt }
+}
+
+export function parseDoseOutcomeRecord(value: unknown): DoseOutcomeRecord {
+  if (!value || typeof value !== 'object') throw new MedicineError('validation', 400)
+  const input = value as Record<string, unknown>
+  if (input.outcome === 'Taken') {
+    const record = parseTakenDose(input)
+    return { ...record, outcome: 'Taken' }
+  }
+  if (input.outcome === 'Skipped') {
+    const record = parseSkippedDose(input)
+    if (!isInstant(input.recordedAt)) throw new MedicineError('validation', 400)
+    return { ...record, recordedAt: input.recordedAt, outcome: 'Skipped' }
+  }
+  throw new MedicineError('validation', 400)
 }
 
 function isDoseQuantity(value: unknown): value is number {

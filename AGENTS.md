@@ -19,6 +19,7 @@ Read matching documents before starting the listed work.
 | Triage: applying issue labels                                                                                                  | [Triage labels](docs/agents/triage-labels.md)  |
 | Next.js: implementing, reviewing or debugging routes, rendering, configuration or framework APIs                               | [Next.js](docs/agents/nextjs.md)               |
 | Development: adding source files, configuring local environments or installing dependencies                                    | [Development conventions](docs/development.md) |
+| Local stack: starting, checking or stopping Next.js with local Worker/D1                                                       | [Local stack](docs/local-stack.md)             |
 | Storage: implementing, reviewing or debugging the Worker, persistence or medicine operations; configuring storage environments | [Storage](docs/storage.md)                     |
 | Verification: running checks or verifying changes                                                                              | [Verification](docs/verification.md)           |
 | Authentication: configuring, implementing, reviewing or debugging sign-in, sessions or authorization                           | [Authentication](docs/authentication.md)       |

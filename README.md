@@ -21,6 +21,8 @@ Open [localhost:3000](http://localhost:3000). The root route is the private sign
 
 For private sign-in, follow [Authentication](docs/authentication.md).
 
+To run Next.js with local Worker/D1, follow the [local stack guide](docs/local-stack.md).
+
 ## Documentation
 
 See the [AGENTS.md documentation index](AGENTS.md#documentation-index) for
