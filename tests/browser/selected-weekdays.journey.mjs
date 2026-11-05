@@ -57,7 +57,6 @@ export async function run({ origin, browser, request }) {
   const nextMonday = monday.toISOString().slice(0, 10)
   browser.step('check next Istanbul occurrence on Today')
   await browser.run('click', 'nav a[href="/"]')
-  await browser.run('wait', '--text', 'Next dose')
   await browser.run('wait', '--text', `on ${nextMonday}`)
   assert.match(await browser.snapshot(), new RegExp(`on ${nextMonday}`))
   browser.step('open medicine detail and verify the saved routine')

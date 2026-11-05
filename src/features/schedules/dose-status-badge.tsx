@@ -1,26 +1,42 @@
-import { Check, CircleDashed, CircleSlash, Clock } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import type { ReactNode } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Icon, type IconName } from '@/components/ui/icon'
 import type { DoseOccurrence } from './contract'
 
-const appearances = {
-  Taken: { icon: Check, style: 'bg-dose-taken text-dose-taken-foreground' },
-  Skipped: { icon: CircleSlash, style: 'bg-dose-skipped text-dose-skipped-foreground' },
-  'Not logged': { icon: CircleDashed, style: 'bg-dose-unlogged text-dose-unlogged-foreground' },
-  Upcoming: { icon: Clock, style: 'border border-input bg-card text-secondary-foreground' },
-  'Due now': { icon: Clock, style: 'bg-accent text-accent-foreground' },
+const appearances: Record<
+  DoseOccurrence['status'],
+  {
+    icon: IconName
+    label: string
+    variant: 'taken' | 'skipped' | 'unlogged' | 'scheduled' | 'due'
+    stroke?: number
+  }
+> = {
+  Taken: { icon: 'check', label: 'Taken', variant: 'taken', stroke: 2.4 },
+  Skipped: { icon: 'skipped', label: 'Skipped', variant: 'skipped' },
+  'Not logged': { icon: 'notLogged', label: 'Not logged', variant: 'unlogged' },
+  Upcoming: { icon: 'clock', label: 'Scheduled', variant: 'scheduled' },
+  'Due now': { icon: 'clock', label: 'Due now', variant: 'due' },
 }
 
-export function DoseStatusBadge({ status }: { status: DoseOccurrence['status'] }) {
-  const { icon: Icon, style } = appearances[status]
+// Status is always text plus icon. `time` is the recorded instant, never the scheduled time.
+export function DoseStatusBadge({
+  status,
+  time,
+  className,
+  id,
+}: {
+  status: DoseOccurrence['status']
+  time?: ReactNode
+  className?: string
+  id?: string
+}) {
+  const { icon, label, variant, stroke } = appearances[status]
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-extrabold',
-        style,
-      )}
-    >
-      <Icon className="size-4 shrink-0" aria-hidden="true" />
-      {status === 'Upcoming' ? 'Scheduled' : status}
-    </span>
+    <Badge id={id} variant={variant} className={className}>
+      <Icon name={icon} size={13} strokeWidth={stroke} />
+      {label}
+      {time && <> {time}</>}
+    </Badge>
   )
 }

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { AppShell } from '@/components/layout/app-shell'
+import { AppHeader } from '@/components/layout/app-header'
 import { AuthControl } from '@/features/auth/controls'
 import { auth, authConfigured } from '@/features/auth/server'
 import { SessionBoundary } from '@/features/auth/session-boundary'
@@ -21,7 +22,7 @@ export default async function SettingsPage() {
     <SessionBoundary expires={session.expires}>
       <AppShell>
         <section className="space-y-5">
-          <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
+          <AppHeader title="Settings" />
           <p className="text-muted-foreground">Private account access</p>
           <AuthControl signedIn />
           <Link className="underline" href="/">

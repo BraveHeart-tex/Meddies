@@ -10,6 +10,7 @@ import { formatHistoryTime } from '@/features/schedules/format-history-time'
 import { HistoryDoseActions } from '@/features/schedules/history-dose-actions'
 import { Button } from '@/components/ui/button'
 import { AppShell } from '@/components/layout/app-shell'
+import { AppHeader } from '@/components/layout/app-header'
 
 function quantityLabel(quantity: number, medicine?: Medicine) {
   return `${quantity} ${medicine?.unit ?? 'units'}`
@@ -72,12 +73,12 @@ export default async function HistoryPage({
   return (
     <SessionBoundary expires={session.expires}>
       <AppShell>
-        <header className="space-y-2">
-          <h1 className="text-3xl font-semibold tracking-tight">Dose history</h1>
+        <div className="space-y-2">
+          <AppHeader title="Dose history" />
           <Link className="text-sm underline" href="/">
             Back to Today
           </Link>
-        </header>
+        </div>
         <form action="/history" method="get" className="flex min-w-0 items-end gap-3">
           <div className="min-w-0 flex-1 space-y-2">
             <label className="block text-sm font-medium" htmlFor="history-date">

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { pressButton } from '../helpers/browser-actions.mjs'
 import { randomUUID } from 'node:crypto'
 
 export const dependencies = { auth: true, storage: true }
@@ -102,14 +103,14 @@ export async function run({ origin, browser, artifactDir }) {
   const actualTimeSelector = 'ol li:first-child time[data-dose-intake-time]'
   const originalTakenAt = (await browser.run('get', 'attr', actualTimeSelector, 'datetime')).trim()
   await browser.run('find', 'text', 'Review dose', 'click', '--exact')
-  await browser.run('find', 'text', 'Edit intake', 'click', '--exact')
+  await pressButton(browser.run, 'Edit intake')
   assert.equal((await browser.run('get', 'value', 'input[type=number]')).trim(), '0.5')
   assert.ok((await browser.run('get', 'value', 'input[type=datetime-local]')).trim())
   await browser.run(
     'eval',
     "(() => { const input = document.querySelector('input[type=number]'); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; setter.call(input, '1.5'); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); })()",
   )
-  await browser.run('find', 'text', 'Save intake changes', 'click', '--exact')
+  await pressButton(browser.run, 'Save intake changes')
   await browser.run('wait', '--text', 'quantity 1.5 tablet')
   assert.match(
     await browser.run('get', 'text', 'ol li:first-child [role="status"]'),
@@ -125,12 +126,12 @@ export async function run({ origin, browser, artifactDir }) {
   )
   browser.step('edit actual time while preserving quantity')
   await browser.run('find', 'text', 'Review dose', 'click', '--exact')
-  await browser.run('find', 'text', 'Edit intake', 'click', '--exact')
+  await pressButton(browser.run, 'Edit intake')
   await browser.run(
     'eval',
     `(() => { const input = document.querySelector('input[type=datetime-local]'); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; setter.call(input, '${historyDate}T12:00'); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); })()`,
   )
-  await browser.run('find', 'text', 'Save intake changes', 'click', '--exact')
+  await pressButton(browser.run, 'Save intake changes')
   await browser.run('wait', '--text', '12:00')
   assert.match(
     await browser.run('eval', "document.querySelector('ol li:first-child').innerText"),
@@ -155,10 +156,11 @@ export async function run({ origin, browser, artifactDir }) {
 
   browser.step('correct a Taken history outcome to Skipped')
   await browser.run('find', 'text', 'Review dose', 'click', '--exact')
-  await browser.run('find', 'text', 'Correct outcome', 'click', '--exact')
-  await browser.run('find', 'text', 'Mark as skipped', 'click', '--exact')
-  await browser.run('wait', '--text', 'Confirm skipped')
-  await browser.run('find', 'text', 'Confirm skipped', 'click', '--exact')
+  await pressButton(browser.run, 'Correct outcome')
+  await browser.run('wait', '[data-slot="toggle-group-item"]')
+  await pressButton(browser.run, 'I skipped it')
+  await browser.run('wait', '--text', 'Save as skipped')
+  await pressButton(browser.run, 'Save as skipped')
   await browser.run('wait', '--text', 'Skipped')
   assert.match(
     await browser.run('eval', "document.querySelector('ol li:first-child').innerText"),

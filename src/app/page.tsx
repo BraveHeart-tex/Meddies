@@ -3,6 +3,7 @@ import { auth, authConfigured } from '@/features/auth/server'
 import { AuthControl } from '@/features/auth/controls'
 import { SessionBoundary } from '@/features/auth/session-boundary'
 import { AppShell } from '@/components/layout/app-shell'
+import { schedulingNow } from '@/features/schedules/server'
 
 export default async function HomePage({
   searchParams,
@@ -26,10 +27,7 @@ export default async function HomePage({
     return (
       <SessionBoundary expires={session.expires}>
         <AppShell>
-          <div className="space-y-4">
-            <h1 className="text-3xl font-extrabold tracking-tight">Today</h1>
-            <MedicinePanel scheduleMode="today" />
-          </div>
+          <MedicinePanel scheduleMode="today" initialNow={schedulingNow().toISOString()} />
         </AppShell>
       </SessionBoundary>
     )

@@ -3,16 +3,33 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { SchedulePanel } from '@/features/schedules/schedule-panel'
 import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@/components/ui/field'
+import { Icon } from '@/components/ui/icon'
+import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { AppHeader } from '@/components/layout/app-header'
+import { MedicationTile } from './medication-tile'
 import { parseMedicine, type Medicine } from './contract'
 
 export function MedicinePanel({
   scheduleMode = 'list',
   scheduleMedicineId = '',
   detailMedicineId = '',
+  initialNow = '',
 }: {
   scheduleMode?: 'setup' | 'today' | 'list' | 'detail'
   scheduleMedicineId?: string
   detailMedicineId?: string
+  initialNow?: string
 }) {
   const [medicines, setMedicines] = useState<Medicine[]>([])
   const [loading, setLoading] = useState(true)
@@ -117,8 +134,31 @@ export function MedicinePanel({
   }
 
   return (
-    <div className="space-y-10">
+    <div className="flex flex-col gap-5">
+      {scheduleMode !== 'today' && (
+        <AppHeader
+          title="Medications"
+          subtitle={
+            scheduleMode === 'list' && !loading && !loadError
+              ? `${medicines.length} ${medicines.length === 1 ? 'medication' : 'medications'}`
+              : undefined
+          }
+          action={
+            scheduleMode === 'list' && (
+              <Button
+                nativeButton={false}
+                className="rounded-full"
+                render={<a href="#add-heading" aria-label="Add a medicine" />}
+              >
+                <Icon name="plus" data-icon="inline-start" />
+                Add
+              </Button>
+            )
+          }
+        />
+      )}
       <SchedulePanel
+        initialNow={initialNow}
         medicines={medicines}
         mode={scheduleMode}
         initialMedicineId={scheduleMedicineId || detailMedicineId}
@@ -129,124 +169,139 @@ export function MedicinePanel({
       {scheduleMode === 'detail' &&
         detailMedicineId &&
         medicines.some((item) => item.id === detailMedicineId) && (
-          <section
+          <Card
+            role="region"
             aria-labelledby="medicine-detail"
-            className="space-y-2 rounded-2xl border bg-card p-4 [overflow-wrap:anywhere]"
+            className="[overflow-wrap:anywhere]"
           >
-            <h2 id="medicine-detail" className="text-xl font-semibold">
-              {medicines.find((item) => item.id === detailMedicineId)?.label}
-            </h2>
-            <p>
-              Product strength:{' '}
-              {medicines.find((item) => item.id === detailMedicineId)?.strength || 'Not provided'}
-            </p>
-            <p>Unit: {medicines.find((item) => item.id === detailMedicineId)?.unit}</p>
-            <p className="text-sm text-muted-foreground">
-              Medicine details are saved and cannot be edited here.
-            </p>
-          </section>
+            <CardHeader className="flex items-center gap-3.5">
+              <MedicationTile medicineId={detailMedicineId} />
+              <CardTitle>
+                <h2 id="medicine-detail">
+                  {medicines.find((item) => item.id === detailMedicineId)?.label}
+                </h2>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-1">
+              <p>
+                Product strength:{' '}
+                {medicines.find((item) => item.id === detailMedicineId)?.strength || 'Not provided'}
+              </p>
+              <p>Unit: {medicines.find((item) => item.id === detailMedicineId)?.unit}</p>
+              <p className="text-label text-muted-foreground">
+                Medicine details are saved and cannot be edited here.
+              </p>
+            </CardContent>
+          </Card>
         )}
       {scheduleMode === 'list' && (
-        <section aria-labelledby="add-heading" className="space-y-5 rounded-2xl border bg-card p-4">
-          <div className="space-y-2">
-            <h2 id="add-heading" className="text-xl font-semibold">
-              Add a medicine
-            </h2>
-            <p className="text-sm text-muted-foreground">
+        <Card role="region" aria-labelledby="add-heading" className="scroll-mt-5">
+          <CardHeader>
+            <CardTitle>
+              <h2 id="add-heading">Add a medicine</h2>
+            </CardTitle>
+            <CardDescription>
               Save online. You can add a medicine without a schedule.
-            </p>
-          </div>
-          <form onSubmit={save} className="space-y-5" aria-busy={saving}>
-            <fieldset disabled={saving} className="space-y-5 disabled:opacity-70">
-              <legend className="sr-only">Medicine details</legend>
-              <div className="space-y-2">
-                <label htmlFor="medicine-label" className="block font-medium">
-                  Medicine name
-                </label>
-                <input
-                  id="medicine-label"
-                  name="label"
-                  autoComplete="off"
-                  required
-                  maxLength={120}
-                  value={label}
-                  onChange={(event) => setLabel(event.target.value)}
-                  className="meddies-field"
-                  aria-describedby="medicine-name-help"
-                />
-                <p id="medicine-name-help" className="text-sm text-muted-foreground">
-                  Use the name you recognize on your pack.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="medicine-strength" className="block font-medium">
-                  Product strength{' '}
-                  <span className="font-normal text-muted-foreground">(optional)</span>
-                </label>
-                <input
-                  id="medicine-strength"
-                  name="strength"
-                  autoComplete="off"
-                  maxLength={120}
-                  value={strength}
-                  onChange={(event) => setStrength(event.target.value)}
-                  className="meddies-field"
-                  aria-describedby="medicine-strength-help"
-                />
-                <p id="medicine-strength-help" className="text-sm text-muted-foreground">
-                  For example, 5 mg or 1000 IU. This describes the product, not how much you take.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="medicine-unit" className="block font-medium">
-                  Unit
-                </label>
-                <select
-                  id="medicine-unit"
-                  name="unit"
-                  value={unit}
-                  onChange={(event) => setUnit(event.target.value as 'tablet' | 'capsule')}
-                  className="meddies-field"
-                  aria-describedby="medicine-unit-help"
-                >
-                  <option value="tablet">Tablet</option>
-                  <option value="capsule">Capsule</option>
-                </select>
-                <p id="medicine-unit-help" className="text-sm text-muted-foreground">
-                  Whole or half tablets, or whole capsules. No dose is set here.
-                </p>
-              </div>
-            </fieldset>
-            {error && (
-              <p id="medicine-save-error" role="alert" className="text-sm">
-                {error}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={save} className="flex flex-col gap-5" aria-busy={saving}>
+              <FieldSet disabled={saving} className="disabled:opacity-70">
+                <FieldLegend className="sr-only">Medicine details</FieldLegend>
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="medicine-label">Medicine name</FieldLabel>
+                    <Input
+                      id="medicine-label"
+                      name="label"
+                      autoComplete="off"
+                      required
+                      maxLength={120}
+                      value={label}
+                      onChange={(event) => setLabel(event.target.value)}
+                      aria-describedby="medicine-name-help"
+                    />
+                    <FieldDescription id="medicine-name-help">
+                      Use the name you recognize on your pack.
+                    </FieldDescription>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="medicine-strength">
+                      Product strength{' '}
+                      <span className="font-semibold text-muted-foreground">(optional)</span>
+                    </FieldLabel>
+                    <Input
+                      id="medicine-strength"
+                      name="strength"
+                      autoComplete="off"
+                      maxLength={120}
+                      value={strength}
+                      onChange={(event) => setStrength(event.target.value)}
+                      aria-describedby="medicine-strength-help"
+                    />
+                    <FieldDescription id="medicine-strength-help">
+                      For example, 5 mg or 1000 IU. This describes the product, not how much you
+                      take.
+                    </FieldDescription>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="medicine-unit">Unit</FieldLabel>
+                    <NativeSelect
+                      id="medicine-unit"
+                      name="unit"
+                      className="w-full"
+                      value={unit}
+                      onChange={(event) => setUnit(event.target.value as 'tablet' | 'capsule')}
+                      aria-describedby="medicine-unit-help"
+                    >
+                      <NativeSelectOption value="tablet">Tablet</NativeSelectOption>
+                      <NativeSelectOption value="capsule">Capsule</NativeSelectOption>
+                    </NativeSelect>
+                    <FieldDescription id="medicine-unit-help">
+                      Whole or half tablets, or whole capsules. No dose is set here.
+                    </FieldDescription>
+                  </Field>
+                </FieldGroup>
+              </FieldSet>
+              {error && (
+                <Alert id="medicine-save-error" variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <Button
+                type="submit"
+                size="lg"
+                disabled={saving}
+                className="w-full whitespace-normal"
+                aria-describedby={error ? 'medicine-save-error' : undefined}
+              >
+                {saving ? 'Saving medicine...' : error ? 'Retry saving medicine' : 'Save medicine'}
+              </Button>
+              <p role="status" className="text-body-sm [overflow-wrap:anywhere]">
+                {message}
               </p>
-            )}
-            <Button
-              type="submit"
-              disabled={saving}
-              className="min-h-11 w-full whitespace-normal"
-              aria-describedby={error ? 'medicine-save-error' : undefined}
-            >
-              {saving ? 'Saving medicine...' : error ? 'Retry saving medicine' : 'Save medicine'}
-            </Button>
-            <p role="status" className="text-sm [overflow-wrap:anywhere]">
-              {message}
-            </p>
-          </form>
-        </section>
+            </form>
+          </CardContent>
+        </Card>
       )}
       {savedMedicine && (
-        <section aria-label="Saved medicine" className="space-y-3">
+        <section
+          aria-label="Saved medicine"
+          className="flex flex-col gap-3 [overflow-wrap:anywhere]"
+        >
           <p role="status">{savedMedicine.label} is saved.</p>
-          <div className="flex flex-wrap gap-3">
-            <a
-              className="inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-primary-foreground"
-              href={`/medications?schedule=${encodeURIComponent(savedMedicine.id)}#schedule-heading`}
+          <div className="flex flex-wrap gap-2.5">
+            <Button
+              nativeButton={false}
+              render={
+                <a
+                  href={`/medications?schedule=${encodeURIComponent(savedMedicine.id)}#schedule-heading`}
+                />
+              }
             >
               Set schedule
-            </a>
-            <Button variant="outline" className="min-h-11" onClick={() => setSavedMedicine(null)}>
+            </Button>
+            <Button variant="outline" onClick={() => setSavedMedicine(null)}>
               Done for now
             </Button>
           </div>

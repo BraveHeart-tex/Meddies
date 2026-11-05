@@ -1,16 +1,17 @@
 'use client'
 
 import { useEffect, useId, useRef, type KeyboardEvent } from 'react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import type { Medicine } from '@/features/medicines/contract'
 import type { DoseOccurrence } from './contract'
 import { doseClock } from './taken-form'
 
+// Explicit skip confirmation. A skip records no intake time or quantity.
 export function SkippedForm({
   dose,
   medicine,
   open,
-  blocked,
   saving,
   error,
   onOpen,
@@ -20,7 +21,6 @@ export function SkippedForm({
   dose: DoseOccurrence
   medicine: Medicine
   open: boolean
-  blocked: boolean
   saving: boolean
   error: string
   onOpen: (open: boolean) => void
@@ -28,84 +28,69 @@ export function SkippedForm({
   refresh: () => Promise<boolean>
 }) {
   const id = useId()
-  const trigger = useRef<HTMLButtonElement>(null)
   const cancel = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (open) cancel.current?.focus()
   }, [open])
 
-  function close() {
-    onOpen(false)
-    trigger.current?.focus()
-  }
-
   function handleKeyDown(event: KeyboardEvent<HTMLFieldSetElement>) {
     if (event.key === 'Escape' && !saving) {
       event.preventDefault()
-      close()
+      onOpen(false)
     }
   }
 
   return (
-    <div>
-      <Button
-        ref={trigger}
-        type="button"
-        variant="outline"
-        className="min-h-11"
-        aria-expanded={open}
-        aria-controls={id}
-        aria-label={`Mark ${medicine.label} at ${doseClock(dose.dueAt)} as skipped`}
-        disabled={saving || blocked}
-        onClick={() => onOpen(true)}
+    <fieldset
+      id={id}
+      hidden={!open}
+      disabled={saving}
+      onKeyDown={handleKeyDown}
+      aria-describedby={error ? `${id}-error` : undefined}
+      className="flex min-w-0 flex-col gap-4.5"
+    >
+      <legend className="sr-only">Confirm skipped dose</legend>
+      <div
+        role="group"
+        aria-label={`Confirm skipping ${medicine.label}`}
+        className="flex flex-col gap-4.5"
       >
-        Mark as skipped
-      </Button>
-      <fieldset
-        id={id}
-        hidden={!open}
-        disabled={saving}
-        onKeyDown={handleKeyDown}
-        aria-describedby={error ? `${id}-error` : undefined}
-        className="space-y-3 pt-3"
-      >
-        <legend className="sr-only">Confirm skipped dose</legend>
-        <div role="group" aria-label={`Confirm skipping ${medicine.label}`} className="space-y-2">
-          <p>
-            Skip {medicine.label}, scheduled for {doseClock(dose.dueAt)} Istanbul time?
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sheet" disabled={saving} onClick={onSubmit}>
-              {saving ? 'Saving skip...' : 'Confirm skipped'}
-            </Button>
-            <Button
-              ref={cancel}
-              type="button"
-              variant="outline"
-              className="min-h-11"
-              onClick={close}
-            >
-              Cancel
-            </Button>
-            {error && (
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-11"
-                onClick={() => void refresh()}
-              >
-                Refresh Today
-              </Button>
-            )}
-          </div>
-        </div>
+        <p className="text-center text-body-sm text-muted-foreground [overflow-wrap:anywhere]">
+          Skip {medicine.label}, scheduled for {doseClock(dose.dueAt)} Istanbul time? No intake is
+          recorded.
+        </p>
         {error && (
-          <p id={`${id}-error`} role="alert">
-            {error}
-          </p>
+          <Alert id={`${id}-error`} variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
-      </fieldset>
-    </div>
+        <div className="flex flex-col gap-1.5">
+          <Button
+            type="button"
+            size="sheet"
+            className="w-full whitespace-normal"
+            disabled={saving}
+            onClick={onSubmit}
+          >
+            {saving ? 'Saving skip...' : 'Save as skipped'}
+          </Button>
+          <Button
+            ref={cancel}
+            type="button"
+            variant="ghost"
+            className="w-full"
+            onClick={() => onOpen(false)}
+          >
+            Cancel
+          </Button>
+          {error && (
+            <Button type="button" variant="outline" onClick={() => void refresh()}>
+              Refresh Today
+            </Button>
+          )}
+        </div>
+      </div>
+    </fieldset>
   )
 }

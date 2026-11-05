@@ -1,25 +1,45 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useImperativeHandle, useRef, useState, type Ref } from 'react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Icon } from '@/components/ui/icon'
+import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Medicine } from '@/features/medicines/contract'
-import { parseDoseOutcomeRecord, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
+import {
+  istanbulDate,
+  parseDoseOutcomeRecord,
+  type DoseOccurrence,
+  type DoseOutcomeRecord,
+} from './contract'
 import { SkippedForm } from './skipped-form'
 import { doseClock, TakenForm } from './taken-form'
 import { DoseSheet } from './dose-sheet'
 
 type Outcome = DoseOutcomeRecord['outcome']
+export type DoseSheetOpener = { open: (outcome: Outcome) => void }
 
 export function DoseActions({
   dose,
   medicine,
   refresh,
   onRecorded,
+  appearance = 'button',
+  opener,
+  todayDate,
+  referenceNow,
+  describedBy,
 }: {
   dose: DoseOccurrence
   medicine: Medicine
   refresh: () => Promise<boolean>
   onRecorded: (record: DoseOutcomeRecord) => void
+  appearance?: 'row' | 'button'
+  opener?: Ref<DoseSheetOpener>
+  todayDate?: string
+  referenceNow?: string
+  describedBy?: string
 }) {
   const [editor, setEditor] = useState<Outcome | null>(null)
   const [saving, setSaving] = useState(false)
@@ -30,6 +50,7 @@ export function DoseActions({
   const [sheetOpen, setSheetOpen] = useState(false)
   const locked = useRef(false)
   const rowTrigger = useRef<HTMLButtonElement>(null)
+  const returnFocus = useRef<HTMLElement | null>(null)
   const retryAction = useRef<{ fingerprint: string; id: string } | null>(null)
   const pinnedCorrection = useRef<{ outcome: 'Taken' | 'Skipped'; revision: number } | null>(null)
   const [openedWithoutOutcome, setOpenedWithoutOutcome] = useState(false)
@@ -150,46 +171,109 @@ export function DoseActions({
     }
   }
 
+  const recorded = dose.status === 'Taken' || dose.status === 'Skipped'
+  const outcomeBlocked = (outcome: Outcome) =>
+    saving || (recorded && !openedWithoutOutcome && (!correcting || dose.status === outcome))
+
+  function choose(outcome: Outcome) {
+    edit(outcome)
+    if (!recorded) setOpenedWithoutOutcome(true)
+  }
+
+  function closeEditor(open: boolean) {
+    if (open) return
+    edit(null)
+    setOpenedWithoutOutcome(false)
+    setSheetOpen(false)
+    if (correcting) {
+      setCorrecting(false)
+      pinnedCorrection.current = null
+    }
+  }
+
+  useImperativeHandle(opener, () => ({
+    open(outcome: Outcome) {
+      returnFocus.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null
+      setError('')
+      setNeedsReview(false)
+      setSheetOpen(true)
+      choose(outcome)
+    },
+  }))
+
+  const verb = recorded ? 'Review' : 'Record'
+  const triggerLabel = `${verb} dose for ${medicine.label} scheduled at ${doseClock(dose.dueAt)}`
+  const sameDay = istanbulDate(new Date(dose.dueAt)) === todayDate
+  const choosing = !recorded || correcting || (openedWithoutOutcome && editor !== null)
+
   return (
-    <div>
-      <Button
-        ref={rowTrigger}
-        id={`dose-actions-${dose.id}`}
-        type="button"
-        variant="outline"
-        className="min-h-11"
-        aria-haspopup="dialog"
-        aria-expanded={sheetOpen}
-        aria-label={`${dose.status === 'Taken' || dose.status === 'Skipped' ? 'Review' : 'Record'} dose for ${medicine.label} scheduled at ${doseClock(dose.dueAt)}`}
-        onClick={() => {
-          setError('')
-          setNeedsReview(false)
-          setSheetOpen(true)
-        }}
-      >
-        {dose.status === 'Taken' || dose.status === 'Skipped' ? 'Review dose' : 'Record dose'}
-      </Button>
+    <div className={appearance === 'row' ? 'contents' : undefined}>
+      {appearance === 'row' ? (
+        <button
+          ref={rowTrigger}
+          id={`dose-actions-${dose.id}`}
+          type="button"
+          data-row-trigger
+          aria-describedby={describedBy}
+          className="absolute inset-0 rounded-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          aria-haspopup="dialog"
+          aria-expanded={sheetOpen}
+          aria-label={triggerLabel}
+          onClick={() => {
+            returnFocus.current = rowTrigger.current
+            setError('')
+            setNeedsReview(false)
+            setSheetOpen(true)
+          }}
+        >
+          <span className="sr-only">{verb} dose</span>
+        </button>
+      ) : (
+        <Button
+          ref={rowTrigger}
+          id={`dose-actions-${dose.id}`}
+          type="button"
+          variant="outline"
+          aria-haspopup="dialog"
+          aria-expanded={sheetOpen}
+          aria-label={triggerLabel}
+          onClick={() => {
+            returnFocus.current = rowTrigger.current
+            setError('')
+            setNeedsReview(false)
+            setSheetOpen(true)
+          }}
+        >
+          {verb} dose
+        </Button>
+      )}
       {!sheetOpen && error && editor === null && !correcting && editingDose === null && (
-        <div role="alert" className="mt-2 space-y-2 [overflow-wrap:anywhere]">
-          <p>{error}</p>
-          {needsReview && (
-            <button
-              type="button"
-              className="min-h-11 rounded-md border px-3 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              onClick={() => {
-                void refresh()
-                setNeedsReview(false)
-              }}
-            >
-              Review current outcome
-            </button>
-          )}
-        </div>
+        <Alert className="relative z-10 mt-1 basis-full [overflow-wrap:anywhere]">
+          <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
+            <p>{error}</p>
+            {needsReview && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  void refresh()
+                  setNeedsReview(false)
+                }}
+              >
+                Review current outcome
+              </Button>
+            )}
+          </AlertDescription>
+        </Alert>
       )}
       <DoseSheet
         open={sheetOpen}
         triggerId={`dose-actions-${dose.id}`}
-        title={`${medicine.label} · ${doseClock(dose.dueAt)} Istanbul`}
+        medicineId={medicine.id}
+        title={medicine.label}
+        description={[medicine.strength, medicine.unit].filter(Boolean).join(' · ')}
+        finalFocus={returnFocus}
         onClose={() => {
           if (saving) return
           setSheetOpen(false)
@@ -199,24 +283,53 @@ export function DoseActions({
           setOpenedWithoutOutcome(false)
         }}
       >
-        <div className="space-y-3">
-          {openedWithoutOutcome &&
-            (dose.status === 'Taken' || dose.status === 'Skipped') &&
-            editor !== null && (
-              <p role="status">
-                This dose was recorded while your form was open. Your draft is still here; review
-                the outcome before saving.
-              </p>
-            )}
-          {(dose.status === 'Taken' || dose.status === 'Skipped') && !correcting && (
-            <>
+        <Item variant="muted" size="sm" className="rounded-md bg-muted px-3.5 py-3">
+          <ItemMedia className="text-muted-foreground">
+            <Icon name="clock" size={18} />
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle className="text-body-sm font-bold text-muted-foreground">
+              Scheduled
+            </ItemTitle>
+          </ItemContent>
+          <ItemActions className="text-body-sm font-extrabold">
+            <time dateTime={dose.dueAt}>
+              {doseClock(dose.dueAt)}{' '}
+              {sameDay ? 'today' : `on ${istanbulDate(new Date(dose.dueAt))}`}
+            </time>
+          </ItemActions>
+        </Item>
+        {openedWithoutOutcome && recorded && editor !== null && (
+          <Alert role="status">
+            <AlertDescription className="text-foreground">
+              This dose was recorded while your form was open. Your draft is still here; review the
+              outcome before saving.
+            </AlertDescription>
+          </Alert>
+        )}
+        {recorded && !correcting && (
+          <>
+            <p className="font-extrabold">
+              {dose.status === 'Taken' ? (
+                <>
+                  Taken {dose.record.quantity} {medicine.unit}
+                  {dose.record.quantity === 1 ? '' : 's'} at{' '}
+                  <time dateTime={dose.record.takenAt}>{doseClock(dose.record.takenAt)}</time>
+                  {istanbulDate(new Date(dose.record.takenAt)) !==
+                    istanbulDate(new Date(dose.dueAt)) &&
+                    ` on ${istanbulDate(new Date(dose.record.takenAt))}`}
+                </>
+              ) : (
+                'Skipped. No intake recorded.'
+              )}
+            </p>
+            <div className="flex flex-wrap gap-2.5">
               {(dose.status === 'Taken' || editingDose !== null) &&
                 (editingDose ?? dose).status === 'Taken' && (
                   <TakenForm
                     dose={editingDose ?? dose}
                     medicine={medicine}
                     open={editingDose !== null}
-                    blocked={false}
                     saving={saving}
                     error={editingDose ? error : ''}
                     editing
@@ -239,10 +352,10 @@ export function DoseActions({
                     onSubmit={(details) => void submit('Taken', details)}
                   />
                 )}
-              {editingDose === null && (dose.status === 'Taken' || dose.status === 'Skipped') && (
-                <button
+              {editingDose === null && (
+                <Button
                   type="button"
-                  className="min-h-11 rounded-md border px-3 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  variant="outline"
                   aria-label={`Correct outcome for ${medicine.label} at ${doseClock(dose.dueAt)}`}
                   onClick={() => {
                     pinnedCorrection.current = {
@@ -253,73 +366,101 @@ export function DoseActions({
                   }}
                 >
                   Correct outcome
-                </button>
+                </Button>
               )}
-            </>
-          )}
-          {correcting && (dose.status === 'Taken' || dose.status === 'Skipped') && (
-            <p className="text-sm">Change {dose.status.toLowerCase()} to:</p>
-          )}
-          {((dose.status !== 'Taken' && dose.status !== 'Skipped') ||
-            correcting ||
-            editor === 'Taken') && (
-            <TakenForm
-              dose={dose}
-              medicine={medicine}
-              open={editor === 'Taken'}
-              blocked={
-                editor === 'Skipped' ||
-                ((dose.status === 'Taken' || dose.status === 'Skipped') &&
-                  !openedWithoutOutcome &&
-                  (!correcting || dose.status === 'Taken'))
-              }
-              saving={saving}
-              error={editor === 'Taken' ? error : ''}
-              onOpen={(open) => {
-                edit(open ? 'Taken' : null)
-                if (open && dose.status !== 'Taken' && dose.status !== 'Skipped')
-                  setOpenedWithoutOutcome(true)
-                if (!open) setOpenedWithoutOutcome(false)
-                if (!open) setSheetOpen(false)
-                if (!open && correcting) {
-                  setCorrecting(false)
-                  pinnedCorrection.current = null
-                }
+            </div>
+          </>
+        )}
+        {choosing && (
+          <div className="flex flex-col gap-2.5">
+            <span id={`outcome-${dose.id}`} className="font-extrabold">
+              {correcting && recorded ? `Change ${dose.status.toLowerCase()} to` : 'What happened?'}
+            </span>
+            <ToggleGroup
+              aria-labelledby={`outcome-${dose.id}`}
+              variant="choice"
+              size="lg"
+              spacing={2.5}
+              className="grid w-full grid-cols-2"
+              value={editor ? [editor] : []}
+              onValueChange={(value) => {
+                const next = value[0] as Outcome | undefined
+                if (next) choose(next)
               }}
-              onSubmit={(details) => void submit('Taken', details)}
-            />
-          )}
-          {((dose.status !== 'Taken' && dose.status !== 'Skipped') ||
-            correcting ||
-            editor === 'Skipped') && (
-            <SkippedForm
-              dose={dose}
-              medicine={medicine}
-              open={editor === 'Skipped'}
-              blocked={
-                editor === 'Taken' ||
-                ((dose.status === 'Taken' || dose.status === 'Skipped') &&
-                  !openedWithoutOutcome &&
-                  (!correcting || dose.status === 'Skipped'))
-              }
-              saving={saving}
-              error={editor === 'Skipped' ? error : ''}
-              onOpen={(open) => {
-                edit(open ? 'Skipped' : null)
-                if (open && dose.status !== 'Taken' && dose.status !== 'Skipped')
-                  setOpenedWithoutOutcome(true)
-                if (!open) setOpenedWithoutOutcome(false)
-                if (!open) setSheetOpen(false)
-                if (!open && correcting) {
-                  setCorrecting(false)
-                  pinnedCorrection.current = null
-                }
-              }}
-              onSubmit={() => void submit('Skipped', {})}
-              refresh={refresh}
-            />
-          )}
-        </div>
+            >
+              {(['Taken', 'Skipped'] as const).map((outcome) => (
+                <ToggleGroupItem
+                  key={outcome}
+                  value={outcome}
+                  disabled={outcomeBlocked(outcome)}
+                  className="w-full"
+                >
+                  {editor === outcome ? (
+                    <span className="grid size-6 place-items-center rounded-full bg-primary text-primary-foreground">
+                      <Icon
+                        name={outcome === 'Taken' ? 'check' : 'skipped'}
+                        size={14}
+                        strokeWidth={2.4}
+                      />
+                    </span>
+                  ) : (
+                    <Icon
+                      name={outcome === 'Taken' ? 'check' : 'skipped'}
+                      size={24}
+                      strokeWidth={1.4}
+                      className="text-muted-foreground"
+                    />
+                  )}
+                  {outcome === 'Taken' ? 'I took it' : 'I skipped it'}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
+        )}
+        {(!recorded || correcting || editor === 'Taken') && (
+          <TakenForm
+            dose={dose}
+            medicine={medicine}
+            open={editor === 'Taken'}
+            saving={saving}
+            error={editor === 'Taken' ? error : ''}
+            referenceNow={referenceNow}
+            onOpen={closeEditor}
+            onSubmit={(details) => void submit('Taken', details)}
+          />
+        )}
+        {(!recorded || correcting || editor === 'Skipped') && (
+          <SkippedForm
+            dose={dose}
+            medicine={medicine}
+            open={editor === 'Skipped'}
+            saving={saving}
+            error={editor === 'Skipped' ? error : ''}
+            onOpen={closeEditor}
+            onSubmit={() => void submit('Skipped', {})}
+            refresh={refresh}
+          />
+        )}
+        {choosing && editor === null && (
+          <div className="flex flex-col gap-4.5">
+            <p className="py-1.5 text-center text-body-sm text-muted-foreground">
+              Nothing is recorded until you choose and save.
+            </p>
+            <div className="flex flex-col gap-1.5">
+              <Button type="button" size="sheet" className="w-full" disabled>
+                Choose an outcome
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => closeEditor(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
       </DoseSheet>
     </div>
   )
