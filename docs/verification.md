@@ -23,11 +23,14 @@ personal data or prove a deployed Google callback or remote D1 configuration.
 ### Browser journeys
 
 Install `agent-browser` and its Chromium runtime once with
-`npm i -g agent-browser && agent-browser install`. Build the production app and
-Worker with `pnpm verify:local`, or build just the required artifacts with
-`pnpm build --webpack` and `pnpm worker:build`. The harness requires
-`.next/BUILD_ID` and, for journeys that use storage, `.worker-build/index.js`. Run a journey with an
-explicit named viewport:
+`npm i -g agent-browser && agent-browser install`. When a change has a focused
+browser journey, build the required artifacts, run the journey against the
+completed build, then run `pnpm verify:local`. Run builds and journeys
+sequentially when they share `.next` or `.worker-build`.
+
+Use `pnpm build --webpack` to produce `.next/BUILD_ID` and, for journeys that
+use storage, `pnpm worker:build` to produce `.worker-build/index.js`. Run the
+journey with an explicit named viewport:
 
 ```sh
 pnpm test:browser today-skipped --viewport 390x844

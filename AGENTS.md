@@ -12,6 +12,10 @@ Use the `linearis` skill and CLI for Linear work. Read the issue and discussions
 before changing them. Record meaningful progress and verification in the active
 issue, and keep its description consistent with status changes.
 
+Write multiline Linear updates to a file using a quoted heredoc. Pass the file
+contents as one quoted CLI argument, for example `--body "$(cat "$body_file")"`.
+Read back the update to confirm the saved text.
+
 ## Documentation index
 
 Read matching documents before starting the listed work.
