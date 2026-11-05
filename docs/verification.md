@@ -33,8 +33,13 @@ use storage, `pnpm worker:build` to produce `.worker-build/index.js`. Run the
 journey with an explicit named viewport:
 
 ```sh
-pnpm test:browser today-skipped --viewport 390x844
+pnpm test:browser today-skipped --viewport 402x874
 ```
+
+The sole user's device is an iPhone 17, so `402x874` (CSS px, portrait) is the
+primary viewport for journeys and visual review. Use `320x740` only as a narrow
+stress check. Safari toolbars and safe areas make the usable height smaller than
+874px, so check that content scrolls rather than relying on the full height.
 
 Journeys live in `tests/browser/*.journey.mjs`, declare their auth and storage
 dependencies, and use a short-lived synthetic Auth.js session plus a fresh local

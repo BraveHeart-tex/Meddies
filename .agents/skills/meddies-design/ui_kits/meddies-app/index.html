@@ -49,7 +49,7 @@
     };
 
     return (
-      <div data-screen-label={tab} style={{ width: 390, height: 844, borderRadius: 52, overflow: 'hidden', position: 'relative', background: 'var(--bg-app)', boxShadow: '0 0 0 10px #241A1D, 0 40px 60px -24px rgba(60,20,30,.4)' }}>
+      <div data-screen-label={tab} style={{ width: 402, height: 874, borderRadius: 52, overflow: 'hidden', position: 'relative', background: 'var(--bg-app)', boxShadow: '0 0 0 10px #241A1D, 0 40px 60px -24px rgba(60,20,30,.4)' }}>
         <StatusBar />
         <div style={{ position: 'absolute', top: 54, left: 0, right: 0, bottom: 0, overflowY: 'auto' }}>
           {tab === 'today' ? <TodayScreen data={D} doses={doses} onOpenDose={(id, outcome) => setSheet({ open: true, id, outcome })} onSettings={() => notice('Settings aren’t designed yet')} /> : null}

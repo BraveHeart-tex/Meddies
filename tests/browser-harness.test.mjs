@@ -9,7 +9,7 @@ const run = (...args) =>
   spawnSync(process.execPath, ['scripts/browser-test.mjs', ...args], { encoding: 'utf8' })
 
 test('unknown journeys fail before launching services with a useful name', () => {
-  const result = run('missing-journey', '--viewport', '390x844')
+  const result = run('missing-journey', '--viewport', '402x874')
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /Unknown browser journey "missing-journey"/)
 })
@@ -17,14 +17,14 @@ test('unknown journeys fail before launching services with a useful name', () =>
 test('malformed viewports fail before launching services with an example', () => {
   const result = run('today-skipped', '--viewport', 'phone')
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /Invalid or missing viewport.*390x844/s)
+  assert.match(result.stderr, /Invalid or missing viewport.*402x874/s)
 })
 
 test('the viewport flag is required and dimensions must be positive', () => {
   const missing = run('today-skipped')
   assert.notEqual(missing.status, 0)
   assert.match(missing.stderr, /Invalid or missing viewport/)
-  const zero = run('today-skipped', '--viewport', '0x844')
+  const zero = run('today-skipped', '--viewport', '0x874')
   assert.notEqual(zero.status, 0)
   assert.match(zero.stderr, /Invalid or missing viewport/)
 })
@@ -63,7 +63,7 @@ if (command === 'screenshot') fs.writeFileSync(value, '')
 
   const result = spawnSync(
     process.execPath,
-    ['scripts/browser-test.mjs', 'wait-diagnostics', '--viewport', '390x844'],
+    ['scripts/browser-test.mjs', 'wait-diagnostics', '--viewport', '402x874'],
     {
       encoding: 'utf8',
       env: { ...process.env, PATH: bin + delimiter + process.env.PATH, BROWSER_TEST_STATE: state },
@@ -108,7 +108,7 @@ if (args[0] === 'get') {
 
   const result = spawnSync(
     process.execPath,
-    ['scripts/browser-test.mjs', 'selected-weekdays', '--viewport', '390x844'],
+    ['scripts/browser-test.mjs', 'selected-weekdays', '--viewport', '402x874'],
     {
       encoding: 'utf8',
       env: { ...process.env, PATH: bin + delimiter + process.env.PATH, BROWSER_TEST_LOG: log },

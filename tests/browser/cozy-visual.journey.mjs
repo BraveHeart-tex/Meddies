@@ -66,8 +66,9 @@ const schedules = [
     weekdays: [1, 3, 5],
   },
 ]
-// MEDDIES_VISUAL_VIEWPORTS=195x422 approximates 390px at 200% zoom.
-const viewports = (process.env.MEDDIES_VISUAL_VIEWPORTS || '390x844,320x740')
+// 402x874 is the iPhone 17 primary target; 320x740 is a narrow stress check.
+// MEDDIES_VISUAL_VIEWPORTS=201x437 approximates 402px at 200% zoom.
+const viewports = (process.env.MEDDIES_VISUAL_VIEWPORTS || '402x874,320x740')
   .split(',')
   .map((size) => size.split('x').map(Number))
 

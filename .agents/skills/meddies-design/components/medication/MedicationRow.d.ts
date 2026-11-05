@@ -1,6 +1,6 @@
 /**
  * Medication list item: identity tile, name, strength/form, schedule, stock. No schedule → dashed card + "Add schedule".
- * @startingPoint section="Medication" subtitle="Medication list row with schedule and stock" viewport="390x100"
+ * @startingPoint section="Medication" subtitle="Medication list row with schedule and stock" viewport="402x100"
  */
 export interface MedicationRowProps {
   name: string;

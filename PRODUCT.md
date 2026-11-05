@@ -8,7 +8,7 @@ web
 
 ## Users
 
-One person: the initial user, a private individual who manages her own medication routine. She uses Meddies mostly on her iPhone as an installed PWA, in short moments through the day: checking what is next, recording a dose late, noticing low stock. Meddies is single-user for the foreseeable future. Caregivers, sharing and multiple accounts are out of scope.
+One person: the initial user, a private individual who manages her own medication routine. She uses Meddies mostly on her iPhone 17 (402×874 CSS px, 3x DPR) as an installed PWA, in short moments through the day: checking what is next, recording a dose late, noticing low stock. Meddies is single-user for the foreseeable future. Caregivers, sharing and multiple accounts are out of scope.
 
 ## Product Purpose
 

@@ -1,6 +1,6 @@
 /**
  * The "Up next" hero on Today — the single most important action. Taken / Skip open the Record dose sheet; they never log silently.
- * @startingPoint section="Medication" subtitle="Up next hero card with Taken / Skip" viewport="390x260"
+ * @startingPoint section="Medication" subtitle="Up next hero card with Taken / Skip" viewport="402x260"
  */
 export interface NextDoseCardProps {
   eyebrow?: string;

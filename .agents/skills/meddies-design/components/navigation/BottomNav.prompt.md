@@ -1,4 +1,4 @@
-Primary navigation; place once per screen inside a `position:relative` 390×844 container.
+Primary navigation; place once per screen inside a `position:relative` 402×874 container.
 
 ```jsx
 <BottomNav active="today" onChange={setTab} />

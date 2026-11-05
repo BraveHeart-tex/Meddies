@@ -30,7 +30,7 @@ if (
   !/^\d{2,4}x\d{2,4}$/.test(viewport ?? '') ||
   viewport.split('x').some((size) => Number(size) <= 0)
 ) {
-  fail(`Invalid or missing viewport. Use --viewport widthxheight, for example 390x844.`)
+  fail(`Invalid or missing viewport. Use --viewport widthxheight, for example 402x874.`)
   process.exit()
 }
 const journeyPath = resolve('tests/browser', `${journeyName}.journey.mjs`)
