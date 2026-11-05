@@ -3,13 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Medicine } from '@/features/medicines/contract'
-import {
-  istanbulDate,
-  SCHEDULE_TIMEZONE,
-  type DoseOccurrence,
-  type DoseOutcomeRecord,
-} from './contract'
+import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
+import { DoseStatusBadge } from './dose-status-badge'
 import { DoseActions } from './dose-actions'
+import { formatHistoryTime } from './format-history-time'
 
 export function HistoryDoseActions({
   dose,
@@ -28,23 +25,23 @@ export function HistoryDoseActions({
     confirmed && (confirmed.revision ?? 0) > serverRevision
       ? ({ ...dose, status: confirmed.outcome, record: confirmed } as DoseOccurrence)
       : dose
-  if (!medicine) return <p className="text-sm">{current.status}</p>
-  const displayTime = (instant: string, includeDate = false) => {
-    const options: Intl.DateTimeFormatOptions = includeDate
-      ? { dateStyle: 'medium', timeStyle: 'short' }
-      : { hour: 'numeric', minute: '2-digit' }
-    return new Intl.DateTimeFormat('en', { timeZone: SCHEDULE_TIMEZONE, ...options }).format(
-      new Date(instant),
-    )
-  }
+  if (!medicine) return <DoseStatusBadge status={current.status} />
   return (
     <>
-      <p className="text-sm">{current.status}</p>
+      <p role="status" className="sr-only">
+        {confirmed && (
+          <span key={confirmed.revision}>
+            Saved changes for {medicine.label}, scheduled for {formatHistoryTime(dose.dueAt)}.{' '}
+            Outcome: {confirmed.outcome.toLowerCase()}.
+          </span>
+        )}
+      </p>
+      <DoseStatusBadge status={current.status} />
       {current.status === 'Taken' && (
         <p className="text-sm">
           Taken{' '}
-          <time dateTime={current.record.takenAt}>
-            {displayTime(
+          <time data-dose-intake-time dateTime={current.record.takenAt}>
+            {formatHistoryTime(
               current.record.takenAt,
               date !== istanbulDate(new Date(current.record.takenAt)),
             )}

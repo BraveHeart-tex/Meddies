@@ -76,7 +76,7 @@ export function SkippedForm({
             Skip {medicine.label}, scheduled for {doseClock(dose.dueAt)} Istanbul time?
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" className="min-h-11" disabled={saving} onClick={onSubmit}>
+            <Button type="button" size="sheet" disabled={saving} onClick={onSubmit}>
               {saving ? 'Saving skip...' : 'Confirm skipped'}
             </Button>
             <Button

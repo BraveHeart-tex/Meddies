@@ -10,9 +10,6 @@ import {
   type TakenDoseInput,
 } from './contract'
 
-const field =
-  'min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
-
 export const doseClock = (instant: string) =>
   new Intl.DateTimeFormat('en-GB', {
     timeZone: SCHEDULE_TIMEZONE,
@@ -118,7 +115,7 @@ export function TakenForm({
             <label htmlFor={`${id}-time`}>Taken date and time in Istanbul</label>
             <input
               id={`${id}-time`}
-              className={field}
+              className="meddies-field"
               type="datetime-local"
               required
               value={takenAt}
@@ -129,7 +126,7 @@ export function TakenForm({
             <label htmlFor={`${id}-quantity`}>Quantity taken ({medicine.unit}s)</label>
             <input
               id={`${id}-quantity`}
-              className={field}
+              className="meddies-field"
               type="number"
               inputMode="decimal"
               required
@@ -140,7 +137,7 @@ export function TakenForm({
             />
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" className="min-h-11" disabled={saving}>
+            <Button type="submit" size="sheet" disabled={saving}>
               {saving ? 'Saving intake...' : editing ? 'Save intake changes' : 'Save taken dose'}
             </Button>
             <Button

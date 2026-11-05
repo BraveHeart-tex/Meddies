@@ -26,8 +26,8 @@ export default async function HomePage({
     return (
       <SessionBoundary expires={session.expires}>
         <AppShell>
-          <div className="space-y-6">
-            <h1 className="text-3xl font-semibold tracking-tight">Today</h1>
+          <div className="space-y-4">
+            <h1 className="text-3xl font-extrabold tracking-tight">Today</h1>
             <MedicinePanel scheduleMode="today" />
           </div>
         </AppShell>

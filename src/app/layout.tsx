@@ -1,10 +1,15 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import '@/global.css'
-import { Inter } from 'next/font/google'
+import localFont from 'next/font/local'
 import { cn } from '@/lib/utils'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
+const nunito = localFont({
+  src: './fonts/nunito-variable.ttf',
+  weight: '200 1000',
+  variable: '--font-sans',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'Meddies',
@@ -17,12 +22,12 @@ export const viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover' as const,
-  themeColor: '#f7f5ed',
+  themeColor: '#fbf5ee',
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={cn('font-sans', inter.variable)}>
+    <html lang="en" className={cn('font-sans', nunito.variable)}>
       <body>{children}</body>
     </html>
   )

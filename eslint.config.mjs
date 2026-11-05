@@ -8,6 +8,8 @@ const eslintConfig = defineConfig([
   // Override default ignores of eslint-config-next.
   globalIgnores([
     '.worker-build/**',
+    // Design references run outside the production application.
+    '.agents/skills/meddies-design/**',
     // Default ignores of eslint-config-next:
     '.next/**',
     'out/**',

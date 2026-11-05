@@ -6,7 +6,8 @@ export const dependencies = { auth: true, storage: true }
 export async function run({ origin, browser, request, artifactDir }) {
   browser.step('seed authenticated fixtures')
   const uuid = randomUUID()
-  const medicine = { id: uuid, label: 'Browser Harness Medicine', strength: null, unit: 'tablet' }
+  const label = 'M'.repeat(120)
+  const medicine = { id: uuid, label, strength: null, unit: 'tablet' }
   let response = await request('/api/medicines', {
     method: 'POST',
     headers: { origin, 'content-type': 'application/json' },
@@ -52,7 +53,7 @@ export async function run({ origin, browser, request, artifactDir }) {
   browser.step('open Today and show skip confirmation with keyboard')
   await browser.open(origin)
   await browser.run('wait', '--text', 'Today')
-  const trigger = 'button[aria-label^="Record dose for Browser Harness Medicine"]'
+  const trigger = `button[aria-label^="Record dose for ${label}"]`
   await browser.run('wait', trigger)
   await browser.run('focus', trigger)
   await browser.run('press', 'Enter')
@@ -60,7 +61,7 @@ export async function run({ origin, browser, request, artifactDir }) {
   await browser.run('find', 'text', 'Mark as skipped', 'click', '--exact')
   await browser.run('wait', '--text', 'Confirm skipped')
   const confirmation = await browser.snapshot()
-  assert.match(confirmation, /Confirm skipping Browser Harness Medicine/)
+  assert.ok(confirmation.includes(`Confirm skipping ${label}`))
   assert.match(confirmation, /dialog/)
   await browser.run('press', 'Escape')
   const focusedLabel = JSON.parse(
@@ -74,24 +75,29 @@ export async function run({ origin, browser, request, artifactDir }) {
   await browser.run('press', 'Enter')
   browser.step('confirm skipped outcome')
   await browser.run('wait', '--text', 'Skipped at')
+  assert.ok((await browser.run('get', 'text', 'main [role="status"]')).includes(label))
+  assert.equal(
+    (await browser.run('eval', 'document.documentElement.scrollWidth <= window.innerWidth')).trim(),
+    'true',
+    'the confirmation must fit the viewport with a 120-character unbroken name',
+  )
   browser.step('reload and verify persisted skipped outcome')
   await browser.run('reload')
   await browser.run('wait', '--text', 'Skipped at')
   const page = await browser.snapshot()
   assert.match(page, /Skipped at/, 'skip outcome must remain visible after reload')
-  assert.match(
-    page,
-    /Browser Harness Medicine/,
-    'persisted dose must remain tied to seeded medicine',
-  )
+  assert.ok(page.includes(label), 'persisted dose must remain tied to seeded medicine')
 
   browser.step('correct the Today outcome back to Taken')
-  await browser.run('find', 'text', 'Review dose', 'click', '--exact')
+  const reviewTrigger = `button[aria-label^="Review dose for ${label}"]`
+  await browser.run('focus', reviewTrigger)
+  await browser.run('press', 'Enter')
   await browser.run('find', 'text', 'Correct outcome', 'click', '--exact')
   await browser.run('find', 'text', 'Mark as taken', 'click', '--exact')
   await browser.run('wait', '--text', 'Save taken dose')
-  await browser.run('find', 'text', 'Save taken dose', 'click', '--exact')
-  await browser.run('wait', '--text', 'Taken')
+  await browser.run('focus', '[role="dialog"] button[type="submit"]')
+  await browser.run('press', 'Enter')
+  await browser.run('wait', '--text', 'Taken 1 tablet at')
   assert.match(
     await browser.run(
       'eval',
@@ -101,7 +107,7 @@ export async function run({ origin, browser, request, artifactDir }) {
   )
   await browser.run('screenshot', `${artifactDir}/today-corrected.png`)
   await browser.run('reload')
-  await browser.run('wait', '--text', 'Taken')
+  await browser.run('wait', '--text', 'Taken 1 tablet at')
   assert.match(
     await browser.run(
       'eval',

@@ -87,7 +87,7 @@ export async function run({ origin, browser, artifactDir }) {
   assert.match(page, /Taken/)
   assert.match(page, /Skipped/)
   assert.match(page, /Not logged/)
-  const actualIntakeDate = new Intl.DateTimeFormat('en', {
+  const actualIntakeDate = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Istanbul',
     dateStyle: 'medium',
   }).format(new Date())
@@ -99,7 +99,7 @@ export async function run({ origin, browser, artifactDir }) {
   await browser.run('screenshot', `${artifactDir}/dose-history.png`)
 
   browser.step('edit actual intake details without changing the schedule')
-  const actualTimeSelector = 'ol li:first-child p:nth-of-type(4) time'
+  const actualTimeSelector = 'ol li:first-child time[data-dose-intake-time]'
   const originalTakenAt = (await browser.run('get', 'attr', actualTimeSelector, 'datetime')).trim()
   await browser.run('find', 'text', 'Review dose', 'click', '--exact')
   await browser.run('find', 'text', 'Edit intake', 'click', '--exact')
@@ -111,6 +111,10 @@ export async function run({ origin, browser, artifactDir }) {
   )
   await browser.run('find', 'text', 'Save intake changes', 'click', '--exact')
   await browser.run('wait', '--text', 'quantity 1.5 tablet')
+  assert.match(
+    await browser.run('get', 'text', 'ol li:first-child [role="status"]'),
+    /Saved changes for History Fixture Medicine.*Outcome: taken/,
+  )
   assert.match(
     await browser.run('eval', "document.querySelector('ol li:first-child').innerText"),
     /1\.5 tablet/,
@@ -127,7 +131,7 @@ export async function run({ origin, browser, artifactDir }) {
     `(() => { const input = document.querySelector('input[type=datetime-local]'); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; setter.call(input, '${historyDate}T12:00'); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); })()`,
   )
   await browser.run('find', 'text', 'Save intake changes', 'click', '--exact')
-  await browser.run('wait', '--text', '12:00 PM')
+  await browser.run('wait', '--text', '12:00')
   assert.match(
     await browser.run('eval', "document.querySelector('ol li:first-child').innerText"),
     /1\.5 tablet/,

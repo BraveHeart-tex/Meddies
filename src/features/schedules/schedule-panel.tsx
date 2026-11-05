@@ -1,6 +1,8 @@
 'use client'
 
 import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { MedicationTile } from '@/features/medicines/medication-tile'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import type { Medicine } from '@/features/medicines/contract'
 import {
@@ -12,11 +14,10 @@ import {
 } from './contract'
 
 import { doseClock as clock } from './taken-form'
+import { DoseStatusBadge } from './dose-status-badge'
 import { DoseActions } from './dose-actions'
 import { scheduleToday } from './occurrences'
 
-const field =
-  'min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 type Snapshot = { schedules: DailySchedule[]; records: DoseOutcomeRecord[]; today: Today | null }
 
@@ -223,14 +224,19 @@ export function SchedulePanel({
   return (
     <div className="space-y-10">
       {mode === 'today' && (
-        <section aria-labelledby="today-heading" className="space-y-4">
-          <h2 id="today-heading" className="text-2xl font-semibold tracking-tight">
+        <section aria-labelledby="today-heading" className="space-y-5">
+          <h2 id="today-heading" className="sr-only">
             Your doses
           </h2>
           <p className="text-sm text-muted-foreground">
             All dates and times use Europe/Istanbul, wherever your device is.
           </p>
-          <p role="status" className="sr-only">
+          <p
+            role="status"
+            className={
+              intakeMessage ? 'rounded-xl bg-secondary p-3 [overflow-wrap:anywhere]' : 'sr-only'
+            }
+          >
             {intakeMessage}
           </p>
           {(loading || (medicinesLoading && medicines.length === 0)) && (
@@ -260,18 +266,30 @@ export function SchedulePanel({
             (!medicinesError || medicines.length > 0) &&
             (!medicinesLoading || medicines.length > 0) && (
               <>
-                <p className="text-sm">{today.date}</p>
+                <p className="text-sm text-muted-foreground">{today.date}</p>
                 {today.next && (
-                  <p>
-                    <strong>Next dose:</strong> {name(today.next.medicineId)},{' '}
-                    {clock(today.next.dueAt)}
-                    {istanbulDate(new Date(today.next.dueAt)) !== today.date
-                      ? ` on ${istanbulDate(new Date(today.next.dueAt))}`
-                      : ''}
-                  </p>
+                  <div className="space-y-2 rounded-3xl bg-accent p-5 text-accent-foreground [overflow-wrap:anywhere]">
+                    <h3 className="text-sm font-extrabold tracking-wide">Next dose</h3>
+                    <div className="flex items-start gap-3">
+                      <MedicationTile medicineId={today.next.medicineId} />
+                      <p className="min-w-0 text-2xl leading-tight font-extrabold">
+                        {name(today.next.medicineId)}
+                      </p>
+                    </div>
+                    <p>
+                      <time dateTime={today.next.dueAt}>{clock(today.next.dueAt)}</time>
+                      {istanbulDate(new Date(today.next.dueAt)) !== today.date
+                        ? ` on ${istanbulDate(new Date(today.next.dueAt))}`
+                        : ''}
+                      {' · '}
+                      {doseText(today.next)}
+                    </p>
+                    <DoseStatusBadge status={today.next.status} />
+                  </div>
                 )}
+                {today.doses.length > 0 && <h3 className="text-xl">Today’s doses</h3>}
                 {today.doses.length ? (
-                  <ul aria-label="Today's doses" className="divide-y border-y">
+                  <ul aria-label="Today's doses" className="space-y-2.5">
                     {[...today.doses]
                       .sort((left, right) => {
                         const rank = (dose: DoseOccurrence) =>
@@ -302,19 +320,24 @@ export function SchedulePanel({
                         return (
                           <Fragment key={dose.id}>
                             {group !== previousGroup && (
-                              <li className="bg-muted px-4 py-2 text-sm font-semibold">{group}</li>
+                              <li className="pt-2 text-sm font-extrabold">{group}</li>
                             )}
                             <li
                               data-dose-id={dose.id}
-                              className="space-y-1 py-4 [overflow-wrap:anywhere]"
+                              className={cn(
+                                'space-y-2 rounded-2xl border bg-card p-4 [overflow-wrap:anywhere]',
+                                (dose.status === 'Not logged' || dose.status === 'Due now') &&
+                                  'border-accent-foreground/35',
+                              )}
                             >
-                              <h3 id={`dose-${dose.id}`} tabIndex={-1} className="font-semibold">
+                              <h4 id={`dose-${dose.id}`} tabIndex={-1} className="font-extrabold">
                                 <time dateTime={dose.dueAt}>{clock(dose.dueAt)}</time> ·{' '}
                                 {name(dose.medicineId)}
-                              </h3>
-                              <p>
-                                {doseText(dose)} · {dose.status}
-                              </p>
+                              </h4>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p>{doseText(dose)}</p>
+                                <DoseStatusBadge status={dose.status} />
+                              </div>
                               {dose.status === 'Taken' ? (
                                 <>
                                   <p>
@@ -351,18 +374,15 @@ export function SchedulePanel({
                       })}
                   </ul>
                 ) : (
-                  <p>No doses scheduled for today.</p>
+                  <p className="rounded-2xl border bg-card p-4">No doses scheduled for today.</p>
                 )}
               </>
             )}
-          <Button
-            variant="outline"
-            className="min-h-11"
-            disabled={loading}
-            onClick={retrySchedules}
-          >
-            {loadError ? 'Retry Today' : 'Refresh Today'}
-          </Button>
+          {!loadError && (
+            <Button variant="outline" disabled={loading} onClick={retrySchedules}>
+              Refresh Today
+            </Button>
+          )}
         </section>
       )}
       {mode === 'list' && (
@@ -389,45 +409,7 @@ export function SchedulePanel({
           ) : medicines.length === 0 ? (
             <p>No medicines saved yet.</p>
           ) : (
-            <ul className="divide-y border-y">
-              {medicines.map((medicine) => {
-                const schedule = schedules.find((item) => item.medicineId === medicine.id)
-                return (
-                  <li key={medicine.id} className="space-y-2 py-4 [overflow-wrap:anywhere]">
-                    <h3 className="font-semibold">{medicine.label}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {medicine.strength || 'Strength not provided'} · {medicine.unit}
-                    </p>
-                    {schedule ? (
-                      <p>
-                        {(schedule.weekdays ?? [0, 1, 2, 3, 4, 5, 6]).length === 7
-                          ? 'Daily'
-                          : `On ${(schedule.weekdays ?? []).map((day) => WEEKDAY_NAMES[day]).join(', ')}`}{' '}
-                        at{' '}
-                        {schedule.times.map((slot) => `${slot.time} (${slot.quantity})`).join(', ')}{' '}
-                        · Starts {schedule.startDate}
-                      </p>
-                    ) : (
-                      <p>No schedule saved yet.</p>
-                    )}
-                    <a
-                      className="inline-flex min-h-11 items-center underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                      href={`/medications?medicine=${encodeURIComponent(medicine.id)}`}
-                    >
-                      View details
-                    </a>
-                    {!schedule && (
-                      <a
-                        className="ml-4 inline-flex min-h-11 items-center underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                        href={`/medications?schedule=${encodeURIComponent(medicine.id)}#schedule-heading`}
-                      >
-                        Set schedule
-                      </a>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
+            <MedicationRoutineGroups medicines={medicines} schedules={schedules} />
           )}
         </section>
       )}
@@ -479,7 +461,10 @@ export function SchedulePanel({
         </section>
       )}
       {mode === 'setup' && (
-        <section aria-labelledby="schedule-heading" className="space-y-5 [overflow-wrap:anywhere]">
+        <section
+          aria-labelledby="schedule-heading"
+          className="space-y-5 rounded-2xl border bg-card p-4 [overflow-wrap:anywhere]"
+        >
           <h2 id="schedule-heading" className="text-xl font-semibold">
             Set dose schedule
           </h2>
@@ -550,7 +535,7 @@ export function SchedulePanel({
                       </label>
                       <select
                         id="schedule-medicine"
-                        className={field}
+                        className="meddies-field"
                         required
                         value={medicineId}
                         onChange={(event) => setMedicineId(event.target.value)}
@@ -608,7 +593,7 @@ export function SchedulePanel({
                       required
                       min={attempted ? undefined : istanbulDate(new Date())}
                       max="2099-12-31"
-                      className={field}
+                      className="meddies-field"
                       value={startDate}
                       onChange={(event) => setStartDate(event.target.value)}
                     />
@@ -627,7 +612,7 @@ export function SchedulePanel({
                           id={`dose-time-${slot.key}`}
                           type="time"
                           required
-                          className={field}
+                          className="meddies-field"
                           value={slot.time}
                           onChange={(event) =>
                             setTimes((previous) =>
@@ -650,7 +635,7 @@ export function SchedulePanel({
                           min={selected?.unit === 'capsule' ? 1 : 0.5}
                           step={selected?.unit === 'capsule' ? 1 : 0.5}
                           aria-describedby="quantity-help"
-                          className={field}
+                          className="meddies-field"
                           value={slot.quantity}
                           onChange={(event) =>
                             setTimes((previous) =>
@@ -667,9 +652,11 @@ export function SchedulePanel({
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() =>
+                          onClick={() => {
+                            const adjacent = times[index + 1] ?? times[index - 1]
+                            document.getElementById(`dose-quantity-${adjacent.key}`)?.focus()
                             setTimes((previous) => previous.filter((row) => row.key !== slot.key))
-                          }
+                          }}
                         >
                           Remove time {index + 1}
                         </Button>
@@ -717,5 +704,78 @@ export function SchedulePanel({
         </section>
       )}
     </div>
+  )
+}
+
+function MedicationRoutineGroups({
+  medicines,
+  schedules,
+}: {
+  medicines: Medicine[]
+  schedules: DailySchedule[]
+}) {
+  const routines = medicines.map((medicine) => ({
+    medicine,
+    schedule: schedules.find((item) => item.medicineId === medicine.id),
+  }))
+  const routineGroups = [
+    { label: 'On a schedule', entries: routines.filter(({ schedule }) => schedule) },
+    { label: 'No schedule', entries: routines.filter(({ schedule }) => !schedule) },
+  ]
+
+  return routineGroups.map(
+    ({ label, entries }) =>
+      entries.length > 0 && (
+        <section key={label} aria-label={label} className="space-y-2.5">
+          <h3 className="text-sm tracking-wide text-muted-foreground uppercase">{label}</h3>
+          <ul className="space-y-2.5">
+            {entries.map(({ medicine, schedule }) => (
+              <li
+                key={medicine.id}
+                className={cn(
+                  'flex items-start gap-3 rounded-2xl border bg-card p-4',
+                  !schedule && 'border-dashed',
+                )}
+              >
+                <MedicationTile medicineId={medicine.id} />
+                <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]">
+                  <h4 className="font-extrabold">{medicine.label}</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {medicine.strength || 'Strength not provided'} · {medicine.unit}
+                  </p>
+                  {schedule ? (
+                    <p className="text-sm">
+                      {(schedule.weekdays ?? [0, 1, 2, 3, 4, 5, 6]).length === 7
+                        ? 'Daily'
+                        : `On ${(schedule.weekdays ?? []).map((day) => WEEKDAY_NAMES[day]).join(', ')}`}{' '}
+                      at{' '}
+                      {schedule.times.map((slot) => `${slot.time} (${slot.quantity})`).join(', ')} ·
+                      Starts {schedule.startDate}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No schedule saved yet.</p>
+                  )}
+                  <div className="flex flex-wrap gap-x-4">
+                    <a
+                      className="inline-flex min-h-11 items-center text-sm font-bold text-primary underline underline-offset-4"
+                      href={`/medications?medicine=${encodeURIComponent(medicine.id)}`}
+                    >
+                      View details
+                    </a>
+                    {!schedule && (
+                      <a
+                        className="inline-flex min-h-11 items-center text-sm font-bold text-primary underline underline-offset-4"
+                        href={`/medications?schedule=${encodeURIComponent(medicine.id)}#schedule-heading`}
+                      >
+                        Set schedule
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ),
   )
 }

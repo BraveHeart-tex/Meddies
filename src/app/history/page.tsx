@@ -4,19 +4,12 @@ import { SessionBoundary } from '@/features/auth/session-boundary'
 import { medicines } from '@/features/medicines/server'
 import { MedicineError, type Medicine } from '@/features/medicines/contract'
 import { schedules, schedulingNow } from '@/features/schedules/server'
-import { isScheduleDate, istanbulDate, SCHEDULE_TIMEZONE } from '@/features/schedules/contract'
+import { isScheduleDate, istanbulDate } from '@/features/schedules/contract'
 import type { DoseOccurrence } from '@/features/schedules/contract'
+import { formatHistoryTime } from '@/features/schedules/format-history-time'
 import { HistoryDoseActions } from '@/features/schedules/history-dose-actions'
+import { Button } from '@/components/ui/button'
 import { AppShell } from '@/components/layout/app-shell'
-
-function displayTime(instant: string, includeDate = false) {
-  const options: Intl.DateTimeFormatOptions = includeDate
-    ? { dateStyle: 'medium', timeStyle: 'short' }
-    : { hour: 'numeric', minute: '2-digit' }
-  return new Intl.DateTimeFormat('en', { timeZone: SCHEDULE_TIMEZONE, ...options }).format(
-    new Date(instant),
-  )
-}
 
 function quantityLabel(quantity: number, medicine?: Medicine) {
   return `${quantity} ${medicine?.unit ?? 'units'}`
@@ -91,7 +84,7 @@ export default async function HistoryPage({
               Choose a date
             </label>
             <input
-              className="h-11 min-w-0 w-full rounded-md border px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              className="meddies-field"
               id="history-date"
               name="date"
               type="date"
@@ -100,12 +93,7 @@ export default async function HistoryPage({
               required
             />
           </div>
-          <button
-            className="h-11 rounded-md bg-primary px-4 text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            type="submit"
-          >
-            View
-          </button>
+          <Button type="submit">View</Button>
         </form>
         {result.status === 'invalid' ? (
           <p role="alert">Choose a valid date up to today.</p>
@@ -127,16 +115,19 @@ export default async function HistoryPage({
         ) : result.doses.length === 0 ? (
           <p>No past doses for this date.</p>
         ) : (
-          <ol aria-label={`Doses for ${date}`} className="divide-y rounded-md border">
+          <ol aria-label={`Doses for ${date}`} className="space-y-2.5">
             {result.doses.map((dose) => {
               const medicine = result.medicines.get(dose.medicineId)
               return (
-                <li key={dose.id} className="space-y-1 p-4 [overflow-wrap:anywhere]">
+                <li
+                  key={dose.id}
+                  className="space-y-2 rounded-2xl border bg-card p-4 [overflow-wrap:anywhere]"
+                >
                   <p className="font-medium">
                     {medicine?.label ?? 'Medicine'} - {quantityLabel(dose.quantity, medicine)}
                   </p>
                   <p className="text-sm">
-                    Scheduled <time dateTime={dose.dueAt}>{displayTime(dose.dueAt)}</time>
+                    Scheduled <time dateTime={dose.dueAt}>{formatHistoryTime(dose.dueAt)}</time>
                   </p>
                   <HistoryDoseActions dose={dose} medicine={medicine} date={date} />
                 </li>

@@ -137,7 +137,7 @@ test('session reads preserve provider identity and absolute expiry without discl
   assert(!JSON.stringify(session).includes('approved@example.test'))
   const page = await request('/', { headers })
   const html = await page.text()
-  assert.match(html, /aria-current="page"[^>]*>Today<\/a>/)
+  assert.match(html, /<a\b(?=[^>]*\baria-current="page")(?=[^>]*\bhref="\/")[^>]*>/)
   assert.match(html, /href="\/medications"/)
   assert.match(html, /href="\/history"/)
   assert.match(html, /href="\/settings"/)

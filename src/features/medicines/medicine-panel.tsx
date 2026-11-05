@@ -116,8 +116,6 @@ export function MedicinePanel({
     }
   }
 
-  const field =
-    'min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
   return (
     <div className="space-y-10">
       <SchedulePanel
@@ -133,7 +131,7 @@ export function MedicinePanel({
         medicines.some((item) => item.id === detailMedicineId) && (
           <section
             aria-labelledby="medicine-detail"
-            className="space-y-2 rounded-xl border bg-card p-4 [overflow-wrap:anywhere]"
+            className="space-y-2 rounded-2xl border bg-card p-4 [overflow-wrap:anywhere]"
           >
             <h2 id="medicine-detail" className="text-xl font-semibold">
               {medicines.find((item) => item.id === detailMedicineId)?.label}
@@ -149,7 +147,7 @@ export function MedicinePanel({
           </section>
         )}
       {scheduleMode === 'list' && (
-        <section aria-labelledby="add-heading" className="space-y-5">
+        <section aria-labelledby="add-heading" className="space-y-5 rounded-2xl border bg-card p-4">
           <div className="space-y-2">
             <h2 id="add-heading" className="text-xl font-semibold">
               Add a medicine
@@ -173,7 +171,7 @@ export function MedicinePanel({
                   maxLength={120}
                   value={label}
                   onChange={(event) => setLabel(event.target.value)}
-                  className={field}
+                  className="meddies-field"
                   aria-describedby="medicine-name-help"
                 />
                 <p id="medicine-name-help" className="text-sm text-muted-foreground">
@@ -192,7 +190,7 @@ export function MedicinePanel({
                   maxLength={120}
                   value={strength}
                   onChange={(event) => setStrength(event.target.value)}
-                  className={field}
+                  className="meddies-field"
                   aria-describedby="medicine-strength-help"
                 />
                 <p id="medicine-strength-help" className="text-sm text-muted-foreground">
@@ -208,7 +206,7 @@ export function MedicinePanel({
                   name="unit"
                   value={unit}
                   onChange={(event) => setUnit(event.target.value as 'tablet' | 'capsule')}
-                  className={field}
+                  className="meddies-field"
                   aria-describedby="medicine-unit-help"
                 >
                   <option value="tablet">Tablet</option>

@@ -34,7 +34,17 @@ export default async function MedicationsPage({
   return (
     <SessionBoundary expires={session.expires}>
       <AppShell>
-        <h1 className="mb-6 text-3xl font-semibold tracking-tight">Medications</h1>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-3xl font-extrabold tracking-tight">Medications</h1>
+          {!scheduleMedicineId && !detailMedicineId && (
+            <a
+              href="#add-heading"
+              className="inline-flex min-h-11 items-center rounded-full bg-primary px-4 font-extrabold text-primary-foreground"
+            >
+              Add a medicine
+            </a>
+          )}
+        </div>
         <MedicinePanel
           scheduleMode={scheduleMedicineId ? 'setup' : detailMedicineId ? 'detail' : 'list'}
           scheduleMedicineId={scheduleMedicineId}
