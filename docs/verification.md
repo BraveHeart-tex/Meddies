@@ -2,17 +2,16 @@
 
 ## Required checks
 
-After installing dependencies, run from the repository root in this order:
+After installing dependencies, run from the repository root:
 
 ```sh
-pnpm lint
-pnpm format:check
-pnpm typecheck
-pnpm build
-pnpm test
+pnpm verify:local
 ```
 
-Build before testing: the HTTP suite uses the production Next.js build.
+The command runs lint, format check, typecheck, a Webpack production build, and
+tests in order. Webpack avoids the Turbopack CSS worker's local port requirement
+in restricted agent environments. CI and releases use the default Turbopack build.
+The HTTP suite uses the production Next.js build.
 Typechecking covers Next.js and Worker source. Tests bundle the Worker and cover
 application operations, local workerd/D1 integration, and production Next.js HTTP
 paths using synthetic configuration and identities. They do not access production
@@ -25,8 +24,9 @@ personal data or prove a deployed Google callback or remote D1 configuration.
 
 Install `agent-browser` and its Chromium runtime once with
 `npm i -g agent-browser && agent-browser install`. Build the production app and
-Worker with `pnpm build` and `pnpm worker:build`; the harness refuses to start
-without `.next/BUILD_ID` or `.worker-build/index.js`. Run a journey with an
+Worker with `pnpm verify:local`, or build just the required artifacts with
+`pnpm build --webpack` and `pnpm worker:build`. The harness requires
+`.next/BUILD_ID` and, for journeys that use storage, `.worker-build/index.js`. Run a journey with an
 explicit named viewport:
 
 ```sh

@@ -53,7 +53,7 @@ try {
   process.exit()
 }
 if (!existsSync('.next/BUILD_ID')) {
-  fail('Production build missing. Run exactly: pnpm build')
+  fail('Production build missing. Run: pnpm build --webpack')
   process.exit()
 }
 if (journey.dependencies.storage && !existsSync('.worker-build/index.js')) {
