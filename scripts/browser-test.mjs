@@ -3,11 +3,13 @@ import { spawn, execFileSync } from 'node:child_process'
 import { once } from 'node:events'
 import { createServer } from 'node:net'
 import { existsSync } from 'node:fs'
-import { mkdir, readFile, readdir, unlink, writeFile } from 'node:fs/promises'
+import { mkdir, unlink, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import { encode } from 'next-auth/jwt'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
+import { setTime } from '../tests/helpers/browser-actions.mjs'
+import { applyD1Migrations } from '../tests/helpers/d1-migrations.mjs'
 
 const args = process.argv.slice(2)
 const journeyName = args[0]
@@ -93,6 +95,7 @@ const browser = {
     currentStep = name
   },
   open: (url) => runBrowser(['open', url]),
+  setTime: (selector, value) => setTime(browser.run, selector, value),
   snapshot: () => runBrowser(['snapshot']),
   close: () => {
     if (browserStarted)
@@ -121,20 +124,8 @@ try {
         bindings: { MEDICINES_WORKER_SECRET: workerSecret },
       }),
     )
-    const db = await worker.getD1Database('DB')
-    database = db
-    const migrations = (await readdir('worker/migrations'))
-      .filter((name) => /^\d+.*\.sql$/.test(name))
-      .sort()
-    for (const file of migrations) {
-      const sql = await readFile(resolve('worker/migrations', file), 'utf8')
-      const triggers = [...sql.matchAll(/CREATE TRIGGER[\s\S]*?END;/g)].map(
-        ([statement]) => statement,
-      )
-      const statements = sql.replace(/CREATE TRIGGER[\s\S]*?END;/g, '').split(';')
-      for (const statement of [...statements, ...triggers])
-        if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
-    }
+    database = await worker.getD1Database('DB')
+    await applyD1Migrations(database)
   }
   if (journey.seed) await journey.seed({ db: database, ownerId: 'google:browser-harness' })
   const workerUrl = worker ? await worker.ready : undefined

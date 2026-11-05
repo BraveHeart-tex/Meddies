@@ -31,16 +31,7 @@ export async function run({ origin, browser, request }) {
   scheduleStart.setUTCDate(scheduleStart.getUTCDate() + 1)
   const startDate = scheduleStart.toISOString().slice(0, 10)
   await browser.run('fill', '#schedule-start', startDate)
-  // Chromium's segmented time control does not accept agent-browser fill.
-  await browser.run(
-    'eval',
-    `(() => {
-      const field = document.querySelector('#dose-time-0')
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(field, '23:59')
-      field.dispatchEvent(new Event('input', { bubbles: true }))
-      field.dispatchEvent(new Event('change', { bubbles: true }))
-    })()`,
-  )
+  browser.setTime('#dose-time-0', '23:59')
   await browser.run('fill', '#dose-quantity-0', '1')
 
   browser.step('show accessible feedback for empty weekday selection')

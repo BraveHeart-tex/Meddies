@@ -6,10 +6,10 @@ import { createServer } from 'node:net'
 import { setTimeout as delay } from 'node:timers/promises'
 import { after, before, test } from 'node:test'
 import { encode } from 'next-auth/jwt'
-import { readFile } from 'node:fs/promises'
 import { createWorker } from '../worker/index.ts'
 import { istanbulDate } from '../src/features/schedules/contract.ts'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
+import { applyD1Migrations } from './helpers/d1-migrations.mjs'
 
 // Synthetic signed cookies prove session authorization, never Google identity verification.
 const secret = randomBytes(32).toString('base64url')
@@ -48,32 +48,7 @@ before(async () => {
       bindings: { MEDICINES_WORKER_SECRET: workerSecret },
     }),
   )
-  const db = await worker.getD1Database('DB')
-  await db.exec(
-    (await readFile('worker/migrations/0001_user_medications.sql', 'utf8')).replaceAll('\n', ' '),
-  )
-  await db.exec(
-    (await readFile('worker/migrations/0002_daily_schedules.sql', 'utf8')).replaceAll('\n', ' '),
-  )
-  for (const statement of (await readFile('worker/migrations/0003_dose_records.sql', 'utf8')).split(
-    ';',
-  )) {
-    if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
-  }
-  const migration = await readFile('worker/migrations/0004_skipped_dose_records.sql', 'utf8')
-  const triggers = [...migration.matchAll(/CREATE TRIGGER[\s\S]*?END;/g)].map(
-    ([statement]) => statement,
-  )
-  const baseStatements = migration.replace(/CREATE TRIGGER[\s\S]*?END;/g, '').split(';')
-  for (const statement of [...baseStatements, ...triggers])
-    if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
-  await db.exec(
-    (await readFile('worker/migrations/0005_dose_corrections.sql', 'utf8')).replaceAll('\n', ' '),
-  )
-  for (const statement of (
-    await readFile('worker/migrations/0006_weekday_schedules.sql', 'utf8')
-  ).split(';'))
-    if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
+  await applyD1Migrations(await worker.getD1Database('DB'))
   const workerUrl = await worker.ready
   const listener = createServer()
   listener.listen(0, '127.0.0.1')

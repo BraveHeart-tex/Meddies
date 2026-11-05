@@ -1,14 +1,23 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, test } from 'node:test'
-import { readFile } from 'node:fs/promises'
 import { createWorker } from '../worker/index.ts'
 import { createScheduleOperations } from '../src/features/schedules/operations.ts'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
+import { applyD1Migrations } from './helpers/d1-migrations.mjs'
 
 let runtime
 const secret = 'synthetic-worker-secret-at-least-32-characters'
 const medicine = { id: randomUUID(), label: 'Vitamin D3', strength: '1000 IU', unit: 'tablet' }
+const legacy = {
+  ownerId: 'google:legacy-migration',
+  medicineId: '10000000-0000-4000-8000-000000000001',
+  scheduleId: '10000000-0000-4000-8000-000000000002',
+  dueAt: '2026-11-05T06:00:00.000Z',
+  date: '2026-11-05',
+  quantity: 0.5,
+  takenAt: '2026-11-05T05:50:00.000Z',
+}
 const call = (command, authorization = `Bearer ${secret}`) =>
   runtime.dispatchFetch('http://worker/medicines', {
     method: 'POST',
@@ -26,61 +35,41 @@ before(async () => {
     }),
   )
   const db = await runtime.getD1Database('DB')
-  await db.exec(
-    (await readFile('worker/migrations/0001_user_medications.sql', 'utf8')).replaceAll('\n', ' '),
-  )
-  await db.exec(
-    (await readFile('worker/migrations/0002_daily_schedules.sql', 'utf8')).replaceAll('\n', ' '),
-  )
-  for (const statement of (await readFile('worker/migrations/0003_dose_records.sql', 'utf8')).split(
-    ';',
-  )) {
-    if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
-  }
-  const legacy = {
-    ownerId: 'google:legacy-migration',
-    medicineId: '10000000-0000-4000-8000-000000000001',
-    scheduleId: '10000000-0000-4000-8000-000000000002',
-    dueAt: '2026-11-05T06:00:00.000Z',
-    takenAt: '2026-11-05T05:50:00.000Z',
-  }
-  await db
-    .prepare('INSERT INTO user_medications(owner_id,id,label,strength,unit) VALUES(?,?,?,?,?)')
-    .bind(legacy.ownerId, legacy.medicineId, 'Legacy dose', null, 'tablet')
-    .run()
-  await db
-    .prepare(
-      'INSERT INTO daily_schedules(owner_id,id,medicine_id,start_date,times,confirmed_at) VALUES(?,?,?,?,?,?)',
-    )
-    .bind(
-      legacy.ownerId,
-      legacy.scheduleId,
-      legacy.medicineId,
-      '2026-11-05',
-      '[{"time":"09:00","quantity":1}]',
-      '2026-11-04T20:00:00.000Z',
-    )
-    .run()
-  await db
-    .prepare(
-      'INSERT INTO dose_records(owner_id,schedule_id,due_at,taken_at,quantity,outcome) VALUES(?,?,?,?,?,?)',
-    )
-    .bind(legacy.ownerId, legacy.scheduleId, legacy.dueAt, legacy.takenAt, 0.5, 'Taken')
-    .run()
-  const migration = await readFile('worker/migrations/0004_skipped_dose_records.sql', 'utf8')
-  const triggers = [...migration.matchAll(/CREATE TRIGGER[\s\S]*?END;/g)].map(
-    ([statement]) => statement,
-  )
-  const baseStatements = migration.replace(/CREATE TRIGGER[\s\S]*?END;/g, '').split(';')
-  for (const statement of [...baseStatements, ...triggers])
-    if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
-  await db.exec(
-    (await readFile('worker/migrations/0005_dose_corrections.sql', 'utf8')).replaceAll('\n', ' '),
-  )
-  for (const statement of (
-    await readFile('worker/migrations/0006_weekday_schedules.sql', 'utf8')
-  ).split(';'))
-    if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
+  await applyD1Migrations(db, {
+    async afterMigration(file) {
+      if (file !== '0003_dose_records.sql') return
+      await db
+        .prepare('INSERT INTO user_medications(owner_id,id,label,strength,unit) VALUES(?,?,?,?,?)')
+        .bind(legacy.ownerId, legacy.medicineId, 'Legacy dose', null, 'tablet')
+        .run()
+      await db
+        .prepare(
+          'INSERT INTO daily_schedules(owner_id,id,medicine_id,start_date,times,confirmed_at) VALUES(?,?,?,?,?,?)',
+        )
+        .bind(
+          legacy.ownerId,
+          legacy.scheduleId,
+          legacy.medicineId,
+          legacy.date,
+          '[{"time":"09:00","quantity":1}]',
+          '2026-11-04T20:00:00.000Z',
+        )
+        .run()
+      await db
+        .prepare(
+          'INSERT INTO dose_records(owner_id,schedule_id,due_at,taken_at,quantity,outcome) VALUES(?,?,?,?,?,?)',
+        )
+        .bind(
+          legacy.ownerId,
+          legacy.scheduleId,
+          legacy.dueAt,
+          legacy.takenAt,
+          legacy.quantity,
+          'Taken',
+        )
+        .run()
+    },
+  })
 })
 after(async () => {
   await runtime?.dispose()
@@ -393,15 +382,15 @@ test('0004 preserves pre-existing Taken rows, legacy list shape and identical Ta
     headers: { authorization: `Bearer ${secret}`, 'content-type': 'application/json' },
     body: JSON.stringify({
       operation: 'list',
-      ownerId: 'google:legacy-migration',
-      date: '2026-11-05',
+      ownerId: legacy.ownerId,
+      date: legacy.date,
     }),
   })
   assert.equal(response.status, 200)
   const body = await response.json()
   assert.deepEqual(Object.keys(body).sort(), ['records', 'schedules'])
   assert.equal(body.records[0].outcome, 'Taken')
-  assert.equal(body.records[0].quantity, 0.5)
+  assert.equal(body.records[0].quantity, legacy.quantity)
   const handler = createWorker(() => new Date('2026-11-05T08:00:00.000Z'))
   const db = await runtime.getD1Database('DB')
   const retry = await handler.fetch(
@@ -410,19 +399,28 @@ test('0004 preserves pre-existing Taken rows, legacy list shape and identical Ta
       headers: { authorization: `Bearer ${secret}`, 'content-type': 'application/json' },
       body: JSON.stringify({
         operation: 'recordTaken',
-        ownerId: 'google:legacy-migration',
+        ownerId: legacy.ownerId,
         record: {
-          scheduleId: '10000000-0000-4000-8000-000000000002',
-          dueAt: '2026-11-05T06:00:00.000Z',
-          takenAt: '2026-11-05T05:50:00.000Z',
-          quantity: 0.5,
+          scheduleId: legacy.scheduleId,
+          dueAt: legacy.dueAt,
+          takenAt: legacy.takenAt,
+          quantity: legacy.quantity,
         },
       }),
     }),
     { DB: db, MEDICINES_WORKER_SECRET: secret },
   )
   assert.equal(retry.status, 200)
-  assert.equal((await retry.json()).records[0].takenAt, '2026-11-05T05:50:00.000Z')
+  assert.equal((await retry.json()).records[0].takenAt, legacy.takenAt)
+  const skipped = await db
+    .prepare(
+      `INSERT INTO skipped_dose_records (owner_id, schedule_id, due_at, recorded_at, outcome)
+       SELECT owner_id, schedule_id, due_at, taken_at, 'Skipped'
+       FROM dose_records WHERE owner_id = ?`,
+    )
+    .bind(legacy.ownerId)
+    .run()
+  assert.equal(skipped.meta.changes, 0)
 })
 
 test('Skipped D1 records are idempotent across midnight and triggers arbitrate cross-outcome races', async () => {
@@ -467,6 +465,14 @@ test('Skipped D1 records are idempotent across midnight and triggers arbitrate c
   ])
   assert.deepEqual(first, retry)
   assert.equal(first.recordedAt, now.toISOString())
+  const taken = await db
+    .prepare(
+      `INSERT INTO dose_records (owner_id, schedule_id, due_at, taken_at, quantity, outcome)
+       VALUES (?, ?, ?, ?, 1, 'Taken')`,
+    )
+    .bind(ownerId, schedule.id, dueAt, now.toISOString())
+    .run()
+  assert.equal(taken.meta.changes, 0)
   now = new Date('2026-11-05T21:00:00.000Z')
   assert.deepEqual(await operations.recordSkipped(input), first)
   await assert.rejects(
