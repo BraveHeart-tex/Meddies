@@ -38,6 +38,84 @@ test('daily setup requires authentication and rejects malformed times, dates and
   await assert.rejects(() => anonymous.save(input), /unauthorized/)
 })
 
+test('history reads an earlier Istanbul day with elapsed explicit and unlogged outcomes only', async () => {
+  const now = new Date('2026-11-05T07:00:00.000Z')
+  const schedule = {
+    ...input,
+    startDate: '2026-11-04',
+    times: [
+      { time: '00:00', quantity: 1 },
+      { time: '08:00', quantity: 1 },
+      { time: '09:00', quantity: 2 },
+      { time: '10:00', quantity: 0.5 },
+    ],
+    confirmedAt: '2026-11-03T21:00:00.000Z',
+  }
+  const taken = {
+    outcome: 'Taken',
+    scheduleId: schedule.id,
+    dueAt: '2026-11-04T05:00:00.000Z',
+    takenAt: '2026-11-04T06:15:00.000Z',
+    quantity: 1.5,
+  }
+  const skipped = {
+    outcome: 'Skipped',
+    scheduleId: schedule.id,
+    dueAt: '2026-11-04T06:00:00.000Z',
+    recordedAt: '2026-11-04T06:30:00.000Z',
+  }
+  let command
+  const operations = createScheduleOperations({
+    requireUser: async () => ({ id: 'google:alice' }),
+    send: async (value) => {
+      command = value
+      return { schedules: [schedule], records: [taken, skipped] }
+    },
+    now: () => now,
+  })
+  const day = await operations.history('2026-11-04')
+  assert.deepEqual(command, {
+    operation: 'listOutcomes',
+    ownerId: 'google:alice',
+    date: '2026-11-04',
+  })
+  assert.deepEqual(
+    day.map(({ dueAt, status }) => ({ dueAt, status })),
+    [
+      { dueAt: taken.dueAt, status: 'Taken' },
+      { dueAt: skipped.dueAt, status: 'Skipped' },
+      { dueAt: '2026-11-04T07:00:00.000Z', status: 'Not logged' },
+    ],
+  )
+  assert.equal(day[0].record.takenAt, taken.takenAt)
+  assert.equal(day[0].record.quantity, 1.5)
+  await assert.rejects(() => operations.history('2026-11-06'), /validation/)
+  await assert.rejects(() => operations.history('2026-02-30'), /validation/)
+})
+
+test('history for today includes only occurrences strictly before captured now', async () => {
+  const now = new Date('2026-11-05T07:00:00.000Z')
+  const schedule = {
+    ...input,
+    startDate: '2026-11-05',
+    times: [
+      { time: '09:59', quantity: 1 },
+      { time: '10:00', quantity: 1 },
+      { time: '10:01', quantity: 1 },
+    ],
+    confirmedAt: '2026-11-04T20:00:00.000Z',
+  }
+  const operations = createScheduleOperations({
+    requireUser: async () => ({ id: 'google:alice' }),
+    send: async () => ({ schedules: [schedule], records: [] }),
+    now: () => now,
+  })
+  assert.deepEqual(
+    (await operations.history('2026-11-05')).map((dose) => dose.dueAt),
+    ['2026-11-05T06:59:00.000Z'],
+  )
+})
+
 test('Today keeps stable Istanbul doses across reload, date rollover and device timezone changes', async () => {
   let now = new Date('2026-11-03T20:59:59Z')
   const schedule = {

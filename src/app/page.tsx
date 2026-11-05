@@ -2,6 +2,7 @@ import { MedicinePanel } from '@/features/medicines/medicine-panel'
 import { auth, authConfigured } from '@/features/auth/server'
 import { AuthControl } from '@/features/auth/controls'
 import { SessionBoundary } from '@/features/auth/session-boundary'
+import Link from 'next/link'
 
 export default async function HomePage({
   searchParams,
@@ -18,6 +19,9 @@ export default async function HomePage({
         <SessionBoundary expires={session.expires}>
           <div className="space-y-6">
             <h2 className="text-xl font-medium">Welcome back</h2>
+            <Link className="text-sm underline" href="/history">
+              Dose history
+            </Link>
             <MedicinePanel />
             <AuthControl signedIn />
           </div>

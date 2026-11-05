@@ -2,7 +2,6 @@ import {
   istanbulDate,
   type DailySchedule,
   type DoseOccurrence,
-  type DoseRecord,
   type DoseOutcomeRecord,
   type Today,
 } from './contract'
@@ -12,6 +11,33 @@ import {
 export function scheduledInstant(date: string, time: string) {
   // Istanbul uses UTC+03:00 for the supported schedule dates.
   return new Date(`${date}T${time}:00+03:00`).toISOString()
+}
+
+function occurrenceFor(
+  schedule: DailySchedule,
+  dueAt: string,
+  slot: DailySchedule['times'][number],
+  nowIso: string,
+  outcomes: Map<string, DoseOutcomeRecord>,
+): DoseOccurrence | null {
+  if (dueAt <= schedule.confirmedAt) return null
+  const id = `${schedule.id}:${dueAt}`
+  const record = outcomes.get(id)
+  const base = {
+    id,
+    scheduleId: schedule.id,
+    medicineId: schedule.medicineId,
+    dueAt,
+    quantity: slot.quantity,
+  }
+  if (!record)
+    return {
+      ...base,
+      status: dueAt < nowIso ? 'Not logged' : dueAt === nowIso ? 'Due now' : 'Upcoming',
+    }
+  return record.outcome === 'Taken'
+    ? { ...base, status: 'Taken', record }
+    : { ...base, status: 'Skipped', record }
 }
 
 export function scheduleToday(
@@ -34,38 +60,8 @@ export function scheduleToday(
       const dateString = localDate.toISOString().slice(0, 10)
       for (const slot of schedule.times) {
         const dueAt = scheduledInstant(dateString, slot.time)
-        if (dueAt <= schedule.confirmedAt) continue
-        const id = `${schedule.id}:${dueAt}`
-        const record = outcomes.get(id)
-        const occurrence: DoseOccurrence = !record
-          ? {
-              id,
-              scheduleId: schedule.id,
-              medicineId: schedule.medicineId,
-              dueAt,
-              quantity: slot.quantity,
-              status: dueAt < nowIso ? 'Not logged' : dueAt === nowIso ? 'Due now' : 'Upcoming',
-            }
-          : record.outcome === 'Taken'
-            ? {
-                id,
-                scheduleId: schedule.id,
-                medicineId: schedule.medicineId,
-                dueAt,
-                quantity: slot.quantity,
-                status: 'Taken',
-                record,
-              }
-            : {
-                id,
-                scheduleId: schedule.id,
-                medicineId: schedule.medicineId,
-                dueAt,
-                quantity: slot.quantity,
-                status: 'Skipped',
-                record,
-              }
-        occurrences.push(occurrence)
+        const occurrence = occurrenceFor(schedule, dueAt, slot, nowIso, outcomes)
+        if (occurrence) occurrences.push(occurrence)
       }
     }
   }
@@ -79,4 +75,27 @@ export function scheduleToday(
         (dose) => dose.dueAt >= nowIso && dose.status !== 'Taken' && dose.status !== 'Skipped',
       ) ?? null,
   }
+}
+
+export function scheduleHistoryDay(
+  schedules: DailySchedule[],
+  date: string,
+  now: Date,
+  records: DoseOutcomeRecord[],
+): DoseOccurrence[] {
+  const outcomes = new Map(
+    records.map((record) => [`${record.scheduleId}:${record.dueAt}`, record]),
+  )
+  const nowIso = now.toISOString()
+  const doses: DoseOccurrence[] = []
+  for (const schedule of schedules) {
+    if (schedule.startDate > date) continue
+    for (const slot of schedule.times) {
+      const dueAt = scheduledInstant(date, slot.time)
+      if (dueAt >= nowIso) continue
+      const occurrence = occurrenceFor(schedule, dueAt, slot, nowIso, outcomes)
+      if (occurrence) doses.push(occurrence)
+    }
+  }
+  return doses.sort((a, b) => a.dueAt.localeCompare(b.dueAt) || a.id.localeCompare(b.id))
 }

@@ -67,6 +67,7 @@ const session = `meddies-${randomUUID()}`
 const secret = randomBytes(32).toString('base64url')
 const workerSecret = randomBytes(32).toString('base64url')
 let worker, child, origin
+let database
 let serviceLogs = ''
 let currentStep = 'startup'
 let browserStarted = false
@@ -121,6 +122,7 @@ try {
       }),
     )
     const db = await worker.getD1Database('DB')
+    database = db
     const migrations = (await readdir('worker/migrations'))
       .filter((name) => /^\d+.*\.sql$/.test(name))
       .sort()
@@ -134,6 +136,7 @@ try {
         if (statement.trim()) await db.exec(statement.trim().replaceAll('\n', ' '))
     }
   }
+  if (journey.seed) await journey.seed({ db: database, ownerId: 'google:browser-harness' })
   const workerUrl = worker ? await worker.ready : undefined
   const probe = createServer()
   probe.listen(0, '127.0.0.1')

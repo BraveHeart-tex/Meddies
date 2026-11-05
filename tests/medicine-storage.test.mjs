@@ -414,3 +414,70 @@ test('Skipped D1 records are idempotent across midnight and triggers arbitrate c
   assert.equal(listed.records.find((record) => record.dueAt === dueAt).recordedAt, first.recordedAt)
   assert.equal(listed.records.filter((record) => record.dueAt === raceInput.dueAt).length, 1)
 })
+
+test('real D1 history reload preserves a past Taken outcome and actual intake details', async () => {
+  let now = new Date('2026-11-04T04:00:00.000Z')
+  const handler = createWorker(() => now)
+  const db = await runtime.getD1Database('DB')
+  const ownerId = 'google:history-d1'
+  const tablet = { ...medicine, id: randomUUID() }
+  await call({ operation: 'save', ownerId, medicine: tablet })
+  const send = async (command) => {
+    const response = await handler.fetch(
+      new Request('http://worker/schedules', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${secret}` },
+        body: JSON.stringify(command),
+      }),
+      { DB: db, MEDICINES_WORKER_SECRET: secret },
+    )
+    const body = await response.json()
+    if (!response.ok) throw new Error(body.error)
+    return body
+  }
+  const operations = createScheduleOperations({
+    requireUser: async () => ({ id: ownerId }),
+    send,
+    now: () => now,
+  })
+  const [schedule] = await operations.save({
+    id: randomUUID(),
+    medicineId: tablet.id,
+    startDate: '2026-11-04',
+    times: [
+      { time: '08:00', quantity: 1 },
+      { time: '09:00', quantity: 1 },
+      { time: '10:00', quantity: 1 },
+    ],
+  })
+  now = new Date('2026-11-05T07:00:00.000Z')
+  await operations.recordTaken({
+    scheduleId: schedule.id,
+    dueAt: '2026-11-04T05:00:00.000Z',
+    takenAt: '2026-11-05T06:30:00.000Z',
+    quantity: 0.5,
+  })
+  await operations.recordSkipped({
+    scheduleId: schedule.id,
+    dueAt: '2026-11-04T06:00:00.000Z',
+  })
+  const history = await operations.history('2026-11-04')
+  assert.deepEqual(
+    history.map((dose) => [
+      dose.status,
+      dose.record?.takenAt ?? undefined,
+      dose.record?.quantity ?? undefined,
+    ]),
+    [
+      ['Taken', '2026-11-05T06:30:00.000Z', 0.5],
+      ['Skipped', undefined, undefined],
+      ['Not logged', undefined, undefined],
+    ],
+  )
+  const bob = createScheduleOperations({
+    requireUser: async () => ({ id: 'google:other-history-user' }),
+    send,
+    now: () => now,
+  })
+  assert.deepEqual(await bob.history('2026-11-04'), [])
+})

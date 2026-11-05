@@ -1,6 +1,7 @@
-import { scheduleToday } from './occurrences'
+import { scheduleHistoryDay, scheduleToday } from './occurrences'
 import {
   istanbulDate,
+  isScheduleDate,
   parseSchedule,
   parseSkippedDose,
   parseTakenDose,
@@ -68,6 +69,19 @@ export function createScheduleOperations(dependencies: {
       })
       if (!schedules || !records) throw new MedicineError('unavailable', 503)
       return { schedules, records, today: scheduleToday(schedules, now, records) }
+    },
+    async history(date: unknown) {
+      const user = await dependencies.requireUser()
+      const now = dependencies.now?.() ?? new Date()
+      if (!isScheduleDate(date) || date > istanbulDate(now))
+        throw new MedicineError('validation', 400)
+      const { schedules, records } = await dependencies.send({
+        operation: 'listOutcomes',
+        ownerId: user.id,
+        date,
+      })
+      if (!schedules || !records) throw new MedicineError('unavailable', 503)
+      return scheduleHistoryDay(schedules, date, now, records)
     },
   }
 }
