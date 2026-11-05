@@ -7,3 +7,4 @@ pnpm-lock.yaml
 experiments
 .worker-build/
 .agents/skills/meddies-design/
+.impeccable

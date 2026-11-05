@@ -22,34 +22,60 @@ personal data or prove a deployed Google callback or remote D1 configuration.
 
 ### Browser journeys
 
-Install `agent-browser` and its Chromium runtime once with
-`npm i -g agent-browser && agent-browser install`. When a change has a focused
-browser journey, build the required artifacts, run the journey against the
-completed build, then run `pnpm verify:local`. Run builds and journeys
-sequentially when they share `.next` or `.worker-build`.
+Journeys are Playwright Test specs in `tests/browser/*.spec.ts`. They stay manual,
+outside `pnpm verify:local` and CI. Install the browser once with
+`pnpm exec playwright install chromium`.
 
-Use `pnpm build --webpack` to produce `.next/BUILD_ID` and, for journeys that
-use storage, `pnpm worker:build` to produce `.worker-build/index.js`. Run the
-journey with an explicit named viewport:
+Build first, then run journeys against the completed build. Run builds and journeys
+sequentially when they share `.next` or `.worker-build`:
 
 ```sh
-pnpm test:browser today-skipped --viewport 402x874
+pnpm build --webpack
+pnpm worker:build
+pnpm test:browser                 # all journeys on iphone-17
+pnpm test:browser today-skipped   # one journey, matched by file name
+pnpm exec playwright test --project=narrow cozy-visual
 ```
 
-The sole user's device is an iPhone 17, so `402x874` (CSS px, portrait) is the
-primary viewport for journeys and visual review. Use `320x740` only as a narrow
-stress check. Safari toolbars and safe areas make the usable height smaller than
-874px, so check that content scrolls rather than relying on the full height.
+Global setup fails fast when `.next/BUILD_ID` or `.worker-build/index.js` is missing.
+Run `pnpm verify:local` after the journeys.
 
-Journeys live in `tests/browser/*.journey.mjs`, declare their auth and storage
-dependencies, and use a short-lived synthetic Auth.js session plus a fresh local
-Worker/D1 database. No Google provider or real credentials are used. Browser
-state and failure screenshots are isolated; logs and screenshots are saved under
-ignored `.browser-artifacts/`. Journey helpers expose the local origin, an
-authenticated HTTP request function, and a session-scoped `agent-browser` CLI
-wrapper. The `today-skipped` pilot picks a same-day schedule time one minute
-ahead; it reports a fixture limit during the final minute before Europe/Istanbul
-midnight. `pnpm test` remains browser-free.
+Projects set the viewport. `iphone-17` (402x874 CSS px, portrait) is the sole user's
+device and the one `pnpm test:browser` selects; a bare `pnpm exec playwright test`
+runs every project. `narrow` (320x740) is an opt-in stress check. Safari toolbars
+and safe areas make the usable height smaller than 874px, so check that content
+scrolls rather than relying on the full height.
+
+Each spec declares `test.use({ journey: { auth, storage, initialScheduleTime, seed } })`.
+Fixtures in `tests/browser/fixtures.ts` start a per-test Next.js server, a fresh local
+Worker/D1 database and, with `initialScheduleTime`, a frozen scheduling clock that
+`app.setScheduleTime` moves. `app.api` calls the app API as the signed-in user. Auth uses a short-lived synthetic Auth.js session; no
+Google provider or real credentials are used. `page.request` shares the session
+cookie for API fixtures; the `request` fixture stays anonymous. Tests run with one
+worker and no retries. `today-skipped`, `dose-history` and `selected-weekdays` use
+the real clock;
+`today-skipped` reports a fixture limit during the final minute before
+Europe/Istanbul midnight. `pnpm test` remains browser-free.
+
+Locator policy, enforced by lint in `tests/browser/**`:
+
+- Prefer role, then label, then text, then a domain `data-*` id such as
+  `data-dose-id`. Do not add generic `data-testid`.
+- Raw CSS selectors live only in `tests/browser/locators.ts` as named domain
+  locators, such as `doseRow(page, dueAt)` and `sheet(page)`.
+- `page.evaluate` lives only in `tests/browser/actions.ts`, each helper with a
+  comment explaining why no user-facing API works.
+- No `waitForTimeout`; use web-first assertions.
+
+Artifacts go to ignored `.browser-artifacts/`, which Playwright clears at the start of
+each run. Failures keep a trace, screenshot, video and redacted `service.log`; open a
+trace with `pnpm exec playwright show-trace <path>/trace.zip`. There is no HTML report.
+`cozy-visual` saves screenshots for design review, not as baselines, at the running
+project's viewport. Set `MEDDIES_VISUAL_OUT` to keep them outside `.browser-artifacts/`,
+for example when capturing `iphone-17` and `narrow` in separate runs.
+
+For ad-hoc exploration and QA outside journeys, `agent-browser` remains available:
+`npm i -g agent-browser && agent-browser install`.
 
 For a production smoke check, run `pnpm start` after building and exercise the
 changed flow at [localhost:3000](http://localhost:3000).
