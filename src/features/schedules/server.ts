@@ -1,4 +1,5 @@
 import 'server-only'
+import { readFileSync } from 'node:fs'
 import { sendStorage } from '@/lib/medicine-storage'
 import { requireUser } from '@/features/auth/server'
 import { MedicineError } from '@/features/medicines/contract'
@@ -11,6 +12,11 @@ import {
   type ScheduleResponse,
 } from './contract'
 import { createScheduleOperations } from './operations'
+
+export function schedulingNow(): Date {
+  const clockFile = process.env.MEDDIES_BROWSER_CLOCK_FILE
+  return clockFile ? new Date(readFileSync(clockFile, 'utf8')) : new Date()
+}
 
 async function send(command: ScheduleCommand): Promise<ScheduleResponse> {
   const data = await sendStorage('/schedules', command)
@@ -49,6 +55,7 @@ async function send(command: ScheduleCommand): Promise<ScheduleResponse> {
   }
 }
 export const schedules = createScheduleOperations({
+  now: schedulingNow,
   async requireUser() {
     try {
       return await requireUser()

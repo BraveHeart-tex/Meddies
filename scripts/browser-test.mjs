@@ -1,17 +1,19 @@
 import { randomBytes, randomUUID } from 'node:crypto'
-import { spawn, execFileSync } from 'node:child_process'
+import { spawn, execFile } from 'node:child_process'
 import { once } from 'node:events'
 import { createServer } from 'node:net'
 import { existsSync } from 'node:fs'
-import { mkdir, unlink, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
+import { promisify } from 'node:util'
 import { encode } from 'next-auth/jwt'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
 import { setTime } from '../tests/helpers/browser-actions.mjs'
 import { applyD1Migrations } from '../tests/helpers/d1-migrations.mjs'
 
 const args = process.argv.slice(2)
+const exec = promisify(execFile)
 const journeyName = args[0]
 const viewport = args[2]
 const fail = (message) => {
@@ -47,7 +49,7 @@ if (
   process.exit()
 }
 try {
-  execFileSync('agent-browser', ['--version'], { stdio: 'ignore' })
+  await exec('agent-browser', ['--version'])
 } catch {
   fail(
     'agent-browser is required. Install it with: npm i -g agent-browser && agent-browser install',
@@ -65,6 +67,13 @@ if (journey.dependencies.storage && !existsSync('.worker-build/index.js')) {
 
 const artifactDir = resolve('.browser-artifacts', `${Date.now()}-${journeyName}`)
 await mkdir(artifactDir, { recursive: true })
+const clockFile = journey.initialScheduleTime && resolve(artifactDir, 'scheduling-clock')
+const setScheduleTime = async (instant) => {
+  if (!clockFile) throw new Error('Journey must declare initialScheduleTime')
+  const next = `${clockFile}.next`
+  await writeFile(next, new Date(instant).toISOString())
+  await rename(next, clockFile)
+}
 const session = `meddies-${randomUUID()}`
 const secret = randomBytes(32).toString('base64url')
 const workerSecret = randomBytes(32).toString('base64url')
@@ -78,22 +87,22 @@ const journeyWaitTimeout = 3000
 const ensureNotInterrupted = () => {
   if (interrupted) throw new Error(currentStep)
 }
-const runBrowser = (browserArgs, { cleanup = false, timeout = 30_000 } = {}) => {
+const runBrowser = async (browserArgs, { cleanup = false, timeout = 30_000 } = {}) => {
   if (!cleanup) ensureNotInterrupted()
   try {
-    return execFileSync('agent-browser', ['--session', session, ...browserArgs], {
+    const { stdout } = await exec('agent-browser', ['--session', session, ...browserArgs], {
       encoding: 'utf8',
       env: { ...process.env, AGENT_BROWSER_DEFAULT_TIMEOUT: String(journeyWaitTimeout) },
       timeout,
-      stdio: ['ignore', 'pipe', 'pipe'],
     })
+    return stdout
   } catch (error) {
     throw new Error(`agent-browser ${browserArgs[0]} failed (${error.code ?? 'non-zero exit'})`, {
       cause: error,
     })
   }
 }
-const runJourneyCommand = (...browserArgs) => {
+const runJourneyCommand = async (...browserArgs) => {
   if (browserArgs[0] !== 'wait') return runBrowser(browserArgs)
 
   const [, selectorOrFlag, text] = browserArgs
@@ -102,11 +111,11 @@ const runJourneyCommand = (...browserArgs) => {
       ? `text ${JSON.stringify(text)}`
       : `selector ${JSON.stringify(selectorOrFlag)}`
   try {
-    return runBrowser(browserArgs, { timeout: journeyWaitTimeout + 750 })
+    return await runBrowser(browserArgs, { timeout: journeyWaitTimeout + 750 })
   } catch (error) {
     let url = 'unavailable'
     try {
-      url = runBrowser(['get', 'url'], { timeout: 750 }).trim() || url
+      url = (await runBrowser(['get', 'url'], { timeout: 750 })).trim() || url
     } catch {}
     const browserError = error.cause?.stderr?.trim() || error.cause?.stdout?.trim() || error.message
     throw new Error(`URL ${url}; expected ${expected}; browser error: ${browserError}`, {
@@ -147,7 +156,7 @@ const expireSession = async () => {
     { mode: 0o600 },
   )
   try {
-    runBrowser(['state', 'load', expiredState])
+    await runBrowser(['state', 'load', expiredState])
   } finally {
     await unlink(expiredState).catch(() => {})
   }
@@ -161,10 +170,10 @@ const browser = {
   setTime: (selector, value) => setTime(browser.run, selector, value),
   expireSession,
   snapshot: () => runBrowser(['snapshot']),
-  close: () => {
+  close: async () => {
     if (browserStarted)
       try {
-        runBrowser(['close'], { cleanup: true })
+        await runBrowser(['close'], { cleanup: true })
       } catch {}
   },
 }
@@ -177,11 +186,37 @@ process.once('SIGINT', () => handleInterrupt('SIGINT'))
 process.once('SIGTERM', () => handleInterrupt('SIGTERM'))
 
 try {
+  if (clockFile) await setScheduleTime(journey.initialScheduleTime)
   if (journey.dependencies.storage) {
+    const workerRoot = resolve('.worker-build')
+    const workerScript = resolve(workerRoot, 'index.js')
     worker = new Miniflare(
       convertV4MiniflareOptions({
-        modules: true,
-        scriptPath: '.worker-build/index.js',
+        ...(clockFile
+          ? {
+              modulesRoot: workerRoot,
+              modules: [
+                {
+                  type: 'ESModule',
+                  path: resolve(workerRoot, 'journey-entry.js'),
+                  contents: `
+                    import { createWorker } from './index.js'
+                    export default {
+                      async fetch(request, env) {
+                        const response = await env.JOURNEY_CLOCK.fetch('http://clock/')
+                        const now = await response.text()
+                        return createWorker(() => new Date(now)).fetch(request, env)
+                      },
+                    }
+                  `,
+                },
+                { type: 'ESModule', path: workerScript },
+              ],
+              serviceBindings: {
+                JOURNEY_CLOCK: async () => new Response(await readFile(clockFile, 'utf8')),
+              },
+            }
+          : { modules: true, scriptPath: workerScript }),
         compatibilityDate: '2026-11-03',
         host: '127.0.0.1',
         d1Databases: ['DB'],
@@ -227,6 +262,7 @@ try {
     {
       env: {
         ...env,
+        MEDDIES_BROWSER_CLOCK_FILE: clockFile ?? '',
         MEDICINES_WORKER_URL: workerUrl?.toString() ?? '',
         MEDICINES_WORKER_SECRET: worker ? workerSecret : '',
         AUTH_URL: origin,
@@ -272,7 +308,7 @@ try {
   if (!ready) throw new Error('Next.js /api/session readiness check failed')
   ensureNotInterrupted()
   browserStarted = true
-  runBrowser(['set', 'viewport', ...viewport.split('x')])
+  await runBrowser(['set', 'viewport', ...viewport.split('x')])
   if (cookie) {
     const cookieFile = resolve(artifactDir, 'session-state.json')
     await writeFile(
@@ -295,13 +331,13 @@ try {
       { mode: 0o600 },
     )
     try {
-      runBrowser(['state', 'load', cookieFile])
+      await runBrowser(['state', 'load', cookieFile])
     } finally {
       await unlink(cookieFile).catch(() => {})
     }
   }
   currentStep = 'journey setup'
-  await journey.run({ origin, browser, request, artifactDir, session })
+  await journey.run({ origin, browser, request, artifactDir, session, setScheduleTime })
   ensureNotInterrupted()
   console.log(`PASS ${journeyName} at ${viewport}`)
 } catch (error) {
@@ -309,7 +345,7 @@ try {
   console.error(`FAIL step "${message}" at viewport ${viewport}`)
   if (browserStarted)
     try {
-      runBrowser(['screenshot', resolve(artifactDir, 'failure.png')], { cleanup: true })
+      await runBrowser(['screenshot', resolve(artifactDir, 'failure.png')], { cleanup: true })
     } catch {}
   if (serviceLogs) {
     const redacted = serviceLogs
@@ -321,7 +357,7 @@ try {
   console.error(`Artifacts: ${artifactDir}`)
   process.exitCode = interrupted ? 130 : 1
 } finally {
-  browser.close()
+  await browser.close()
   await worker?.dispose()
   const childIsAlive = () => child && child.exitCode === null && child.signalCode === null
   if (childIsAlive()) {
@@ -332,4 +368,5 @@ try {
       await Promise.race([once(child, 'exit'), delay(1000)])
     }
   }
+  if (clockFile) await unlink(clockFile).catch(() => {})
 }

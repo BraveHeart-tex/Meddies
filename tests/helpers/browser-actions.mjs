@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 
-export function setTime(run, selector, value) {
-  // Chromium's segmented time control does not accept agent-browser fill.
-  run(
+export async function setTime(run, selector, value) {
+  // Chromium's segmented date and time controls do not accept agent-browser fill.
+  await run(
     'eval',
     `(() => {
       const field = document.querySelector(${JSON.stringify(selector)})
@@ -11,7 +11,7 @@ export function setTime(run, selector, value) {
       field.dispatchEvent(new Event('change', { bubbles: true }))
     })()`,
   )
-  const actual = run('get', 'value', selector).trim()
+  const actual = (await run('get', 'value', selector)).trim()
   assert.equal(
     actual,
     value,

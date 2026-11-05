@@ -59,7 +59,7 @@ export async function run({ origin, browser, request, artifactDir }) {
   await browser.run('wait', '--text', 'Mark as skipped')
   await browser.run('find', 'text', 'Mark as skipped', 'click', '--exact')
   await browser.run('wait', '--text', 'Confirm skipped')
-  const confirmation = browser.snapshot()
+  const confirmation = await browser.snapshot()
   assert.match(confirmation, /Confirm skipping Browser Harness Medicine/)
   assert.match(confirmation, /dialog/)
   await browser.run('press', 'Escape')
@@ -77,7 +77,7 @@ export async function run({ origin, browser, request, artifactDir }) {
   browser.step('reload and verify persisted skipped outcome')
   await browser.run('reload')
   await browser.run('wait', '--text', 'Skipped at')
-  const page = browser.snapshot()
+  const page = await browser.snapshot()
   assert.match(page, /Skipped at/, 'skip outcome must remain visible after reload')
   assert.match(
     page,

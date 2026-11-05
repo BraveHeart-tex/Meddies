@@ -3,7 +3,7 @@ import { auth, authConfigured } from '@/features/auth/server'
 import { SessionBoundary } from '@/features/auth/session-boundary'
 import { medicines } from '@/features/medicines/server'
 import { MedicineError, type Medicine } from '@/features/medicines/contract'
-import { schedules } from '@/features/schedules/server'
+import { schedules, schedulingNow } from '@/features/schedules/server'
 import { isScheduleDate, istanbulDate, SCHEDULE_TIMEZONE } from '@/features/schedules/contract'
 import type { DoseOccurrence } from '@/features/schedules/contract'
 import { HistoryDoseActions } from '@/features/schedules/history-dose-actions'
@@ -28,7 +28,7 @@ export default async function HistoryPage({
   searchParams: Promise<{ date?: string | string[] }>
 }) {
   const query = await searchParams
-  const today = istanbulDate(new Date())
+  const today = istanbulDate(schedulingNow())
   const requestedDate = typeof query.date === 'string' ? query.date : today
   const returnDate =
     typeof query.date === 'string' && isScheduleDate(query.date) && query.date <= today

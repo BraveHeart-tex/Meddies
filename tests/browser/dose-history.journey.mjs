@@ -83,7 +83,7 @@ export async function run({ origin, browser, artifactDir }) {
   const submittedUrl = await browser.run('eval', 'window.location.href')
   assert.match(submittedUrl, new RegExp(`date=${historyDate}`))
   await browser.run('wait', '--text', 'History Fixture Medicine')
-  const page = browser.snapshot()
+  const page = await browser.snapshot()
   assert.match(page, /Taken/)
   assert.match(page, /Skipped/)
   assert.match(page, /Not logged/)
@@ -169,5 +169,5 @@ export async function run({ origin, browser, artifactDir }) {
     await browser.run('eval', "document.querySelector('ol li:first-child').innerText"),
     /Skipped/,
   )
-  assert.match(browser.snapshot(), /Not logged/)
+  assert.match(await browser.snapshot(), /Not logged/)
 }

@@ -1,21 +1,18 @@
 import assert from 'node:assert/strict'
-import { setTimeout as delay } from 'node:timers/promises'
 
 export const dependencies = { auth: true, storage: true }
+export const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 
-const localDate = (date) =>
-  new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Istanbul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date)
+const today = initialScheduleTime.slice(0, 10)
+const time = '09:05'
+const dueAt = new Date(`${today}T${time}:00+03:00`).toISOString()
+const takenAt = new Date(initialScheduleTime).toISOString()
 
-export async function run({ origin, browser }) {
+export async function run({ origin, browser, setScheduleTime }) {
   browser.step('open signed-in Today and check primary navigation')
   await browser.open(origin)
   await browser.run('wait', '--text', 'Today')
-  assert.match(browser.snapshot(), /Primary/)
+  assert.match(await browser.snapshot(), /Primary/)
   await browser.run('click', 'nav a[href="/medications"]')
   await browser.run('wait', '--text', 'Medications')
   await browser.run('fill', '#medicine-label', 'Routine Medicine')
@@ -30,28 +27,11 @@ export async function run({ origin, browser }) {
   await browser.run('focus', scheduleLink)
   await browser.run('press', 'Enter')
   await browser.run('wait', '--text', 'Set dose schedule')
-  assert.match(browser.snapshot(), /Medicine: Routine Medicine/)
+  assert.match(await browser.snapshot(), /Medicine: Routine Medicine/)
 
   browser.step('retry an uncertain schedule save without losing setup')
-  const future = new Date(Date.now() + 60_000)
-  const today = localDate(new Date())
-  assert.equal(
-    localDate(future),
-    today,
-    'routine fixture needs one minute before Istanbul midnight',
-  )
-  const time = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Istanbul',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(future)
-  browser.run(
-    'eval',
-    `(() => { const field = document.querySelector('#schedule-start'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(field, ${JSON.stringify(today)}); field.dispatchEvent(new Event('input', { bubbles: true })); field.dispatchEvent(new Event('change', { bubbles: true })); })()`,
-  )
-  assert.equal((await browser.run('get', 'value', '#schedule-start')).trim(), today)
-  browser.setTime('#dose-time-0', time)
+  await browser.setTime('#schedule-start', today)
+  await browser.setTime('#dose-time-0', time)
   await browser.run('fill', '#dose-quantity-0', '1')
 
   await browser.run(
@@ -67,10 +47,10 @@ export async function run({ origin, browser }) {
   await browser.run('wait', '--text', 'Schedule saved.')
   await browser.run('reload')
   await browser.run('wait', '--text', `Daily at ${time}`)
-  const routineView = browser.snapshot()
+  const routineView = await browser.snapshot()
   assert.equal(routineView.match(new RegExp(`Daily at ${time}`, 'g'))?.length, 1)
 
-  browser.step('record dose on Today')
+  browser.step('record the scheduled dose before it is due')
   await browser.run('click', 'nav a[href="/"]')
   const takeButton = 'button[aria-label^="Record dose for Routine Medicine"]'
   await browser.run('wait', takeButton)
@@ -78,28 +58,49 @@ export async function run({ origin, browser }) {
   await browser.run('press', 'Enter')
   await browser.run('find', 'text', 'Mark as taken', 'click', '--exact')
   await browser.run('wait', '--text', 'Save taken dose')
-  assert.match(browser.snapshot(), /dialog/)
+  assert.match(await browser.snapshot(), /dialog/)
+  await browser.setTime('input[type="datetime-local"]', initialScheduleTime.slice(0, 16))
   await browser.run('focus', 'button[type="submit"]')
   await browser.run('press', 'Enter')
-  await browser.run('wait', '--text', 'Taken')
-  const dueAt = new Date(`${today}T${time}:00+03:00`).getTime()
-  while (Date.now() < dueAt) {
-    await delay(Math.min(20_000, dueAt - Date.now()))
-    await browser.run('snapshot')
+  await browser.run(
+    'wait',
+    `li[data-dose-id]:has(time[datetime="${dueAt}"]) time[datetime="${takenAt}"]`,
+  )
+
+  const historyUrl = `${origin}/history?date=${today}`
+  const historyRows = `ol[aria-label="Doses for ${today}"] > li`
+  const scheduledRow = `${historyRows}:has(time[datetime="${dueAt}"])`
+  const assertHistoryDose = async (status) => {
+    await browser.run('wait', scheduledRow)
+    assert.equal((await browser.run('get', 'url')).trim(), historyUrl)
+    assert.equal((await browser.run('get', 'value', '#history-date')).trim(), today)
+    assert.equal((await browser.run('get', 'count', historyRows)).trim(), '1')
+    const row = await browser.run('get', 'text', scheduledRow)
+    assert.match(row, /Routine Medicine/)
+    assert.match(row, new RegExp(`^${status}$`, 'm'))
   }
 
-  browser.step('review dated history and correct the outcome')
-  await browser.run('click', 'nav a[href="/history"]')
-  await browser.run('wait', '--text', 'Dose history')
-  await browser.run('wait', '--text', 'Routine Medicine')
-  assert.match(browser.snapshot(), new RegExp(today))
+  browser.step('verify the recorded dose is absent from dated History before it is due')
+  await browser.open(historyUrl)
+  await browser.run('wait', '--text', 'No past doses for this date.')
+  assert.equal((await browser.run('get', 'value', '#history-date')).trim(), today)
+  assert.equal((await browser.run('get', 'count', historyRows)).trim(), '0')
+
+  browser.step('advance past the due time and find the taken dose in dated History')
+  await setScheduleTime(`${today}T09:06:00+03:00`)
+  await browser.run('reload')
+  await assertHistoryDose('Taken')
+
+  browser.step('correct the History dose and verify it persists after reload')
   await browser.run('find', 'text', 'Review dose', 'click', '--exact')
   await browser.run('find', 'text', 'Correct outcome', 'click', '--exact')
   await browser.run('find', 'text', 'Mark as skipped', 'click', '--exact')
   await browser.run('wait', '--text', 'Confirm skipped')
   await browser.run('find', 'text', 'Confirm skipped', 'click', '--exact')
   await browser.run('wait', '--text', 'Skipped')
-  assert.match(browser.snapshot(), /Scheduled/)
+  await assertHistoryDose('Skipped')
+  await browser.run('reload')
+  await assertHistoryDose('Skipped')
 
   browser.step('save another medicine without a schedule and reload')
   await browser.run('click', 'nav a[href="/medications"]')
@@ -116,15 +117,15 @@ export async function run({ origin, browser }) {
     `(() => { const link = [...document.querySelectorAll('a[href^="/medications?medicine="]')].find((item) => item.closest('li')?.innerText.includes('Evening Vitamin')); link?.click(); })()`,
   )
   await browser.run('wait', '--text', 'No schedule saved yet.')
-  assert.match(browser.snapshot(), /Evening Vitamin/)
+  assert.match(await browser.snapshot(), /Evening Vitamin/)
 
   browser.step('recover from session expiry on Settings')
   await browser.run('click', 'a[href="/settings"]')
   await browser.run('wait', '--text', 'Private account access')
-  assert.match(browser.snapshot(), /Sign out/)
+  assert.match(await browser.snapshot(), /Sign out/)
   await browser.expireSession()
   await browser.run('eval', 'window.dispatchEvent(new Event("focus"))')
   await browser.run('wait', '--text', 'Your routine, in your hands')
-  assert.match(browser.snapshot(), /session ended/i)
+  assert.match(await browser.snapshot(), /session ended/i)
   assert.match(await browser.run('eval', 'window.location.search'), /returnTo=%2Fsettings/)
 }

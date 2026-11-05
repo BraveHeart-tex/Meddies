@@ -1,7 +1,7 @@
 export const dependencies = { auth: false, storage: false }
 
-export function run({ browser, origin }) {
+export async function run({ browser, origin }) {
   browser.step('wait for a deliberately missing element')
-  browser.open(origin)
-  browser.run('wait', '#deliberately-missing')
+  await browser.open(origin)
+  await browser.run('wait', '#deliberately-missing')
 }
