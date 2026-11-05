@@ -74,19 +74,44 @@ let serviceLogs = ''
 let currentStep = 'startup'
 let browserStarted = false
 let interrupted = false
+const journeyWaitTimeout = 3000
 const ensureNotInterrupted = () => {
   if (interrupted) throw new Error(currentStep)
 }
-const runBrowser = (browserArgs, { cleanup = false } = {}) => {
+const runBrowser = (browserArgs, { cleanup = false, timeout = 30_000 } = {}) => {
   if (!cleanup) ensureNotInterrupted()
   try {
     return execFileSync('agent-browser', ['--session', session, ...browserArgs], {
       encoding: 'utf8',
-      timeout: 30_000,
+      env: { ...process.env, AGENT_BROWSER_DEFAULT_TIMEOUT: String(journeyWaitTimeout) },
+      timeout,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
   } catch (error) {
-    throw new Error(`agent-browser ${browserArgs[0]} failed (${error.code ?? 'non-zero exit'})`)
+    throw new Error(`agent-browser ${browserArgs[0]} failed (${error.code ?? 'non-zero exit'})`, {
+      cause: error,
+    })
+  }
+}
+const runJourneyCommand = (...browserArgs) => {
+  if (browserArgs[0] !== 'wait') return runBrowser(browserArgs)
+
+  const [, selectorOrFlag, text] = browserArgs
+  const expected =
+    selectorOrFlag === '--text'
+      ? `text ${JSON.stringify(text)}`
+      : `selector ${JSON.stringify(selectorOrFlag)}`
+  try {
+    return runBrowser(browserArgs, { timeout: journeyWaitTimeout + 750 })
+  } catch (error) {
+    let url = 'unavailable'
+    try {
+      url = runBrowser(['get', 'url'], { timeout: 750 }).trim() || url
+    } catch {}
+    const browserError = error.cause?.stderr?.trim() || error.cause?.stdout?.trim() || error.message
+    throw new Error(`URL ${url}; expected ${expected}; browser error: ${browserError}`, {
+      cause: error,
+    })
   }
 }
 const expireSession = async () => {
@@ -128,7 +153,7 @@ const expireSession = async () => {
   }
 }
 const browser = {
-  run: (...browserArgs) => runBrowser(browserArgs),
+  run: runJourneyCommand,
   step: (name) => {
     currentStep = name
   },
