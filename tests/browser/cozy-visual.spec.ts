@@ -105,14 +105,12 @@ test('capture Cozy Care screens for visual review', async ({ page, app }, testIn
     await shot('prod-medications', true)
   })
 
-  await test.step('capture the open Unit select', async () => {
-    const unit = page.getByRole('combobox', { name: 'Unit' })
-    await unit.scrollIntoViewIfNeeded()
-    await unit.press('Enter')
-    await expect(page.getByRole('listbox')).toBeVisible()
-    await shot('prod-unit-select')
-    await page.keyboard.press('Escape')
-    await expect(unit).toBeFocused()
-    await shot('prod-unit-select-focus')
+  await test.step('capture Add medicine and its validation', async () => {
+    await page.getByRole('link', { name: 'Add a medicine' }).click()
+    await expect(page.getByRole('heading', { name: 'Add medicine' })).toBeVisible()
+    await shot('prod-add-medicine')
+    await page.getByRole('button', { name: 'Save medicine' }).click()
+    await expect(page.getByLabel('Medicine name')).toBeFocused()
+    await shot('prod-add-medicine-invalid', true)
   })
 })

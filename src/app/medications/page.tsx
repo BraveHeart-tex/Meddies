@@ -8,9 +8,13 @@ import { schedulingNow } from '@/features/schedules/server'
 export default async function MedicationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ schedule?: string | string[]; medicine?: string | string[] }>
+  searchParams: Promise<{
+    schedule?: string | string[]
+    medicine?: string | string[]
+    add?: string | string[]
+  }>
 }) {
-  const { schedule, medicine } = await searchParams
+  const { schedule, medicine, add } = await searchParams
   const scheduleMedicineId =
     typeof schedule === 'string' && /^[a-f0-9-]{36}$/i.test(schedule) ? schedule : ''
   const detailMedicineId =
@@ -19,7 +23,9 @@ export default async function MedicationsPage({
     ? `/medications?schedule=${scheduleMedicineId}`
     : detailMedicineId
       ? `/medications?medicine=${detailMedicineId}`
-      : '/medications'
+      : add !== undefined
+        ? '/medications?add'
+        : '/medications'
   const configured = authConfigured()
   const session = configured ? await auth() : null
   if (!session?.user?.id)
@@ -36,7 +42,15 @@ export default async function MedicationsPage({
     <SessionBoundary expires={session.expires}>
       <AppShell>
         <MedicinePanel
-          scheduleMode={scheduleMedicineId ? 'setup' : detailMedicineId ? 'detail' : 'list'}
+          scheduleMode={
+            scheduleMedicineId
+              ? 'setup'
+              : detailMedicineId
+                ? 'detail'
+                : add !== undefined
+                  ? 'add'
+                  : 'list'
+          }
           scheduleMedicineId={scheduleMedicineId}
           detailMedicineId={detailMedicineId}
           initialNow={schedulingNow().toISOString()}

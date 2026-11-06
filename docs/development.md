@@ -61,3 +61,46 @@ pnpm lockfile. Experiment manifests and npm locks remain independent.
   ESLint prohibits app server wiring, browser components/policy, Next.js and Node
   imports. HTTP/command modules cannot import persistence. Keep direct feature
   calls rather than generic repositories or configurable command pipelines.
+
+## Forms
+
+Data-entry forms use React Hook Form, Zod and `zodResolver` composed directly with the
+shadcn Field components, following the
+[official guide](https://ui.shadcn.com/docs/forms/react-hook-form). The production
+reference is the Add medicine form:
+[`medicine-form.tsx`](../src/features/medicines/medicine-form.tsx) with
+[`medicine-form-schema.ts`](../src/features/medicines/medicine-form-schema.ts). Do not add
+a generic form builder or the legacy shadcn `Form` wrapper.
+
+- **Schema, defaults and types:** keep a client schema beside the feature. It mirrors the
+  contract parser's trimming, limits and enums for inline feedback; the runtime-neutral
+  contract parser stays authoritative on the server. Derive editing values with
+  `z.input` and submitted values with `z.output`; editing values may be wider (an empty
+  unit before a choice, blank numeric text) and only the schema converts them. Pass
+  explicit `defaultValues` to `useForm<Input, unknown, Output>`.
+- **Controls:** render every field with `Controller` and `Field`, `FieldLabel`,
+  `FieldDescription` and `FieldError`. Set `data-invalid` on `Field`, `aria-invalid` on
+  the control and `aria-describedby` to the error then the help. Put `noValidate` on the
+  form so inline errors replace browser bubbles; keep useful native attributes such as
+  `autoComplete` and `enterKeyHint`. Base UI controls (Select, ToggleGroup, date and time
+  pickers) map `value`/`onValueChange` to `field.value`/`field.onChange`, forward
+  `field.onBlur`, and attach `field.ref` to the element that should take focus.
+- **Validation:** keep the defaults: validate on submit, then revalidate erroneous fields
+  on change. `shouldFocusError` focuses the first invalid control in registration order.
+- **Submission:** `handleSubmit` awaits the real save, including reconciliation. Keep a
+  synchronous ref lock against duplicate submits; `isSubmitting` drives the disabled
+  fieldset and _Saving…_ label but is not the guard. Reuse a request ID while the
+  validated values are unchanged so an uncertain retry saves once; edits start a new one.
+- **Errors and reset:** report request failures with `setError('root.server', { type })`
+  and render one form-level Alert above the primary action; values are never discarded.
+  Root errors clear on the next submit. After server confirmation, `reset(defaults)` and
+  clear the request ID. Known offline (`navigator.onLine` false) disables the primary as
+  _Connect to save_ with an Alert; it never queues a save.
+- **Dynamic rows:** use `useFieldArray` with its generated `id` as the React key, row-level
+  errors from the row's schema path, and per-row labels such as _Time 2_.
+- **State ownership:** RHF owns only the values on screen. Session drafts and mutation or
+  cache lifetime belong to the Query/session foundations
+  ([Next.js rules](agents/nextjs.md)); restoring a draft resets the form, and refreshes
+  never reset dirty fields.
+- **Exception:** native GET filters, such as the History date, stay plain query-parameter
+  forms.

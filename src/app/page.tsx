@@ -19,7 +19,7 @@ export default async function HomePage({
   const { error, reason, returnTo } = await searchParams
   const safeReturnTo = (() => {
     if (typeof returnTo !== 'string' || /[\\\u0000-\u001f]/.test(returnTo)) return '/'
-    if (['/', '/medications', '/settings'].includes(returnTo)) return returnTo
+    if (['/', '/medications', '/medications?add', '/settings'].includes(returnTo)) return returnTo
     if (/^\/history(?:\?date=\d{4}-\d{2}-\d{2})?$/.test(returnTo)) return returnTo
     return /^\/medications\?(?:medicine|schedule)=[a-f0-9-]{36}$/i.test(returnTo) ? returnTo : '/'
   })()
