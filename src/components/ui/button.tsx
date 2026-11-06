@@ -26,7 +26,7 @@ const buttonVariants = cva(
         xs: "min-h-11 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
         sm: "min-h-11 gap-1.5 rounded-sm px-3 text-label in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-3.5",
         lg: "min-h-13 gap-2 px-5 text-body-lg has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-4 [&_svg:not([class*='size-'])]:size-4.5",
-        sheet: 'min-h-14 gap-2 rounded-xl px-6 text-body-lg',
+        drawer: 'min-h-14 gap-2 rounded-xl px-6 text-body-lg',
         icon: 'size-11',
         'icon-xs':
           "size-11 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",

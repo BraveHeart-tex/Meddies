@@ -1,9 +1,9 @@
 import { mkdir } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { expect, test } from './fixtures'
-import { doseTrigger, sheet } from './locators'
+import { doseTrigger, drawer } from './locators'
 
-// Captures Today, Medications and the Record dose sheet with the Cozy Care UI kit sample
+// Captures Today, Medications and the Record dose drawer with the Cozy Care UI kit sample
 // data (Thursday 14:38) for visual comparison with the design export. Screenshots are review
 // artifacts, not baselines. Run with --project=narrow for the 320px stress check.
 const initialScheduleTime = '2035-11-08T08:00:00+03:00'
@@ -49,7 +49,7 @@ test('capture Cozy Care screens for visual review', async ({ page, app }, testIn
       fullPage,
       animations: 'disabled',
     })
-  const dialog = sheet(page)
+  const dialog = drawer(page)
 
   await test.step('seed the UI kit sample routine', async () => {
     for (const item of medicines) await app.api('POST', '/api/medicines', item)
@@ -75,13 +75,13 @@ test('capture Cozy Care screens for visual review', async ({ page, app }, testIn
     await shot('prod-today', true)
   })
 
-  await test.step('capture the Record dose sheet', async () => {
+  await test.step('capture the Record dose drawer', async () => {
     await doseTrigger(page, 'Magnesium').press('Enter')
     await expect(dialog).toBeVisible()
-    await shot('prod-sheet')
+    await shot('prod-drawer')
     await dialog.getByRole('button', { name: 'I took it' }).click()
     await expect(dialog.getByRole('button', { name: 'Save as taken' })).toBeVisible()
-    await shot('prod-sheet-taken')
+    await shot('prod-drawer-taken')
     await page.keyboard.press('Escape')
     await expect(dialog).toHaveCount(0)
   })

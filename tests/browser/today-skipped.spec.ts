@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { expect, test } from './fixtures'
 import { scrollsHorizontally } from './actions'
-import { doseStatus, doseTrigger, sheet } from './locators'
+import { doseStatus, doseTrigger, drawer } from './locators'
 import { istanbulDate } from './seed'
 
 test.use({ journey: { auth: true, storage: true } })
@@ -13,7 +13,7 @@ test('skip a dose from the keyboard and correct it back to Taken', async ({
   app,
 }, testInfo) => {
   const label = 'M'.repeat(120)
-  const dialog = sheet(page)
+  const dialog = drawer(page)
   const row = page.getByRole('list', { name: "Today's doses" }).getByRole('listitem')
   const outcome = (text: string) =>
     page.getByRole('main').getByRole('status').filter({ hasText: text })
@@ -54,7 +54,7 @@ test('skip a dose from the keyboard and correct it back to Taken', async ({
     await expect(dialog.getByRole('button', { name: 'Save as skipped' })).toBeVisible()
     await expect(dialog.getByRole('group', { name: `Confirm skipping ${label}` })).toBeVisible()
     await page.keyboard.press('Escape')
-    // Base UI returns focus to the opener once the sheet's exit transition finishes.
+    // Base UI returns focus to the opener once the drawer's exit transition finishes.
     await expect(dialog).toHaveCount(0)
     await expect(trigger).toBeFocused()
     await page.keyboard.press('Enter')

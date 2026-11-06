@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { expect, test } from './fixtures'
-import { doseRow, doseStatus, doseTrigger, sheet } from './locators'
+import { doseRow, doseStatus, doseTrigger, drawer } from './locators'
 import { insertScheduledMedicine, insertTakenRecord } from './seed'
 
 const initialScheduleTime = '2035-06-15T12:00:00+03:00'
@@ -28,7 +28,7 @@ test.use({
 test('a stale correction gets explicit recovery', async ({ page, app }, testInfo) => {
   const row = doseRow(page, dueAt)
   const trigger = doseTrigger(row)
-  const dialog = sheet(page)
+  const dialog = drawer(page)
 
   await test.step('start correcting a Taken dose to Skipped', async () => {
     await page.goto('/')
@@ -55,7 +55,7 @@ test('a stale correction gets explicit recovery', async ({ page, app }, testInfo
   await test.step('save the stale correction and get explicit recovery', async () => {
     await dialog.getByRole('button', { name: 'Save as skipped' }).click()
     await expect(page.getByText('This dose changed elsewhere.')).toBeVisible()
-    await expect(dialog, 'Conflict should close the correction sheet').toHaveCount(0)
+    await expect(dialog, 'Conflict should close the correction drawer').toHaveCount(0)
     await expect(row).toContainText('Your correction was not saved')
     await expect(row.getByRole('button', { name: 'Review current outcome' })).toBeVisible()
     await expect(doseStatus(row)).toHaveAccessibleDescription(/Taken/)

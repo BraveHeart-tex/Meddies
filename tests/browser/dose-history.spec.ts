@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures'
-import { doseTrigger, historyList, historyRows, intakeTime, sheet } from './locators'
+import { doseTrigger, historyList, historyRows, intakeTime, drawer } from './locators'
 import {
   addDays,
   insertScheduledMedicine,
@@ -43,7 +43,7 @@ test('review, edit and correct past doses in History', async ({ page, request },
   const date = historyDate()
   const rows = historyRows(page, date)
   const first = rows.first()
-  const dialog = sheet(page)
+  const dialog = drawer(page)
   const reviewFirst = () => doseTrigger(first).click()
 
   await test.step('deny anonymous history access', async () => {

@@ -68,7 +68,7 @@ export function SkippedForm({
         <div className="flex flex-col gap-1.5">
           <Button
             type="button"
-            size="sheet"
+            size="drawer"
             className="w-full whitespace-normal"
             disabled={saving}
             onClick={onSubmit}

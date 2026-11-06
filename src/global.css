@@ -34,7 +34,7 @@
   --color-medication-mist-glyph: #7e9aa3;
   --color-border-strong: var(--border-strong);
   --color-border-attention: var(--border-attention);
-  --color-sheet-handle: #dccbc0;
+  --color-drawer-handle: #dccbc0;
   --color-accent-pressed: #f2cdd7;
   --color-dose-taken: #e3eee2;
   --color-dose-taken-foreground: #2f5f3d;
@@ -42,9 +42,9 @@
   --color-dose-unlogged-foreground: #8a4e0e;
   --color-dose-skipped: #f3eae1;
   --color-dose-skipped-foreground: #7a6266;
-  --color-sheet-scrim: rgb(48 28 34 / 48%);
+  --color-drawer-scrim: rgb(48 28 34 / 48%);
   --shadow-nav: 0 10px 30px -10px rgb(90 40 55 / 25%);
-  --shadow-sheet: 0 -8px 30px -12px rgb(48 28 34 / 25%);
+  --shadow-drawer: 0 -8px 30px -12px rgb(48 28 34 / 25%);
   --shadow-toast: 0 12px 28px -12px rgb(59 42 47 / 35%);
   --text-display: 1.8125rem;
   --text-display--line-height: 1.15;
@@ -168,6 +168,8 @@
   }
   body {
     @apply bg-background font-semibold text-foreground tabular-nums;
+    /* iOS 26+ Safari: lets absolute drawer backdrops cover the visual viewport after scrolling. */
+    position: relative;
   }
   button:not(:disabled),
   [role='button']:not(:disabled) {

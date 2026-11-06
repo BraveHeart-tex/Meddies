@@ -5,8 +5,8 @@ import type { Locator, Page } from '@playwright/test'
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-/** The open dose sheet. */
-export const sheet = (page: Page) => page.getByRole('dialog')
+/** The open dose drawer. */
+export const drawer = (page: Page) => page.getByRole('dialog')
 
 /** A Today row, keyed by its scheduled instant (ISO string). */
 export const doseRow = (page: Page, dueAt: string) =>
@@ -38,8 +38,11 @@ export const historyRow = (page: Page, date: string, dueAt: string) =>
 export const intakeTime = (row: Locator) => row.locator('time[data-dose-intake-time]')
 
 /**
- * The Record/Review trigger of a Today row, including while the modal sheet hides the
+ * The Record/Review trigger of a Today row, including while the modal drawer hides the
  * background. Assert status with toHaveAccessibleDescription: it describes the trigger.
  */
 export const doseStatus = (row: Locator) =>
   row.getByRole('button', { name: /^(Record|Review) dose for /, includeHidden: true })
+
+/** The open drawer's swipe handle. It is decorative to assistive tech but drives pointer swipes. */
+export const drawerHandle = (page: Page) => page.locator('[data-slot="drawer-swipe-handle"]')

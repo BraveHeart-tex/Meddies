@@ -62,7 +62,7 @@ Locator policy, enforced by lint in `tests/browser/**`:
 - Prefer role, then label, then text, then a domain `data-*` id such as
   `data-dose-id`. Do not add generic `data-testid`.
 - Raw CSS selectors live only in `tests/browser/locators.ts` as named domain
-  locators, such as `doseRow(page, dueAt)` and `sheet(page)`.
+  locators, such as `doseRow(page, dueAt)` and `drawer(page)`.
 - `page.evaluate` lives only in `tests/browser/actions.ts`, each helper with a
   comment explaining why no user-facing API works.
 - No `waitForTimeout`; use web-first assertions.

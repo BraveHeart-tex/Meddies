@@ -1,6 +1,6 @@
 import { expect, test } from './fixtures'
 import { focusWindow } from './actions'
-import { doseRow, doseTrigger, historyRow, historyRows, instant, sheet } from './locators'
+import { doseRow, doseTrigger, historyRow, historyRows, instant, drawer } from './locators'
 
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
@@ -12,7 +12,7 @@ test.use({ journey: { auth: true, storage: true, initialScheduleTime } })
 
 test('set up, record, correct and recover a routine on a phone', async ({ page, app }) => {
   const nav = page.getByRole('navigation', { name: 'Primary' })
-  const dialog = sheet(page)
+  const dialog = drawer(page)
   const historyUrl = `/history?date=${today}`
   const historyDate = page.getByLabel('Choose a date')
   const scheduled = historyRow(page, today, dueAt)

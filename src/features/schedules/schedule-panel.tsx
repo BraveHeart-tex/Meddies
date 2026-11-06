@@ -20,7 +20,7 @@ import {
 
 import { doseClock as clock } from './taken-form'
 import { DoseStatusBadge } from './dose-status-badge'
-import { DoseActions, type DoseSheetOpener } from './dose-actions'
+import { DoseActions, type DoseDrawerOpener } from './dose-actions'
 import { scheduleToday } from './occurrences'
 
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -55,7 +55,7 @@ export function SchedulePanel({
   const [times, setTimes] = useState([{ key: 0, time: '', quantity: '' }])
   const [weekdays, setWeekdays] = useState([0, 1, 2, 3, 4, 5, 6])
   const rowKey = useRef(1)
-  const heroOpener = useRef<DoseSheetOpener>(null)
+  const heroOpener = useRef<DoseDrawerOpener>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')

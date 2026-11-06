@@ -15,10 +15,10 @@ import {
 } from './contract'
 import { SkippedForm } from './skipped-form'
 import { doseClock, TakenForm } from './taken-form'
-import { DoseSheet } from './dose-sheet'
+import { DoseDrawer } from './dose-drawer'
 
 type Outcome = DoseOutcomeRecord['outcome']
-export type DoseSheetOpener = { open: (outcome: Outcome) => void }
+export type DoseDrawerOpener = { open: (outcome: Outcome) => void }
 
 export function DoseActions({
   dose,
@@ -36,7 +36,7 @@ export function DoseActions({
   refresh: () => Promise<boolean>
   onRecorded: (record: DoseOutcomeRecord) => void
   appearance?: 'row' | 'button'
-  opener?: Ref<DoseSheetOpener>
+  opener?: Ref<DoseDrawerOpener>
   todayDate?: string
   referenceNow?: string
   describedBy?: string
@@ -47,7 +47,7 @@ export function DoseActions({
   const [correcting, setCorrecting] = useState(false)
   const [editingDose, setEditingDose] = useState<DoseOccurrence | null>(null)
   const [needsReview, setNeedsReview] = useState(false)
-  const [sheetOpen, setSheetOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const locked = useRef(false)
   const rowTrigger = useRef<HTMLButtonElement>(null)
   const returnFocus = useRef<HTMLElement | null>(null)
@@ -67,7 +67,7 @@ export function DoseActions({
     setCorrecting(false)
     setEditingDose(null)
     setEditor(null)
-    setSheetOpen(false)
+    setDrawerOpen(false)
     setOpenedWithoutOutcome(false)
     setError(message)
     setNeedsReview(true)
@@ -157,7 +157,7 @@ export function DoseActions({
         setEditingDose(null)
         pinnedCorrection.current = null
         setEditor(null)
-        setSheetOpen(false)
+        setDrawerOpen(false)
         setOpenedWithoutOutcome(false)
         requestAnimationFrame(() => rowTrigger.current?.focus())
       } else {
@@ -184,7 +184,7 @@ export function DoseActions({
     if (open) return
     edit(null)
     setOpenedWithoutOutcome(false)
-    setSheetOpen(false)
+    setDrawerOpen(false)
     if (correcting) {
       setCorrecting(false)
       pinnedCorrection.current = null
@@ -197,7 +197,7 @@ export function DoseActions({
         document.activeElement instanceof HTMLElement ? document.activeElement : null
       setError('')
       setNeedsReview(false)
-      setSheetOpen(true)
+      setDrawerOpen(true)
       choose(outcome)
     },
   }))
@@ -218,13 +218,13 @@ export function DoseActions({
           aria-describedby={describedBy}
           className="absolute inset-0 rounded-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           aria-haspopup="dialog"
-          aria-expanded={sheetOpen}
+          aria-expanded={drawerOpen}
           aria-label={triggerLabel}
           onClick={() => {
             returnFocus.current = rowTrigger.current
             setError('')
             setNeedsReview(false)
-            setSheetOpen(true)
+            setDrawerOpen(true)
           }}
         >
           <span className="sr-only">{verb} dose</span>
@@ -236,19 +236,19 @@ export function DoseActions({
           type="button"
           variant="outline"
           aria-haspopup="dialog"
-          aria-expanded={sheetOpen}
+          aria-expanded={drawerOpen}
           aria-label={triggerLabel}
           onClick={() => {
             returnFocus.current = rowTrigger.current
             setError('')
             setNeedsReview(false)
-            setSheetOpen(true)
+            setDrawerOpen(true)
           }}
         >
           {verb} dose
         </Button>
       )}
-      {!sheetOpen && error && editor === null && !correcting && editingDose === null && (
+      {!drawerOpen && error && editor === null && !correcting && editingDose === null && (
         <Alert className="relative z-10 mt-1 basis-full [overflow-wrap:anywhere]">
           <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
             <p>{error}</p>
@@ -267,16 +267,16 @@ export function DoseActions({
           </AlertDescription>
         </Alert>
       )}
-      <DoseSheet
-        open={sheetOpen}
+      <DoseDrawer
+        open={drawerOpen}
+        saving={saving}
         triggerId={`dose-actions-${dose.id}`}
         medicineId={medicine.id}
         title={medicine.label}
         description={[medicine.strength, medicine.unit].filter(Boolean).join(' · ')}
         finalFocus={returnFocus}
         onClose={() => {
-          if (saving) return
-          setSheetOpen(false)
+          setDrawerOpen(false)
           setEditor(null)
           setCorrecting(false)
           setEditingDose(null)
@@ -346,7 +346,7 @@ export function DoseActions({
                         retryAction.current = null
                         pinnedCorrection.current = null
                         setEditingDose(null)
-                        setSheetOpen(false)
+                        setDrawerOpen(false)
                       }
                     }}
                     onSubmit={(details) => void submit('Taken', details)}
@@ -447,7 +447,7 @@ export function DoseActions({
               Nothing is recorded until you choose and save.
             </p>
             <div className="flex flex-col gap-1.5">
-              <Button type="button" size="sheet" className="w-full" disabled>
+              <Button type="button" size="drawer" className="w-full" disabled>
                 Choose an outcome
               </Button>
               <Button
@@ -461,7 +461,7 @@ export function DoseActions({
             </div>
           </div>
         )}
-      </DoseSheet>
+      </DoseDrawer>
     </div>
   )
 }

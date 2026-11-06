@@ -37,7 +37,7 @@ function offsetLabel(local: string, dueAt: string) {
 
 type When = 'now' | 'scheduled' | 'other'
 
-// Actual intake details for a Taken outcome. New records open from the sheet's outcome choice;
+// Actual intake details for a Taken outcome. New records open from the drawer's outcome choice;
 // recorded doses open through Edit intake.
 export function TakenForm({
   dose,
@@ -230,7 +230,7 @@ export function TakenForm({
           <div className="flex flex-col gap-1.5">
             <Button
               type="submit"
-              size="sheet"
+              size="drawer"
               className="w-full whitespace-normal"
               disabled={saving}
             >

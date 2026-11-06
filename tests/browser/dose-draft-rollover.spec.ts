@@ -1,6 +1,6 @@
 import { expect, test } from './fixtures'
 import { focusWindow } from './actions'
-import { doseRow, doseStatus, doseTrigger, instant, sheet } from './locators'
+import { doseRow, doseStatus, doseTrigger, instant, drawer } from './locators'
 import { insertScheduledMedicine } from './seed'
 
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
@@ -27,7 +27,7 @@ test('an open Taken draft survives the due-time rollover', async ({ page, app },
   const row = doseRow(page, dueAt)
   const trigger = doseTrigger(row, 'Rollover Medicine')
   const status = doseStatus(row)
-  const dialog = sheet(page)
+  const dialog = drawer(page)
   const takenAtInput = dialog.getByLabel('Taken date and time in Istanbul')
   const amount = dialog.getByLabel(/^Amount/)
 
