@@ -21,8 +21,23 @@ test.use({
   },
 })
 
-/** Drag the drawer handle down by `distance` CSS px with a mouse pointer. */
+/**
+ * Drag the drawer handle down by `distance` CSS px with a mouse pointer. Waits for the drawer
+ * to come to rest first: a drag that starts during the snap-back transition may not dismiss.
+ */
 async function dragHandle(page: Page, distance: number) {
+  let lastY: number | undefined
+  await expect
+    .poll(
+      async () => {
+        const y = (await drawerHandle(page).boundingBox())?.y
+        const settled = y !== undefined && y === lastY
+        lastY = y
+        return settled
+      },
+      { message: 'drawer must come to rest before a drag', intervals: [100] },
+    )
+    .toBe(true)
   const box = await drawerHandle(page).boundingBox()
   if (!box) throw new Error('drawer handle is not rendered')
   const x = box.x + box.width / 2
