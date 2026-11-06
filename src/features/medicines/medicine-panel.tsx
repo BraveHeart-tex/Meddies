@@ -15,10 +15,21 @@ import {
 } from '@/components/ui/field'
 import { Icon } from '@/components/ui/icon'
 import { Input } from '@/components/ui/input'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { AppHeader } from '@/components/layout/app-header'
 import { MedicationTile } from './medication-tile'
 import { parseMedicine, type Medicine } from './contract'
+
+const UNIT_ITEMS = [
+  { value: 'tablet', label: 'Tablet' },
+  { value: 'capsule', label: 'Capsule' },
+] as const
 
 export function MedicinePanel({
   scheduleMode = 'list',
@@ -246,17 +257,27 @@ export function MedicinePanel({
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="medicine-unit">Unit</FieldLabel>
-                    <NativeSelect
+                    <Select
                       id="medicine-unit"
                       name="unit"
-                      className="w-full"
+                      items={UNIT_ITEMS}
                       value={unit}
-                      onChange={(event) => setUnit(event.target.value as 'tablet' | 'capsule')}
-                      aria-describedby="medicine-unit-help"
+                      onValueChange={(value) => {
+                        if (value) setUnit(value)
+                      }}
+                      disabled={saving}
                     >
-                      <NativeSelectOption value="tablet">Tablet</NativeSelectOption>
-                      <NativeSelectOption value="capsule">Capsule</NativeSelectOption>
-                    </NativeSelect>
+                      <SelectTrigger aria-describedby="medicine-unit-help">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {UNIT_ITEMS.map((item) => (
+                          <SelectItem key={item.value} value={item.value}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FieldDescription id="medicine-unit-help">
                       Whole or half tablets, or whole capsules. No dose is set here.
                     </FieldDescription>

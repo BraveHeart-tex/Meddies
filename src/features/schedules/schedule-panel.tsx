@@ -7,6 +7,13 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Icon } from '@/components/ui/icon'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
 import { AppHeader } from '@/components/layout/app-header'
 import type { Medicine } from '@/features/medicines/contract'
@@ -61,8 +68,10 @@ export function SchedulePanel({
   const [message, setMessage] = useState('')
   const [intakeMessage, setIntakeMessage] = useState('')
   const [attempted, setAttempted] = useState(false)
+  const [medicineMissing, setMedicineMissing] = useState(false)
   const action = useRef<{ id: string; fingerprint: string } | null>(null)
   const locked = useRef(false)
+  const medicineTrigger = useRef<HTMLButtonElement>(null)
   const mounted = useRef(false)
   const generation = useRef(0)
   const load = useCallback(async (beforeApply?: (snapshot: Snapshot) => void) => {
@@ -110,6 +119,10 @@ export function SchedulePanel({
   const available = medicines.filter(
     (medicine) => !schedules.some((schedule) => schedule.medicineId === medicine.id),
   )
+  const medicineItems = available.map((medicine) => ({
+    value: medicine.id,
+    label: `${medicine.label} (${medicine.unit})`,
+  }))
   const name = (id: string) => medicines.find((medicine) => medicine.id === id)?.label ?? 'Medicine'
   const doseText = (dose: DoseOccurrence, quantity = dose.quantity) => {
     const medicine = medicines.find((item) => item.id === dose.medicineId)
@@ -166,6 +179,11 @@ export function SchedulePanel({
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (locked.current) return
+    if (!medicineId) {
+      setMedicineMissing(true)
+      medicineTrigger.current?.focus()
+      return
+    }
     if (weekdays.length === 0) {
       setAttempted(true)
       return
@@ -576,20 +594,37 @@ export function SchedulePanel({
                       <label htmlFor="schedule-medicine" className="block font-medium">
                         Medicine
                       </label>
-                      <select
+                      <Select
                         id="schedule-medicine"
-                        className="meddies-field"
-                        required
-                        value={medicineId}
-                        onChange={(event) => setMedicineId(event.target.value)}
+                        items={medicineItems}
+                        value={medicineId || null}
+                        onValueChange={(value) => {
+                          setMedicineId(value ?? '')
+                          if (value) setMedicineMissing(false)
+                        }}
+                        disabled={saving || loading || loadError}
                       >
-                        <option value="">Choose a medicine</option>
-                        {available.map((medicine) => (
-                          <option key={medicine.id} value={medicine.id}>
-                            {medicine.label} ({medicine.unit})
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger
+                          ref={medicineTrigger}
+                          aria-required
+                          aria-invalid={medicineMissing}
+                          aria-describedby={medicineMissing ? 'schedule-medicine-error' : undefined}
+                        >
+                          <SelectValue placeholder="Choose a medicine" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {medicineItems.map((item) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {medicineMissing && (
+                        <p id="schedule-medicine-error" role="alert">
+                          Choose a medicine.
+                        </p>
+                      )}
                     </div>
                   )}
                   <fieldset
