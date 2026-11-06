@@ -5,7 +5,7 @@ import { doseRow, doseTrigger, historyRow, historyRows, instant, drawer } from '
 
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
-const todayLabel = 'Fri, 15 Jun 2035'
+const todayLabel = 'Today, Fri 15 Jun'
 const time = '09:05'
 const dueAt = new Date(`${today}T${time}:00+03:00`).toISOString()
 const takenAt = new Date(initialScheduleTime).toISOString()

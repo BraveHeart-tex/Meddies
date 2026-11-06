@@ -47,7 +47,7 @@ test('an open Taken draft survives the due-time rollover', async ({ page, app },
   const expectDraftIntact = async () => {
     await expect(dialog).toHaveCount(1)
     await expect(amount).toHaveValue('2')
-    await expect(takenDate).toHaveText('Fri, 15 Jun 2035')
+    await expect(takenDate).toHaveText('Today, Fri 15 Jun')
     await expectTime(dialog, 'Taken time in Istanbul', draftTime.slice(11))
   }
 

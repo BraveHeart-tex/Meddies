@@ -85,6 +85,47 @@ a generic form builder or the legacy shadcn `Form` wrapper.
   `autoComplete` and `enterKeyHint`. Base UI controls (Select, ToggleGroup, date and time
   pickers) map `value`/`onValueChange` to `field.value`/`field.onChange`, forward
   `field.onBlur`, and attach `field.ref` to the element that should take focus.
+- **Date and time pickers:** `DatePicker` and `TimePicker` are fully controlled; pass
+  `field.ref` straight to `ref`. DatePicker focuses its trigger; TimePicker focuses the
+  first unchosen half, so first-invalid focus lands where the user must act. Their
+  `onBlur` runs only when focus leaves the whole control, popups included. TimePicker
+  values are `''`, a half (`'08:'`, `':15'`) or `'HH:MM'`; validate with `isTimeOfDay`
+  from `@/lib/time-of-day` and report a half as _Choose a time._ Both hold no state of
+  their own, so `reset(defaults)` updates the shown date, hour and minute without keys.
+  DatePicker binds the same way and also takes the Istanbul `today` (labels such as
+  _Today, Fri 6 Nov_ derive from it) plus optional `min`/`max` dates. The schema treats a
+  half-chosen time as incomplete:
+
+  ```ts
+  time: z.string().refine(isTimeOfDay, 'Choose a time.')
+  // after a confirmed save, or when a restored draft replaces the values:
+  form.reset({ date: today, time: '' })
+  ```
+
+  ```tsx
+  <Controller
+    name="time"
+    control={form.control}
+    render={({ field, fieldState }) => (
+      <Field data-invalid={fieldState.invalid}>
+        <FieldLabel htmlFor="dose-time">Time</FieldLabel>
+        <TimePicker
+          ref={field.ref}
+          id="dose-time"
+          label="Time"
+          value={field.value}
+          onValueChange={field.onChange}
+          onBlur={field.onBlur}
+          disabled={field.disabled}
+          aria-invalid={fieldState.invalid}
+          aria-describedby={fieldState.invalid ? 'dose-time-error' : undefined}
+        />
+        <FieldError id="dose-time-error" errors={[fieldState.error]} />
+      </Field>
+    )}
+  />
+  ```
+
 - **Validation:** keep the defaults: validate on submit, then revalidate erroneous fields
   on change. `shouldFocusError` focuses the first invalid control in registration order.
 - **Submission:** `handleSubmit` awaits the real save, including reconciliation. Keep a

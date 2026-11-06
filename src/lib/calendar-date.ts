@@ -13,16 +13,30 @@ export function dateValue(day: Date): string {
   return `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`
 }
 
-const labelFormat = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'UTC',
-  weekday: 'short',
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-})
+const formats = {
+  thisYear: new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }),
+  otherYear: new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }),
+}
 
-/** A readable label for a date-only value, for example 'Fri, 15 Jun 2035'. */
-export function dateLabel(value: string): string {
+/**
+ * A readable label for a date-only value relative to `today`, the Istanbul date: 'Today, Fri 15
+ * Jun', 'Thu 14 Jun', or 'Tue 1 Jan 2036' outside today's year.
+ */
+export function dateLabel(value: string, today: string): string {
   const [year, month, day] = value.split('-').map(Number)
-  return labelFormat.format(Date.UTC(year, month - 1, day))
+  const format = value.slice(0, 4) === today.slice(0, 4) ? formats.thisYear : formats.otherYear
+  // en-GB puts a comma after the weekday ('Fri, 15 Jun'); the design reads 'Fri 15 Jun'.
+  const label = format.format(Date.UTC(year, month - 1, day)).replace(',', '')
+  return value === today ? `Today, ${label}` : label
 }

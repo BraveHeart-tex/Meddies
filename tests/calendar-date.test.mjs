@@ -26,7 +26,9 @@ test('date-only values round-trip through the calendar in any device timezone', 
 test('date labels name the Istanbul day in any device timezone', () => {
   for (const zone of zones)
     inZone(zone, () => {
-      assert.equal(dateLabel('2035-06-15'), 'Fri, 15 Jun 2035', zone)
-      assert.equal(dateLabel('2036-01-01'), 'Tue, 1 Jan 2036', zone)
+      assert.equal(dateLabel('2035-06-15', '2035-06-15'), 'Today, Fri 15 Jun', zone)
+      assert.equal(dateLabel('2035-06-14', '2035-06-15'), 'Thu 14 Jun', zone)
+      assert.equal(dateLabel('2036-01-01', '2035-06-15'), 'Tue 1 Jan 2036', zone)
+      assert.equal(dateLabel('2034-12-31', '2035-01-01'), 'Sun 31 Dec 2034', zone)
     })
 })

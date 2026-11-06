@@ -32,7 +32,7 @@ test('a schedule on selected weekdays shows its next Istanbul occurrence', async
     await expect(page.getByRole('heading', { name: 'Set dose schedule' })).toBeVisible()
     await expect(page.getByText('Medicine: Weekday Browser Medicine')).toBeVisible()
     await pickDate(page, 'Start date in Istanbul', startDate)
-    await expect(datePicker(page, 'Start date in Istanbul')).toHaveText('Sat, 16 Jun 2035')
+    await expect(datePicker(page, 'Start date in Istanbul')).toHaveText('Sat 16 Jun')
     await pickTime(page, 'Time 1', '23:59')
     await page.getByLabel(/^Quantity/).fill('1')
   })

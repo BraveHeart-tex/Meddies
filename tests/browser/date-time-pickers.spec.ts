@@ -44,7 +44,7 @@ test('pick schedule dates, dose times and intake in Istanbul time from another t
       unit: 'tablet',
     })
     await page.goto(`/medications?schedule=${medicineId}`)
-    await expect(start).toHaveText('Fri, 15 Jun 2035')
+    await expect(start).toHaveText('Today, Fri 15 Jun')
     expect((await start.boundingBox())?.height).toBeGreaterThanOrEqual(44)
   })
 
@@ -69,14 +69,37 @@ test('pick schedule dates, dose times and intake in Istanbul time from another t
     await page.keyboard.press('ArrowRight')
     await page.keyboard.press('Enter')
     await expect(calendar).toBeHidden()
-    await expect(start).toHaveText('Sat, 16 Jun 2035')
+    await expect(start).toHaveText('Sat 16 Jun')
     await expect(start).toBeFocused()
   })
 
   await test.step('choose a day by tapping', async () => {
     await start.tap()
     await calendarDay(calendar, '2035-06-17').tap()
-    await expect(start).toHaveText('Sun, 17 Jun 2035')
+    await expect(start).toHaveText('Sun 17 Jun')
+  })
+
+  await test.step('widen calendar days to fit narrow phones', async () => {
+    const viewport = page.viewportSize()!
+    // At 360px days reach the 44px target; at 320px they stay below it (recorded exception).
+    for (const [width, minimum] of [
+      [360, 44],
+      [320, 39],
+    ] as const) {
+      await page.setViewportSize({ width, height: viewport.height })
+      await start.click()
+      const day = calendarDay(calendar, '2035-06-17')
+      await expect(day).toBeVisible()
+      const box = (await day.boundingBox())!
+      expect(box.width, `day width at ${width}px`).toBeGreaterThanOrEqual(minimum)
+      const popup = (await calendar.boundingBox())!
+      expect(popup.x).toBeGreaterThanOrEqual(0)
+      expect(popup.x + popup.width).toBeLessThanOrEqual(width)
+      expect(await scrollsHorizontally(page)).toBe(false)
+      await page.keyboard.press('Escape')
+      await expect(calendar).toBeHidden()
+    }
+    await page.setViewportSize(viewport)
   })
 
   await test.step('require both parts of every dose time', async () => {
@@ -138,7 +161,7 @@ test('pick schedule dates, dose times and intake in Istanbul time from another t
     await dialog.getByRole('button', { name: 'I took it' }).click()
     await dialog.getByRole('button', { name: 'Other', exact: true }).click()
     const takenDate = datePicker(dialog, 'Taken date in Istanbul')
-    await expect(takenDate).toHaveText('Fri, 15 Jun 2035')
+    await expect(takenDate).toHaveText('Today, Fri 15 Jun')
     await expectTime(dialog, 'Taken time in Istanbul', '23:30')
     await takenDate.click()
     const intakeCalendar = page.getByRole('dialog', { name: 'Taken date in Istanbul' })
