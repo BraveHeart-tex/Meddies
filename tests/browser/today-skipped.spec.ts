@@ -2,12 +2,13 @@ import { randomUUID } from 'node:crypto'
 import { expect, test } from './fixtures'
 import { scrollsHorizontally } from './actions'
 import { doseStatus, doseTrigger, drawer } from './locators'
-import { istanbulDate } from './seed'
 
-test.use({ journey: { auth: true, storage: true } })
+// The dose is due one minute after the frozen scheduling clock, so it stays today's dose.
+const initialScheduleTime = '2035-06-15T09:00:00+03:00'
+const today = initialScheduleTime.slice(0, 10)
 
-// Uses the real clock: the fixture schedule is one minute ahead, so the journey reports a
-// fixture limit during the final minute before Europe/Istanbul midnight.
+test.use({ journey: { auth: true, storage: true, initialScheduleTime } })
+
 test('skip a dose from the keyboard and correct it back to Taken', async ({
   page,
   app,
@@ -26,23 +27,11 @@ test('skip a dose from the keyboard and correct it back to Taken', async ({
       strength: null,
       unit: 'tablet',
     })
-    const today = istanbulDate(new Date())
-    const future = new Date(Date.now() + 60_000)
-    expect(
-      istanbulDate(future),
-      'today-skipped fixture needs at least one minute before Istanbul midnight',
-    ).toBe(today)
-    const time = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Europe/Istanbul',
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-    }).format(future)
     await app.api('POST', '/api/schedules', {
       id: randomUUID(),
       medicineId,
       startDate: today,
-      times: [{ time, quantity: 1 }],
+      times: [{ time: '09:01', quantity: 1 }],
     })
   })
 

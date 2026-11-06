@@ -63,15 +63,6 @@ export async function insertSkippedRecord(
     .run()
 }
 
-/** Calendar date in Europe/Istanbul, as YYYY-MM-DD. */
-export const istanbulDate = (date: Date) =>
-  new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Istanbul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date)
-
 /** Shift a YYYY-MM-DD date by whole days. */
 export function addDays(date: string, days: number) {
   const value = new Date(`${date}T12:00:00.000Z`)

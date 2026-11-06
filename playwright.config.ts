@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test'
 
-// Manual browser journeys against the production build. Not part of verify:local or CI.
+// Browser journeys against the production build. Run in CI after scripts/verify.sh
+// (Turbopack build); opt-in locally via pnpm test:browser, not part of verify:local.
 export default defineConfig({
   testDir: 'tests/browser',
   testMatch: '*.spec.ts',

@@ -18,16 +18,20 @@ paths using synthetic configuration and identities. They do not access productio
 personal data or prove a deployed Google callback or remote D1 configuration.
 `pnpm worker:build` is a dry run; it does not deploy resources.
 
-## Manual checks
+## Browser journeys
 
-### Browser journeys
+Journeys are Playwright Test specs in `tests/browser/*.spec.ts`. The Verify workflow
+runs `pnpm test:browser` (`iphone-17`) after `scripts/verify.sh` in the same job,
+reusing its default Turbopack `.next` and `.worker-build` outputs, so a failing
+journey fails Verify and blocks Release. CI installs Chromium with
+`pnpm exec playwright install --with-deps chromium`, caches `~/.cache/ms-playwright`
+keyed on the Playwright version, and uploads `.browser-artifacts/` as the
+`browser-artifacts-<attempt>` workflow artifact on failure.
 
-Journeys are Playwright Test specs in `tests/browser/*.spec.ts`. They stay manual,
-outside `pnpm verify:local` and CI. Install the browser once with
-`pnpm exec playwright install chromium`.
-
-Build first, then run journeys against the completed build. Run builds and journeys
-sequentially when they share `.next` or `.worker-build`:
+Locally, journeys stay opt-in, outside `pnpm verify:local`. Install the browser once
+with `pnpm exec playwright install chromium`. Build first, then run journeys against
+the completed build. Run builds and journeys sequentially when they share `.next` or
+`.worker-build`:
 
 ```sh
 pnpm build --webpack
@@ -52,10 +56,11 @@ Worker/D1 database and, with `initialScheduleTime`, a frozen scheduling clock th
 `app.setScheduleTime` moves. `app.api` calls the app API as the signed-in user. Auth uses a short-lived synthetic Auth.js session; no
 Google provider or real credentials are used. `page.request` shares the session
 cookie for API fixtures; the `request` fixture stays anonymous. Tests run with one
-worker and no retries. `today-skipped`, `dose-history` and `selected-weekdays` use
-the real clock;
-`today-skipped` reports a fixture limit during the final minute before
-Europe/Istanbul midnight. `pnpm test` remains browser-free.
+worker and no retries. Every journey that depends on the date or time declares
+`initialScheduleTime`, so no journey depends on the wall-clock time it runs at.
+The frozen clock covers Next.js and the Worker only; the browser keeps the real clock,
+so pass explicit dates or server-provided times rather than browser-side defaults.
+`pnpm test` remains browser-free.
 
 Locator policy, enforced by lint in `tests/browser/**`:
 
@@ -73,6 +78,8 @@ trace with `pnpm exec playwright show-trace <path>/trace.zip`. There is no HTML 
 `cozy-visual` saves screenshots for design review, not as baselines, at the running
 project's viewport. Set `MEDDIES_VISUAL_OUT` to keep them outside `.browser-artifacts/`,
 for example when capturing `iphone-17` and `narrow` in separate runs.
+
+## Manual checks
 
 For ad-hoc exploration and QA outside journeys, `agent-browser` remains available:
 `npm i -g agent-browser && agent-browser install`.

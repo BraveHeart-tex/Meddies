@@ -1,16 +1,18 @@
 import { randomUUID } from 'node:crypto'
 import { expect, test } from './fixtures'
 import { scrollsHorizontally } from './actions'
-import { addDays, istanbulDate } from './seed'
+import { addDays } from './seed'
 
-test.use({ journey: { auth: true, storage: true } })
+const initialScheduleTime = '2035-06-15T09:00:00+03:00'
+
+test.use({ journey: { auth: true, storage: true, initialScheduleTime } })
 
 test('a schedule on selected weekdays shows its next Istanbul occurrence', async ({
   page,
   app,
 }) => {
   const medicineId = randomUUID()
-  const startDate = addDays(istanbulDate(new Date()), 1)
+  const startDate = addDays(initialScheduleTime.slice(0, 10), 1)
   const monday = new Date(`${startDate}T12:00:00Z`)
   while (monday.getUTCDay() !== 1) monday.setUTCDate(monday.getUTCDate() + 1)
   const nextMonday = monday.toISOString().slice(0, 10)

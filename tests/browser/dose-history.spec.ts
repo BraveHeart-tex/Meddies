@@ -1,20 +1,17 @@
 import { expect, test } from './fixtures'
 import { doseTrigger, historyList, historyRows, intakeTime, drawer } from './locators'
-import {
-  addDays,
-  insertScheduledMedicine,
-  insertSkippedRecord,
-  insertTakenRecord,
-  istanbulDate,
-} from './seed'
+import { addDays, insertScheduledMedicine, insertSkippedRecord, insertTakenRecord } from './seed'
 
-// Uses the real clock: History shows yesterday in Europe/Istanbul.
-const historyDate = () => addDays(istanbulDate(new Date()), -1)
+// History shows the day before the frozen scheduling clock, in Europe/Istanbul.
+const initialScheduleTime = '2035-06-15T09:00:00+03:00'
+const now = new Date(initialScheduleTime)
+const historyDate = () => addDays(initialScheduleTime.slice(0, 10), -1)
 
 test.use({
   journey: {
     auth: true,
     storage: true,
+    initialScheduleTime,
     seed: async ({ db, ownerId }) => {
       const date = historyDate()
       const { scheduleId } = await insertScheduledMedicine(db, ownerId, {
@@ -27,14 +24,17 @@ test.use({
         ],
       })
       const dueAt = (time: string) => new Date(`${date}T${time}:00+03:00`).toISOString()
-      const now = new Date().toISOString()
       await insertTakenRecord(db, ownerId, {
         scheduleId,
         dueAt: dueAt('08:00'),
-        takenAt: now,
+        takenAt: now.toISOString(),
         quantity: 0.5,
       })
-      await insertSkippedRecord(db, ownerId, { scheduleId, dueAt: dueAt('09:00'), recordedAt: now })
+      await insertSkippedRecord(db, ownerId, {
+        scheduleId,
+        dueAt: dueAt('09:00'),
+        recordedAt: now.toISOString(),
+      })
     },
   },
 })
@@ -75,7 +75,7 @@ test('review, edit and correct past doses in History', async ({ page, request },
     const actualIntakeDate = new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Europe/Istanbul',
       dateStyle: 'medium',
-    }).format(new Date())
+    }).format(now)
     await expect(list, 'Taken outcome should show its actual date').toContainText(actualIntakeDate)
     await expect(list).toContainText('0.5 tablet')
     await expect(list).toContainText('2 tablet')
