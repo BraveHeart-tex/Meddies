@@ -29,20 +29,41 @@ keyed on the Playwright version, and uploads `.browser-artifacts/` as the
 `browser-artifacts-<attempt>` workflow artifact on failure.
 
 Locally, journeys stay opt-in, outside `pnpm verify:local`. Install the browser once
-with `pnpm exec playwright install chromium`. Build first, then run journeys against
-the completed build. Run builds and journeys sequentially when they share `.next` or
-`.worker-build`:
+with `pnpm exec playwright install chromium`, then run them through the wrapper:
 
 ```sh
-pnpm build --webpack
-pnpm worker:build
-pnpm test:browser                 # all journeys on iphone-17
-pnpm test:browser today-skipped   # one journey, matched by file name
+pnpm test:browser:build                 # all journeys on iphone-17
+pnpm test:browser:build today-skipped   # one journey, matched by file name
 pnpm exec playwright test --project=narrow cozy-visual
 ```
 
-Global setup fails fast when `.next/BUILD_ID` or `.worker-build/index.js` is missing.
-Run `pnpm verify:local` after the journeys.
+`pnpm test:browser:build [playwright args]` always runs `pnpm worker:build`, runs
+`next build --webpack` only when the Next.js build is stale, then runs
+`playwright test --project=iphone-17` with the arguments. Outside CI, global setup
+fails fast when any build input (`src`, `public`, Next.js, TypeScript and PostCSS
+config, `package.json`, lockfile) is newer than `.next/BUILD_ID`; rerun through the
+wrapper. Global setup also fails when `.next/BUILD_ID` or `.worker-build/index.js`
+is missing. Run builds and journeys sequentially when they share `.next` or
+`.worker-build`. Run `pnpm verify:local` after the journeys.
+
+For faster iteration on one journey, `MEDDIES_BROWSER_DEV=1 pnpm test:browser <spec>`
+starts `next dev --webpack` per test instead of `next start`, with no production
+build. It needs only the Worker bundle, adds about 2s of startup per test, and is
+slower than the wrapper for the full suite. Dev output goes to `.next/dev`, so the
+production build stays usable; a running `pnpm dev` or `pnpm dev:stack` holds the
+same `.next/dev` lock, so stop it first. Dev mode is for iteration only: React
+StrictMode double effects and on-demand compilation mean it is not evidence for
+streaming, request counts or layout shift. Confirm with the wrapper before recording
+results. Global setup rejects dev mode under `CI`.
+
+To check whether a failure already exists on main, run it in a separate worktree
+instead of stashing and rebuilding:
+
+```sh
+git worktree add ../meddies-main origin/main
+cd ../meddies-main && pnpm install && pnpm test:browser:build today-skipped
+git worktree remove ../meddies-main   # when done
+```
 
 Projects set the viewport. `iphone-17` (402x874 CSS px, portrait) is the sole user's
 device and the one `pnpm test:browser` selects; a bare `pnpm exec playwright test`

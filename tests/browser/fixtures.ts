@@ -163,13 +163,20 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
             !['MEDICINES_WORKER_URL', 'MEDICINES_WORKER_SECRET'].includes(key),
         ),
       )
+      // Dev mode writes to .next/dev, leaving the production build in .next usable.
+      const { isBrowserDevMode } = await import('../helpers/journey-build.mjs')
+      const dev = isBrowserDevMode(process.env)
       const next = spawn(
         process.execPath,
-        ['node_modules/next/dist/bin/next', 'start', '-H', '127.0.0.1', '-p', String(port)],
+        [
+          'node_modules/next/dist/bin/next',
+          ...(dev ? ['dev', '--webpack'] : ['start']),
+          ...['-H', '127.0.0.1', '-p', String(port)],
+        ],
         {
           env: {
             ...env,
-            NODE_ENV: 'production',
+            NODE_ENV: dev ? 'development' : 'production',
             MEDDIES_BROWSER_CLOCK_FILE: clockFile ?? '',
             MEDICINES_WORKER_URL: workerUrl?.toString() ?? '',
             MEDICINES_WORKER_SECRET: worker ? workerSecret : '',
@@ -190,8 +197,10 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
       next.stdout.on('data', addLogs)
       next.stderr.on('data', addLogs)
 
+      // Dev mode compiles /api/session on the first request.
+      const readyBy = Date.now() + (dev ? 60_000 : 10_000)
       let ready = false
-      for (let attempt = 0; attempt < 100 && !ready; attempt++) {
+      while (!ready && Date.now() < readyBy) {
         if (next.exitCode !== null) throw new Error('Next.js exited during startup')
         try {
           const response = await fetch(`${origin}/api/session`, {
