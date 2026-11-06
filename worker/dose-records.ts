@@ -1,6 +1,6 @@
 import { and, eq, gte, lt, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
-import { MedicineError } from '../src/features/medicines/contract'
+import { ApplicationError } from '../src/lib/application-error'
 import {
   istanbulDate,
   parseSkippedDose,
@@ -74,7 +74,7 @@ export async function correctDoseOutcome(
   const correction = parseDoseCorrection(input)
   const prior = await readCorrection(db, ownerId, correction.actionId)
   if (prior) {
-    if (!sameCorrection(prior, correction)) throw new MedicineError('conflict', 409)
+    if (!sameCorrection(prior, correction)) throw new ApplicationError('conflict', 409)
     return correctionRecord(prior)
   }
   const schedule = await getOccurrence(db, ownerId, correction.scheduleId)
@@ -84,7 +84,7 @@ export async function correctDoseOutcome(
       (Date.parse(correction.takenAt!) > now.getTime() ||
         (schedule?.unit === 'capsule' && !Number.isInteger(correction.quantity))))
   )
-    throw new MedicineError('validation', 400)
+    throw new ApplicationError('validation', 400)
   const takenAt = correction.outcome === 'Taken' ? correction.takenAt : null
   const quantity = correction.outcome === 'Taken' ? correction.quantity : null
   const result =
@@ -97,7 +97,7 @@ export async function correctDoseOutcome(
   if (!result.meta.changes) {
     const replay = await readCorrection(db, ownerId, correction.actionId)
     if (replay && sameCorrection(replay, correction)) return correctionRecord(replay)
-    throw new MedicineError('conflict', 409)
+    throw new ApplicationError('conflict', 409)
   }
   return {
     scheduleId: correction.scheduleId,
@@ -200,7 +200,7 @@ export async function recordTaken(
   const corrections = await db.all(
     sql`SELECT 1 FROM dose_corrections WHERE owner_id=${ownerId} AND schedule_id=${record.scheduleId} AND due_at=${record.dueAt} LIMIT 1`,
   )
-  if (corrections.length) throw new MedicineError('conflict', 409)
+  if (corrections.length) throw new ApplicationError('conflict', 409)
   const readSkipped = () =>
     db
       .select()
@@ -215,14 +215,14 @@ export async function recordTaken(
       .get()
   let saved = await readTaken()
   if (!saved) {
-    if (await readSkipped()) throw new MedicineError('conflict', 409)
+    if (await readSkipped()) throw new ApplicationError('conflict', 409)
     const schedule = await getOccurrence(db, ownerId, record.scheduleId)
     if (
       !validOccurrence(schedule, record, now) ||
       Date.parse(record.takenAt) > now.getTime() ||
       (schedule?.unit === 'capsule' && !Number.isInteger(record.quantity))
     )
-      throw new MedicineError('validation', 400)
+      throw new ApplicationError('validation', 400)
 
     await db
       .insert(doseRecords)
@@ -233,7 +233,7 @@ export async function recordTaken(
     saved = await readTaken()
   }
   if (!saved || saved.takenAt !== record.takenAt || saved.quantity !== record.quantity)
-    throw new MedicineError('conflict', 409)
+    throw new ApplicationError('conflict', 409)
   return saved
 }
 
@@ -253,7 +253,7 @@ export async function recordSkipped(
   const corrections = await db.all(
     sql`SELECT 1 FROM dose_corrections WHERE owner_id=${ownerId} AND schedule_id=${record.scheduleId} AND due_at=${record.dueAt} LIMIT 1`,
   )
-  if (corrections.length) throw new MedicineError('conflict', 409)
+  if (corrections.length) throw new ApplicationError('conflict', 409)
   const readTaken = () =>
     db
       .select()
@@ -268,9 +268,9 @@ export async function recordSkipped(
       .get()
   let saved = await readSkipped()
   if (!saved) {
-    if (await readTaken()) throw new MedicineError('conflict', 409)
+    if (await readTaken()) throw new ApplicationError('conflict', 409)
     const schedule = await getOccurrence(db, ownerId, record.scheduleId)
-    if (!validOccurrence(schedule, record, now)) throw new MedicineError('validation', 400)
+    if (!validOccurrence(schedule, record, now)) throw new ApplicationError('validation', 400)
 
     await db
       .insert(skippedDoseRecords)
@@ -285,8 +285,8 @@ export async function recordSkipped(
     saved = await readSkipped()
   }
   if (!saved) {
-    if (await readTaken()) throw new MedicineError('conflict', 409)
-    throw new MedicineError('unavailable', 503)
+    if (await readTaken()) throw new ApplicationError('conflict', 409)
+    throw new ApplicationError('unavailable', 503)
   }
   return {
     scheduleId: saved.scheduleId,

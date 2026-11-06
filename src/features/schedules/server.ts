@@ -2,7 +2,7 @@ import 'server-only'
 import { readFileSync } from 'node:fs'
 import { sendStorage } from '@/lib/medicine-storage'
 import { requireUser } from '@/features/auth/server'
-import { MedicineError } from '@/features/medicines/contract'
+import { ApplicationError } from '@/lib/application-error'
 import {
   isInstant,
   parseDoseOutcomeRecord,
@@ -10,6 +10,8 @@ import {
   parseTakenDose,
   type ScheduleCommand,
   type ScheduleResponse,
+  type DailySchedule,
+  type DoseOutcomeRecord,
 } from './contract'
 import { createScheduleOperations } from './operations'
 
@@ -18,10 +20,13 @@ export function schedulingNow(): Date {
   return clockFile ? new Date(readFileSync(clockFile, 'utf8')) : new Date()
 }
 
-async function send(command: ScheduleCommand): Promise<ScheduleResponse> {
-  const data = await sendStorage('/schedules', command)
+export async function send<C extends ScheduleCommand>(command: C): Promise<ScheduleResponse<C>> {
+  const data = (await sendStorage('/schedules', command)) as {
+    schedules?: unknown
+    records?: unknown
+  }
   try {
-    const result: ScheduleResponse = {}
+    const result: { schedules?: DailySchedule[]; records?: DoseOutcomeRecord[] } = {}
     if (
       command.operation !== 'recordTaken' &&
       command.operation !== 'recordSkipped' &&
@@ -48,10 +53,10 @@ async function send(command: ScheduleCommand): Promise<ScheduleResponse> {
           : parseDoseOutcomeRecord(value),
       )
     }
-    return result
+    return result as ScheduleResponse<C>
   } catch {
     console.error('schedule_gateway_failure')
-    throw new MedicineError('unavailable', 503)
+    throw new ApplicationError('unavailable', 503)
   }
 }
 export const schedules = createScheduleOperations({
@@ -60,7 +65,7 @@ export const schedules = createScheduleOperations({
     try {
       return await requireUser()
     } catch {
-      throw new MedicineError('unauthorized', 401)
+      throw new ApplicationError('unauthorized', 401)
     }
   },
   send,

@@ -1,7 +1,9 @@
+import { readJsonRequest } from '../src/lib/json-request'
 import { drizzle } from 'drizzle-orm/d1'
 import { and, eq, asc } from 'drizzle-orm'
 import { dailySchedules, userMedications } from './schema'
-import { MedicineError, parseMedicine } from '../src/features/medicines/contract'
+import { parseMedicine } from '../src/features/medicines/contract'
+import { ApplicationError } from '../src/lib/application-error'
 
 import {
   correctDoseOutcome,
@@ -35,29 +37,7 @@ export function createWorker(clock: () => Date = () => new Date()) {
       if (request.method !== 'POST' || !['/medicines', '/schedules'].includes(path))
         return json({ error: 'not_found' }, 404)
       try {
-        // Bound bodies even when the caller uses chunked transfer.
-        const reader = request.body?.getReader()
-        if (!reader) return json({ error: 'validation' }, 400)
-        let body = ''
-        let bytes = 0
-        const decoder = new TextDecoder()
-        while (true) {
-          const chunk = await reader.read()
-          if (chunk.done) break
-          bytes += chunk.value.byteLength
-          if (bytes > 4096) {
-            await reader.cancel()
-            return json({ error: 'validation' }, 413)
-          }
-          body += decoder.decode(chunk.value, { stream: true })
-        }
-        body += decoder.decode()
-        let command
-        try {
-          command = JSON.parse(body)
-        } catch {
-          return json({ error: 'validation' }, 400)
-        }
+        const command = (await readJsonRequest(request)) as Record<string, unknown>
         if (
           !command ||
           typeof command.ownerId !== 'string' ||
@@ -93,9 +73,9 @@ export function createWorker(clock: () => Date = () => new Date()) {
           }
           if (command.operation === 'list' || command.operation === 'listOutcomes') {
             if (command.date !== undefined && !isScheduleDate(command.date))
-              throw new MedicineError('validation', 400)
+              throw new ApplicationError('validation', 400)
             if (command.operation === 'listOutcomes' && command.date === undefined)
-              throw new MedicineError('validation', 400)
+              throw new ApplicationError('validation', 400)
             const records =
               command.date === undefined
                 ? undefined
@@ -111,7 +91,7 @@ export function createWorker(clock: () => Date = () => new Date()) {
                 .orderBy(asc(dailySchedules.id)),
             })
           }
-          if (command.operation !== 'save') throw new MedicineError('validation', 400)
+          if (command.operation !== 'save') throw new ApplicationError('validation', 400)
           const schedule = parseSchedule(command.schedule)
           const existing = await db
             .select(select)
@@ -127,7 +107,7 @@ export function createWorker(clock: () => Date = () => new Date()) {
             JSON.stringify(saved.times) === JSON.stringify(schedule.times)
           // An identical retry remains valid after the initial start date has passed.
           if (existing) {
-            if (!matches(existing)) throw new MedicineError('conflict', 409)
+            if (!matches(existing)) throw new ApplicationError('conflict', 409)
             return json({ schedules: [existing] })
           }
           const medicine = await db
@@ -145,9 +125,9 @@ export function createWorker(clock: () => Date = () => new Date()) {
             (medicine.unit === 'capsule' &&
               schedule.times.some((slot) => !Number.isInteger(slot.quantity)))
           )
-            throw new MedicineError('validation', 400)
+            throw new ApplicationError('validation', 400)
           const now = clock()
-          if (schedule.startDate < istanbulDate(now)) throw new MedicineError('validation', 400)
+          if (schedule.startDate < istanbulDate(now)) throw new ApplicationError('validation', 400)
           await db
             .insert(dailySchedules)
             .values({ ...schedule, ownerId: command.ownerId, confirmedAt: now.toISOString() })
@@ -157,7 +137,7 @@ export function createWorker(clock: () => Date = () => new Date()) {
             .from(dailySchedules)
             .where(and(owner, eq(dailySchedules.id, schedule.id)))
             .get()
-          if (!matches(saved)) throw new MedicineError('conflict', 409)
+          if (!matches(saved)) throw new ApplicationError('conflict', 409)
           return json({ schedules: [saved] })
         }
         const owner = eq(userMedications.ownerId, command.ownerId)
@@ -178,7 +158,7 @@ export function createWorker(clock: () => Date = () => new Date()) {
             saved.strength !== medicine.strength ||
             saved.unit !== medicine.unit
           )
-            throw new MedicineError('conflict', 409)
+            throw new ApplicationError('conflict', 409)
           return json({
             medicines: [
               { id: saved.id, label: saved.label, strength: saved.strength, unit: saved.unit },
@@ -198,7 +178,7 @@ export function createWorker(clock: () => Date = () => new Date()) {
           .orderBy(asc(userMedications.label), asc(userMedications.id))
         return json({ medicines })
       } catch (error) {
-        if (error instanceof MedicineError) return json({ error: error.code }, error.status)
+        if (error instanceof ApplicationError) return json({ error: error.code }, error.status)
         console.error('medicine_storage_failure')
         return json({ error: 'unavailable' }, 503)
       }

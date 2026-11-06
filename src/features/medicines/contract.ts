@@ -1,24 +1,21 @@
+import { ApplicationError } from '../../lib/application-error'
+
 export type Medicine = {
   id: string
   label: string
   strength: string | null
   unit: 'tablet' | 'capsule'
 }
+export type MedicineResponses = { list: { medicines: Medicine[] }; save: { medicines: Medicine[] } }
 export type MedicineCommand =
   | { operation: 'list'; ownerId: string }
   | { operation: 'save'; ownerId: string; medicine: Medicine }
 
-export class MedicineError extends Error {
-  constructor(
-    public code: 'validation' | 'unauthorized' | 'unavailable' | 'conflict',
-    public status: number,
-  ) {
-    super(code)
-  }
-}
+export type MedicineResponse<C extends MedicineCommand = MedicineCommand> =
+  MedicineResponses[C['operation']]
 
 export function parseMedicine(value: unknown): Medicine {
-  if (!value || typeof value !== 'object') throw new MedicineError('validation', 400)
+  if (!value || typeof value !== 'object') throw new ApplicationError('validation', 400)
   const input = value as Record<string, unknown>
   if (
     typeof input.id !== 'string' ||
@@ -30,7 +27,7 @@ export function parseMedicine(value: unknown): Medicine {
       (typeof input.strength !== 'string' || input.strength.trim().length > 120)) ||
     (input.unit !== 'tablet' && input.unit !== 'capsule')
   )
-    throw new MedicineError('validation', 400)
+    throw new ApplicationError('validation', 400)
   return {
     id: input.id,
     label: input.label.trim(),

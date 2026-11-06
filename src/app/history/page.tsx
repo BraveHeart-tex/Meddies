@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { auth, authConfigured } from '@/features/auth/server'
 import { SessionBoundary } from '@/features/auth/session-boundary'
 import { medicines } from '@/features/medicines/server'
-import { MedicineError, type Medicine } from '@/features/medicines/contract'
+import { type Medicine } from '@/features/medicines/contract'
+import { ApplicationError } from '@/lib/application-error'
 import { schedules, schedulingNow } from '@/features/schedules/server'
 import { isScheduleDate, istanbulDate } from '@/features/schedules/contract'
 import type { DoseOccurrence } from '@/features/schedules/contract'
@@ -64,7 +65,7 @@ export default async function HistoryPage({
       }
     } catch (error) {
       result =
-        error instanceof MedicineError && error.code === 'unauthorized'
+        error instanceof ApplicationError && error.code === 'unauthorized'
           ? { status: 'unauthorized' }
           : { status: 'unavailable' }
     }

@@ -1,35 +1,24 @@
 import { readJsonRequest } from '@/lib/json-request'
 import { medicines } from '@/features/medicines/server'
-import { MedicineError } from '@/features/medicines/contract'
+import { json, failure, mutationGuard } from '@/lib/http'
 
 export const runtime = 'nodejs'
-const json = (body: unknown, status = 200) =>
-  Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } })
-
-function failure(error: unknown) {
-  if (error instanceof MedicineError) return json({ error: error.code }, error.status)
-  console.error('medicine_request_failure')
-  return json({ error: 'unavailable' }, 503)
-}
 
 export async function GET() {
   try {
     return json({ medicines: await medicines.list() })
   } catch (error) {
-    return failure(error)
+    return failure(error, 'medicine_request_failure')
   }
 }
 
 export async function POST(request: Request) {
-  // Cookie-authenticated mutations require an exact same-origin browser request.
-  if (request.headers.get('origin') !== new URL(request.url).origin)
-    return json({ error: 'forbidden' }, 403)
-  if (request.headers.get('content-type')?.split(';')[0] !== 'application/json')
-    return json({ error: 'validation' }, 415)
+  const rejected = mutationGuard(request)
+  if (rejected) return rejected
   try {
     const input = await readJsonRequest(request)
     return json({ medicines: await medicines.save(input) })
   } catch (error) {
-    return failure(error)
+    return failure(error, 'medicine_request_failure')
   }
 }

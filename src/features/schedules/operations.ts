@@ -3,26 +3,32 @@ import {
   istanbulDate,
   isScheduleDate,
   parseSchedule,
+  parseDoseOutcome,
   parseDoseCorrection,
   parseSkippedDose,
   parseTakenDose,
-  type ScheduleCommand,
-  type ScheduleResponse,
+  type SendSchedule,
 } from './contract'
-import { MedicineError } from '../medicines/contract'
+import { ApplicationError } from '../../lib/application-error'
 
 export function createScheduleOperations(dependencies: {
   requireUser: () => Promise<{ id: string }>
-  send: (command: ScheduleCommand) => Promise<ScheduleResponse>
+  send: SendSchedule
   now?: () => Date
 }) {
-  return {
+  const operations = {
     async save(input: unknown) {
       const user = await dependencies.requireUser()
       const schedule = parseSchedule(input)
       const response = await dependencies.send({ operation: 'save', ownerId: user.id, schedule })
-      if (!response.schedules) throw new MedicineError('unavailable', 503)
+      if (!response.schedules) throw new ApplicationError('unavailable', 503)
       return response.schedules
+    },
+    async recordOutcome(input: unknown) {
+      // Preserve PUT precedence: outcome/Skipped fields before authentication,
+      // then authenticate before parsing the occurrence and intake details.
+      const outcome = parseDoseOutcome(input)
+      return outcome === 'Skipped' ? operations.recordSkipped(input) : operations.recordTaken(input)
     },
     async recordTaken(input: unknown) {
       const user = await dependencies.requireUser()
@@ -39,7 +45,7 @@ export function createScheduleOperations(dependencies: {
         saved.scheduleId !== record.scheduleId ||
         saved.dueAt !== record.dueAt
       )
-        throw new MedicineError('unavailable', 503)
+        throw new ApplicationError('unavailable', 503)
       return saved
     },
     async recordSkipped(input: unknown) {
@@ -57,7 +63,7 @@ export function createScheduleOperations(dependencies: {
         saved.scheduleId !== record.scheduleId ||
         saved.dueAt !== record.dueAt
       )
-        throw new MedicineError('unavailable', 503)
+        throw new ApplicationError('unavailable', 503)
       return saved
     },
     async correctOutcome(input: unknown) {
@@ -81,7 +87,7 @@ export function createScheduleOperations(dependencies: {
             saved.takenAt !== correction.takenAt ||
             saved.quantity !== correction.quantity))
       )
-        throw new MedicineError('unavailable', 503)
+        throw new ApplicationError('unavailable', 503)
       return saved
     },
     async snapshot() {
@@ -92,21 +98,22 @@ export function createScheduleOperations(dependencies: {
         ownerId: user.id,
         date: istanbulDate(now),
       })
-      if (!schedules || !records) throw new MedicineError('unavailable', 503)
+      if (!schedules || !records) throw new ApplicationError('unavailable', 503)
       return { schedules, records, today: scheduleToday(schedules, now, records) }
     },
     async history(date: unknown) {
       const user = await dependencies.requireUser()
       const now = dependencies.now?.() ?? new Date()
       if (!isScheduleDate(date) || date > istanbulDate(now))
-        throw new MedicineError('validation', 400)
+        throw new ApplicationError('validation', 400)
       const { schedules, records } = await dependencies.send({
         operation: 'listOutcomes',
         ownerId: user.id,
         date,
       })
-      if (!schedules || !records) throw new MedicineError('unavailable', 503)
+      if (!schedules || !records) throw new ApplicationError('unavailable', 503)
       return scheduleHistoryDay(schedules, date, now, records)
     },
   }
+  return operations
 }
