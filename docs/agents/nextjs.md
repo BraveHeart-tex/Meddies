@@ -73,7 +73,7 @@ Record these decisions in the owning ticket for each changed route:
 - Retain usable cached content while stale data refreshes. Refresh stale queries
   on screen entry, window focus and reconnect, and reconcile targeted queries
   after mutations. Do not poll routinely. Advance due-time and day status from the
-  local clock; fetch newly required dates instead of inventing coverage.
+  scheduling clock (`useSchedulingClock()`), never the device wall clock; fetch newly required dates instead of inventing coverage.
 - Newer optimistic or confirmed state wins over late hydration, stale reads and
   out-of-order responses. Cancel or ignore outdated in-flight reads before
   optimistic updates, and compare revisions when reconciling.

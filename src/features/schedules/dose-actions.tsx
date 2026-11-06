@@ -28,7 +28,6 @@ export function DoseActions({
   appearance = 'button',
   opener,
   todayDate,
-  referenceNow,
   describedBy,
 }: {
   dose: DoseOccurrence
@@ -38,7 +37,6 @@ export function DoseActions({
   appearance?: 'row' | 'button'
   opener?: Ref<DoseDrawerOpener>
   todayDate?: string
-  referenceNow?: string
   describedBy?: string
 }) {
   const [editor, setEditor] = useState<Outcome | null>(null)
@@ -424,7 +422,6 @@ export function DoseActions({
             open={editor === 'Taken'}
             saving={saving}
             error={editor === 'Taken' ? error : ''}
-            referenceNow={referenceNow}
             onOpen={closeEditor}
             onSubmit={(details) => void submit('Taken', details)}
           />

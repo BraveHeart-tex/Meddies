@@ -18,22 +18,45 @@ const workerRestrictedImports = [
   '**/lib/medicine-storage',
 ]
 
+// Route links keep link semantics: Base UI Button with nativeButton={false} adds role="button".
+const routeLinkSyntax = {
+  selector:
+    "JSXAttribute[name.name='nativeButton'] > JSXExpressionContainer > Literal[value=false]",
+  message: 'Render route links as <Link className={buttonVariants(...)}> instead.',
+}
+// "Now" comes from the server scheduling clock, so journeys can freeze it. `new Date(value)` is fine.
+const wallClockMessage =
+  'Do not read the wall clock. Use schedulingNow() on the server or useSchedulingClock() in the client.'
+const wallClockSyntax = [
+  { selector: "NewExpression[callee.name='Date'][arguments.length=0]", message: wallClockMessage },
+  {
+    selector: "CallExpression[callee.object.name='Date'][callee.property.name='now']",
+    message: wallClockMessage,
+  },
+]
+// Wall clock owners: the server scheduling clock, the schedule operations default, and auth,
+// whose session lifetime is real time by design.
+export const wallClockOwners = [
+  'src/features/schedules/server.ts',
+  'src/features/schedules/operations.ts',
+  'src/features/auth/server.ts',
+  'src/features/auth/session-boundary.tsx',
+]
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   prettier,
-  // Route links keep link semantics: Base UI Button with nativeButton={false} adds role="button".
+  {
+    files: ['src/**/*.ts'],
+    rules: { 'no-restricted-syntax': ['error', ...wallClockSyntax] },
+  },
   {
     files: ['src/**/*.tsx'],
-    rules: {
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector:
-            "JSXAttribute[name.name='nativeButton'] > JSXExpressionContainer > Literal[value=false]",
-          message: 'Render route links as <Link className={buttonVariants(...)}> instead.',
-        },
-      ],
-    },
+    rules: { 'no-restricted-syntax': ['error', routeLinkSyntax, ...wallClockSyntax] },
+  },
+  {
+    files: wallClockOwners,
+    rules: { 'no-restricted-syntax': ['error', routeLinkSyntax] },
   },
   // Worker code may consume neutral contracts/rules, never app wiring or browser policy.
   {

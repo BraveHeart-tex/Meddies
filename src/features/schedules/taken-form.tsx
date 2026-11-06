@@ -16,6 +16,7 @@ import {
   type DoseOccurrence,
   type TakenDoseInput,
 } from './contract'
+import { useSchedulingClock } from './scheduling-clock'
 
 export const doseClock = (instant: string) =>
   new Intl.DateTimeFormat('en-GB', {
@@ -50,7 +51,6 @@ export function TakenForm({
   onOpen,
   onSubmit,
   editing = false,
-  referenceNow,
 }: {
   dose: DoseOccurrence
   medicine: Medicine
@@ -60,10 +60,11 @@ export function TakenForm({
   onOpen: (open: boolean) => void
   onSubmit: (details: { takenAt: TakenDoseInput['takenAt'] | null; quantity: number }) => void
   editing?: boolean
-  referenceNow?: string
 }) {
   const id = useId()
-  const [now] = useState(() => localMinute(referenceNow ?? new Date().toISOString()))
+  const clock = useSchedulingClock()
+  // Mounts with the drawer, after hydration, so the anchored clock is safe to read here.
+  const [now] = useState(() => localMinute(clock.now().toISOString()))
   const [when, setWhen] = useState<When>('now')
   const [other, setOther] = useState('')
   const [quantity, setQuantity] = useState(

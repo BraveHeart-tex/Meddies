@@ -18,12 +18,12 @@ export function MedicinePanel({
   scheduleMode = 'list',
   scheduleMedicineId = '',
   detailMedicineId = '',
-  initialNow = '',
+  initialNow,
 }: {
   scheduleMode?: 'add' | 'setup' | 'today' | 'list' | 'detail'
   scheduleMedicineId?: string
   detailMedicineId?: string
-  initialNow?: string
+  initialNow: string
 }) {
   const router = useRouter()
   // Handoff from Add to the saved medicine's page (FE-647 D7). Panel state carries it across

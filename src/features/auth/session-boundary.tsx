@@ -16,6 +16,7 @@ export function SessionBoundary({ expires, children }: { expires: string; childr
         `/?reason=expired&returnTo=${encodeURIComponent(knownTarget ? current : '/')}`,
       )
     }
+    // Session lifetime is real time by design, never the scheduling clock journeys freeze.
     const deadline = new Date(expires).getTime()
     const timer = window.setTimeout(expire, Math.max(0, deadline - Date.now()))
     const controller = new AbortController()

@@ -79,8 +79,15 @@ Google provider or real credentials are used. `page.request` shares the session
 cookie for API fixtures; the `request` fixture stays anonymous. Tests run with one
 worker and no retries. Every journey that depends on the date or time declares
 `initialScheduleTime`, so no journey depends on the wall-clock time it runs at.
-The frozen clock covers Next.js and the Worker only; the browser keeps the real clock,
-so pass explicit dates or server-provided times rather than browser-side defaults.
+The frozen clock covers Next.js and the Worker, and the browser follows it: client
+scheduling code reads "now" from `useSchedulingClock()`
+(`src/features/schedules/scheduling-clock.tsx`), anchored on the server scheduling time
+and advanced by monotonic elapsed time, never the browser wall clock. Lint bans argless
+`new Date()` and `Date.now()` in `src/**`; only the server scheduling clock, the schedule
+operations default and auth may read the wall clock. Auth stays real time, so sessions
+never expire because of the frozen clock. Use `page.clock` only for journeys that must
+advance elapsed time, and install it at the real current time, never at
+`initialScheduleTime`, so the session stays valid.
 `pnpm test` remains browser-free.
 
 Locator policy, enforced by lint in `tests/browser/**`:

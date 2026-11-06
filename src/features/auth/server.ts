@@ -56,6 +56,7 @@ export const { handlers, auth } = NextAuth({
       )
     },
     jwt({ token, account, profile }) {
+      // Session lifetime is real time by design, never the scheduling clock journeys freeze.
       if (account) {
         if (account.provider !== 'google' || !profile?.sub) return null
         return {
