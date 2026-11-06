@@ -3,9 +3,11 @@
 import { useId, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Field, FieldLabel } from '@/components/ui/field'
+import { DatePicker } from '@/components/ui/date-picker'
+import { Field } from '@/components/ui/field'
 import { Icon } from '@/components/ui/icon'
 import { Input } from '@/components/ui/input'
+import { TimePicker } from '@/components/ui/time-picker'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Medicine } from '@/features/medicines/contract'
 import {
@@ -119,7 +121,9 @@ export function TakenForm({
         onSubmit={save}
         aria-busy={saving}
         onKeyDown={(event: KeyboardEvent<HTMLFormElement>) => {
-          if (event.key === 'Escape' && !saving) {
+          // Picker popups are portaled; their Escape only closes the popup.
+          const inForm = event.currentTarget.contains(event.target as Node)
+          if (event.key === 'Escape' && !saving && inForm) {
             event.preventDefault()
             onOpen(false)
           }
@@ -163,16 +167,22 @@ export function TakenForm({
               <ToggleGroupItem value="other">Other</ToggleGroupItem>
             </ToggleGroup>
             {when === 'other' && (
-              <Field>
-                <FieldLabel htmlFor={`${id}-time`} className="sr-only">
-                  Taken date and time in Istanbul
-                </FieldLabel>
-                <Input
+              <Field aria-label="Taken date and time in Istanbul">
+                <DatePicker
+                  id={`${id}-date`}
+                  label="Taken date in Istanbul"
+                  today={istanbulDate(instantOf(now))}
+                  disabled={saving}
+                  value={other.slice(0, 10)}
+                  onValueChange={(date) => setOther(`${date}T${other.slice(11)}`)}
+                />
+                <TimePicker
                   id={`${id}-time`}
-                  type="datetime-local"
+                  label="Taken time in Istanbul"
                   required
-                  value={other}
-                  onChange={(event) => setOther(event.target.value)}
+                  disabled={saving}
+                  value={other.slice(11)}
+                  onValueChange={(time) => setOther(`${other.slice(0, 10)}T${time}`)}
                 />
               </Field>
             )}

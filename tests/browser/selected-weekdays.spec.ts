@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { expect, test } from './fixtures'
+import { datePicker, pickDate, pickTime } from './pickers'
 import { scrollsHorizontally } from './actions'
 import { addDays } from './seed'
 
@@ -30,9 +31,9 @@ test('a schedule on selected weekdays shows its next Istanbul occurrence', async
     await page.goto(`/medications?schedule=${medicineId}`)
     await expect(page.getByRole('heading', { name: 'Set dose schedule' })).toBeVisible()
     await expect(page.getByText('Medicine: Weekday Browser Medicine')).toBeVisible()
-    await page.getByLabel('Start date in Istanbul').fill(startDate)
-    await expect(page.getByLabel('Start date in Istanbul')).toHaveValue(startDate)
-    await page.getByLabel('Time 1').fill('23:59')
+    await pickDate(page, 'Start date in Istanbul', startDate)
+    await expect(datePicker(page, 'Start date in Istanbul')).toHaveText('Sat, 16 Jun 2035')
+    await pickTime(page, 'Time 1', '23:59')
     await page.getByLabel(/^Quantity/).fill('1')
   })
 

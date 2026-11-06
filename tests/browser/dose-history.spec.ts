@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures'
+import { datePicker, expectTime, pickDate, pickTime } from './pickers'
 import { doseTrigger, historyList, historyRows, intakeTime, drawer } from './locators'
 import { addDays, insertScheduledMedicine, insertSkippedRecord, insertTakenRecord } from './seed'
 
@@ -64,7 +65,8 @@ test('review, edit and correct past doses in History', async ({ page, request },
   })
 
   await test.step('submit historical date from the keyboard', async () => {
-    await page.getByLabel('Choose a date').fill(date)
+    await pickDate(page, 'Choose a date', date)
+    await expect(datePicker(page, 'Choose a date')).toHaveText('Thu, 14 Jun 2035')
     await page.getByRole('button', { name: 'View' }).press('Enter')
     await expect(page).toHaveURL(new RegExp(`date=${date}`))
     await expect(rows).toHaveCount(3)
@@ -89,7 +91,8 @@ test('review, edit and correct past doses in History', async ({ page, request },
     await reviewFirst()
     await dialog.getByRole('button', { name: /^Edit intake/ }).click()
     await expect(dialog.getByLabel(/^Amount/)).toHaveValue('0.5')
-    await expect(dialog.getByLabel('Taken date and time in Istanbul')).not.toHaveValue('')
+    await expect(datePicker(dialog, 'Taken date in Istanbul')).toHaveText('Fri, 15 Jun 2035')
+    await expectTime(dialog, 'Taken time in Istanbul', '09:00')
     await dialog.getByLabel(/^Amount/).fill('1.5')
     await dialog.getByRole('button', { name: 'Save intake changes' }).click()
     await expect(first).toContainText('quantity 1.5 tablet')
@@ -102,7 +105,8 @@ test('review, edit and correct past doses in History', async ({ page, request },
   await test.step('edit actual time while preserving quantity', async () => {
     await reviewFirst()
     await dialog.getByRole('button', { name: /^Edit intake/ }).click()
-    await dialog.getByLabel('Taken date and time in Istanbul').fill(`${date}T12:00`)
+    await pickDate(page, 'Taken date in Istanbul', date)
+    await pickTime(page, 'Taken time in Istanbul', '12:00')
     await dialog.getByRole('button', { name: 'Save intake changes' }).click()
     await expect(intakeTime(first)).toHaveAttribute('datetime', `${date}T09:00:00.000Z`)
     await expect(first).toContainText('12:00')

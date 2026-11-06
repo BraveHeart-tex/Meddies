@@ -25,6 +25,16 @@ const glyphs = {
       </g>
     ),
   },
+  calendar: {
+    box: 16,
+    stroke: 1.6,
+    draw: (w) => (
+      <g {...line} strokeWidth={w}>
+        <rect x="2.2" y="3.2" width="11.6" height="10.6" rx="2.4" />
+        <path d="M2.2 6.8h11.6M5.4 1.8v2.6M10.6 1.8v2.6" />
+      </g>
+    ),
+  },
   notLogged: {
     box: 16,
     stroke: 1.6,

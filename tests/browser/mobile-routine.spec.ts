@@ -1,9 +1,11 @@
 import { expect, test } from './fixtures'
+import { datePicker, expectTime, pickDate, pickTime } from './pickers'
 import { focusWindow } from './actions'
 import { doseRow, doseTrigger, historyRow, historyRows, instant, drawer } from './locators'
 
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
+const todayLabel = 'Fri, 15 Jun 2035'
 const time = '09:05'
 const dueAt = new Date(`${today}T${time}:00+03:00`).toISOString()
 const takenAt = new Date(initialScheduleTime).toISOString()
@@ -14,13 +16,13 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
   const nav = page.getByRole('navigation', { name: 'Primary' })
   const dialog = drawer(page)
   const historyUrl = `/history?date=${today}`
-  const historyDate = page.getByLabel('Choose a date')
+  const historyDate = datePicker(page, 'Choose a date')
   const scheduled = historyRow(page, today, dueAt)
 
   const expectHistoryDose = async (status: string) => {
     await expect(scheduled).toBeVisible()
     await expect(page).toHaveURL(app.origin + historyUrl)
-    await expect(historyDate).toHaveValue(today)
+    await expect(historyDate).toHaveText(todayLabel)
     await expect(historyRows(page, today)).toHaveCount(1)
     await expect(scheduled).toContainText('Routine Medicine')
     await expect(scheduled.getByText(status, { exact: true })).toBeVisible()
@@ -45,8 +47,8 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
   })
 
   await test.step('retry an uncertain schedule save without losing setup', async () => {
-    await page.getByLabel('Start date in Istanbul').fill(today)
-    await page.getByLabel('Time 1').fill(time)
+    await pickDate(page, 'Start date in Istanbul', today)
+    await pickTime(page, 'Time 1', time)
     await page.getByLabel(/^Quantity/).fill('1')
     // The first save reaches the server, but its response is lost on the way back.
     let loseResponse = true
@@ -61,7 +63,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     )
     await page.getByRole('button', { name: 'Save schedule' }).press('Enter')
     await expect(page.getByText('Save could not be confirmed.')).toBeVisible()
-    await expect(page.getByLabel('Time 1')).toHaveValue(time)
+    await expectTime(page, 'Time 1', time)
     await page.getByRole('button', { name: 'Retry saving schedule' }).press('Enter')
     await expect(page.getByText('Schedule saved.')).toBeVisible()
     await page.reload()
@@ -74,9 +76,8 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await dialog.getByRole('button', { name: 'I took it' }).click()
     await expect(dialog.getByRole('button', { name: 'Save as taken' })).toBeVisible()
     await dialog.getByRole('button', { name: 'Other', exact: true }).click()
-    await dialog
-      .getByLabel('Taken date and time in Istanbul')
-      .fill(initialScheduleTime.slice(0, 16))
+    await pickDate(page, 'Taken date in Istanbul', today)
+    await pickTime(page, 'Taken time in Istanbul', initialScheduleTime.slice(11, 16))
     await dialog.getByRole('button', { name: 'Save as taken' }).press('Enter')
     await expect(instant(doseRow(page, dueAt), takenAt)).toBeVisible()
   })
@@ -84,7 +85,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
   await test.step('the recorded dose is absent from dated History before it is due', async () => {
     await page.goto(historyUrl)
     await expect(page.getByText('No past doses for this date.')).toBeVisible()
-    await expect(historyDate).toHaveValue(today)
+    await expect(historyDate).toHaveText(todayLabel)
     await expect(historyRows(page, today)).toHaveCount(0)
   })
 

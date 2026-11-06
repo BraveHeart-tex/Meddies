@@ -14,6 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
+import { TimePicker } from '@/components/ui/time-picker'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
 import { AppHeader } from '@/components/layout/app-header'
 import type { Medicine } from '@/features/medicines/contract'
@@ -58,7 +60,9 @@ export function SchedulePanel({
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [medicineId, setMedicineId] = useState(initialMedicineId)
-  const [startDate, setStartDate] = useState(() => istanbulDate(new Date()))
+  const [startDate, setStartDate] = useState(() =>
+    istanbulDate(initialNow ? new Date(initialNow) : new Date()),
+  )
   const [times, setTimes] = useState([{ key: 0, time: '', quantity: '' }])
   const [weekdays, setWeekdays] = useState([0, 1, 2, 3, 4, 5, 6])
   const rowKey = useRef(1)
@@ -69,6 +73,7 @@ export function SchedulePanel({
   const [intakeMessage, setIntakeMessage] = useState('')
   const [attempted, setAttempted] = useState(false)
   const [medicineMissing, setMedicineMissing] = useState(false)
+  const [startPast, setStartPast] = useState(false)
   const action = useRef<{ id: string; fingerprint: string } | null>(null)
   const locked = useRef(false)
   const medicineTrigger = useRef<HTMLButtonElement>(null)
@@ -115,6 +120,9 @@ export function SchedulePanel({
     }
   }, [load])
   const selected = medicines.find((medicine) => medicine.id === medicineId)
+  // The server scheduling clock decides Istanbul today, not the device clock.
+  const now = today?.now ?? initialNow
+  const todayDate = istanbulDate(now ? new Date(now) : new Date())
   const selectedSchedule = schedules.find((schedule) => schedule.medicineId === medicineId)
   const available = medicines.filter(
     (medicine) => !schedules.some((schedule) => schedule.medicineId === medicine.id),
@@ -182,6 +190,11 @@ export function SchedulePanel({
     if (!medicineId) {
       setMedicineMissing(true)
       medicineTrigger.current?.focus()
+      return
+    }
+    if (!attempted && startDate < todayDate) {
+      setStartPast(true)
+      document.getElementById('schedule-start')?.focus()
       return
     }
     if (weekdays.length === 0) {
@@ -665,16 +678,26 @@ export function SchedulePanel({
                     <label htmlFor="schedule-start" className="block font-medium">
                       Start date in Istanbul
                     </label>
-                    <input
+                    <DatePicker
                       id="schedule-start"
-                      type="date"
-                      required
-                      min={attempted ? undefined : istanbulDate(new Date())}
+                      label="Start date in Istanbul"
+                      today={todayDate}
+                      min={attempted ? undefined : todayDate}
                       max="2099-12-31"
-                      className="meddies-field"
+                      disabled={saving || loading || loadError}
+                      aria-invalid={startPast}
+                      aria-describedby={startPast ? 'schedule-start-error' : undefined}
                       value={startDate}
-                      onChange={(event) => setStartDate(event.target.value)}
+                      onValueChange={(value) => {
+                        setStartDate(value)
+                        setStartPast(false)
+                      }}
                     />
+                    {startPast && (
+                      <p id="schedule-start-error" role="alert">
+                        Choose today or a later date.
+                      </p>
+                    )}
                   </div>
                   <p id="quantity-help" className="text-sm text-muted-foreground">
                     Quantity taken per dose, separate from product strength. Whole or half tablets;
@@ -686,16 +709,16 @@ export function SchedulePanel({
                         <label htmlFor={`dose-time-${slot.key}`} className="block font-medium">
                           Time {index + 1}
                         </label>
-                        <input
+                        <TimePicker
                           id={`dose-time-${slot.key}`}
-                          type="time"
+                          label={`Time ${index + 1}`}
                           required
-                          className="meddies-field"
+                          disabled={saving || loading || loadError}
                           value={slot.time}
-                          onChange={(event) =>
+                          onValueChange={(time) =>
                             setTimes((previous) =>
                               previous.map((row) =>
-                                row.key === slot.key ? { ...row, time: event.target.value } : row,
+                                row.key === slot.key ? { ...row, time } : row,
                               ),
                             )
                           }

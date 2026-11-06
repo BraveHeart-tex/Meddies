@@ -8,6 +8,7 @@ import { schedules, schedulingNow } from '@/features/schedules/server'
 import { isScheduleDate, istanbulDate } from '@/features/schedules/contract'
 import type { DoseOccurrence } from '@/features/schedules/contract'
 import { formatHistoryTime } from '@/features/schedules/format-history-time'
+import { HistoryDateField } from '@/features/schedules/history-date-field'
 import { HistoryDoseActions } from '@/features/schedules/history-dose-actions'
 import { Button } from '@/components/ui/button'
 import { AppShell } from '@/components/layout/app-shell'
@@ -85,14 +86,10 @@ export default async function HistoryPage({
             <label className="block text-sm font-medium" htmlFor="history-date">
               Choose a date
             </label>
-            <input
-              className="meddies-field"
-              id="history-date"
-              name="date"
-              type="date"
-              max={today}
+            <HistoryDateField
+              key={result.status === 'invalid' ? today : date}
               defaultValue={result.status === 'invalid' ? today : date}
-              required
+              today={today}
             />
           </div>
           <Button type="submit">View</Button>

@@ -46,3 +46,10 @@ export const doseStatus = (row: Locator) =>
 
 /** The open drawer's swipe handle. It is decorative to assistive tech but drives pointer swipes. */
 export const drawerHandle = (page: Page) => page.locator('[data-slot="drawer-swipe-handle"]')
+
+/** A calendar day button inside an open date picker, keyed by its date-only value. */
+export const calendarDay = (scope: Page | Locator, date: string) =>
+  scope.locator(`button[data-day="${date}"]`)
+
+/** The first day shown by an open date picker, to tell which month it displays. */
+export const firstCalendarDay = (scope: Page | Locator) => scope.locator('button[data-day]').first()

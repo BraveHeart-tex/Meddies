@@ -3,6 +3,7 @@ import { AppShell } from '@/components/layout/app-shell'
 import { auth, authConfigured } from '@/features/auth/server'
 import { SessionBoundary } from '@/features/auth/session-boundary'
 import { MedicinePanel } from '@/features/medicines/medicine-panel'
+import { schedulingNow } from '@/features/schedules/server'
 
 export default async function MedicationsPage({
   searchParams,
@@ -38,6 +39,7 @@ export default async function MedicationsPage({
           scheduleMode={scheduleMedicineId ? 'setup' : detailMedicineId ? 'detail' : 'list'}
           scheduleMedicineId={scheduleMedicineId}
           detailMedicineId={detailMedicineId}
+          initialNow={schedulingNow().toISOString()}
         />
       </AppShell>
     </SessionBoundary>
