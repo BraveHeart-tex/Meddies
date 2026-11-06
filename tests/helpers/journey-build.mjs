@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 // Files and directories whose changes the production Next.js build depends on.
 // Directory mtimes count too, so deleting or renaming a file marks the build stale.
-export const buildInputs = [
+const buildInputs = [
   'src',
   'public',
   'next.config.ts',
@@ -11,6 +11,11 @@ export const buildInputs = [
   'postcss.config.mjs',
   'package.json',
   'pnpm-lock.yaml',
+  // Next.js inlines env values at build time.
+  '.env',
+  '.env.local',
+  '.env.production',
+  '.env.production.local',
 ]
 
 async function statOrUndefined(path) {
@@ -25,7 +30,7 @@ async function statOrUndefined(path) {
 const mtime = async (path) => (await statOrUndefined(path))?.mtimeMs
 
 /** The most recently modified build input, as a root-relative path and mtime. */
-export async function newestBuildInput(root) {
+async function newestBuildInput(root) {
   let newest
   const consider = (path, mtimeMs) => {
     if (mtimeMs !== undefined && (!newest || mtimeMs > newest.mtimeMs)) newest = { path, mtimeMs }
@@ -61,7 +66,7 @@ export const isBrowserDevMode = (env) => env.MEDDIES_BROWSER_DEV === '1'
  */
 export async function journeySetupError({ root, env }) {
   const dev = isBrowserDevMode(env)
-  if (env.CI && env.MEDDIES_BROWSER_DEV)
+  if (env.CI && dev)
     return 'MEDDIES_BROWSER_DEV is not allowed in CI; journeys there use the production build'
   if ((await mtime(join(root, '.worker-build/index.js'))) === undefined)
     return 'Worker bundle missing for storage journeys. Run: pnpm worker:build'

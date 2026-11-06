@@ -7,10 +7,10 @@ import { staleBuildReason } from '../tests/helpers/journey-build.mjs'
 
 function run(label, command, args) {
   const started = performance.now()
-  const { status, signal } = spawnSync(command, args, { stdio: 'inherit' })
+  const { status } = spawnSync(command, args, { stdio: 'inherit' })
   const seconds = ((performance.now() - started) / 1000).toFixed(1)
   console.log(`[test:browser:build] ${label}: ${seconds}s`)
-  if (status !== 0) process.exit(status ?? (signal ? 1 : 0))
+  if (status !== 0) process.exit(status ?? 1)
 }
 
 run('worker:build', 'pnpm', ['worker:build'])

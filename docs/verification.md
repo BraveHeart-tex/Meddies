@@ -41,14 +41,14 @@ pnpm exec playwright test --project=narrow cozy-visual
 `next build --webpack` only when the Next.js build is stale, then runs
 `playwright test --project=iphone-17` with the arguments. Outside CI, global setup
 fails fast when any build input (`src`, `public`, Next.js, TypeScript and PostCSS
-config, `package.json`, lockfile) is newer than `.next/BUILD_ID`; rerun through the
+config, `package.json`, lockfile, `.env` files) is newer than `.next/BUILD_ID`; rerun through the
 wrapper. Global setup also fails when `.next/BUILD_ID` or `.worker-build/index.js`
 is missing. Run builds and journeys sequentially when they share `.next` or
 `.worker-build`. Run `pnpm verify:local` after the journeys.
 
 For faster iteration on one journey, `MEDDIES_BROWSER_DEV=1 pnpm test:browser <spec>`
 starts `next dev --webpack` per test instead of `next start`, with no production
-build. It needs only the Worker bundle, adds about 2s of startup per test, and is
+build. It needs only the Worker bundle, adds per-test startup, and is
 slower than the wrapper for the full suite. Dev output goes to `.next/dev`, so the
 production build stays usable; a running `pnpm dev` or `pnpm dev:stack` holds the
 same `.next/dev` lock, so stop it first. Dev mode is for iteration only: React
