@@ -80,6 +80,13 @@ Record these decisions in the owning ticket for each changed route:
 
 ## Session interaction
 
+Lifetime and Drafts are the target state, delivered by FE-638. Until it lands,
+forms keep values and pending saves only while their screen is mounted.
+
+`/medications` query states (`?add`, `?medicine`, `?schedule`) render one mounted
+`MedicinePanel`, so its client state persists across them; reset per-screen state
+when the screen changes.
+
 - **Mutations:** each user attempt gets one action ID, reused on every retry
   ([storage](../storage.md#client-writes)). Dose recording
   and correction update the affected Today and History cache entries

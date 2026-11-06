@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { MedicationTile } from '@/features/medicines/medication-tile'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Icon } from '@/components/ui/icon'
@@ -875,19 +875,13 @@ function MedicationRoutineGroups({
                 </a>
                 {!schedule && (
                   <ItemActions className="relative">
-                    <Button
-                      variant="soft"
-                      size="sm"
-                      nativeButton={false}
-                      render={
-                        <a
-                          href={`/medications?schedule=${encodeURIComponent(medicine.id)}#schedule-heading`}
-                          aria-label={`Add schedule for ${medicine.label}`}
-                        />
-                      }
+                    <a
+                      href={`/medications?schedule=${encodeURIComponent(medicine.id)}#schedule-heading`}
+                      aria-label={`Add schedule for ${medicine.label}`}
+                      className={buttonVariants({ variant: 'soft', size: 'sm' })}
                     >
                       Add schedule
-                    </Button>
+                    </a>
                   </ItemActions>
                 )}
               </Item>

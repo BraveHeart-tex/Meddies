@@ -14,10 +14,6 @@ import { MedicationTile } from './medication-tile'
 import { MedicineForm } from './medicine-form'
 import { parseMedicine, type Medicine } from './contract'
 
-// One-shot handoff from Add to the saved medicine's page (FE-647 D7). In memory only: it
-// survives the replace navigation, even if the page remounts, and is gone after a reload.
-let justSaved: Medicine | null = null
-
 export function MedicinePanel({
   scheduleMode = 'list',
   scheduleMedicineId = '',
@@ -30,12 +26,10 @@ export function MedicinePanel({
   initialNow?: string
 }) {
   const router = useRouter()
-  const [savedMedicine, setSavedMedicine] = useState<Medicine | null>(() =>
-    justSaved?.id === detailMedicineId ? justSaved : null,
-  )
-  const [medicines, setMedicines] = useState<Medicine[]>(() =>
-    savedMedicine ? [savedMedicine] : [],
-  )
+  // Handoff from Add to the saved medicine's page (FE-647 D7). Panel state carries it across
+  // the replace navigation (one mounted panel per /medications); a reload drops it.
+  const [savedMedicine, setSavedMedicine] = useState<Medicine | null>(null)
+  const [medicines, setMedicines] = useState<Medicine[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const mounted = useRef(true)
@@ -90,8 +84,6 @@ export function MedicinePanel({
   }
   useEffect(() => {
     if (!justSavedHere) return
-    // Consumed: leaving and returning to this medicine does not repeat the confirmation.
-    justSaved = null
     // After the replace navigation, focus the page heading (FE-647 a11y).
     detailHeading.current?.focus()
   }, [justSavedHere])
@@ -99,7 +91,6 @@ export function MedicinePanel({
   function saved(medicine: Medicine) {
     setMedicines((previous) => [...previous.filter((item) => item.id !== medicine.id), medicine])
     setSavedMedicine(medicine)
-    justSaved = medicine
     // Never navigate someone who has already left the Add screen.
     if (mounted.current && mode.current === 'add')
       router.replace(`/medications?medicine=${encodeURIComponent(medicine.id)}`)

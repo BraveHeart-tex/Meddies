@@ -21,6 +21,20 @@ const workerRestrictedImports = [
 const eslintConfig = defineConfig([
   ...nextVitals,
   prettier,
+  // Route links keep link semantics: Base UI Button with nativeButton={false} adds role="button".
+  {
+    files: ['src/**/*.tsx'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "JSXAttribute[name.name='nativeButton'] > JSXExpressionContainer > Literal[value=false]",
+          message: 'Render route links as <Link className={buttonVariants(...)}> instead.',
+        },
+      ],
+    },
+  },
   // Worker code may consume neutral contracts/rules, never app wiring or browser policy.
   {
     files: ['worker/**/*.ts'],
