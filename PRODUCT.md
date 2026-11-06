@@ -23,7 +23,7 @@ A reminder is never confused with confirmed intake. Every dose outcome is explic
 - Private Google sign-in limited to one allowlisted account. English interface. Schedules and times are in Türkiye time (Europe/Istanbul) and shown in 24-hour format, whatever the device timezone.
 - Main areas: Today (the next action and unresolved doses), Medications (manual setup and schedules), History (past outcomes and corrections), Settings.
 - Closed-app push reminders with bounded follow-ups, snooze, optional quiet hours and generic lock-screen content by default.
-- Offline: cached doses with Taken/Skipped saved locally and shown as "Waiting to sync" until the server confirms.
+- Writes require connectivity. Dose recording and correction provide optimistic feedback with an explicit unconfirmed state until server acknowledgement. Previously loaded views and drafts remain in memory across app navigation; uncertain saves retain recovery details during the session. Persistent offline viewing, queued offline writes and recovery after reload or app closure are deferred beyond MVP.
 
 ## Capabilities and Constraints
 
@@ -32,9 +32,9 @@ A reminder is never confused with confirmed intake. Every dose outcome is explic
 - Record Taken or Skipped, correct outcome, time or quantity, and log unscheduled intake without moving reminders.
 - Optional stock tracking: Taken subtracts, Skipped does not, refills and count corrections, per-medicine low-stock threshold, never negative.
 - Optional per-medicine food reminder with a lead time. It never changes dose timing.
-- Setup, schedule changes and snooze save only after server confirmation. Conflicting outcomes from two devices are shown for her to resolve, not overwritten.
+- Setup, schedule changes and snooze save only after server confirmation. Online stale revisions and conflicting outcomes require explicit recovery, never silent overwrites. Expanded offline or multi-device synchronization UX is deferred.
 - History export, deliberate history deletion and account deletion.
-- Stack: Next.js App Router on Vercel, Cloudflare Worker with D1, Auth.js. See the docs index in AGENTS.md.
+- Stack: Next.js App Router on Vercel, Cloudflare Worker with D1, Auth.js. Approved frontend architecture: streamed server-prefetched sections hydrate TanStack Query, which owns interactive data during the session. Stale data refreshes on entry, focus and reconnect, with targeted mutation reconciliation and no routine polling. Adoption and verification are tracked in [FE-620](https://linear.app/karacadev/issue/FE-620/adopt-streaming-ssr-with-tanstack-query-and-fast-client-interactions); implementation remains separate. See the docs index in AGENTS.md.
 - Detailed requirements: [FE-539](https://linear.app/karacadev/issue/FE-539/meddies-private-mvp-product-and-engineering-specification). Interaction contract: [FE-612](https://linear.app/karacadev/issue/FE-612/record-the-approved-mobile-ux-contract).
 
 ## Brand Commitments
