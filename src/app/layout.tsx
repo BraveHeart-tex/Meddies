@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import '@/global.css'
 import localFont from 'next/font/local'
 import { cn } from '@/lib/utils'
+import { Toaster } from '@/components/ui/toast'
 
 const nunito = localFont({
   src: './fonts/nunito-variable.ttf',
@@ -28,7 +29,9 @@ export const viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={cn('font-sans', nunito.variable)}>
-      <body>{children}</body>
+      <body>
+        <Toaster>{children}</Toaster>
+      </body>
     </html>
   )
 }

@@ -11,10 +11,10 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 
 ## Components and states
 
-- Build with the shadcn components in `src/components/ui` (Base UI primitives) themed to Cozy Care through their variants: Button, Sheet, Card, Item, Badge, ToggleGroup, Field, Input, NativeSelect, Alert. Don't hand-roll sheets, selects, option sets, or status pills. Use real route links and the Cozy Care glyphs in `src/components/ui/icon.tsx`; extend with Lucide only for missing glyphs. Use a 44px minimum control target. Let text wrap and layout grow. Respect keyboard focus, system safe areas, and reduced motion.
+- Build with the shadcn components in `src/components/ui` (Base UI primitives) themed to Cozy Care through their variants: Button, Sheet, Card, Item, Badge, ToggleGroup, Field, Input, NativeSelect, Alert, Toast. Don't hand-roll sheets, selects, option sets, or status pills. Use real route links and the Cozy Care glyphs in `src/components/ui/icon.tsx`; extend with Lucide only for missing glyphs. Use a 44px minimum control target. Let text wrap and layout grow. Respect keyboard focus, system safe areas, and reduced motion.
 - The record sheet asks _What happened?_ with an explicit outcome choice and saves nothing until the user saves. Taken offers _Now_, the scheduled time once it has passed, or _Other_ date and time, plus an amount. Skipped confirms the skip and records no intake time or quantity.
 - Keep medication identity tiles decorative. Distinguish _Scheduled_, _Due now_, _Not logged_, _Taken_, and _Skipped_ with text and icon. Keep scheduled time separate from actual intake and from skip confirmation.
-- Keep explicit confirmation, progress, retries, correction, and stale-state handling. Use a factual success announcement after the server confirms the save. Use loading, empty, and recovery states appropriate to the screen.
+- Keep explicit confirmation, progress, retries, correction, and stale-state handling. Use a factual success announcement after the server confirms the save; `toast.add({ title, type: 'success', actionProps })` shows it with an Undo. Use loading, empty, and recovery states appropriate to the screen.
 
 ## Reference screens
 
