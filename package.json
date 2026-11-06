@@ -7,10 +7,11 @@
     "node": "22.x"
   },
   "lint-staged": {
-    "*.{js,ts,json,cjs,mjs,md,css,tsx,jsx,json}": [
-      "eslint .",
-      "prettier . --write"
-    ]
+    "*.{js,cjs,mjs,ts,tsx,jsx}": [
+      "eslint --no-warn-ignored",
+      "prettier --write --ignore-unknown"
+    ],
+    "*.{json,md,css}": "prettier --write --ignore-unknown"
   },
   "scripts": {
     "test": "pnpm worker:build && node --import tsx --test tests/*.test.mjs",
