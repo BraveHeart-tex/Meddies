@@ -4,10 +4,47 @@ import prettier from 'eslint-config-prettier/flat'
 import playwright from 'eslint-plugin-playwright'
 
 const browserJourneys = 'tests/browser/**'
+const workerRestrictedImports = [
+  'next',
+  'next/**',
+  'node:*',
+  'react',
+  'react/**',
+  'server-only',
+  '**/server',
+  '**/operations',
+  '**/components/**',
+  '**/lib/http',
+  '**/lib/medicine-storage',
+]
 
 const eslintConfig = defineConfig([
   ...nextVitals,
   prettier,
+  // Worker code may consume neutral contracts/rules, never app wiring or browser policy.
+  {
+    files: ['worker/**/*.ts'],
+    rules: { 'no-restricted-imports': ['error', { patterns: workerRestrictedImports }] },
+  },
+  {
+    files: ['worker/http.ts', 'worker/commands.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            ...workerRestrictedImports,
+            'drizzle-orm',
+            'drizzle-orm/**',
+            '**/schema',
+            '**/doses/**',
+            './medicines',
+            './schedules',
+          ],
+        },
+      ],
+    },
+  },
   // Browser journeys: role-first locators, web-first assertions, no fixed waits.
   {
     ...playwright.configs['flat/recommended'],

@@ -81,3 +81,29 @@ revision to the owner-scoped correction ledger. The expected revision and outcom
 provide compare-and-set protection; an action UUID makes retries idempotent. The
 original dose row remains intact, while Today and History project the latest
 revision. Today excludes either confirmed outcome from the next-dose calculation.
+
+## Worker concurrency invariants
+
+`worker/doses/mutations.ts` owns writes and replay reconciliation together.
+Read an exact retry before current-time/occurrence checks, retaining the original
+confirmation or recorded instant across midnight. Initial Taken/Skipped writes
+reject occurrences with corrections. Original rows remain immutable.
+
+Migration `0004` installs cross-outcome triggers: `RAISE(IGNORE)` prevents a Taken
+and Skipped original from both winning. Uniqueness handles identical retries;
+mutations re-read after insertion to reconcile a retry or opposite-outcome winner.
+Preflight reads alone cannot arbitrate these races. Keep these triggers installed.
+
+Correction insertion is one conditional SQL compare-and-append, checking original
+existence, expected effective outcome and revision. Migration `0005` supplies
+unique occurrence/revision and owner/action keys. Reconcile zero-change inserts
+against the exact action payload; an old exact replay returns its original
+revision even after later corrections. Never replace the atomic conditions with
+application preflight reads.
+
+`worker/doses/queries.ts` deliberately keeps two read contracts. Legacy `list`
+returns Taken originals, including originals later corrected, and omits `records`
+when no date is supplied. `listOutcomes` returns each effective latest outcome,
+including zero revision and null action/opposite-outcome fields for originals.
+Mutation replies omit irrelevant fields. App gateway decoding normalizes these
+wire forms; Worker refactors must retain them.

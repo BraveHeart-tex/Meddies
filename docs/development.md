@@ -43,3 +43,21 @@ pnpm lockfile. Experiment manifests and npm locks remain independent.
 - Worker entry points enforce the service capability and owner-scoped persistence.
   Prefer direct feature calls; avoid configurable handler pipelines and generic
   command/repository frameworks.
+
+## Worker responsibilities
+
+- `worker/index.ts` owns HTTP lifecycle, D1/clock wiring and explicit dispatch.
+  `http.ts` owns service capability authentication, route guards, bounded JSON,
+  no-store responses and failure mapping. `commands.ts` decodes unknown input into
+  shared typed commands after capability/route checks, preserving owner-first
+  validation, defaults and legacy optional dates.
+- `worker/medicines.ts` and `schedules.ts` own feature persistence and snapshot
+  composition. `worker/doses/mutations.ts` keeps atomic writes and retry
+  reconciliation together; `queries.ts` owns Taken-only originals and latest
+  outcomes; `occurrence.ts` loads owner-scoped context and applies neutral rules.
+  SQL stays beside its behavior. Map selected rows to wire fields explicitly;
+  snapshot null metadata and omitted mutation fields are compatibility contracts.
+- Worker modules may import runtime-neutral contracts, scheduling rules and errors.
+  ESLint prohibits app server wiring, browser components/policy, Next.js and Node
+  imports. HTTP/command modules cannot import persistence. Keep direct feature
+  calls rather than generic repositories or configurable command pipelines.

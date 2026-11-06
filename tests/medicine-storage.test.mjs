@@ -464,7 +464,17 @@ test('Skipped D1 records are idempotent across midnight and triggers arbitrate c
     operations.recordSkipped(input),
   ])
   assert.deepEqual(first, retry)
-  assert.equal(first.recordedAt, now.toISOString())
+  assert.deepEqual(first, { ...input, outcome: 'Skipped', recordedAt: now.toISOString() })
+  const initialSnapshot = await send({ operation: 'listOutcomes', ownerId, date: '2026-11-05' })
+  assert.deepEqual(initialSnapshot.records, [
+    {
+      ...first,
+      takenAt: null,
+      quantity: null,
+      revision: 0,
+      actionId: null,
+    },
+  ])
   const taken = await db
     .prepare(
       `INSERT INTO dose_records (owner_id, schedule_id, due_at, taken_at, quantity, outcome)
@@ -665,7 +675,41 @@ test('D1 correction ledger flips outcomes, replays exact actions and rejects sta
   )
   assert.equal((await operations.history('2026-11-04'))[0].record.quantity, 1.5)
   assert.equal((await operations.snapshot()).schedules[0].times[0].quantity, 1)
-  assert.equal((await operations.correctOutcome(first)).revision, 1)
+  assert.deepEqual(await operations.correctOutcome(first), firstResults[0])
+  const legacyRead = await send({ operation: 'list', ownerId, date: '2026-11-04' })
+  assert.deepEqual(legacyRead.records, [
+    {
+      ...occurrence,
+      takenAt: '2026-11-04T06:10:00.000Z',
+      quantity: 1,
+      outcome: 'Taken',
+    },
+  ])
+  const undated = await send({ operation: 'list', ownerId })
+  assert.deepEqual(Object.keys(undated), ['schedules'])
+  const effective = await send({ operation: 'listOutcomes', ownerId, date: '2026-11-04' })
+  assert.deepEqual(effective.records, [
+    {
+      ...occurrence,
+      takenAt: winner.takenAt,
+      quantity: 1.5,
+      outcome: 'Taken',
+      recordedAt: now.toISOString(),
+      revision: 3,
+      actionId: amended.actionId,
+    },
+  ])
+  await assert.rejects(
+    () =>
+      operations.recordTaken({
+        ...occurrence,
+        takenAt: '2026-11-04T06:10:00.000Z',
+        quantity: 1,
+      }),
+    /conflict/,
+  )
+  await assert.rejects(() => operations.recordSkipped(occurrence), /conflict/)
+
   await assert.rejects(
     () => operations.correctOutcome({ ...second, actionId: randomUUID() }),
     /conflict/,
