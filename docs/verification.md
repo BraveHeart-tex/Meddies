@@ -79,6 +79,36 @@ trace with `pnpm exec playwright show-trace <path>/trace.zip`. There is no HTML 
 project's viewport. Set `MEDDIES_VISUAL_OUT` to keep them outside `.browser-artifacts/`,
 for example when capturing `iphone-17` and `narrow` in separate runs.
 
+## Data-driven changes
+
+Every change to data-driven UI includes a review of each applicable state in
+[DESIGN.md](../DESIGN.md#loading-and-saving) against the
+[rendering rules](agents/nextjs.md).
+
+Route-owned journeys for streamed routes prove, with delayed server responses:
+
+- On direct loads and uncached client navigation, the authenticated shell and
+  section fallbacks appear before server-backed content, and independent reads
+  overlap rather than run in sequence.
+- Hydration reuses server data, with no duplicate initial browser request for
+  the same query.
+- Layout stays stable while fallbacks resolve. Measure cumulative layout shift
+  across the load and compare it with the route's budget, justified in its ticket.
+- Refresh and mutation keep content, stale or out-of-order responses do not
+  overwrite newer state, and focus, reconnect and local rollover refresh without
+  polling.
+- Rejection, lost response and conflict recovery; navigation during a save;
+  sign-out or expiry clearing private client state.
+
+Delay and fail responses through journey fixtures, not with timers in product
+code. Do not add lint rules that count
+Suspense boundaries; prove behavior instead.
+
+Record metrics in the active Linear issue: streaming order, request counts,
+layout shift, interaction latency where relevant, viewport and project, and
+whether evidence is synthetic (Playwright) or from a real iPhone. Synthetic runs
+do not prove device performance.
+
 ## Manual checks
 
 For ad-hoc exploration and QA outside journeys, `agent-browser` remains available:

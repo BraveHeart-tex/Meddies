@@ -82,6 +82,16 @@ provide compare-and-set protection; an action UUID makes retries idempotent. The
 original dose row remains intact, while Today and History project the latest
 revision. Today excludes either confirmed outcome from the next-dose calculation.
 
+## Client writes
+
+The browser generates one action UUID per user attempt and reuses it, with the
+identical payload, for every retry of that attempt, so the Worker's idempotency
+returns the original outcome rather than writing twice. A new attempt gets a
+new ID. Send the expected revision with corrections. Attempts live in session
+memory only; never replay writes automatically after reload. Rollback,
+uncertain receipt and conflict handling follow
+[session interaction](agents/nextjs.md#session-interaction).
+
 ## Worker concurrency invariants
 
 `worker/doses/mutations.ts` owns writes and replay reconciliation together.
