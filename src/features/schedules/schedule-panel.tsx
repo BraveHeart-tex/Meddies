@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import type { Medicine } from '@/features/medicines/contract'
@@ -128,12 +130,12 @@ export function SchedulePanel({
             ) : medicines.some((item) => item.id === initialMedicineId) ? (
               <div className="space-y-2">
                 <p>No schedule saved yet.</p>
-                <a
+                <Link
                   className="inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-primary-foreground"
                   href={`/medications?schedule=${encodeURIComponent(initialMedicineId)}#schedule-heading`}
                 >
                   Set schedule
-                </a>
+                </Link>
               </div>
             ) : (
               <p role="alert">This medicine could not be found.</p>

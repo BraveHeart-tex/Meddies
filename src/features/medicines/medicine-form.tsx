@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useKnownOffline } from '@/lib/use-known-offline'
+import { useSessionFormDraft } from '@/lib/use-session-form-draft'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { parseMedicine, type Medicine } from './contract'
 import { medicinesQuery } from './queries'
@@ -50,13 +51,14 @@ async function findSavedMedicine(client: QueryClient, id: string) {
 
 /**
  * Add medicine form: the production reference for React Hook Form (docs/development.md#forms).
- * Form values stay local to this component; `onSaved` runs only after the server confirms.
+ * Editing values are kept as session drafts; `onSaved` runs only after the server confirms.
  */
 export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => void }) {
   const form = useForm<MedicineFormValues, unknown, MedicineFormOutput>({
     resolver: zodResolver(medicineFormSchema),
     defaultValues: medicineFormDefaults,
   })
+  const draft = useSessionFormDraft('medicine:add', form)
   const offline = useKnownOffline()
   const queryClient = useQueryClient()
   // Retry identity: reused while the validated details are unchanged, so a retry after an
@@ -101,6 +103,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
       if (saved) {
         action.current = null
         if (mounted.current) form.reset(medicineFormDefaults)
+        draft.discard()
         onSaved(saved)
         return
       }
@@ -125,6 +128,24 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
       aria-busy={isSubmitting}
       className="flex flex-col gap-5"
     >
+      {draft.restored && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-body-sm text-muted-foreground">Unsaved details from earlier.</p>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={isSubmitting}
+            onClick={() => {
+              if (lock.current) return
+              action.current = null
+              form.reset(medicineFormDefaults)
+              draft.discard()
+            }}
+          >
+            Clear form
+          </Button>
+        </div>
+      )}
       <FieldSet disabled={locked} className="disabled:opacity-70">
         <FieldLegend className="sr-only">Medicine details</FieldLegend>
         <FieldGroup>
@@ -232,7 +253,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
         <Alert id="medicine-save-problem">
           <InfoIcon aria-hidden="true" />
           <AlertTitle>You&apos;re offline.</AlertTitle>
-          <AlertDescription>Your details stay here until you leave this page.</AlertDescription>
+          <AlertDescription>Your details stay here for this session.</AlertDescription>
         </Alert>
       ) : problem ? (
         <SaveProblemAlert problem={problem} label={problemLabel} />

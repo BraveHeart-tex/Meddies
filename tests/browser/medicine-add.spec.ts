@@ -188,3 +188,45 @@ test('known offline waits for a connection and keeps values', async ({ page, con
   await expect(page.getByRole('button', { name: 'Save medicine' })).toBeEnabled()
   await expect(page.getByText("You're offline.")).toBeHidden()
 })
+
+test('Add keeps a session draft across routes, clears explicitly and after confirmed save', async ({
+  page,
+}) => {
+  await page.goto('/medications?add')
+  const name = page.getByLabel('Medicine name')
+  const strength = page.getByLabel(/^Product strength/)
+  const note = page.getByText('Unsaved details from earlier.')
+  const openAdd = async () => {
+    await page.getByRole('link', { name: 'Medications', exact: true }).first().click()
+    await page.getByRole('link', { name: 'Add a medicine' }).click()
+  }
+  await expect(note).toBeHidden()
+  await name.fill('Draft medicine')
+  await strength.fill(' 25 mg ')
+  await page.getByRole('button', { name: 'Capsule' }).click()
+  await page.getByRole('link', { name: 'Today', exact: true }).click()
+  await openAdd()
+  await expect(name).toHaveValue('Draft medicine')
+  await expect(strength).toHaveValue(' 25 mg ')
+  await expect(page.getByRole('button', { name: 'Capsule' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await expect(note).toBeVisible()
+  await page.getByRole('button', { name: 'Clear form' }).click()
+  await expect(name).toHaveValue('')
+  await expect(strength).toHaveValue('')
+  await expect(note).toBeHidden()
+  await openAdd()
+  await expect(note).toBeHidden()
+  await name.fill('Confirmed draft medicine')
+  await page.getByRole('button', { name: 'Tablet' }).click()
+  await openAdd()
+  await expect(note).toBeVisible()
+  await page.getByRole('button', { name: 'Save medicine' }).click()
+  await expect(page.getByText('Confirmed draft medicine saved.')).toBeVisible()
+  await page.getByRole('link', { name: 'Done for now' }).click()
+  await page.getByRole('link', { name: 'Add a medicine' }).click()
+  await expect(name).toHaveValue('')
+  await expect(note).toBeHidden()
+})

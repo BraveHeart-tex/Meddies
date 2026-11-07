@@ -141,9 +141,13 @@ when the screen changes.
 - **Lifetime:** mutation tracking lives above routes, so pending saves and
   failures survive screen unmount and navigation and stay visible at app level.
   Navigation never cancels submitted work.
-- **Drafts:** keep unfinished medicine, schedule and dose drafts in session
-  memory across in-app navigation; clear them on confirmed submission or explicit
-  discard. Drawer dismissal follows [DESIGN.md](../../DESIGN.md) (FE-631). Keep
+- **Drafts:** medicine Add and schedule setup keep raw editing values in a separate
+  in-memory store scoped to the session Query client, keyed by form and medicine ID.
+  Returning restores values through RHF reset, with “Unsaved details from earlier.”
+  and a ghost “Clear form”. Confirmed saves and Clear form discard the draft;
+  Clear form also resets defaults. Navigation, refresh and clock rollover never
+  discard it. No browser storage is used. Dose draft lifetime is owned by FE-624.
+  Drawer dismissal follows [DESIGN.md](../../DESIGN.md) (FE-631). Keep
   the selected History date in the URL.
 - **Online only:** setup, schedule edits and snooze are server-confirmed with no
   optimistic state. New writes need connectivity. Optimistic dose display does

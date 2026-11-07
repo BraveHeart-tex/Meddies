@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/field'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useKnownOffline } from '@/lib/use-known-offline'
+import { useSessionFormDraft } from '@/lib/use-session-form-draft'
 import type { Medicine } from '@/features/medicines/contract'
 import type { DailySchedule } from './contract'
 import {
@@ -39,7 +40,7 @@ type SaveProblem = 'rejected' | 'unauthorized' | 'uncertain'
 
 /**
  * First schedule for one saved medicine (FE-647 A7 to A9, S1 to S4; FE-650 D22). Values stay
- * local; `onSaved` runs only after the server confirms, and `onConflict` when the medicine
+ * in session memory; `onSaved` runs only after the server confirms, and `onConflict` when the medicine
  * already has a schedule.
  */
 export function ScheduleForm({
@@ -62,6 +63,7 @@ export function ScheduleForm({
   })
   const rows = useFieldArray({ control: form.control, name: 'times' })
   const weekdays = useWatch({ control: form.control, name: 'weekdays' })
+  const draft = useSessionFormDraft(`schedule:setup:${medicine.id}`, form)
   const offline = useKnownOffline()
   // Retry identity: reused while the validated details are unchanged (647·S3).
   const action = useRef<{ id: string; fingerprint: string } | null>(null)
@@ -113,6 +115,7 @@ export function ScheduleForm({
           setRetryStartDate(undefined)
           form.reset(scheduleFormDefaults(medicine.unit, today))
         }
+        draft.discard()
         onSaved(saved)
         return
       }
@@ -151,6 +154,25 @@ export function ScheduleForm({
       aria-labelledby="schedule-heading"
       className="flex flex-col gap-5"
     >
+      {draft.restored && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-body-sm text-muted-foreground">Unsaved details from earlier.</p>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={isSubmitting}
+            onClick={() => {
+              if (lock.current) return
+              action.current = null
+              setRetryStartDate(undefined)
+              form.reset(scheduleFormDefaults(medicine.unit, today))
+              draft.discard()
+            }}
+          >
+            Clear form
+          </Button>
+        </div>
+      )}
       <FieldSet disabled={isSubmitting} className="disabled:opacity-70">
         <FieldLegend className="sr-only">Schedule for {medicine.label}</FieldLegend>
         <FieldGroup>
@@ -259,7 +281,7 @@ export function ScheduleForm({
         <Alert id="schedule-save-problem">
           <InfoIcon aria-hidden="true" />
           <AlertTitle>You&apos;re offline.</AlertTitle>
-          <AlertDescription>Your details stay here until you leave this page.</AlertDescription>
+          <AlertDescription>Your details stay here for this session.</AlertDescription>
         </Alert>
       ) : problem ? (
         <SaveProblemAlert problem={problem} label={medicine.label} />

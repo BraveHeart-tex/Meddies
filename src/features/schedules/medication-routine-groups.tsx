@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { MedicationTile } from '@/features/medicines/medication-tile'
 import { buttonVariants } from '@/components/ui/button'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
@@ -60,23 +61,23 @@ export function MedicationRoutineGroups({
                     </p>
                   )}
                 </ItemContent>
-                <a
+                <Link
                   data-row-link
                   className="absolute inset-0 rounded-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   href={`/medications?medicine=${encodeURIComponent(medicine.id)}`}
                   aria-label={`View details for ${medicine.label}`}
                 >
                   <span className="sr-only">View details</span>
-                </a>
+                </Link>
                 {!schedule && (
                   <ItemActions className="relative">
-                    <a
+                    <Link
                       href={`/medications?schedule=${encodeURIComponent(medicine.id)}#schedule-heading`}
                       aria-label={`Add schedule for ${medicine.label}`}
                       className={buttonVariants({ variant: 'soft', size: 'sm' })}
                     >
                       Add schedule
-                    </a>
+                    </Link>
                   </ItemActions>
                 )}
               </Item>

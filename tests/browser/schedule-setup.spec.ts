@@ -157,3 +157,66 @@ test('tablet quantities step by half and show the unit', async ({ page, app }) =
   await expect(page.getByText('Use ½ tablet or more.')).toBeVisible()
   await expect(quantity).toBeFocused()
 })
+
+test('schedule drafts belong to each medicine and clear on discard or confirmed save', async ({
+  page,
+  app,
+}) => {
+  const first = randomUUID()
+  const second = randomUUID()
+  for (const [id, label] of [
+    [first, 'Draft Alpha'],
+    [second, 'Draft Beta'],
+  ])
+    await app.api('POST', '/api/medicines', { id, label, strength: null, unit: 'tablet' })
+  await page.goto(`/medications?schedule=${first}`)
+  const note = page.getByText('Unsaved details from earlier.')
+  const open = async (label: string) => {
+    await page.getByRole('link', { name: 'Medications', exact: true }).first().click()
+    await page.getByRole('link', { name: `View details for ${label}` }).click()
+    await page.getByRole('link', { name: 'Set schedule' }).first().click()
+  }
+  await pickTime(page, 'Time 1', '08:15')
+  await page.getByLabel('Quantity for time 1').fill('2')
+  await page.getByRole('button', { name: 'Add another time' }).click()
+  await timePicker(page, 'Time 2').hour.click()
+  await page.getByRole('option', { name: '20', exact: true }).click()
+  await page.getByLabel('Quantity for time 2').fill('')
+  await open('Draft Beta')
+  await expect(note).toBeHidden()
+  await expect(timePicker(page, 'Time 1').hour).toHaveText('HH')
+  await pickTime(page, 'Time 1', '10:30')
+  await open('Draft Alpha')
+  await expect(note).toBeVisible()
+  await expect(timePicker(page, 'Time 1').hour).toHaveText('08')
+  await expect(timePicker(page, 'Time 1').minute).toHaveText('15')
+  await expect(page.getByLabel('Quantity for time 1')).toHaveValue('2')
+  await expect(timePicker(page, 'Time 2').hour).toHaveText('20')
+  await expect(timePicker(page, 'Time 2').minute).toHaveText('MM')
+  await expect(page.getByLabel('Quantity for time 2')).toHaveValue('')
+  await page.getByRole('button', { name: 'Clear form' }).click()
+  await expect(note).toBeHidden()
+  await expect(timePicker(page, 'Time 1').hour).toHaveText('HH')
+  await expect(timePicker(page, 'Time 2').hour).toHaveCount(0)
+  await open('Draft Beta')
+  await expect(note).toBeVisible()
+  await expect(timePicker(page, 'Time 1').hour).toHaveText('10')
+  await page.getByRole('button', { name: 'Save schedule' }).click()
+  await expect(page.getByText('Schedule saved for Draft Beta.')).toBeVisible()
+  // A lagging list read can briefly offer setup again. Even then a confirmed draft is gone.
+  await page.route(
+    (url) => url.pathname === '/api/schedules',
+    async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback()
+      const response = await route.fetch()
+      const body = await response.json()
+      await route.fulfill({ response, json: { ...body, schedules: [] } })
+    },
+  )
+  await page.getByRole('link', { name: 'Today', exact: true }).click()
+  await open('Draft Beta')
+  await expect(note).toBeHidden()
+  await expect(timePicker(page, 'Time 1').hour).toHaveText('HH')
+  await open('Draft Alpha')
+  await expect(note).toBeHidden()
+})
