@@ -111,7 +111,7 @@ test('swipe, backdrop and Escape discard drafts, and never dismiss while saving'
     )
     await startTakenDraft()
     await save.click()
-    await expect(dialog.getByRole('button', { name: 'Saving intake...' })).toBeDisabled()
+    await expect(dialog.getByRole('button', { name: 'Saving...' })).toBeDisabled()
     await expect(close).toBeDisabled()
 
     // Each attempt must leave the drawer open, not merely still mid-exit-transition.

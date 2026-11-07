@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { isTimeOfDay } from '@/lib/time-of-day'
-import { parseQuantity, quantityRule, type DoseUnit } from '@/lib/dose-quantity'
+import { parseQuantity, quantityProblem, quantityRule, type DoseUnit } from '@/lib/dose-quantity'
 import { isScheduleDate } from './contract'
 import { ALL_WEEKDAYS } from './weekdays'
 
@@ -14,18 +14,6 @@ export type ScheduleFormOptions = {
   today: string
   /** Start date of an unconfirmed save; its retry stays valid after midnight. */
   retryStartDate?: string
-}
-
-function quantityProblem(text: string, unit: DoseUnit) {
-  const value = parseQuantity(text)
-  if (value === null) return 'Enter a quantity.'
-  const { step, min } = quantityRule(unit)
-  const tooSmall = unit === 'capsule' ? 'Use 1 capsule or more.' : 'Use ½ tablet or more.'
-  if (Number.isNaN(value) || value === 0) return tooSmall
-  if (!Number.isInteger(value / step))
-    return unit === 'capsule' ? 'Use whole capsules.' : 'Use whole or half tablets.'
-  if (value < min) return tooSmall
-  return null
 }
 
 export function scheduleFormSchema({ unit, today, retryStartDate }: ScheduleFormOptions) {

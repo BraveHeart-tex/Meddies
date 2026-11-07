@@ -51,3 +51,16 @@ export function stepQuantity(text: string, unit: DoseUnit, direction: 1 | -1): s
       : (onGrid ? units - 1 : Math.floor(units)) * step
   return formatQuantity(Math.max(min, next))
 }
+
+/** The inline error for quantity text, or null when it is a valid dose for the unit. */
+export function quantityProblem(text: string, unit: DoseUnit): string | null {
+  const value = parseQuantity(text)
+  if (value === null) return 'Enter a quantity.'
+  const { step, min } = quantityRule(unit)
+  const tooSmall = unit === 'capsule' ? 'Use 1 capsule or more.' : 'Use ½ tablet or more.'
+  if (Number.isNaN(value) || value === 0) return tooSmall
+  if (!Number.isInteger(value / step))
+    return unit === 'capsule' ? 'Use whole capsules.' : 'Use whole or half tablets.'
+  if (value < min) return tooSmall
+  return null
+}

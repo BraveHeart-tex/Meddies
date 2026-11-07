@@ -128,13 +128,20 @@ a generic form builder or the legacy shadcn `Form` wrapper.
 
 - **Validation:** keep the defaults: validate on submit, then revalidate erroneous fields
   on change. `shouldFocusError` focuses the first invalid control in registration order.
+  When a control mounts conditionally above others (the intake form's _Other_ date and
+  time), set `shouldFocusError: false` and focus the first error in screen order from
+  `handleSubmit`'s invalid callback, as
+  [`taken-form.tsx`](../src/features/schedules/taken-form.tsx) does.
 - **Submission:** `handleSubmit` awaits the real save, including reconciliation. Keep a
   synchronous ref lock against duplicate submits; `isSubmitting` drives the disabled
   fieldset and _Saving…_ label but is not the guard. Reuse a request ID while the
   validated values are unchanged so an uncertain retry saves once; edits start a new one.
 - **Errors and reset:** report request failures with `setError('root.server', { type })`
   and render one form-level Alert above the primary action; values are never discarded.
-  Root errors clear on the next submit. After server confirmation, `reset(defaults)` and
+  Root errors clear on the next submit. Exception: the intake form
+  ([`taken-form.tsx`](../src/features/schedules/taken-form.tsx)) shows errors and the
+  saving state from `useDoseOutcomeMutation`, which DoseActions owns for Taken, Skipped and
+  corrections; the form keeps values only and must not become a second mutation owner. After server confirmation, `reset(defaults)` and
   clear the request ID. Known offline (`navigator.onLine` false) disables the primary as
   _Connect to save_ with an Alert; it never queues a save.
 - **Dynamic rows:** use `useFieldArray` with its generated `id` as the React key, row-level

@@ -47,6 +47,7 @@ export function DoseActions({
     saving,
     error,
     needsReview,
+    uncertain,
     clearFeedback,
     clearError,
     dismissReview,
@@ -229,7 +230,8 @@ export function DoseActions({
                     open={editingDose !== null}
                     saving={saving}
                     error={editingDose ? error : ''}
-                    editing
+                    uncertain={editingDose !== null && uncertain}
+                    mode="edit"
                     onOpen={(open) => {
                       clearError()
                       if (open && dose.status === 'Taken') {
@@ -246,7 +248,7 @@ export function DoseActions({
                         setDrawerOpen(false)
                       }
                     }}
-                    onSubmit={(details) => void submit('Taken', details)}
+                    onSubmit={(details) => submit('Taken', details)}
                   />
                 )}
               {editingDose === null && (
@@ -321,8 +323,10 @@ export function DoseActions({
             open={editor === 'Taken'}
             saving={saving}
             error={editor === 'Taken' ? error : ''}
+            uncertain={editor === 'Taken' && uncertain}
+            mode={correcting && recorded ? 'correct' : 'record'}
             onOpen={closeEditor}
-            onSubmit={(details) => void submit('Taken', details)}
+            onSubmit={(details) => submit('Taken', details)}
           />
         )}
         {(!recorded || correcting || editor === 'Skipped') && (

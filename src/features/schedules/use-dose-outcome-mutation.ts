@@ -25,6 +25,8 @@ export function useDoseOutcomeMutation({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [needsReview, setNeedsReview] = useState(false)
+  // The last save may have reached the server: a retry reuses its action id.
+  const [uncertain, setUncertain] = useState(false)
   const locked = useRef(false)
   const retryAction = useRef<{ fingerprint: string; id: string } | null>(null)
   const pinnedCorrection = useRef<PinnedCorrection | null>(null)
@@ -42,6 +44,7 @@ export function useDoseOutcomeMutation({
     locked.current = true
     setSaving(true)
     setError('')
+    setUncertain(false)
     const retry =
       outcome === 'Taken'
         ? 'Save could not be confirmed. Connect and retry with the same details.'
@@ -79,7 +82,7 @@ export function useDoseOutcomeMutation({
       if (response.status === 400) {
         setError(
           outcome === 'Taken'
-            ? 'Check the quantity and enter a time that has already passed.'
+            ? 'Not saved. Taken time must be a time that has already passed. Change the time and save again.'
             : 'This scheduled dose can no longer be skipped. Refresh Today to check its status.',
         )
       } else if (response.status === 401) {
@@ -120,9 +123,11 @@ export function useDoseOutcomeMutation({
         onFinished()
       } else {
         setError(retry)
+        setUncertain(true)
       }
     } catch {
       setError(retry)
+      setUncertain(true)
     } finally {
       locked.current = false
       setSaving(false)
@@ -134,14 +139,17 @@ export function useDoseOutcomeMutation({
     saving,
     error,
     needsReview,
+    uncertain,
     /** Clears the error and the review prompt. */
     clearFeedback() {
       setError('')
+      setUncertain(false)
       setNeedsReview(false)
     },
     /** Clears the error only, keeping the review prompt. */
     clearError() {
       setError('')
+      setUncertain(false)
     },
     /** Hides the review prompt, keeping the error. */
     dismissReview() {

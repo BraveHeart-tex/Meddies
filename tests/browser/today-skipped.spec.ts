@@ -75,7 +75,7 @@ test('skip a dose from the keyboard and correct it back to Taken', async ({
     await doseTrigger(row, label).press('Enter')
     await dialog.getByRole('button', { name: /^Correct outcome/ }).press('Enter')
     await dialog.getByRole('button', { name: 'I took it' }).press('Enter')
-    await dialog.getByRole('button', { name: 'Save as taken' }).press('Enter')
+    await dialog.getByRole('button', { name: 'Save correction' }).press('Enter')
     await expect(outcome('as taken.')).toBeVisible()
     await expect(doseStatus(row)).toHaveAccessibleDescription(/Taken/)
     await page.screenshot({ path: testInfo.outputPath('today-corrected.png') })

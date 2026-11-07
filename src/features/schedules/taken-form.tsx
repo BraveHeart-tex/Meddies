@@ -1,32 +1,44 @@
 'use client'
 
-import { useId, useState, type FormEvent, type KeyboardEvent } from 'react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { useId, useState, type KeyboardEvent } from 'react'
+import { Controller, useForm, useWatch, type FieldErrors } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { InfoIcon } from 'lucide-react'
+import { QuantityStepper } from '@/components/quantity-stepper'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
-import { Field } from '@/components/ui/field'
-import { Icon } from '@/components/ui/icon'
-import { Input } from '@/components/ui/input'
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+  FieldTitle,
+} from '@/components/ui/field'
 import { TimePicker } from '@/components/ui/time-picker'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { useKnownOffline } from '@/lib/use-known-offline'
 import type { Medicine } from '@/features/medicines/contract'
+import type { DoseOccurrence } from './contract'
+import { useCurrentMinute } from './use-current-minute'
 import {
-  istanbulDate,
-  SCHEDULE_TIMEZONE,
-  type DoseOccurrence,
-  type TakenDoseInput,
-} from './contract'
-import { useSchedulingClock } from './scheduling-clock'
+  doseClock,
+  instantOf,
+  localMinute,
+  previousDate,
+  takenFormDefaults,
+  takenFormSchema,
+  type TakenAtChoice,
+  type TakenFormOutput,
+  type TakenFormValues,
+} from './taken-form-schema'
 
-export const doseClock = (instant: string) =>
-  new Intl.DateTimeFormat('en-GB', {
-    timeZone: SCHEDULE_TIMEZONE,
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(instant))
+export { doseClock }
 
-const localMinute = (instant: string) => `${istanbulDate(new Date(instant))}T${doseClock(instant)}`
-const instantOf = (local: string) => new Date(`${local}+03:00`)
+// A swipe that starts on a control never closes the drawer (FE-648 D14).
+const swipeIgnore = { 'data-base-ui-swipe-ignore': 'y' }
 
 function offsetLabel(local: string, dueAt: string) {
   const minutes = Math.round((instantOf(local).getTime() - new Date(dueAt).getTime()) / 60000)
@@ -38,64 +50,109 @@ function offsetLabel(local: string, dueAt: string) {
   return `${span} ${minutes > 0 ? 'after' : 'before'} scheduled`
 }
 
-type When = 'now' | 'scheduled' | 'other'
+const screenOrder = ['when', 'date', 'time', 'quantity'] as const
 
-// Actual intake details for a Taken outcome. New records open from the drawer's outcome choice;
-// recorded doses open through Edit intake.
+type Mode = 'record' | 'edit' | 'correct'
+
+const primary: Record<Mode, { save: string; retry: string }> = {
+  record: { save: 'Save as taken', retry: 'Retry saving as taken' },
+  edit: { save: 'Save intake changes', retry: 'Retry saving intake changes' },
+  correct: { save: 'Save correction', retry: 'Retry saving correction' },
+}
+
+/**
+ * Actual intake details for a Taken outcome (FE-648 R2/R3, C1 to C5). `record` opens from the
+ * drawer's outcome choice, `correct` changes a Skipped dose to Taken, and `edit` opens a recorded
+ * intake through Edit intake. Values stay here; the parent's mutation owns saving, the duplicate
+ * lock, retry identity and errors.
+ */
 export function TakenForm({
   dose,
   medicine,
   open,
   saving,
   error,
+  uncertain = false,
   onOpen,
   onSubmit,
-  editing = false,
+  mode = 'record',
 }: {
   dose: DoseOccurrence
   medicine: Medicine
   open: boolean
   saving: boolean
   error: string
+  /** The last save could not be confirmed; a retry with unchanged details saves once. */
+  uncertain?: boolean
   onOpen: (open: boolean) => void
-  onSubmit: (details: { takenAt: TakenDoseInput['takenAt'] | null; quantity: number }) => void
-  editing?: boolean
+  onSubmit: (details: TakenFormOutput) => Promise<void>
+  mode?: Mode
 }) {
   const id = useId()
-  const clock = useSchedulingClock()
-  // Mounts with the drawer, after hydration, so the anchored clock is safe to read here.
-  const [now] = useState(() => localMinute(clock.now().toISOString()))
-  const [when, setWhen] = useState<When>('now')
-  const [other, setOther] = useState('')
-  const [quantity, setQuantity] = useState(
-    String(dose.status === 'Taken' ? dose.record.quantity : dose.quantity),
-  )
-  const step = medicine.unit === 'capsule' ? 1 : 0.5
+  // A pending or unconfirmed Now save keeps its minute, so a retry has the same details (D12, F4).
+  const now = useCurrentMinute(!saving && !uncertain)
+  const offline = useKnownOffline()
   const scheduled = localMinute(dose.dueAt)
-  const scheduledHasPassed = instantOf(scheduled) <= instantOf(now)
-  const takenAt = when === 'now' ? now : when === 'scheduled' ? scheduled : other
-  const originalLocalTime = dose.status === 'Taken' ? localMinute(dose.record.takenAt) : ''
-  const amount = Number(quantity)
+  const original =
+    dose.status === 'Taken'
+      ? { local: localMinute(dose.record.takenAt), instant: dose.record.takenAt }
+      : undefined
+  const schema = takenFormSchema({
+    unit: medicine.unit,
+    now,
+    scheduled,
+    original: mode === 'edit' ? original : undefined,
+  })
+  const form = useForm<TakenFormValues, unknown, TakenFormOutput>({
+    resolver: zodResolver(schema),
+    // Other's pickers register after Amount, so focus follows screen order instead (onInvalid).
+    shouldFocusError: false,
+    defaultValues: takenFormDefaults(
+      dose.status === 'Taken' ? dose.record.quantity : dose.quantity,
+      mode === 'edit' ? original : undefined,
+    ),
+  })
+  const values = useWatch({ control: form.control })
+  // Validated details of the last submit. The mutation reuses its action id while they match,
+  // so a change after an unconfirmed save starts a new one (F4).
+  const [submitted, setSubmitted] = useState<string | null>(null)
+  const changedSinceSave =
+    uncertain && submitted !== JSON.stringify(schema.safeParse(values).data ?? null)
 
-  function save(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    onSubmit({
-      takenAt:
-        takenAt === originalLocalTime && dose.status === 'Taken'
-          ? dose.record.takenAt
-          : instantOf(takenAt).toJSON(),
-      quantity: amount,
-    })
+  const scheduledHasPassed = scheduled <= now
+  const takenAt =
+    values.when === 'now'
+      ? now
+      : values.when === 'scheduled'
+        ? scheduled
+        : values.date && values.time
+          ? `${values.date}T${values.time}`
+          : ''
+  const today = now.slice(0, 10)
+  const yesterday = previousDate(today)
+  const labels = primary[mode]
+
+  async function save(details: TakenFormOutput) {
+    setSubmitted(JSON.stringify(details))
+    await onSubmit(details)
   }
 
-  function adjust(direction: 1 | -1) {
-    const base = Number.isFinite(amount) ? amount : step
-    setQuantity(String(Math.max(step, Math.round((base + direction * step) / step) * step)))
+  function focusFirstInvalid(errors: FieldErrors<TakenFormValues>) {
+    const first = screenOrder.find((name) => errors[name])
+    if (first) form.setFocus(first)
+  }
+
+  function choose(next: TakenAtChoice) {
+    if (next === 'other' && !form.getValues('date')) {
+      const from = values.when === 'scheduled' ? scheduled : now
+      form.setValue('date', from.slice(0, 10))
+      form.setValue('time', from.slice(11))
+    }
   }
 
   return (
     <>
-      {editing && (
+      {mode === 'edit' && (
         <Button
           type="button"
           variant="outline"
@@ -104,10 +161,9 @@ export function TakenForm({
           aria-label={`Edit intake for ${medicine.label} at ${doseClock(dose.dueAt)}`}
           disabled={saving}
           onClick={() => {
-            if (dose.status === 'Taken') {
-              setWhen('other')
-              setOther(originalLocalTime)
-              setQuantity(String(dose.record.quantity))
+            if (!open && dose.status === 'Taken') {
+              setSubmitted(null)
+              form.reset(takenFormDefaults(dose.record.quantity, original))
             }
             onOpen(!open)
           }}
@@ -117,9 +173,11 @@ export function TakenForm({
       )}
       <form
         id={id}
+        noValidate
         hidden={!open}
         className="basis-full"
-        onSubmit={save}
+        // Wrapped so building the handler during render never touches the submit ref.
+        onSubmit={(event) => void form.handleSubmit(save, focusFirstInvalid)(event)}
         aria-busy={saving}
         onKeyDown={(event: KeyboardEvent<HTMLFormElement>) => {
           // Picker popups are portaled; their Escape only closes the popup.
@@ -130,128 +188,196 @@ export function TakenForm({
           }
         }}
       >
-        <fieldset
-          disabled={saving}
-          aria-describedby={error ? `${id}-error` : undefined}
-          className="flex min-w-0 flex-col gap-4.5"
-        >
-          <legend className="sr-only">Actual intake for {medicine.label}</legend>
-          <div className="flex flex-col gap-2.5">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <span id={`${id}-when`} className="font-extrabold">
-                Taken at
-              </span>
-              <span className="text-label font-semibold text-muted-foreground">
-                {takenAt && offsetLabel(takenAt, dose.dueAt)}
-              </span>
-            </div>
-            <ToggleGroup
-              aria-labelledby={`${id}-when`}
-              variant="outline"
-              className="w-full flex-wrap"
-              value={[when]}
-              onValueChange={(value) => {
-                const next = value[0] as When | undefined
-                if (!next) return
-                if (next === 'other' && !other) setOther(takenAt)
-                setWhen(next)
-              }}
-            >
-              <ToggleGroupItem value="now" className="flex-1">
-                Now · {doseClock(instantOf(now).toISOString())}
-              </ToggleGroupItem>
-              {scheduledHasPassed && (
-                <ToggleGroupItem value="scheduled" className="flex-1">
-                  At {doseClock(dose.dueAt)}
-                </ToggleGroupItem>
-              )}
-              <ToggleGroupItem value="other">Other</ToggleGroupItem>
-            </ToggleGroup>
-            {when === 'other' && (
-              <Field aria-label="Taken date and time in Istanbul">
-                <DatePicker
-                  id={`${id}-date`}
-                  label="Taken date in Istanbul"
-                  today={istanbulDate(instantOf(now))}
-                  disabled={saving}
-                  value={other.slice(0, 10)}
-                  onValueChange={(date) => setOther(`${date}T${other.slice(11)}`)}
-                />
-                <TimePicker
-                  id={`${id}-time`}
-                  label="Taken time in Istanbul"
-                  required
-                  disabled={saving}
-                  value={other.slice(11)}
-                  onValueChange={(time) => setOther(`${other.slice(0, 10)}T${time}`)}
-                />
-              </Field>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card py-2 pr-2 pl-4">
-            <label htmlFor={`${id}-quantity`} className="font-extrabold">
-              Amount <span className="sr-only">in {medicine.unit}s</span>
-            </label>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                className="rounded-sm"
-                aria-label="Decrease amount"
-                disabled={!(amount > step)}
-                onClick={() => adjust(-1)}
-              >
-                <Icon name="minus" size={14} />
-              </Button>
-              <div className="flex items-center gap-1.5">
-                <Input
-                  id={`${id}-quantity`}
-                  type="number"
-                  inputMode="decimal"
-                  required
-                  min={step}
-                  step={step}
-                  value={quantity}
-                  onChange={(event) => setQuantity(event.target.value)}
-                  className="h-11 w-16 px-2 text-center text-body-lg font-extrabold"
-                />
-                <span aria-hidden="true" className="text-body-lg font-extrabold">
-                  {medicine.unit}
-                  {amount === 1 ? '' : 's'}
-                </span>
-              </div>
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                className="rounded-sm"
-                aria-label="Increase amount"
-                onClick={() => adjust(1)}
-              >
-                <Icon name="plus" size={14} />
-              </Button>
-            </div>
-          </div>
-          {error && (
-            <Alert id={`${id}-error`} variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
+        <FieldSet disabled={saving} className="min-w-0 gap-4.5">
+          <FieldLegend className="sr-only">Actual intake for {medicine.label}</FieldLegend>
+          {mode !== 'edit' && !scheduledHasPassed && (
+            <Alert>
+              <InfoIcon aria-hidden="true" />
+              <AlertDescription>
+                This dose is scheduled for {doseClock(dose.dueAt)}. Saving now records it early.
+              </AlertDescription>
             </Alert>
           )}
+          <FieldGroup className="gap-4.5">
+            <Controller
+              name="when"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid} className="gap-2.5">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <FieldTitle id={`${id}-when`} className="font-extrabold">
+                      Taken at
+                    </FieldTitle>
+                    <span className="text-label font-semibold text-muted-foreground">
+                      {takenAt && offsetLabel(takenAt, dose.dueAt)}
+                    </span>
+                  </div>
+                  <ToggleGroup
+                    {...swipeIgnore}
+                    aria-labelledby={`${id}-when`}
+                    aria-describedby={fieldState.invalid ? `${id}-when-error` : undefined}
+                    variant="outline"
+                    className="w-full flex-wrap"
+                    value={[field.value]}
+                    onValueChange={(value) => {
+                      const next = value[0] as TakenAtChoice | undefined
+                      if (!next) return
+                      choose(next)
+                      field.onChange(next)
+                    }}
+                    onBlur={field.onBlur}
+                  >
+                    {/* RHF focuses the chosen item when the choice is invalid. */}
+                    <ToggleGroupItem
+                      ref={field.value === 'now' ? field.ref : undefined}
+                      value="now"
+                      className="flex-1"
+                    >
+                      Now · {now.slice(11)}
+                    </ToggleGroupItem>
+                    {(scheduledHasPassed || field.value === 'scheduled') && (
+                      <ToggleGroupItem
+                        ref={field.value === 'scheduled' ? field.ref : undefined}
+                        value="scheduled"
+                        className="flex-1"
+                        aria-invalid={fieldState.invalid || undefined}
+                      >
+                        At {doseClock(dose.dueAt)}
+                      </ToggleGroupItem>
+                    )}
+                    <ToggleGroupItem
+                      ref={field.value === 'other' ? field.ref : undefined}
+                      value="other"
+                    >
+                      Other
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                  <FieldError id={`${id}-when-error`} errors={[fieldState.error]} />
+                </Field>
+              )}
+            />
+            {values.when === 'other' && (
+              <div className="grid gap-3 min-[400px]:grid-cols-2">
+                <Controller
+                  name="date"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid} {...swipeIgnore}>
+                      <FieldLabel htmlFor={`${id}-date`}>Taken date</FieldLabel>
+                      <DatePicker
+                        ref={field.ref}
+                        id={`${id}-date`}
+                        label="Taken date in Istanbul"
+                        today={today}
+                        min={yesterday}
+                        max={today}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={saving}
+                        aria-invalid={fieldState.invalid}
+                        aria-describedby={fieldState.invalid ? `${id}-date-error` : undefined}
+                      />
+                      <FieldError id={`${id}-date-error`} errors={[fieldState.error]} />
+                    </Field>
+                  )}
+                />
+                <Controller
+                  name="time"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid} {...swipeIgnore}>
+                      <FieldLabel htmlFor={`${id}-time`}>Taken time</FieldLabel>
+                      <TimePicker
+                        ref={field.ref}
+                        id={`${id}-time`}
+                        label="Taken time in Istanbul"
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={saving}
+                        aria-invalid={fieldState.invalid}
+                        aria-describedby={fieldState.invalid ? `${id}-time-error` : undefined}
+                      />
+                      <FieldError id={`${id}-time-error`} errors={[fieldState.error]} />
+                    </Field>
+                  )}
+                />
+              </div>
+            )}
+            <Controller
+              name="quantity"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field
+                  data-invalid={fieldState.invalid}
+                  className="gap-2 rounded-lg border bg-card py-2 pr-2 pl-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <FieldLabel htmlFor={`${id}-quantity`} className="font-extrabold">
+                      Amount
+                    </FieldLabel>
+                    <div {...swipeIgnore}>
+                      <QuantityStepper
+                        ref={field.ref}
+                        id={`${id}-quantity`}
+                        label="Amount"
+                        unit={medicine.unit}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={saving}
+                        aria-invalid={fieldState.invalid}
+                        aria-describedby={fieldState.invalid ? `${id}-quantity-error` : undefined}
+                      />
+                    </div>
+                  </div>
+                  <FieldError id={`${id}-quantity-error`} errors={[fieldState.error]} />
+                </Field>
+              )}
+            />
+          </FieldGroup>
+          {uncertain && !saving ? (
+            <Alert id={`${id}-problem`} variant="destructive">
+              <AlertTitle>Save could not be confirmed.</AlertTitle>
+              <AlertDescription>
+                Your details are still here.{' '}
+                {changedSinceSave
+                  ? 'Changing details starts a new save.'
+                  : 'Connect and retry; it will not be saved twice.'}
+              </AlertDescription>
+            </Alert>
+          ) : offline && !saving ? (
+            <Alert id={`${id}-problem`}>
+              <InfoIcon aria-hidden="true" />
+              <AlertDescription>You&apos;re offline. Your details stay here.</AlertDescription>
+            </Alert>
+          ) : error ? (
+            <Alert id={`${id}-problem`} variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
           <div className="flex flex-col gap-1.5">
             <Button
               type="submit"
               size="drawer"
               className="w-full whitespace-normal"
-              disabled={saving}
+              disabled={saving || offline}
+              aria-describedby={error || offline ? `${id}-problem` : undefined}
             >
-              {saving ? 'Saving intake...' : editing ? 'Save intake changes' : 'Save as taken'}
+              {saving
+                ? 'Saving...'
+                : offline
+                  ? 'Connect to save'
+                  : uncertain && !changedSinceSave
+                    ? labels.retry
+                    : labels.save}
             </Button>
             <Button type="button" variant="ghost" className="w-full" onClick={() => onOpen(false)}>
               Cancel
             </Button>
           </div>
-        </fieldset>
+        </FieldSet>
       </form>
     </>
   )
