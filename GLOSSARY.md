@@ -3,6 +3,13 @@
 A personal medication reminder and tracker. These terms describe how loading, saves, drafts
 and the signed-in session behave from the user's side.
 
+## Doses
+
+**History date**:
+The day a dose was due, in Istanbul time. A dose shows on its History date even when it was
+taken on another day.
+_Avoid_: taken date, record date
+
 ## Saves and drafts
 
 **Pending save**:
