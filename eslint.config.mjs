@@ -50,6 +50,11 @@ const eslintConfig = defineConfig([
     files: ['src/**/*.ts'],
     rules: { 'no-restricted-syntax': ['error', ...wallClockSyntax] },
   },
+  // Module size budget. Warn until FE-663 splits dose-actions.tsx, then error.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    rules: { 'max-lines': ['warn', { max: 400, skipBlankLines: true, skipComments: true }] },
+  },
   {
     files: ['src/**/*.tsx'],
     rules: { 'no-restricted-syntax': ['error', routeLinkSyntax, ...wallClockSyntax] },

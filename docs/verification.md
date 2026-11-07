@@ -107,6 +107,20 @@ trace with `pnpm exec playwright show-trace <path>/trace.zip`. There is no HTML 
 project's viewport. Set `MEDDIES_VISUAL_OUT` to keep them outside `.browser-artifacts/`,
 for example when capturing `iphone-17` and `narrow` in separate runs.
 
+## Refactors
+
+For a pure-move refactor (code split into modules, no behavior change), review what
+the move actually changed:
+
+```sh
+scripts/unmoved-diff.sh HEAD            # uncommitted; git add -N new files first
+scripts/unmoved-diff.sh main...HEAD     # a branch
+```
+
+It drops lines git detects as moved, ignoring indentation. What remains is new glue
+(imports, props, hook returns) and real edits; anything that isn't glue needs a reason.
+Prettier rewraps after an indentation change also remain; compare them by reading.
+
 ## Data-driven changes
 
 Every change to data-driven UI includes a review of each applicable state in
