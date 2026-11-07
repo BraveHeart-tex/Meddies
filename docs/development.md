@@ -40,6 +40,9 @@ pnpm lockfile. Experiment manifests and npm locks remain independent.
   decoding. `medicine-storage.ts` owns the private capability, URL configuration,
   timeout, redirect policy and network/status mapping; it does not decode domain
   envelopes. Browser components must not import server modules or transport.
+  Lint treats every `src/features/**/*.tsx` file and feature `queries.ts` as browser
+  code. Server composition (prefetch, dehydrate) lives in a feature `.ts` module marked
+  `server-only`, such as `schedules/prefetch.ts`, or in `src/app/**`.
 - Worker entry points enforce the service capability and owner-scoped persistence.
   Prefer direct feature calls; avoid configurable handler pipelines and generic
   command/repository frameworks.

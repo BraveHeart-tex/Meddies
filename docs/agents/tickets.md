@@ -23,7 +23,6 @@ the ticket that owns each nearby item.
 ## Acceptance criteria
 
 - [ ] One checkable outcome per line, citing design frames as `647·M6`
-- [ ] `pnpm verify:local` and the relevant browser journeys pass, and the evidence is recorded here
 ```
 
 - Set blockers as native Linear relations. Add a "Blocked by" section only when a
@@ -31,6 +30,11 @@ the ticket that owns each nearby item.
 - Describe behaviour, not file paths. Link stable docs and design artifacts.
 - When handing off a design frame, quote its key geometry (sizes, radii, gaps, copy) in
   the ticket. Commit the approved artifact as a snapshot in [docs/design](../design/README.md).
+- Five acceptance criteria at most. More means the ticket holds two slices: split it.
+- Evidence is an assertion, not a record: "the journey asserts layout shift ≤ 0.01",
+  not "measure and record a budget". The assertion's comment carries the justification.
+- Loading captures and visual review belong to the wave's gate ticket (FE-639 for
+  Today and History). A route ticket only adds its route to `loading-capture.spec.ts`.
 - Write "Tests prove…" for logic and UI states. Name a browser journey only for
   behaviour that needs a real browser and app: route navigation, SSR, hydration and
   streaming, layout and viewport, or the auth and Worker path
@@ -69,7 +73,7 @@ ticket's description in the same change, then comments on both tickets.
 
 ## Closing
 
-Close a ticket only when every criterion is checked. For any criterion that will
-not be finished, create a follow-up ticket with a single owner, link it from this
-ticket, and remove the item here. Record the evidence for each criterion in the
-ticket.
+Close a ticket only when every criterion is checked, `pnpm verify:local` and the
+relevant browser journeys pass, and the evidence for each is recorded in the ticket.
+For any criterion that will not be finished, create a follow-up ticket with a single
+owner, link it from this ticket, and remove the item here.

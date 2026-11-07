@@ -4,6 +4,13 @@ import prettier from 'eslint-config-prettier/flat'
 import playwright from 'eslint-plugin-playwright'
 
 const browserJourneys = 'tests/browser/**'
+const browserRestrictedImports = [
+  'server-only',
+  '**/server',
+  '**/operations',
+  '**/lib/http',
+  '**/lib/medicine-storage',
+]
 const workerRestrictedImports = [
   'next',
   'next/**',
@@ -72,15 +79,33 @@ const eslintConfig = defineConfig([
       'src/lib/session-query-client.ts',
     ],
     rules: {
+      'no-restricted-imports': ['error', { patterns: browserRestrictedImports }],
+    },
+  },
+  // Server prefetch imports feature query keys and options, so they stay usable in Server
+  // Components: no client-only React hooks (next build rejects them, lint says so first).
+  {
+    files: ['src/features/*/queries.ts'],
+    rules: {
       'no-restricted-imports': [
         'error',
         {
-          patterns: [
-            'server-only',
-            '**/server',
-            '**/operations',
-            '**/lib/http',
-            '**/lib/medicine-storage',
+          patterns: browserRestrictedImports,
+          paths: [
+            {
+              name: 'react',
+              importNames: [
+                'useState',
+                'useEffect',
+                'useLayoutEffect',
+                'useReducer',
+                'useRef',
+                'useSyncExternalStore',
+                'useTransition',
+                'useOptimistic',
+              ],
+              message: 'Server prefetch imports this module; put client hooks in a .tsx file.',
+            },
           ],
         },
       ],

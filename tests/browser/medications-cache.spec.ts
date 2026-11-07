@@ -74,8 +74,9 @@ test('the Medications list stays cached across Today and refreshes stale data in
   })
 
   await test.step('stale list refreshes on screen entry while the cached list stays', async () => {
-    // Today's server read refreshes the shared list, so add the medicine after it.
-    await toToday()
+    // Settings reads no medicines; Today's server read would refresh the shared list itself.
+    await page.getByRole('link', { name: 'Settings' }).click()
+    await expect(page).toHaveURL(`${app.origin}/settings`)
     await addMedicine('Second Medicine')
     await page.clock.fastForward('00:31')
     const release = await holdReads(page)

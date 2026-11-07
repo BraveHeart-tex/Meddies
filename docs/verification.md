@@ -94,7 +94,9 @@ is missing. Run builds and journeys sequentially when they share `.next` or
 
 Local journey policy: once after implementation, run the journeys the ticket names
 plus the specs that exercise a route or flow the change edits, in one
-`pnpm test:browser:build <names>` run. Then run `pnpm verify:local`. List the
+`pnpm test:browser:build <names>` run. Then run `pnpm verify:local`; locally it skips
+`next build` when no build input changed since the last build, so it reuses the
+wrapper's. List the
 journeys by file in the Linear evidence. CI runs all journeys.
 
 For faster iteration on one journey, `MEDDIES_BROWSER_DEV=1 pnpm test:browser <spec>`
@@ -127,8 +129,9 @@ Fixtures in `tests/browser/fixtures.ts` start a per-test Next.js server, a fresh
 Worker/D1 database and, with `initialScheduleTime`, a frozen scheduling clock that
 `app.setScheduleTime` moves. `app.api` calls the app API as the signed-in user. Auth uses a short-lived synthetic Auth.js session; no
 Google provider or real credentials are used. `page.request` shares the session
-cookie for API fixtures; the `request` fixture stays anonymous. Tests run with one
-worker and no retries. Every journey that depends on the date or time declares
+cookie for API fixtures; the `request` fixture stays anonymous. Spec files run on three
+workers locally and one in CI or dev mode, with no retries; tests within a file stay
+serial. Keep journeys isolated: each test owns its server, port, D1 and clock file. Every journey that depends on the date or time declares
 `initialScheduleTime`, so no journey depends on the wall-clock time it runs at.
 The frozen clock covers Next.js and the Worker, and the browser follows it: client
 scheduling code reads "now" from `useSchedulingClock()`
