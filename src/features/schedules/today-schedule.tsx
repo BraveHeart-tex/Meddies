@@ -16,9 +16,9 @@ import { DoseActions, type DoseDrawerOpener } from './dose-actions'
 import { NextDose } from './next-dose'
 import { TodayDosesLoading } from './today-skeleton'
 import { scheduleToday } from './occurrences'
-import { applyRecord, readFreshSnapshot, type SchedulesRead } from './queries'
+import { applyRecord, currentRecord, readFreshSnapshot, type SchedulesRead } from './queries'
 import { useScheduleNow } from './use-schedule-now'
-import type { RecordCheck } from './use-dose-outcome-mutation'
+import type { PendingDose, RecordCheck } from './use-dose-outcome-mutation'
 
 export function TodaySchedule({
   schedulesRead: { snapshot, loading, loadError, refreshFailed, refreshing, retry, ensureFresh },
@@ -52,6 +52,7 @@ export function TodaySchedule({
   const showLoading =
     loading || (awaitingDay && !refreshFailed) || (medicinesLoading && medicines.length === 0)
   const heroOpener = useRef<DoseDrawerOpener>(null)
+  const [pending, setPending] = useState<Record<string, PendingDose>>({})
   const [intakeMessage, setIntakeMessage] = useState('')
   const doseText = (dose: DoseOccurrence, quantity = dose.quantity) => {
     const medicine = medicines.find((item) => item.id === dose.medicineId)
@@ -68,8 +69,10 @@ export function TodaySchedule({
   }
 
   function showOutcome(dose: DoseOccurrence, record: DoseOutcomeRecord) {
+    const superseded = (currentRecord(queryClient, record)?.revision ?? 0) > (record.revision ?? 0)
     announceOutcome(dose, record)
     void applyRecord(queryClient, record)
+    return superseded
   }
 
   /**
@@ -133,6 +136,7 @@ export function TodaySchedule({
             {today.next && (
               <NextDose
                 dose={today.next}
+                pending={pending[today.next.id]}
                 date={today.date}
                 medicine={medicines.find((item) => item.id === today.next?.medicineId)}
                 name={name(today.next.medicineId)}
@@ -219,6 +223,7 @@ export function TodaySchedule({
                           </ItemContent>
                           <DoseStatusBadge
                             id={`dose-status-${dose.id}`}
+                            pending={pending[dose.id]}
                             status={dose.status}
                             time={
                               recordedAt ? (
@@ -238,6 +243,15 @@ export function TodaySchedule({
                                 typeof (await checkRecorded(dose, true)) === 'object'
                               }
                               checkRecorded={() => checkRecorded(dose, false)}
+                              onPending={(attempt, clear) =>
+                                setPending((current) => {
+                                  if (clear && current[dose.id]?.id !== attempt.id) return current
+                                  const next = { ...current }
+                                  if (clear) delete next[dose.id]
+                                  else next[dose.id] = attempt
+                                  return next
+                                })
+                              }
                               onRecorded={(record) => showOutcome(dose, record)}
                             />
                           )}

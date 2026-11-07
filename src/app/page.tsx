@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { HydrationBoundary } from '@tanstack/react-query'
+import { TodayHydration } from '@/features/schedules/today-hydration'
 import { auth, authConfigured } from '@/features/auth/server'
 import { AuthControl } from '@/features/auth/controls'
 import { SessionBoundary } from '@/features/auth/session-boundary'
@@ -16,9 +16,9 @@ import { TodayDosesFallback } from '@/features/schedules/today-doses-fallback'
  */
 async function TodayDoses({ initialNow }: { initialNow: string }) {
   return (
-    <HydrationBoundary state={await prefetchToday()}>
+    <TodayHydration state={await prefetchToday()}>
       <SchedulePanel mode="today" initialNow={initialNow} />
-    </HydrationBoundary>
+    </TodayHydration>
   )
 }
 

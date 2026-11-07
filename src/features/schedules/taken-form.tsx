@@ -74,6 +74,7 @@ export function TakenForm({
   medicine,
   open,
   saving,
+  reviewRequired = false,
   problem,
   onOpen,
   onSubmit,
@@ -83,6 +84,7 @@ export function TakenForm({
   medicine: Medicine
   open: boolean
   saving: boolean
+  reviewRequired?: boolean
   /** Why the last save was not confirmed; an uncertain retry with unchanged details saves once. */
   problem: SaveProblem | null
   onOpen: (open: boolean) => void
@@ -346,7 +348,7 @@ export function TakenForm({
               type="submit"
               size="drawer"
               className="w-full whitespace-normal"
-              disabled={saving || offline}
+              disabled={saving || offline || reviewRequired}
               aria-describedby={!saving && (problem || offline) ? `${id}-problem` : undefined}
             >
               {saving

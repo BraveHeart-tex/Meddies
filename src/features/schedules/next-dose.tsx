@@ -5,6 +5,7 @@ import { Icon } from '@/components/ui/icon'
 import type { Medicine } from '@/features/medicines/contract'
 import { istanbulDate, type DoseOccurrence } from './contract'
 import { doseClock as clock } from './taken-form'
+import type { PendingDose } from './use-dose-outcome-mutation'
 import { DoseStatusBadge } from './dose-status-badge'
 
 export function formatDayLabel(instant: string) {
@@ -30,12 +31,14 @@ export function greeting(instant: string) {
 
 export function NextDose({
   dose,
+  pending,
   date,
   medicine,
   name,
   doseText,
   onRecord,
 }: {
+  pending?: PendingDose
   dose: DoseOccurrence
   date: string
   medicine?: Medicine
@@ -51,7 +54,7 @@ export function NextDose({
           <h3>Up next</h3>
         </CardTitle>
         <CardAction className="col-auto row-auto self-center justify-self-auto">
-          <DoseStatusBadge status={dose.status} />
+          <DoseStatusBadge pending={pending} status={dose.status} />
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-wrap items-center gap-3.5">

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { expect, test } from './fixtures'
 import { scrollsHorizontally } from './actions'
-import { doseStatus, doseTrigger, drawer, toastMessage } from './locators'
+import { doseRow, doseStatus, doseTrigger, drawer, toastMessage } from './locators'
 
 // The dose is due one minute after the frozen scheduling clock, so it stays today's dose.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
@@ -15,7 +15,13 @@ test('skip a dose from the keyboard and correct it back to Taken', async ({
 }, testInfo) => {
   const label = 'M'.repeat(120)
   const dialog = drawer(page)
-  const row = page.getByRole('list', { name: "Today's doses" }).getByRole('listitem')
+  const skipWrite = { method: 'POST', path: '/schedules', operation: 'recordSkipped' } as const
+  const correctionWrite = {
+    method: 'POST',
+    path: '/schedules',
+    operation: 'correctOutcome',
+  } as const
+  const row = doseRow(page, new Date(`${today}T09:01:00+03:00`).toISOString())
 
   await test.step('seed authenticated fixtures', async () => {
     const medicineId = randomUUID()
@@ -49,7 +55,14 @@ test('skip a dose from the keyboard and correct it back to Taken', async ({
     await expect(dialog.getByRole('button', { name: 'Save as skipped' })).toBeVisible()
     await page.keyboard.press('Shift+Tab')
     await expect(dialog.getByRole('button', { name: 'Save as skipped' })).toBeFocused()
+    await app.worker.hold(skipWrite)
     await page.keyboard.press('Enter')
+    await expect.poll(() => app.worker.held(skipWrite)).toBe(1)
+    await expect(doseStatus(row)).toHaveAccessibleDescription('Saving · Skipped')
+    await expect(page.getByText('0 of 1 logged')).toBeAttached()
+    await expect(page.getByRole('heading', { name: 'Up next', includeHidden: true })).toBeAttached()
+    await page.screenshot({ path: testInfo.outputPath('today-saving-skip.png') })
+    await app.worker.release(skipWrite)
   })
 
   await test.step('confirm skipped outcome', async () => {
@@ -73,7 +86,12 @@ test('skip a dose from the keyboard and correct it back to Taken', async ({
     await doseTrigger(row, label).press('Enter')
     await dialog.getByRole('button', { name: /^Correct outcome/ }).press('Enter')
     await dialog.getByRole('button', { name: 'I took it' }).press('Enter')
+    await app.worker.hold(correctionWrite)
     await dialog.getByRole('button', { name: 'Save correction' }).press('Enter')
+    await expect.poll(() => app.worker.held(correctionWrite)).toBe(1)
+    await expect(doseStatus(row)).toHaveAccessibleDescription('Saving · Taken')
+    await expect(page.getByText('1 of 1 logged')).toBeAttached()
+    await app.worker.release(correctionWrite)
     await expect(toastMessage(page, /· changed to taken at \d\d:\d\d, 1 tablet$/)).toBeVisible()
     await expect(doseStatus(row)).toHaveAccessibleDescription(/Taken/)
     await page.screenshot({ path: testInfo.outputPath('today-corrected.png') })

@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query'
+import { queryOptions, replaceEqualDeep, useQuery, type QueryClient } from '@tanstack/react-query'
 import type { DailySchedule, DoseOutcomeRecord, Today } from './contract'
 
 /** The owner's schedules and the server's Today records, at the server scheduling time `now`. */
@@ -39,6 +39,8 @@ export const scheduleSnapshotQuery = () =>
     queryKey: scheduleKeys.snapshot(),
     queryFn: ({ signal }) => fetchScheduleSnapshot(signal),
     staleTime: 0,
+    structuralSharing: (old, next) =>
+      mergeSnapshot(old as ScheduleSnapshot | undefined, next as ScheduleSnapshot),
   })
 
 /** The schedules API body as the cached snapshot. Shared by the browser read and server prefetch. */
@@ -83,12 +85,42 @@ export function useScheduleSnapshot({ serverEntry = false }: { serverEntry?: boo
 
 export type SchedulesRead = ReturnType<typeof useScheduleSnapshot>
 
+/** Immutable outcomes never disappear, and a revision can only advance within a dated snapshot. */
+export function mergeSnapshot(
+  current: ScheduleSnapshot | undefined,
+  incoming: ScheduleSnapshot,
+): ScheduleSnapshot {
+  if (!current) return incoming
+  if (incoming.date < current.date) return current
+  if (incoming.date !== current.date) return incoming
+  const records = [...incoming.records]
+  for (const previous of current.records) {
+    const index = records.findIndex(
+      (record) => record.scheduleId === previous.scheduleId && record.dueAt === previous.dueAt,
+    )
+    if (index < 0) records.push(previous)
+    else if ((records[index].revision ?? 0) <= (previous.revision ?? 0)) records[index] = previous
+  }
+  return replaceEqualDeep(current, { ...incoming, records })
+}
+
+/** Current confirmed outcome, used to distinguish an old receipt from the latest outcome. */
+export function currentRecord(
+  client: QueryClient,
+  record: Pick<DoseOutcomeRecord, 'scheduleId' | 'dueAt'>,
+) {
+  return client
+    .getQueryData<ScheduleSnapshot>(scheduleKeys.snapshot())
+    ?.records.find((item) => item.scheduleId === record.scheduleId && item.dueAt === record.dueAt)
+}
+
 /** A confirmed outcome replaces that occurrence's record, then a fresh read reconciles. */
 export function applyRecord(client: QueryClient, record: DoseOutcomeRecord) {
   client.setQueryData<ScheduleSnapshot>(
     scheduleKeys.snapshot(),
     (current) =>
-      current && {
+      current &&
+      mergeSnapshot(current, {
         ...current,
         records: [
           ...current.records.filter(
@@ -96,7 +128,7 @@ export function applyRecord(client: QueryClient, record: DoseOutcomeRecord) {
           ),
           record,
         ],
-      },
+      }),
   )
   // Cancels older in-flight reads so they cannot overwrite the confirmed record.
   return client.invalidateQueries({ queryKey: scheduleKeys.all })

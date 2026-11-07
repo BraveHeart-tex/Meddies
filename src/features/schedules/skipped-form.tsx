@@ -17,6 +17,7 @@ export function SkippedForm({
   medicine,
   open,
   saving,
+  reviewRequired = false,
   problem,
   onOpen,
   onSubmit,
@@ -26,6 +27,7 @@ export function SkippedForm({
   medicine: Medicine
   open: boolean
   saving: boolean
+  reviewRequired?: boolean
   problem: SaveProblem | null
   onOpen: (open: boolean) => void
   onSubmit: () => void
@@ -82,7 +84,7 @@ export function SkippedForm({
             type="button"
             size="drawer"
             className="w-full whitespace-normal"
-            disabled={saving || offline}
+            disabled={saving || offline || reviewRequired}
             onClick={onSubmit}
           >
             {saving

@@ -9,6 +9,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { Toaster } from '../src/components/ui/toast'
 import type { Medicine } from '../src/features/medicines/contract'
 import { medicineKeys } from '../src/features/medicines/queries'
 import type { DailySchedule, DoseOutcomeRecord } from '../src/features/schedules/contract'
@@ -121,7 +122,9 @@ function Today({ now = initialNow }: { now?: string }) {
 function renderToday(now = initialNow) {
   render(
     <QueryClientProvider client={client}>
-      <Today now={now} />
+      <Toaster>
+        <Today now={now} />
+      </Toaster>
     </QueryClientProvider>,
   )
   return userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
@@ -243,6 +246,437 @@ describe('with a cached snapshot', () => {
 })
 
 describe('recording a dose', () => {
+  test.each(['Taken', 'Skipped'] as const)(
+    'a pending %s keeps row order, Up next and logged count until confirmation',
+    async (outcome) => {
+      schedulesApi(initialNow, [
+        {
+          ...scheduleFor('09:00'),
+          times: [
+            { time: '09:00', quantity: 1 },
+            { time: '10:00', quantity: 1 },
+          ],
+        },
+      ])
+      let release = () => {}
+      const gate = new Promise<void>((resolve) => (release = resolve))
+      server.use(
+        http.put('/api/schedules', async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>
+          await gate
+          return HttpResponse.json({
+            record: {
+              ...body,
+              ...(outcome === 'Skipped' ? { recordedAt: initialNow } : {}),
+              revision: 0,
+            },
+          })
+        }),
+      )
+      const user = renderToday()
+      const list = await doses()
+      const row = within(list).getAllByRole('listitem')[0]
+      await user.click(within(row).getByRole('button', { name: /^Record dose for Morning Tablet/ }))
+      await user.click(
+        await screen.findByRole('button', {
+          name: outcome === 'Taken' ? 'I took it' : 'I skipped it',
+        }),
+      )
+      await user.click(
+        await screen.findByRole('button', {
+          name: outcome === 'Taken' ? 'Save as taken' : 'Save as skipped',
+        }),
+      )
+      expect(row).toHaveTextContent(`Saving · ${outcome}`)
+      expect(within(list).getAllByRole('listitem', { hidden: true })[0]).toBe(row)
+      expect(screen.getByText('0 of 2 logged')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Up next', hidden: true })).toBeInTheDocument()
+      expect(client.getQueryData<{ records: unknown[] }>(scheduleKeys.snapshot())?.records).toEqual(
+        [],
+      )
+      release()
+      await waitFor(() => expect(row).not.toHaveTextContent(`Saving · ${outcome}`))
+      expect(row).toHaveTextContent(outcome)
+    },
+  )
+
+  test('a different Taken record does not confirm an uncertain attempt or discard its details', async () => {
+    schedulesApi(initialNow)
+    const user = renderToday()
+    await doses()
+    server.use(http.put('/api/schedules', () => HttpResponse.json({}, { status: 503 })))
+    await user.click(screen.getByRole('button', { name: /^Record dose for Morning Tablet/ }))
+    await user.click(await screen.findByRole('button', { name: 'I took it' }))
+    server.use(
+      http.get('/api/schedules', () =>
+        HttpResponse.json({
+          schedules: [scheduleFor('09:00')],
+          records: [
+            {
+              scheduleId: scheduleFor('09:00').id,
+              dueAt: '2026-11-14T06:00:00.000Z',
+              outcome: 'Taken',
+              takenAt: '2026-11-14T05:50:00.000Z',
+              quantity: 2,
+              revision: 0,
+            },
+          ],
+          today: { now: initialNow, date: '2026-11-14' },
+        }),
+      ),
+    )
+    await user.click(await screen.findByRole('button', { name: 'Save as taken' }))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(
+      await screen.findByText('This dose has changed. Review its current outcome'),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Review current outcome' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Retry saving as taken' })).toBeDisabled()
+  })
+
+  test('an unconfirmed Now retry keeps the exact time and amount and makes one fresh check', async () => {
+    const api = schedulesApi(initialNow)
+    const payloads: Record<string, unknown>[] = []
+    server.use(
+      http.put('/api/schedules', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        payloads.push(body)
+        if (payloads.length === 1) return HttpResponse.json({}, { status: 503 })
+        return HttpResponse.json({ record: { ...body, revision: 0 } })
+      }),
+    )
+    const user = renderToday()
+    const list = await doses()
+    await user.click(screen.getByRole('button', { name: /^Record dose for Morning Tablet/ }))
+    await user.click(await screen.findByRole('button', { name: 'I took it' }))
+    await user.click(await screen.findByRole('button', { name: 'Save as taken' }))
+    expect(await screen.findByText(/Meddies checked and found no record yet/)).toBeVisible()
+    expect(api.reads()).toBe(2)
+    expect(list).toHaveTextContent('Not confirmed')
+    await advance(2 * 60_000)
+    expect(api.reads()).toBe(2)
+    await user.click(screen.getByRole('button', { name: 'Retry saving as taken' }))
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Morning Tablet' })).not.toBeInTheDocument(),
+    )
+    expect(payloads).toHaveLength(2)
+    expect(payloads[1]).toEqual(payloads[0])
+    expect(payloads[1].takenAt).toBe('2026-11-14T05:55:00.000Z')
+    expect(list).toHaveTextContent('Taken')
+  })
+
+  test.each([200, 400])(
+    'a correction response %s retains a newer confirmed outcome',
+    async (status) => {
+      schedulesApi(initialNow)
+      const original: DoseOutcomeRecord = {
+        scheduleId: scheduleFor('09:00').id,
+        dueAt: '2026-11-14T06:00:00.000Z',
+        outcome: 'Taken',
+        takenAt: initialNow,
+        quantity: 1,
+        revision: 0,
+      }
+      const newer: DoseOutcomeRecord = {
+        ...original,
+        quantity: 2,
+        revision: 2,
+        actionId: '00000000-0000-4000-8000-000000000099',
+      }
+      let current = original
+      let release = () => {}
+      const gate = new Promise<void>((resolve) => (release = resolve))
+      server.use(
+        http.get('/api/schedules', () =>
+          HttpResponse.json({
+            schedules: [scheduleFor('09:00')],
+            records: [current],
+            today: { now: initialNow, date: '2026-11-14' },
+          }),
+        ),
+        http.patch('/api/schedules', async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>
+          await gate
+          return status === 400
+            ? HttpResponse.json({}, { status })
+            : HttpResponse.json({
+                record: {
+                  scheduleId: original.scheduleId,
+                  dueAt: original.dueAt,
+                  outcome: 'Skipped',
+                  recordedAt: initialNow,
+                  revision: 1,
+                  actionId: body.actionId,
+                },
+              })
+        }),
+      )
+      const user = renderToday()
+      const list = await doses()
+      const row = within(list).getByRole('listitem')
+      await user.click(screen.getByRole('button', { name: /^Review dose for Morning Tablet/ }))
+      await user.click(screen.getByRole('button', { name: /^Correct outcome/ }))
+      await user.click(screen.getByRole('button', { name: 'I skipped it' }))
+      await user.click(screen.getByRole('button', { name: 'Save as skipped' }))
+      expect(row).toHaveTextContent('Saving · Skipped')
+      expect(screen.getByText('1 of 1 logged')).toBeInTheDocument()
+      current = newer
+      fireEvent(window, new Event('focus'))
+      await waitFor(() => expect(row).toHaveTextContent('took 2 tablets'))
+      expect(row).toHaveTextContent('Saving · Skipped')
+      release()
+      await waitFor(() => expect(row).not.toHaveTextContent('Saving · Skipped'))
+      expect(row).toHaveTextContent('Taken')
+      expect(row).toHaveTextContent('took 2 tablets')
+      if (status === 200) {
+        expect(
+          await screen.findByText('Earlier save confirmed. This dose has since changed'),
+        ).toBeVisible()
+      } else {
+        expect(screen.getByRole('dialog', { name: 'Morning Tablet' })).toBeVisible()
+        expect(screen.getByRole('button', { name: 'Save as skipped' })).toBeEnabled()
+        expect(screen.getByText('Not saved.')).toBeVisible()
+      }
+    },
+  )
+
+  test('a rejected Taken attempt keeps entered values and unrelated confirmed work', async () => {
+    const first = scheduleFor('09:00')
+    const second = { ...scheduleFor('10:00'), id: '00000000-0000-4000-8000-0000000000a2' }
+    schedulesApi(initialNow, [first, second])
+    let release = () => {}
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    server.use(
+      http.put('/api/schedules', async () => {
+        await gate
+        return HttpResponse.json({}, { status: 400 })
+      }),
+    )
+    const user = renderToday()
+    const list = await doses()
+    const rows = within(list).getAllByRole('listitem')
+    await user.click(within(rows[0]).getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'I took it' }))
+    const amount = screen.getByLabelText(/^Amount/)
+    await user.clear(amount)
+    await user.type(amount, '2')
+    await user.click(screen.getByRole('button', { name: 'Save as taken' }))
+    const unrelated: DoseOutcomeRecord = {
+      scheduleId: second.id,
+      dueAt: '2026-11-14T07:00:00.000Z',
+      outcome: 'Skipped',
+      recordedAt: initialNow,
+      revision: 0,
+    }
+    server.use(
+      http.get('/api/schedules', () =>
+        HttpResponse.json({
+          schedules: [first, second],
+          records: [unrelated],
+          today: { now: initialNow, date: '2026-11-14' },
+        }),
+      ),
+    )
+    fireEvent(window, new Event('focus'))
+    await waitFor(() => expect(rows[1]).toHaveTextContent('Skipped'))
+    release()
+    expect(await screen.findByText('Not saved.')).toBeVisible()
+    expect(amount).toHaveValue('2')
+    expect(rows[0]).not.toHaveTextContent('Saving')
+    expect(rows[0]).toHaveTextContent('Scheduled')
+    expect(rows[1]).toHaveTextContent('Skipped')
+    expect(screen.getByText('1 of 2 logged')).toBeInTheDocument()
+  })
+
+  test.each(['Taken', 'Skipped'] as const)(
+    'one fresh read can establish an initial %s receipt',
+    async (outcome) => {
+      schedulesApi(initialNow)
+      const user = renderToday()
+      await doses()
+      let stored: Record<string, unknown> | null = null
+      let checks = 0
+      server.use(
+        http.put('/api/schedules', async ({ request }) => {
+          stored = {
+            ...((await request.json()) as Record<string, unknown>),
+            revision: 0,
+            ...(outcome === 'Skipped' ? { recordedAt: initialNow } : {}),
+          }
+          return HttpResponse.json({}, { status: 503 })
+        }),
+        http.get('/api/schedules', () => {
+          checks++
+          return HttpResponse.json({
+            schedules: [scheduleFor('09:00')],
+            records: stored ? [stored] : [],
+            today: { now: initialNow, date: '2026-11-14' },
+          })
+        }),
+      )
+      await user.click(screen.getByRole('button', { name: /^Record dose for Morning Tablet/ }))
+      await user.click(
+        screen.getByRole('button', { name: outcome === 'Taken' ? 'I took it' : 'I skipped it' }),
+      )
+      await user.click(
+        screen.getByRole('button', {
+          name: outcome === 'Taken' ? 'Save as taken' : 'Save as skipped',
+        }),
+      )
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog', { name: 'Morning Tablet' })).not.toBeInTheDocument(),
+      )
+      await waitFor(() => expect(checks).toBe(2)) // receipt check, then confirmed reconciliation
+      expect(await doses()).toHaveTextContent(outcome)
+    },
+  )
+
+  test('an unconfirmed correction retries its action and preconditions after learning a newer outcome', async () => {
+    schedulesApi(initialNow)
+    let record: DoseOutcomeRecord = {
+      scheduleId: scheduleFor('09:00').id,
+      dueAt: '2026-11-14T06:00:00.000Z',
+      outcome: 'Taken',
+      takenAt: initialNow,
+      quantity: 1,
+      revision: 0,
+    }
+    const payloads: Record<string, unknown>[] = []
+    server.use(
+      http.get('/api/schedules', () =>
+        HttpResponse.json({
+          schedules: [scheduleFor('09:00')],
+          records: [record],
+          today: { now: initialNow, date: '2026-11-14' },
+        }),
+      ),
+      http.patch('/api/schedules', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        payloads.push(body)
+        if (payloads.length === 1) return HttpResponse.json({}, { status: 503 })
+        return HttpResponse.json({
+          record: {
+            scheduleId: record.scheduleId,
+            dueAt: record.dueAt,
+            outcome: 'Skipped',
+            recordedAt: initialNow,
+            revision: 1,
+            actionId: body.actionId,
+          },
+        })
+      }),
+    )
+    const user = renderToday()
+    const list = await doses()
+    await user.click(screen.getByRole('button', { name: /^Review dose for Morning Tablet/ }))
+    await user.click(screen.getByRole('button', { name: /^Correct outcome/ }))
+    await user.click(screen.getByRole('button', { name: 'I skipped it' }))
+    await user.click(screen.getByRole('button', { name: 'Save as skipped' }))
+    await screen.findByRole('button', { name: 'Retry saving as skipped' })
+    expect(screen.queryByText(/found no record yet/)).not.toBeInTheDocument()
+    record = {
+      ...record,
+      quantity: 2,
+      revision: 2,
+      actionId: '00000000-0000-4000-8000-000000000099',
+    }
+    fireEvent(window, new Event('focus'))
+    await waitFor(() => expect(list).toHaveTextContent('took 2 tablets'))
+    await user.click(screen.getByRole('button', { name: 'Retry saving as skipped' }))
+    expect(
+      await screen.findByText('Earlier save confirmed. This dose has since changed'),
+    ).toBeVisible()
+    expect(payloads).toHaveLength(2)
+    expect(payloads[1]).toEqual(payloads[0])
+    expect(payloads[1]).toMatchObject({
+      expectedRevision: 0,
+      expectedOutcome: 'Taken',
+      outcome: 'Skipped',
+    })
+    expect(list).toHaveTextContent('took 2 tablets')
+  })
+
+  test('an uncertain correction shows the current intake beside its preserved recovery details', async () => {
+    schedulesApi(initialNow)
+    let record: DoseOutcomeRecord = {
+      scheduleId: scheduleFor('09:00').id,
+      dueAt: '2026-11-14T06:00:00.000Z',
+      outcome: 'Taken',
+      takenAt: initialNow,
+      quantity: 1,
+      revision: 0,
+    }
+    server.use(
+      http.get('/api/schedules', () =>
+        HttpResponse.json({
+          schedules: [scheduleFor('09:00')],
+          records: [record],
+          today: { now: initialNow, date: '2026-11-14' },
+        }),
+      ),
+      http.patch('/api/schedules', () => {
+        record = {
+          ...record,
+          outcome: 'Taken',
+          takenAt: initialNow,
+          quantity: 2,
+          revision: 2,
+          actionId: '00000000-0000-4000-8000-000000000099',
+        }
+        return HttpResponse.json({}, { status: 503 })
+      }),
+    )
+    const user = renderToday()
+    await doses()
+    await user.click(screen.getByRole('button', { name: /^Review dose for Morning Tablet/ }))
+    await user.click(screen.getByRole('button', { name: /^Correct outcome/ }))
+    await user.click(screen.getByRole('button', { name: 'I skipped it' }))
+    await user.click(screen.getByRole('button', { name: 'Save as skipped' }))
+    const dialog = screen.getByRole('dialog', { name: 'Morning Tablet' })
+    expect(
+      await within(dialog).findByText('This dose has changed. Review its current outcome'),
+    ).toBeVisible()
+    expect(dialog).toHaveTextContent('Taken 2 tablets at 08:55')
+    expect(within(dialog).getByRole('button', { name: /^Edit intake/ })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'Retry saving as skipped' })).toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: 'Review current outcome' }))
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    expect(await doses()).toHaveTextContent('took 2 tablets')
+  })
+
+  test('a 409 applies no attempted outcome and offers explicit review after closing', async () => {
+    schedulesApi(initialNow)
+    const user = renderToday()
+    const list = await doses()
+    server.use(
+      http.put('/api/schedules', () => HttpResponse.json({}, { status: 409 })),
+      http.get('/api/schedules', () =>
+        HttpResponse.json({
+          schedules: [scheduleFor('09:00')],
+          records: [
+            {
+              scheduleId: scheduleFor('09:00').id,
+              dueAt: '2026-11-14T06:00:00.000Z',
+              outcome: 'Skipped',
+              recordedAt: initialNow,
+              revision: 0,
+            },
+          ],
+          today: { now: initialNow, date: '2026-11-14' },
+        }),
+      ),
+    )
+    await user.click(screen.getByRole('button', { name: /^Record dose for Morning Tablet/ }))
+    await user.click(screen.getByRole('button', { name: 'I took it' }))
+    await user.click(screen.getByRole('button', { name: 'Save as taken' }))
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Morning Tablet' })).not.toBeInTheDocument(),
+    )
+    expect(list).toHaveTextContent('Skipped')
+    expect(list).not.toHaveTextContent('Taken')
+    expect(within(list).getByRole('button', { name: 'Review current outcome' })).toBeVisible()
+  })
+
   test('a read started before the save cannot overwrite the confirmed outcome', async () => {
     const api = schedulesApi(initialNow)
     const user = renderToday()

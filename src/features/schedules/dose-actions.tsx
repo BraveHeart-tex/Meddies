@@ -14,7 +14,11 @@ import { doseClock, TakenForm } from './taken-form'
 import { DoseDrawer } from './dose-drawer'
 import { outcomeConfirmation } from './dose-confirmation'
 import { ScheduledChip } from './scheduled-chip'
-import { useDoseOutcomeMutation, type RecordCheck } from './use-dose-outcome-mutation'
+import {
+  useDoseOutcomeMutation,
+  type RecordCheck,
+  type PendingDose,
+} from './use-dose-outcome-mutation'
 
 type Outcome = DoseOutcomeRecord['outcome']
 export type DoseDrawerOpener = { open: (outcome: Outcome) => void }
@@ -25,6 +29,7 @@ export function DoseActions({
   refresh,
   checkRecorded,
   onRecorded,
+  onPending,
   appearance = 'button',
   opener,
   todayDate,
@@ -35,7 +40,8 @@ export function DoseActions({
   refresh: () => Promise<boolean>
   /** Reloads once after an uncertain new outcome (Today only). */
   checkRecorded?: () => Promise<RecordCheck>
-  onRecorded: (record: DoseOutcomeRecord) => void
+  onPending?: (attempt: PendingDose, clear?: boolean) => void
+  onRecorded: (record: DoseOutcomeRecord) => boolean | void
   appearance?: 'row' | 'button'
   opener?: Ref<DoseDrawerOpener>
   todayDate?: string
@@ -58,24 +64,28 @@ export function DoseActions({
     clearFeedback,
     clearError,
     dismissReview,
+    reviewCurrent,
     pinCorrection,
     resetRetry,
   } = useDoseOutcomeMutation({
     dose,
     refresh,
     checkRecorded,
+    onPending,
     onRecorded(record) {
+      const superseded = onRecorded(record) === true
       // Confirmed by the server: a Toast without Undo (FE-648 F2, C5).
       toast.add({
-        title: outcomeConfirmation({
-          label: medicine.label,
-          unit: medicine.unit,
-          previous: dose.status,
-          record,
-        }),
+        title: superseded
+          ? 'Earlier save confirmed. This dose has since changed'
+          : outcomeConfirmation({
+              label: medicine.label,
+              unit: medicine.unit,
+              previous: dose.status,
+              record,
+            }),
         type: record.outcome === 'Taken' ? 'success' : 'skipped',
       })
-      onRecorded(record)
     },
     onFinished() {
       setCorrecting(false)
@@ -99,7 +109,9 @@ export function DoseActions({
 
   const recorded = dose.status === 'Taken' || dose.status === 'Skipped'
   const outcomeBlocked = (outcome: Outcome) =>
-    saving || (recorded && !openedWithoutOutcome && (!correcting || dose.status === outcome))
+    saving ||
+    needsReview ||
+    (recorded && !openedWithoutOutcome && (!correcting || dose.status === outcome))
 
   function choose(outcome: Outcome) {
     edit(outcome)
@@ -211,6 +223,16 @@ export function DoseActions({
           savingOutcome={saving ? savingOutcome : null}
           unconfirmed={problem?.kind === 'uncertain'}
         />
+        {needsReview && drawerOpen && (
+          <Alert>
+            <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
+              <p>{error}</p>
+              <Button type="button" variant="outline" onClick={reviewCurrent}>
+                Review current outcome
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
         {openedWithoutOutcome && recorded && editor !== null && (
           <Alert role="status">
             <AlertDescription className="text-foreground">
@@ -219,7 +241,7 @@ export function DoseActions({
             </AlertDescription>
           </Alert>
         )}
-        {recorded && !correcting && (
+        {recorded && (!correcting || needsReview) && (
           <>
             <p className="font-extrabold">
               {dose.status === 'Taken' ? (
@@ -238,7 +260,11 @@ export function DoseActions({
                 'Skipped. No intake recorded.'
               )}
             </p>
-            <div data-base-ui-swipe-ignore="y" className="flex flex-wrap gap-2.5">
+            <fieldset
+              disabled={needsReview}
+              data-base-ui-swipe-ignore="y"
+              className="flex min-w-0 flex-wrap gap-2.5"
+            >
               {(dose.status === 'Taken' || editingDose !== null) &&
                 (editingDose ?? dose).status === 'Taken' && (
                   <TakenForm
@@ -246,6 +272,7 @@ export function DoseActions({
                     medicine={medicine}
                     open={editingDose !== null}
                     saving={saving}
+                    reviewRequired={needsReview}
                     problem={editingDose ? problem : null}
                     mode="edit"
                     onOpen={(open) => {
@@ -283,7 +310,7 @@ export function DoseActions({
                   Correct outcome
                 </Button>
               )}
-            </div>
+            </fieldset>
           </>
         )}
         {choosing && (
@@ -339,6 +366,7 @@ export function DoseActions({
             medicine={medicine}
             open={editor === 'Taken'}
             saving={saving}
+            reviewRequired={needsReview}
             problem={editor === 'Taken' ? problem : null}
             mode={correcting && recorded ? 'correct' : 'record'}
             onOpen={closeEditor}
@@ -351,6 +379,7 @@ export function DoseActions({
             medicine={medicine}
             open={editor === 'Skipped'}
             saving={saving}
+            reviewRequired={needsReview}
             problem={editor === 'Skipped' ? problem : null}
             onOpen={closeEditor}
             onSubmit={() => void save('Skipped', {})}
