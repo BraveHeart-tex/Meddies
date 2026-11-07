@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
 import { expect, test } from './fixtures'
-import { focusWindow } from './actions'
 
 test.use({
   journey: {
@@ -84,47 +83,5 @@ test('the Medications list stays cached across Today and refreshes stale data in
     await expect(count(1)).toBeVisible()
     await release()
     await expect(count(2)).toBeVisible()
-  })
-
-  await test.step('stale list refreshes on window focus', async () => {
-    await addMedicine('Third Medicine')
-    await page.clock.fastForward('00:31')
-    await focusWindow(page)
-    await expect(count(3)).toBeVisible()
-    expect(reads).toHaveLength(3)
-  })
-
-  await test.step('no polling while the screen stays open', async () => {
-    await page.clock.fastForward('05:00')
-    await expect(count(3)).toBeVisible()
-    expect(reads).toHaveLength(3)
-  })
-
-  await test.step('stale list refreshes on reconnect', async () => {
-    await addMedicine('Fourth Medicine')
-    await page.context().setOffline(true)
-    await page.clock.fastForward('00:31')
-    await page.context().setOffline(false)
-    await expect(count(4)).toBeVisible()
-    expect(reads).toHaveLength(4)
-  })
-
-  await test.step('a failed refresh keeps the list and offers a retry', async () => {
-    await page.route(
-      (url) => url.pathname === '/api/medicines',
-      (route) =>
-        isRead(route.request().method(), new URL(route.request().url()))
-          ? route.fulfill({ status: 503, json: { error: 'unavailable' } })
-          : route.fallback(),
-      { times: 1 },
-    )
-    await addMedicine('Fifth Medicine')
-    await page.clock.fastForward('00:31')
-    await focusWindow(page)
-    await expect(page.getByText('Your medicines could not be refreshed.')).toBeVisible()
-    await expect(count(4)).toBeVisible()
-    await page.getByRole('button', { name: 'Retry loading medicines' }).click()
-    await expect(count(5)).toBeVisible()
-    await expect(page.getByText('Your medicines could not be refreshed.')).toBeHidden()
   })
 })

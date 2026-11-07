@@ -13,8 +13,20 @@ export default defineConfig({
         test: {
           name: 'unit',
           environment: 'node',
-          include: ['tests/**/*.test.{mjs,ts,tsx}'],
+          include: ['tests/**/*.test.{mjs,ts}'],
           exclude: integration,
+          testTimeout: 5_000,
+          hookTimeout: 5_000,
+        },
+      },
+      {
+        // Component tests: React Testing Library under jsdom, network through MSW.
+        extends: true,
+        test: {
+          name: 'component',
+          environment: 'jsdom',
+          include: ['tests/**/*.test.tsx'],
+          setupFiles: ['tests/helpers/component-setup.ts'],
           testTimeout: 5_000,
           hookTimeout: 5_000,
         },

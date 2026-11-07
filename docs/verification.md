@@ -14,11 +14,13 @@ in restricted agent environments. CI and releases use the default Turbopack buil
 Typechecking covers Next.js and Worker source and test TypeScript, including the
 Vitest config.
 
-`pnpm test` builds the Worker bundle, then runs both Vitest projects in
+`pnpm test` builds the Worker bundle, then runs the Vitest projects in
 `vitest.config.mts`:
 
-- `unit`: every test that does not load the Worker bundle. Node environment, 5s test
-  and hook timeout.
+- `unit`: every `.mjs` and `.ts` test that does not load the Worker bundle. Node
+  environment, 5s test and hook timeout.
+- `component`: `tests/**/*.test.tsx`, under jsdom, 5s test and hook timeout. See
+  [Component tests](#component-tests).
 - `integration`: the auth and medicine storage suites, which run the Worker bundle
   (`.worker-build`) in local workerd/D1. 30s test and hook timeout. The auth suite
   also starts `next start`, so it needs a production build in `.next` (`pnpm build`).
@@ -28,8 +30,9 @@ per-test timeout only when the test's own deadlines are longer, as the dev-stack
 tests do.
 
 ```sh
-pnpm test:unit                           # unit project, no Worker build
+pnpm test:unit                           # unit and component projects, no Worker build
 pnpm test:unit tests/http.test.mjs       # one file
+pnpm test:unit medications-list          # files matching a name
 pnpm test:integration                    # builds the Worker, then integration
 ```
 
@@ -37,6 +40,29 @@ Tests import `test` and hooks from `vitest`; there are no global test functions.
 They use synthetic configuration and identities. They do not access production
 personal data or prove a deployed Google callback or remote D1 configuration.
 `pnpm worker:build` is a dry run; it does not deploy resources.
+
+## Component tests
+
+Component tests prove a screen's loading, refresh and failure states in seconds,
+without a browser, server or Worker. They render the real feature component with
+React Testing Library and assert with jest-dom matchers, registered in
+`tests/helpers/component-setup.ts`.
+
+- Network: MSW (`tests/helpers/msw-server.ts`) answers at the network layer. Each test
+  adds its handlers with `server.use`, counting reads where the test needs it. An
+  unhandled request fails the test.
+- Query: each test creates a client with `createQueryClient()`, never
+  `sessionQueryClient()`, and seeds cached data with `setQueryData` and `updatedAt`.
+- Next.js: mock `next/navigation` with `vi.mock`.
+- Time: `vi.useFakeTimers({ shouldAdvanceTime: true })` with async advances: wrap
+  `vi.advanceTimersByTimeAsync` in `act`, and pass it to `userEvent.setup({ advanceTimers })`.
+- Focus and reconnect: dispatch real DOM events on `window` (`focus` or
+  `visibilitychange`, then `offline` and `online`), not Query's managers, so the
+  app's listener wiring is proven.
+- After each test, the setup file unmounts rendered output, resets MSW handlers and
+  restores real timers.
+
+`tests/medications-list.test.tsx` is the reference.
 
 ## Browser journeys
 
@@ -64,7 +90,12 @@ fails fast when any build input (`src`, `public`, Next.js, TypeScript and PostCS
 config, `package.json`, lockfile, `.env` files) is newer than `.next/BUILD_ID`; rerun through the
 wrapper. Global setup also fails when `.next/BUILD_ID` or `.worker-build/index.js`
 is missing. Run builds and journeys sequentially when they share `.next` or
-`.worker-build`. Run `pnpm verify:local` after the journeys.
+`.worker-build`.
+
+Local journey policy: once after implementation, run the journeys the ticket names
+plus the specs that exercise a route or flow the change edits, in one
+`pnpm test:browser:build <names>` run. Then run `pnpm verify:local`. List the
+journeys by file in the Linear evidence. CI runs all journeys.
 
 For faster iteration on one journey, `MEDDIES_BROWSER_DEV=1 pnpm test:browser <spec>`
 starts `next dev --webpack` per test instead of `next start`, with no production
@@ -147,23 +178,32 @@ Every change to data-driven UI includes a review of each applicable state in
 [DESIGN.md](../DESIGN.md#loading-and-saving) against the
 [rendering rules](agents/nextjs.md).
 
-Route-owned journeys for streamed routes prove, with delayed server responses:
+Prove each state at the cheapest level that can prove it.
 
-- On direct loads and uncached client navigation, the authenticated shell and
-  section fallbacks appear before server-backed content, and independent reads
-  overlap rather than run in sequence.
-- Hydration reuses server data, with no duplicate initial browser request for
-  the same query.
+[Component tests](#component-tests) prove, with MSW responses:
+
+- Refresh keeps content.
+- Stale or out-of-order responses do not overwrite newer state.
+- Focus and reconnect refresh, with no polling.
+- Rejection, lost response and conflict recovery.
+
+Route-owned journeys prove behavior only a real browser and app can, with delayed
+server responses:
+
+- Streaming order and fallbacks: on direct loads and uncached client navigation,
+  the authenticated shell and section fallbacks appear before server-backed
+  content, and independent reads overlap rather than run in sequence.
+- Hydration reuses server data, with no duplicate initial browser request for the
+  same query.
 - Layout stays stable while fallbacks resolve. Measure cumulative layout shift
   across the load and compare it with the route's budget, justified in its ticket.
-- Refresh and mutation keep content, stale or out-of-order responses do not
-  overwrite newer state, and focus, reconnect and local rollover refresh without
-  polling.
-- Rejection, lost response and conflict recovery; navigation during a save;
-  sign-out or expiry clearing private client state.
+- Stale-on-entry across real navigation.
+- Navigation during a save.
+- Sign-out or expiry clearing private client state.
+- Local rollover, when it depends on the server scheduling clock.
 
-Delay and fail responses through journey fixtures, not with timers in product
-code. Do not add lint rules that count
+Delay and fail responses through MSW handlers or journey fixtures, not with timers
+in product code. Do not add lint rules that count
 Suspense boundaries; prove behavior instead.
 
 Record metrics in the active Linear issue: streaming order, request counts,
