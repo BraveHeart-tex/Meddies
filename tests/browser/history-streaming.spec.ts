@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test'
 import { expect, test } from './fixtures'
 import {
   doseRow,
+  historyDateNav as dateNav,
   historyFallback as fallback,
   historyList,
   placeholders,
@@ -46,7 +47,6 @@ test.use({
 })
 
 const doses = (page: Page, date = today) => historyList(page, date)
-const dateNav = (page: Page) => page.getByRole('navigation', { name: 'History date' })
 
 // History renders hydrated server data, so the browser must not read it again after load.
 function expectNoRepeatedReads(api: ApiRequestCounter) {

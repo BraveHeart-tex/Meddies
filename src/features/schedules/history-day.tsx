@@ -50,8 +50,10 @@ export function HistoryDay({
   }, [notice, today])
   const heading = longDateLabel(date, today)
 
+  // The notice is its own page section, 20px above the day (FE-690), so this renders two
+  // siblings of History's section column.
   return (
-    <section aria-labelledby={dayHeadingId} className="flex flex-col gap-3.5">
+    <>
       {notice === 'invalid' && (
         <Alert>
           <Icon name="warning" size={16} />
@@ -61,56 +63,58 @@ export function HistoryDay({
           </AlertDescription>
         </Alert>
       )}
-      {result.status === 'unauthorized' ? (
-        <Alert role="alert" variant="destructive">
-          <AlertTitle id={dayHeadingId} ref={focusTarget} tabIndex={-1}>
-            Your session ended.
-          </AlertTitle>
-          <AlertDescription>
-            <Link className="underline" href="/">
-              Sign in again
-            </Link>{' '}
-            to view history.
-          </AlertDescription>
-        </Alert>
-      ) : result.status === 'unavailable' ? (
-        <Alert role="alert" variant="destructive">
-          <AlertTitle id={dayHeadingId} ref={focusTarget} tabIndex={-1}>
-            History for {dateLabel(date, today)} could not be loaded.
-          </AlertTitle>
-          <AlertDescription className="flex flex-col items-start gap-2">
-            <p>Connect to the internet and retry. Your records have not changed.</p>
-            <Button type="button" variant="outline" onClick={result.retry}>
-              Retry this date
-            </Button>
-          </AlertDescription>
-        </Alert>
-      ) : result.doses.length === 0 ? (
-        <Card variant="dashed">
-          <CardContent>
-            <h2
-              id={dayHeadingId}
-              ref={focusTarget}
-              tabIndex={-1}
-              className="font-extrabold outline-none"
-            >
-              {date === today
-                ? 'No doses were due before now today.'
-                : `No doses were scheduled on ${heading}.`}
-            </h2>
-          </CardContent>
-        </Card>
-      ) : (
-        <LoadedDay
-          date={date}
-          today={today}
-          heading={heading}
-          doses={result.doses}
-          medicines={result.medicines}
-          focusTarget={focusTarget}
-        />
-      )}
-    </section>
+      <section aria-labelledby={dayHeadingId} className="flex flex-col gap-3.5">
+        {result.status === 'unauthorized' ? (
+          <Alert role="alert" variant="destructive">
+            <AlertTitle id={dayHeadingId} ref={focusTarget} tabIndex={-1}>
+              Your session ended.
+            </AlertTitle>
+            <AlertDescription>
+              <Link className="underline" href="/">
+                Sign in again
+              </Link>{' '}
+              to view history.
+            </AlertDescription>
+          </Alert>
+        ) : result.status === 'unavailable' ? (
+          <Alert role="alert" variant="destructive">
+            <AlertTitle id={dayHeadingId} ref={focusTarget} tabIndex={-1}>
+              History for {dateLabel(date, today)} could not be loaded.
+            </AlertTitle>
+            <AlertDescription className="flex flex-col items-start gap-2">
+              <p>Connect to the internet and retry. Your records have not changed.</p>
+              <Button type="button" variant="outline" onClick={result.retry}>
+                Retry this date
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : result.doses.length === 0 ? (
+          <Card variant="dashed">
+            <CardContent>
+              <h2
+                id={dayHeadingId}
+                ref={focusTarget}
+                tabIndex={-1}
+                className="font-extrabold outline-none"
+              >
+                {date === today
+                  ? 'No doses were due before now today.'
+                  : `No doses were scheduled on ${heading}.`}
+              </h2>
+            </CardContent>
+          </Card>
+        ) : (
+          <LoadedDay
+            date={date}
+            today={today}
+            heading={heading}
+            doses={result.doses}
+            medicines={result.medicines}
+            focusTarget={focusTarget}
+          />
+        )}
+      </section>
+    </>
   )
 }
 

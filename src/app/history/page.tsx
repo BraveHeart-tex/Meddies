@@ -74,11 +74,14 @@ export default async function HistoryPage({
     <SessionBoundary ownerId={session.user.id} expires={session.expires}>
       <SchedulingClockProvider serverNow={now.toISOString()}>
         <AppShell>
-          <AppHeader title="History" />
-          <HistoryDateNav today={today} />
-          <Suspense fallback={<HistoryDayFallback date={date} today={today} notice={notice} />}>
-            <HistoryDateResults date={date} today={today} notice={notice} />
-          </Suspense>
+          {/* Today's 20px section column, so the header stays put between tabs (FE-690). */}
+          <div className="flex flex-col gap-5">
+            <AppHeader title="History" />
+            <HistoryDateNav today={today} />
+            <Suspense fallback={<HistoryDayFallback date={date} today={today} notice={notice} />}>
+              <HistoryDateResults date={date} today={today} notice={notice} />
+            </Suspense>
+          </div>
         </AppShell>
       </SchedulingClockProvider>
     </SessionBoundary>

@@ -31,6 +31,9 @@ export const instant = (scope: Page | Locator, iso: string) =>
 export const historyList = (page: Page, date: string) =>
   page.getByRole('list', { name: `Doses for ${date}` })
 
+/** History's date bar: Previous day, the DatePicker and Next day. */
+export const historyDateNav = (page: Page) => page.getByRole('navigation', { name: 'History date' })
+
 /** History rows for a date. */
 export const historyRows = (page: Page, date: string) =>
   historyList(page, date).getByRole('listitem')
@@ -79,3 +82,7 @@ export const todayFallback = (page: Page) =>
 /** History's results fallback (648·H4), shown while a date's reads are held. */
 export const historyFallback = (page: Page) =>
   page.getByRole('status').filter({ hasText: 'Loading history' })
+
+/** The box History's results fallback (648·H4) occupies; its status is a visually hidden line. */
+export const historyFallbackSection = (page: Page) =>
+  page.locator('[data-slot="loading-section"]').filter({ has: historyFallback(page) })
