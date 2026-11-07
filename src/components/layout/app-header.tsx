@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { Icon } from '@/components/ui/icon'
+import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 
 export function AppHeader({
   title,
@@ -16,13 +18,50 @@ export function AppHeader({
   subtitle?: ReactNode
   action?: ReactNode
 }) {
+  return (
+    <HeaderFrame action={action} headingClassName="[overflow-wrap:anywhere]">
+      {eyebrow && <p className="text-body-sm font-bold text-muted-foreground">{eyebrow}</p>}
+      <h1 className="text-display font-extrabold">{title}</h1>
+      {subtitle && <p className="text-caption font-bold text-muted-foreground">{subtitle}</p>}
+    </HeaderFrame>
+  )
+}
+
+/** The header before its eyebrow and title are known: placeholder bars beside the real Settings. */
+export function AppHeaderSkeleton() {
+  return (
+    <HeaderFrame headingClassName="@container">
+      <div className="flex h-[1lh] items-center text-body-sm">
+        <Skeleton className="h-3 w-30 max-w-full rounded-md" />
+      </div>
+      <div className="flex flex-col text-display">
+        <div className="flex h-[1lh] items-center">
+          <Skeleton className="h-6.5 w-50 max-w-full rounded-lg" />
+        </div>
+        {/* Greetings are 185-212px wide, so a narrower column (200% zoom) wraps the title. */}
+        <div className="hidden h-[1lh] items-center @max-[12rem]:flex">
+          <Skeleton className="h-6.5 w-28 max-w-full rounded-lg" />
+        </div>
+      </div>
+    </HeaderFrame>
+  )
+}
+
+// Shared by the header and its skeleton so both keep the same geometry.
+function HeaderFrame({
+  children,
+  action,
+  headingClassName,
+}: {
+  children: ReactNode
+  action?: ReactNode
+  headingClassName: string
+}) {
   const pathname = usePathname()
   return (
     <header className="flex flex-wrap items-start justify-between gap-3">
-      <div className="flex min-w-[min(100%,11rem)] flex-1 flex-col gap-1 [overflow-wrap:anywhere]">
-        {eyebrow && <p className="text-body-sm font-bold text-muted-foreground">{eyebrow}</p>}
-        <h1 className="text-display font-extrabold">{title}</h1>
-        {subtitle && <p className="text-caption font-bold text-muted-foreground">{subtitle}</p>}
+      <div className={cn('flex min-w-[min(100%,11rem)] flex-1 flex-col gap-1', headingClassName)}>
+        {children}
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-2">
         {action}

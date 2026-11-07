@@ -1,7 +1,7 @@
 # Meddies
 
-A personal medication reminder and tracker. These terms describe how saves, drafts and the
-signed-in session behave from the user's side.
+A personal medication reminder and tracker. These terms describe how loading, saves, drafts
+and the signed-in session behave from the user's side.
 
 ## Saves and drafts
 
@@ -26,3 +26,10 @@ _Avoid_: saved draft, offline draft, autosave
 Sign-out or expiry of the signed-in session, which removes all private data, session drafts and
 pending or unconfirmed saves from the browser. Losing the network is not session end.
 _Avoid_: logout, signed-out state
+
+## Loading
+
+**Cold launch**:
+Opening Meddies in a tab with nothing loaded yet. The user sees placeholders in the final layout
+until the first content arrives.
+_Avoid_: splash screen, boot
