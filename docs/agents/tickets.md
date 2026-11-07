@@ -29,6 +29,10 @@ the ticket that owns each nearby item.
 - Set blockers as native Linear relations. Add a "Blocked by" section only when a
   blocker cannot be linked.
 - Describe behaviour, not file paths. Link stable docs and design artifacts.
+- Write "Tests prove…" for logic and UI states. Name a browser journey only for
+  behaviour that needs a real browser and app: route navigation, SSR, hydration and
+  streaming, layout and viewport, or the auth and Worker path
+  ([verification](../verification.md)).
 - A ticket with sub-issues is a parent. It lists the slices, an ownership list
   and the shared rules, and its only criterion is that the slices are Done.
 
