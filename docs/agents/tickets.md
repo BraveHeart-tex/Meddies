@@ -4,6 +4,39 @@ How to write Linear issues so an agent can finish them without guessing. The
 `/to-tickets` and `/triage` skills follow these rules. Labels are defined in
 [triage labels](triage-labels.md), terms in [GLOSSARY.md](../../GLOSSARY.md).
 
+## Selecting work
+
+When asked for the next task, read the top row of the
+[Meddies What's Next view](https://linear.app/karacadev/view/meddies-whats-next-e5459d3a2a92).
+Linearis has no custom-view command. From the repo root, fetch candidates with:
+
+```sh
+node scripts/linear-next.mjs | jq '{view, next}'
+```
+
+The helper reads credentials in memory through the installed Linearis resolver
+(`LINEAR_API_TOKEN`, encrypted stored token, then legacy token file). It sends
+read-only GraphQL requests to `https://api.linear.app/graphql`; credentials stay
+out of command arguments, output and repo files. Do not print token files, export
+resolved tokens through shell commands, or enable request/header debug logging.
+See [Linear API authentication](https://linear.app/developers/graphql).
+
+The query uses the view's live filters and saved priority direction, with Linear's
+priority tie-breaker and unprioritized issues last. It returns the first ten
+candidates and selects the first as `next`; `next: null` means the view is empty.
+The helper rejects grouping, nesting, hidden parents/sub-issues or unsupported
+ordering instead of guessing the top row. If settings change, inspect the view
+and update the helper before selecting work. Browser-only temporary filters are
+not included.
+
+Verified with Linearis 2026.8.0. Its internal `common/auth.js` resolver is an
+integration dependency: recheck it after CLI upgrades. If unavailable, fix the
+installation or run `linearis auth login`; do not dump credentials to diagnose it.
+
+Read the selected issue, its discussions and current blockers through Linearis
+before starting. Keep task order and blocker relations in Linear; fetch them again
+when selecting work.
+
 ## Shape
 
 Each ticket is a **tracer bullet**: one narrow, complete path through every layer
@@ -50,7 +83,8 @@ leaves the item unowned. That pattern is how FE-644 skipped work.
 
 ## Creating
 
-- Pass `--project "Meddies - Medication Reminder & Tracker"`. Without it the user
+- For every FE issue, including sub-issues, pass
+  `--project "Meddies - Medication Reminder & Tracker"`. Without it the user
   cannot see the issue.
 - Give each ticket one category label and one state label. Use `ready-for-agent`
   only for tickets from a breakdown the user approved. Every other new ticket gets
