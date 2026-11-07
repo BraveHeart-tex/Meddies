@@ -9,7 +9,7 @@ import type { Medicine } from '@/features/medicines/contract'
 import type { DoseOccurrence } from './contract'
 import { DoseSaveProblem } from './dose-save-problem'
 import { doseClock } from './taken-form-schema'
-import type { SaveProblem } from './use-dose-outcome-mutation'
+import type { SaveProblem } from './dose-saves'
 
 // Explicit skip confirmation (FE-648 R4). A skip records no intake time or quantity.
 export function SkippedForm({

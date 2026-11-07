@@ -40,6 +40,7 @@ class SessionSaves {
   entries = new Map<string, SaveAttempt>()
   observers = new Map<string, number>()
   listeners = new Set<() => void>()
+  endListeners = new Set<() => void>()
   version = 0
   // Toast identity survives route host remounts. Session end removes every private Toast.
   toasts = new Map<string, string>()
@@ -55,6 +56,10 @@ class SessionSaves {
     }
   }
   snapshot = () => this.version
+  /** Other session-owned stores (dose saves) end with this one. */
+  onEnd(listener: () => void) {
+    this.endListeners.add(listener)
+  }
   emit() {
     this.version++
     this.listeners.forEach((listener) => listener())
@@ -105,6 +110,8 @@ class SessionSaves {
     this.entries.clear()
     this.emit()
     this.listeners.clear()
+    this.endListeners.forEach((listener) => listener())
+    this.endListeners.clear()
   }
 }
 

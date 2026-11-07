@@ -143,8 +143,10 @@ a generic form builder or the legacy shadcn `Form` wrapper.
   and render one form-level Alert above the primary action; values are never discarded.
   Root errors clear on the next submit. Exception: the intake form
   ([`taken-form.tsx`](../src/features/schedules/taken-form.tsx)) shows errors and the
-  saving state from `useDoseOutcomeMutation`, which DoseActions owns for Taken, Skipped and
-  corrections; the form keeps values only and must not become a second mutation owner. After server confirmation, `reset(defaults)` and
+  saving state from `useDoseOutcomeMutation`, which observes the session dose save store
+  (`dose-saves.ts`) for Taken, Skipped and corrections. The store's pending flag is the
+  duplicate-submit lock; the form keeps values only and must not become a second mutation
+  owner. After server confirmation, `reset(defaults)` and
   clear the request ID. Known offline (`navigator.onLine` false) disables the primary as
   _Connect to save_ with an Alert; it never queues a save.
 - **Dynamic rows:** use `useFieldArray` with its generated `id` as the React key, row-level

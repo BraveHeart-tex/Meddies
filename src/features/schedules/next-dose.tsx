@@ -5,7 +5,7 @@ import { Icon } from '@/components/ui/icon'
 import type { Medicine } from '@/features/medicines/contract'
 import { istanbulDate, type DoseOccurrence } from './contract'
 import { doseClock as clock } from './taken-form'
-import type { PendingDose } from './use-dose-outcome-mutation'
+import type { PendingDose } from './dose-saves'
 import { DoseStatusBadge } from './dose-status-badge'
 
 export function formatDayLabel(instant: string) {

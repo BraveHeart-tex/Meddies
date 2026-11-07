@@ -5,10 +5,11 @@ import type { Locator, Page } from '@playwright/test'
 
 /**
  * Today, the session boundary and stale Query reads refresh on window focus. A headless
- * page never gains or loses OS focus, so dispatch the event the app listens for.
+ * page never gains or loses OS focus, so dispatch the event the app listens for. A FocusEvent,
+ * like the browser's, carries the `relatedTarget` the Toast viewport reads.
  */
 export async function focusWindow(page: Page) {
-  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+  await page.evaluate(() => window.dispatchEvent(new FocusEvent('focus')))
 }
 
 /** Reflow check: no locator exposes document scroll width. */

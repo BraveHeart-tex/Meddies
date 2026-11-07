@@ -31,3 +31,24 @@ export function outcomeConfirmation({
     previous === 'Taken' ? 'intake changed to' : corrected ? 'changed to taken at' : 'taken at'
   return `${head} ${action} ${doseClock(record.takenAt)}${day}, ${quantityLabel(record.quantity, unit)}`
 }
+
+/**
+ * A later check found the record of an unconfirmed save (FE-648 F5), for example
+ * 'Omega-3 14:00 · already saved as taken at 14:00, 2 capsules'.
+ */
+export function reconciledConfirmation({
+  label,
+  unit,
+  record,
+}: {
+  label: string
+  unit: DoseUnit
+  record: DoseOutcomeRecord
+}) {
+  const head = `${label} ${doseClock(record.dueAt)} · already saved as`
+  if (record.outcome === 'Skipped') return `${head} skipped, no intake recorded`
+  const dueDate = istanbulDate(new Date(record.dueAt))
+  const takenDate = istanbulDate(new Date(record.takenAt))
+  const day = takenDate === dueDate ? '' : ` on ${dateLabel(takenDate, dueDate)}`
+  return `${head} taken at ${doseClock(record.takenAt)}${day}, ${quantityLabel(record.quantity, unit)}`
+}

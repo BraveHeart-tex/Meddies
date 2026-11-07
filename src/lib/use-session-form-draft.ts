@@ -12,16 +12,33 @@ export function discardSessionFormDraft(client: QueryClient, key: string) {
   drafts.get(client)?.delete(key)
 }
 
+/** Non-form draft values, such as which outcome an open drawer had chosen. */
+export function readSessionDraft<T>(client: QueryClient, key: string) {
+  return drafts.get(client)?.get(key) as T | undefined
+}
+export function writeSessionDraft(client: QueryClient, key: string, value: unknown) {
+  let store = drafts.get(client)
+  if (!store) {
+    store = new Map()
+    drafts.set(client, store)
+  }
+  store.set(key, structuredClone(value))
+}
+
 /** Preserve raw editing values, including incomplete fields, until save or explicit discard. */
 export function useSessionFormDraft<T extends FieldValues, O extends FieldValues>(
-  key: string,
+  /** Null keeps no draft. */
+  key: string | null,
   form: UseFormReturn<T, unknown, O>,
 ) {
   const client = useQueryClient()
   const defaults = useRef(JSON.stringify(form.getValues()))
-  const [restored, setRestored] = useState(() => drafts.get(client)?.has(key) ?? false)
+  const [restored, setRestored] = useState(() =>
+    key === null ? false : (drafts.get(client)?.has(key) ?? false),
+  )
 
   useEffect(() => {
+    if (key === null) return
     let store = drafts.get(client)
     if (!store) {
       store = new Map()
@@ -42,7 +59,7 @@ export function useSessionFormDraft<T extends FieldValues, O extends FieldValues
   return {
     restored,
     discard() {
-      drafts.get(client)?.delete(key)
+      if (key !== null) drafts.get(client)?.delete(key)
       setRestored(false)
     },
   }

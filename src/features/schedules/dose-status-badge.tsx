@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Icon, type IconName } from '@/components/ui/icon'
-import type { PendingDose } from './use-dose-outcome-mutation'
+import type { PendingDose } from './dose-saves'
 import type { DoseOccurrence } from './contract'
 
 const appearances: Record<

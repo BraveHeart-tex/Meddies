@@ -14,11 +14,10 @@ import { doseClock, TakenForm } from './taken-form'
 import { DoseDrawer } from './dose-drawer'
 import { outcomeConfirmation } from './dose-confirmation'
 import { ScheduledChip } from './scheduled-chip'
-import {
-  useDoseOutcomeMutation,
-  type RecordCheck,
-  type PendingDose,
-} from './use-dose-outcome-mutation'
+import { RecordedElsewhere, RecordedOutcome } from './recorded-outcome'
+import type { AttemptForm, RecordCheck } from './dose-saves'
+import { useDoseDrawerDraft } from './use-dose-drawer-draft'
+import { useDoseOutcomeMutation } from './use-dose-outcome-mutation'
 
 type Outcome = DoseOutcomeRecord['outcome']
 export type DoseDrawerOpener = { open: (outcome: Outcome) => void }
@@ -29,7 +28,6 @@ export function DoseActions({
   refresh,
   checkRecorded,
   onRecorded,
-  onPending,
   appearance = 'button',
   opener,
   todayDate,
@@ -40,20 +38,21 @@ export function DoseActions({
   refresh: () => Promise<boolean>
   /** Reloads once after an uncertain new outcome (Today only). */
   checkRecorded?: () => Promise<RecordCheck>
-  onPending?: (attempt: PendingDose, clear?: boolean) => void
   onRecorded: (record: DoseOutcomeRecord) => boolean | void
   appearance?: 'row' | 'button'
   opener?: Ref<DoseDrawerOpener>
   todayDate?: string
   describedBy?: string
 }) {
-  const [editor, setEditor] = useState<Outcome | null>(null)
+  // Unsaved drawer details survive navigation for the session (FE-674).
+  const draft = useDoseDrawerDraft(dose.id)
+  const [editor, setEditor] = useState<Outcome | null>(draft.initial?.editor ?? null)
   const [correcting, setCorrecting] = useState(false)
   const [editingDose, setEditingDose] = useState<DoseOccurrence | null>(null)
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(draft.initial !== undefined)
   const rowTrigger = useRef<HTMLButtonElement>(null)
   const returnFocus = useRef<HTMLElement | null>(null)
-  const [openedWithoutOutcome, setOpenedWithoutOutcome] = useState(false)
+  const [openedWithoutOutcome, setOpenedWithoutOutcome] = useState(!!draft.initial?.editor)
   const [savingOutcome, setSavingOutcome] = useState<Outcome>('Taken')
   const {
     submit,
@@ -61,6 +60,7 @@ export function DoseActions({
     error,
     needsReview,
     problem,
+    attempt,
     clearFeedback,
     clearError,
     dismissReview,
@@ -69,10 +69,13 @@ export function DoseActions({
     resetRetry,
   } = useDoseOutcomeMutation({
     dose,
+    medicine,
+    drawerOpen,
     refresh,
     checkRecorded,
-    onPending,
     onRecorded(record) {
+      // Also runs after Today unmounts, so a confirmed save never restores its draft.
+      draft.discard()
       const superseded = onRecorded(record) === true
       // Confirmed by the server: a Toast without Undo (FE-648 F2, C5).
       toast.add({
@@ -88,6 +91,7 @@ export function DoseActions({
       })
     },
     onFinished() {
+      draft.discard()
       setCorrecting(false)
       setEditingDose(null)
       setEditor(null)
@@ -97,9 +101,9 @@ export function DoseActions({
     },
   })
 
-  function save(outcome: Outcome, details: Record<string, unknown>) {
+  function save(outcome: Outcome, details: Record<string, unknown>, form?: AttemptForm) {
     setSavingOutcome(outcome)
-    return submit(outcome, details)
+    return submit(outcome, details, form)
   }
 
   function edit(outcome: Outcome | null) {
@@ -115,11 +119,14 @@ export function DoseActions({
 
   function choose(outcome: Outcome) {
     edit(outcome)
-    if (!recorded) setOpenedWithoutOutcome(true)
+    if (recorded) return
+    setOpenedWithoutOutcome(true)
+    draft.write(outcome)
   }
 
   function closeEditor(open: boolean) {
     if (open) return
+    draft.discard()
     edit(null)
     setOpenedWithoutOutcome(false)
     setDrawerOpen(false)
@@ -127,6 +134,14 @@ export function DoseActions({
       setCorrecting(false)
       pinCorrection(null)
     }
+  }
+
+  // Reopening an unconfirmed attempt shows its details with Retry (D13, F6).
+  const unconfirmed = problem?.kind === 'uncertain' && attempt !== null && !needsReview
+  function openDrawer() {
+    clearFeedback()
+    setDrawerOpen(true)
+    if (!recorded && unconfirmed && attempt) choose(attempt.outcome)
   }
 
   useImperativeHandle(opener, () => ({
@@ -139,6 +154,9 @@ export function DoseActions({
     },
   }))
 
+  // An unconfirmed attempt's problem belongs to its own outcome's form only.
+  const attemptMatches = (outcome: Outcome) =>
+    problem?.kind !== 'uncertain' || !attempt || attempt.outcome === outcome
   const verb = recorded ? 'Review' : 'Record'
   const triggerLabel = `${verb} dose for ${medicine.label} scheduled at ${doseClock(dose.dueAt)}`
   const choosing = !recorded || correcting || (openedWithoutOutcome && editor !== null)
@@ -158,8 +176,7 @@ export function DoseActions({
           aria-label={triggerLabel}
           onClick={() => {
             returnFocus.current = rowTrigger.current
-            clearFeedback()
-            setDrawerOpen(true)
+            openDrawer()
           }}
         >
           <span className="sr-only">{verb} dose</span>
@@ -175,32 +192,38 @@ export function DoseActions({
           aria-label={triggerLabel}
           onClick={() => {
             returnFocus.current = rowTrigger.current
-            clearFeedback()
-            setDrawerOpen(true)
+            openDrawer()
           }}
         >
           {verb} dose
         </Button>
       )}
-      {!drawerOpen && error && editor === null && !correcting && editingDose === null && (
-        <Alert className="relative z-10 mt-1 basis-full [overflow-wrap:anywhere]">
-          <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
-            <p>{error}</p>
-            {needsReview && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  void refresh()
-                  dismissReview()
-                }}
-              >
-                Review current outcome
-              </Button>
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
+      {!drawerOpen &&
+        error &&
+        !unconfirmed &&
+        editor === null &&
+        !correcting &&
+        editingDose === null && (
+          <Alert className="relative z-10 mt-1 basis-full [overflow-wrap:anywhere]">
+            <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
+              <p>{error}</p>
+              {needsReview && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    void refresh()
+                    // A closed unconfirmed attempt ends here; a conflict only hides its button.
+                    if (attempt) reviewCurrent()
+                    else dismissReview()
+                  }}
+                >
+                  Review current outcome
+                </Button>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
       <DoseDrawer
         open={drawerOpen}
         saving={saving}
@@ -210,6 +233,7 @@ export function DoseActions({
         description={[medicine.strength, medicine.unit].filter(Boolean).join(' · ')}
         finalFocus={returnFocus}
         onClose={() => {
+          draft.discard()
           setDrawerOpen(false)
           setEditor(null)
           setCorrecting(false)
@@ -233,33 +257,10 @@ export function DoseActions({
             </AlertDescription>
           </Alert>
         )}
-        {openedWithoutOutcome && recorded && editor !== null && (
-          <Alert role="status">
-            <AlertDescription className="text-foreground">
-              This dose was recorded while your form was open. Your draft is still here; review the
-              outcome before saving.
-            </AlertDescription>
-          </Alert>
-        )}
+        {openedWithoutOutcome && recorded && editor !== null && <RecordedElsewhere dose={dose} />}
         {recorded && (!correcting || needsReview) && (
           <>
-            <p className="font-extrabold">
-              {dose.status === 'Taken' ? (
-                <>
-                  Taken {dose.record.quantity} {medicine.unit}
-                  {dose.record.quantity === 1 ? '' : 's'} at{' '}
-                  <time dateTime={dose.record.takenAt}>{doseClock(dose.record.takenAt)}</time>
-                  {istanbulDate(new Date(dose.record.takenAt)) !==
-                    istanbulDate(new Date(dose.dueAt)) &&
-                    ` on ${dateLabel(
-                      istanbulDate(new Date(dose.record.takenAt)),
-                      istanbulDate(new Date(dose.dueAt)),
-                    )}`}
-                </>
-              ) : (
-                'Skipped. No intake recorded.'
-              )}
-            </p>
+            <RecordedOutcome dose={dose} unit={medicine.unit} />
             <fieldset
               disabled={needsReview}
               data-base-ui-swipe-ignore="y"
@@ -367,10 +368,13 @@ export function DoseActions({
             open={editor === 'Taken'}
             saving={saving}
             reviewRequired={needsReview}
-            problem={editor === 'Taken' ? problem : null}
+            problem={editor === 'Taken' && attemptMatches('Taken') ? problem : null}
             mode={correcting && recorded ? 'correct' : 'record'}
+            restore={attempt?.outcome === 'Taken' ? attempt.form : undefined}
+            // An unconfirmed attempt's own values win over any draft (D13).
+            draftKey={correcting || attempt?.outcome === 'Taken' ? null : draft.takenKey}
             onOpen={closeEditor}
-            onSubmit={(details) => save('Taken', details)}
+            onSubmit={(details, form) => save('Taken', details, form)}
           />
         )}
         {(!recorded || correcting || editor === 'Skipped') && (
@@ -380,7 +384,7 @@ export function DoseActions({
             open={editor === 'Skipped'}
             saving={saving}
             reviewRequired={needsReview}
-            problem={editor === 'Skipped' ? problem : null}
+            problem={editor === 'Skipped' && attemptMatches('Skipped') ? problem : null}
             onOpen={closeEditor}
             onSubmit={() => void save('Skipped', {})}
             refresh={refresh}

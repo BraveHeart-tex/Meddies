@@ -1,7 +1,7 @@
 import { InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import type { DoseOutcomeRecord } from './contract'
-import type { SaveProblem } from './use-dose-outcome-mutation'
+import type { SaveProblem } from './dose-saves'
 
 const rejected: Record<DoseOutcomeRecord['outcome'], string> = {
   Taken: 'Taken time must be a time that has already passed. Change the time and save again.',

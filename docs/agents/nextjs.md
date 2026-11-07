@@ -125,7 +125,11 @@ Record these decisions in the owning ticket for each changed route:
 Medicine Add and schedule setup drafts and submitted saves live in session memory,
 scoped to the browser Query client. Route unmounts never cancel these saves.
 The session feedback host keeps pending saves visible and reports confirmation or
-recovery through the app-level Toast host (FE-668). Dose save lifetime is owned by FE-624.
+recovery through the app-level Toast host (FE-668). Dose saves live in the session's
+dose save store (`dose-saves.ts`, FE-674): a pending save survives the drawer and Today,
+its row badge reads the store, and a result with no drawer watching reaches the user as a
+Toast. Unconfirmed attempts stay on their rows, are rechecked on focus and reconnect, and
+confirm once when a matching record arrives.
 
 `/medications` query states (`?add`, `?medicine`, `?schedule`) render one mounted
 `MedicinePanel`, so its client state persists across them; reset per-screen state
@@ -148,8 +152,9 @@ when the screen changes.
   Returning restores values through RHF reset, with “Unsaved details from earlier.”
   and a ghost “Clear form”. Confirmed saves and Clear form discard the draft;
   Clear form also resets defaults. Navigation, refresh and clock rollover never
-  discard it. No browser storage is used. Dose draft lifetime is owned by FE-624.
-  Drawer dismissal follows [DESIGN.md](../../DESIGN.md) (FE-631). Keep
+  discard it. No browser storage is used. The dose drawer keeps its chosen outcome and
+  Taken values the same way, reopening itself on return with “Unsaved details from
+  earlier.”; explicit dismissal is its Clear form (FE-674). Drawer dismissal follows [DESIGN.md](../../DESIGN.md) (FE-631). Keep
   the selected History date in the URL.
 - **Online only:** setup, schedule edits and snooze are server-confirmed with no
   optimistic state. New writes need connectivity. Optimistic dose display does

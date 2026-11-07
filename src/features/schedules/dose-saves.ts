@@ -1,0 +1,371 @@
+import { hashKey, type QueryClient } from '@tanstack/react-query'
+import { toast } from '@/components/ui/toast'
+import type { DoseUnit } from '@/lib/dose-quantity'
+import { sessionSaves } from '@/lib/session-saves'
+import { parseDoseOutcomeRecord, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
+import { reconciledConfirmation } from './dose-confirmation'
+import { matchesDoseReceipt, type DoseAttempt } from './dose-receipt'
+import { scheduleKeys, scheduleSnapshotQuery, type ScheduleSnapshot } from './queries'
+import { doseClock } from './taken-form-schema'
+
+type Outcome = DoseOutcomeRecord['outcome']
+export type PinnedCorrection = { outcome: Outcome; revision: number }
+/** A fresh cache-backed check found a record, no record, or failed. */
+export type RecordCheck = { record: DoseOutcomeRecord } | 'missing' | 'unknown'
+export type SaveProblem =
+  { kind: 'rejected' | 'unauthorized' } | { kind: 'uncertain'; checked: boolean }
+/** What a dose row shows while its save is pending or unconfirmed (FE-650 D21). */
+export type PendingDose = { id: string; outcome: Outcome; unconfirmed?: boolean }
+/** Raw Taken form values at submit and the Now minute they used, to reopen the attempt. */
+export type AttemptForm = { values: unknown; now: string }
+
+/** One occurrence's save, owned by the session so leaving Today or closing the drawer keeps it. */
+export type DoseSave = {
+  /** The exact request a retry resends; null once the attempt is discarded. */
+  attempt: DoseAttempt | null
+  correction: PinnedCorrection | null
+  form?: AttemptForm
+  medicine: { label: string; unit: DoseUnit }
+  pending: boolean
+  problem: SaveProblem | null
+  error: string
+  needsReview: boolean
+}
+
+/** The mounted screen's callbacks; the latest mount's are used, the last ones after unmount. */
+export type DoseSaveEffects = {
+  refresh: () => Promise<boolean>
+  checkRecorded?: () => Promise<RecordCheck>
+  onRecorded: (record: DoseOutcomeRecord) => void
+}
+
+export type DoseSaveRequest = {
+  dose: DoseOccurrence
+  outcome: Outcome
+  details: Record<string, unknown>
+  correction: PinnedCorrection | null
+  form?: AttemptForm
+  medicine: DoseSave['medicine']
+}
+
+export const doseSaveKey = (dose: Pick<DoseOccurrence, 'scheduleId' | 'dueAt'>) =>
+  `${dose.scheduleId}|${dose.dueAt}`
+
+/** An unconfirmed attempt still offers Retry and is rechecked on focus and reconnect (F5, F6). */
+export const isUnconfirmed = (save: DoseSave | undefined) =>
+  !!save?.attempt && !save.pending && save.problem?.kind === 'uncertain' && !save.needsReview
+
+const snapshotHash = hashKey(scheduleKeys.snapshot())
+
+class DoseSaves {
+  entries = new Map<string, DoseSave>()
+  observers = new Map<string, number>()
+  /** Bumps when a result ends the drawer's work (confirmed or conflict), so an observer closes. */
+  finished = new Map<string, number>()
+  effects = new Map<string, DoseSaveEffects>()
+  openDrawers = new Set<string>()
+  listeners = new Set<() => void>()
+  version = 0
+  active = true
+  private stop: () => void
+
+  constructor(private client: QueryClient) {
+    // Any successful snapshot read, Today's own or the recheck below, can establish receipt.
+    const unsubscribe = client.getQueryCache().subscribe((event) => {
+      if (
+        event.type === 'updated' &&
+        event.action.type === 'success' &&
+        event.query.queryHash === snapshotHash
+      )
+        this.reconcile(event.query.state.data as ScheduleSnapshot | undefined)
+    })
+    const recheck = () => {
+      if (document.visibilityState === 'visible') this.recheck()
+    }
+    // Today server-renders; only the browser store listens for focus and reconnect.
+    if (typeof window === 'undefined') {
+      this.stop = unsubscribe
+      return
+    }
+    window.addEventListener('focus', recheck)
+    window.addEventListener('visibilitychange', recheck)
+    window.addEventListener('online', recheck)
+    this.stop = () => {
+      unsubscribe()
+      window.removeEventListener('focus', recheck)
+      window.removeEventListener('visibilitychange', recheck)
+      window.removeEventListener('online', recheck)
+    }
+  }
+
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener)
+    return () => {
+      this.listeners.delete(listener)
+    }
+  }
+  snapshot = () => this.version
+  private emit() {
+    this.version++
+    this.listeners.forEach((listener) => listener())
+  }
+
+  /** Sets an entry, dropping it once nothing is left to show or retry. */
+  set(key: string, save: DoseSave | undefined) {
+    if (!this.active) return
+    if (!save || (!save.attempt && !save.pending && !save.error && !save.needsReview))
+      this.entries.delete(key)
+    else this.entries.set(key, save)
+    this.emit()
+  }
+  update(key: string, patch: Partial<DoseSave>) {
+    const save = this.entries.get(key)
+    if (save) this.set(key, { ...save, ...patch })
+  }
+  /** Ends the attempt so the next save starts a new one. */
+  discard(key: string) {
+    this.update(key, { attempt: null, correction: null, form: undefined })
+  }
+  /** A mounted row or drawer; results with none mounted reach the user as a Toast. */
+  observe(key: string) {
+    this.observers.set(key, (this.observers.get(key) ?? 0) + 1)
+    return () => {
+      this.observers.set(key, (this.observers.get(key) ?? 1) - 1)
+    }
+  }
+  /** An open drawer keeps Retry while the current outcome changes (FE-673). */
+  openDrawer(key: string) {
+    this.openDrawers.add(key)
+    return () => {
+      this.openDrawers.delete(key)
+      // A record found while the drawer was open is applied once it closes.
+      this.reconcile(this.client.getQueryData(scheduleKeys.snapshot()))
+    }
+  }
+  private finish(key: string) {
+    this.finished.set(key, (this.finished.get(key) ?? 0) + 1)
+    this.emit()
+  }
+
+  /** F6: what an unconfirmed attempt tried to save, for its row. */
+  retryDetails(key: string) {
+    const save = this.entries.get(key)
+    if (!isUnconfirmed(save) || !save?.attempt) return null
+    const { outcome, takenAt, quantity } = save.attempt.payload
+    return outcome === 'Taken'
+      ? { outcome, takenAt: String(takenAt), quantity: Number(quantity) }
+      : { outcome }
+  }
+
+  /** Pending and unconfirmed badges by occurrence key. */
+  pendingDose(key: string): PendingDose | undefined {
+    const save = this.entries.get(key)
+    if (!save?.attempt) return undefined
+    const { id, payload } = save.attempt
+    if (save.pending) return { id, outcome: payload.outcome }
+    if (isUnconfirmed(save)) return { id, outcome: payload.outcome, unconfirmed: true }
+  }
+
+  async submit(key: string, request: DoseSaveRequest) {
+    const previous = this.entries.get(key)
+    if (!this.active || previous?.pending || previous?.needsReview) return
+    const { dose, outcome, details, correction } = request
+    const fingerprint = JSON.stringify({ outcome, details, dose: dose.id, correction })
+    let attempt = previous?.attempt
+    if (!attempt || attempt.fingerprint !== fingerprint) {
+      const id = crypto.randomUUID()
+      attempt = {
+        id,
+        fingerprint,
+        method: correction ? 'PATCH' : 'PUT',
+        payload: {
+          ...details,
+          outcome,
+          scheduleId: dose.scheduleId,
+          dueAt: dose.dueAt,
+          ...(correction
+            ? {
+                actionId: id,
+                expectedRevision: correction.revision,
+                expectedOutcome: correction.outcome,
+              }
+            : {}),
+        },
+      }
+    }
+    const sent = attempt
+    this.set(key, {
+      attempt,
+      correction,
+      form: request.form,
+      medicine: request.medicine,
+      pending: true,
+      problem: null,
+      error: '',
+      needsReview: false,
+    })
+    const effects = () => this.effects.get(key)
+    const settle = (patch: Partial<DoseSave>) => {
+      this.update(key, { pending: false, ...patch })
+      this.notifyAway(key, dose)
+    }
+    const confirm = (record: DoseOutcomeRecord) => {
+      effects()?.onRecorded(record)
+      // A receipt completes only the attempt whose response/check it belongs to.
+      if (this.entries.get(key)?.attempt?.id === sent.id) {
+        this.set(key, undefined)
+        this.finish(key)
+      } else this.update(key, { pending: false })
+    }
+    try {
+      const response = await fetch('/api/schedules', {
+        method: sent.method,
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(12000),
+        body: JSON.stringify(sent.payload),
+      })
+      if (!this.active) return
+      if (response.status === 400) {
+        settle({
+          problem: { kind: 'rejected' },
+          error:
+            outcome === 'Taken'
+              ? 'Not saved. Taken time must be a time that has already passed. Change the time and save again.'
+              : 'This scheduled dose can no longer be skipped. Refresh Today to check its status.',
+        })
+      } else if (response.status === 401) {
+        settle({
+          problem: { kind: 'unauthorized' },
+          error: 'Your session ended. Sign in again to record this dose.',
+        })
+      } else if (response.status === 409) {
+        await effects()
+          ?.refresh()
+          .catch(() => false)
+        settle({
+          attempt: null,
+          correction: null,
+          form: undefined,
+          error: correction
+            ? 'This dose changed elsewhere. Your correction was not saved. Review its current outcome before correcting it again.'
+            : 'An outcome already exists for this dose. Review its current outcome.',
+          needsReview: true,
+        })
+        this.finish(key)
+      } else if (response.ok) {
+        const body = await response.json()
+        const record = parseDoseOutcomeRecord(body.record)
+        if (!matchesDoseReceipt(record, sent)) throw new Error('acknowledgment')
+        confirm(record)
+      } else {
+        throw new Error('uncertain')
+      }
+    } catch {
+      if (!this.active) return
+      const checkRecorded = effects()?.checkRecorded
+      const check: RecordCheck =
+        checkRecorded && navigator.onLine
+          ? await checkRecorded().catch((): RecordCheck => 'unknown')
+          : 'unknown'
+      if (!this.active) return
+      const found = typeof check === 'object' ? check.record : null
+      if (found && matchesDoseReceipt(found, sent)) {
+        confirm(found)
+      } else if (found && (!correction || (found.revision ?? 0) !== correction.revision)) {
+        // Current outcome is known; receipt of this attempt is still unknown. Keep its details.
+        settle({
+          problem: { kind: 'uncertain', checked: false },
+          error: 'This dose has changed. Review its current outcome',
+          needsReview: true,
+        })
+      } else {
+        settle({
+          problem: { kind: 'uncertain', checked: check === 'missing' },
+          error: 'Save could not be confirmed. Connect and retry with the same details.',
+        })
+      }
+    }
+  }
+
+  /** A result that arrives with no drawer watching reaches the user wherever they are (F1). */
+  private notifyAway(key: string, dose: DoseOccurrence) {
+    const save = this.entries.get(key)
+    if (!save || this.observers.get(key)) return
+    const head = `${save.medicine.label} ${doseClock(dose.dueAt)} ·`
+    toast.add({
+      title: isUnconfirmed(save)
+        ? `${head} save not confirmed. Open Today to retry`
+        : save.needsReview
+          ? `${head} not saved. Review its current outcome on Today`
+          : `${head} not saved. Open Today to try again`,
+      type: 'warning',
+      timeout: 0,
+    })
+  }
+
+  /** Focus and reconnect read Today again while an attempt is unconfirmed (F5). */
+  private recheck() {
+    if (![...this.entries.values()].some(isUnconfirmed)) return
+    // Joins a read already in flight, such as Today's own focus refresh.
+    void this.client.fetchQuery({ ...scheduleSnapshotQuery(), staleTime: 0 }).catch(() => {})
+  }
+
+  /**
+   * A record matching an unconfirmed attempt confirms it once, with "already saved" wording.
+   * A different current outcome leaves a closed row explicit review instead of a lasting
+   * "Not confirmed"; an open drawer keeps offering Retry (FE-673).
+   */
+  private reconcile(snapshot: ScheduleSnapshot | undefined) {
+    if (!snapshot) return
+    for (const [key, save] of this.entries) {
+      if (!isUnconfirmed(save) || !save.attempt) continue
+      const { scheduleId, dueAt } = save.attempt.payload
+      const found = snapshot.records.find(
+        (record) => record.scheduleId === scheduleId && record.dueAt === dueAt,
+      )
+      if (!found) continue
+      if (!matchesDoseReceipt(found, save.attempt)) {
+        const changed = !save.correction || (found.revision ?? 0) !== save.correction.revision
+        if (changed && !this.openDrawers.has(key))
+          this.update(key, {
+            problem: { kind: 'uncertain', checked: false },
+            error: 'This dose has changed. Review its current outcome',
+            needsReview: true,
+          })
+        continue
+      }
+      this.set(key, undefined)
+      this.finish(key)
+      toast.add({
+        title: reconciledConfirmation({ ...save.medicine, record: found }),
+        type: found.outcome === 'Taken' ? 'success' : 'skipped',
+      })
+    }
+  }
+
+  end() {
+    this.active = false
+    this.stop()
+    this.entries.clear()
+    this.effects.clear()
+    this.version++
+    this.listeners.forEach((listener) => listener())
+    this.listeners.clear()
+  }
+}
+
+const stores = new WeakMap<QueryClient, DoseSaves>()
+
+/** The session's dose saves; they end with the session's other saves (FE-669). */
+export function doseSaves(client: QueryClient) {
+  let store = stores.get(client)
+  if (!store) {
+    const session = sessionSaves(client)
+    const created = new DoseSaves(client)
+    stores.set(client, created)
+    if (session.active) session.onEnd(() => created.end())
+    else created.end()
+    store = created
+  }
+  return store
+}

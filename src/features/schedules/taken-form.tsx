@@ -20,11 +20,12 @@ import {
 import { TimePicker } from '@/components/ui/time-picker'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useKnownOffline } from '@/lib/use-known-offline'
+import { useSessionFormDraft } from '@/lib/use-session-form-draft'
 import type { Medicine } from '@/features/medicines/contract'
 import type { DoseOccurrence } from './contract'
 import { DoseSaveProblem } from './dose-save-problem'
 import { useCurrentMinute } from './use-current-minute'
-import type { SaveProblem } from './use-dose-outcome-mutation'
+import type { AttemptForm, SaveProblem } from './dose-saves'
 import {
   doseClock,
   instantOf,
@@ -79,6 +80,8 @@ export function TakenForm({
   onOpen,
   onSubmit,
   mode = 'record',
+  restore,
+  draftKey = null,
 }: {
   dose: DoseOccurrence
   medicine: Medicine
@@ -88,13 +91,17 @@ export function TakenForm({
   /** Why the last save was not confirmed; an uncertain retry with unchanged details saves once. */
   problem: SaveProblem | null
   onOpen: (open: boolean) => void
-  onSubmit: (details: TakenFormOutput) => Promise<void>
+  onSubmit: (details: TakenFormOutput, form: AttemptForm) => Promise<void>
   mode?: Mode
+  /** An unconfirmed attempt's values and Now minute, so reopening retries it exactly (F6). */
+  restore?: AttemptForm
+  /** Keeps unsaved values for the session across navigation (FE-667 store). */
+  draftKey?: string | null
 }) {
   const id = useId()
   // A pending or unconfirmed Now save keeps its minute, so a retry has the same details (D12, F4).
   const uncertain = problem?.kind === 'uncertain'
-  const now = useCurrentMinute(!saving && !uncertain)
+  const now = useCurrentMinute(!saving && !uncertain, uncertain ? restore?.now : undefined)
   const offline = useKnownOffline()
   const scheduled = localMinute(dose.dueAt)
   const original =
@@ -111,15 +118,20 @@ export function TakenForm({
     resolver: zodResolver(schema),
     // Other's pickers register after Amount, so focus follows screen order instead (onInvalid).
     shouldFocusError: false,
-    defaultValues: takenFormDefaults(
-      dose.status === 'Taken' ? dose.record.quantity : dose.quantity,
-      mode === 'edit' ? original : undefined,
-    ),
+    defaultValues:
+      (restore?.values as TakenFormValues | undefined) ??
+      takenFormDefaults(
+        dose.status === 'Taken' ? dose.record.quantity : dose.quantity,
+        mode === 'edit' ? original : undefined,
+      ),
   })
+  const draft = useSessionFormDraft(draftKey, form)
   const values = useWatch({ control: form.control })
   // Validated details of the last submit. The mutation reuses its action id while they match,
   // so a change after an unconfirmed save starts a new one (F4).
-  const [submitted, setSubmitted] = useState<string | null>(null)
+  const [submitted, setSubmitted] = useState<string | null>(() =>
+    restore ? JSON.stringify(schema.safeParse(restore.values).data ?? null) : null,
+  )
   const changedSinceSave =
     uncertain && submitted !== JSON.stringify(schema.safeParse(values).data ?? null)
 
@@ -131,7 +143,7 @@ export function TakenForm({
 
   async function save(details: TakenFormOutput) {
     setSubmitted(JSON.stringify(details))
-    await onSubmit(details)
+    await onSubmit(details, { values: form.getValues(), now })
   }
 
   function focusFirstInvalid(errors: FieldErrors<TakenFormValues>) {
@@ -187,6 +199,10 @@ export function TakenForm({
       >
         <FieldSet disabled={saving} className="min-w-0 gap-4.5">
           <FieldLegend className="sr-only">Actual intake for {medicine.label}</FieldLegend>
+          {/* Closing the drawer is this form's Clear form: dismissal discards the draft. */}
+          {draft.restored && (
+            <p className="text-body-sm text-muted-foreground">Unsaved details from earlier.</p>
+          )}
           {mode !== 'edit' && !scheduledHasPassed && (
             <Alert>
               <InfoIcon aria-hidden="true" />
