@@ -181,6 +181,58 @@ or a link click after `blockPrefetch` for a cold client navigation. Then call
 `expectReadsOverlap` and `expectStreamingOrder`. `history-streaming.spec.ts` is the
 reference, including the failure state with `fail(route, 503)`.
 
+### Request counts, layout shift and loading captures
+
+`history-streaming.spec.ts` is the reference for the counter and layout helper.
+
+**Request counter** (`tests/browser/requests.ts`): `countApiRequests(page, app.origin)`
+counts the browser's requests per app API path (`/api/schedules`), any method, query
+ignored. Server reads go from Next.js to the Worker and never appear, so a zero count
+proves the client reused the data the server rendered (hydration reuse). Start it
+before `page.goto`; call `reset()` just before a client navigation. A count only proves
+absence for requests started by the time it is read, so read it after the content is
+visible and, on a direct load, after `page.waitForLoadState('load')`.
+
+**Layout helper** (`tests/browser/layout.ts`): `trackLayout(page, viewport)` sets the
+viewport and observes `layout-shift` entries from the next document, so call it before
+`page.goto`. Loop over `layoutViewports` (320px and 402px) with one test each, so CI
+covers both without the `narrow` project. `snapshot(stage)` records the boxes of the
+header, Settings link and Primary nav (or the locators you pass); `result()` returns
+`cumulativeLayoutShift`, `shifts`, the separate `inputShift` and `inputShifts`, and the
+snapshots. For a client navigation, call `start()` just before the click. Limits:
+
+- Chromium only (Layout Instability API); not WebKit or a real iPhone.
+- A plain sum of shifts since the start, not web-vitals' largest five-second session
+  window, so a long load can only score higher.
+- Shifts within 500ms of input (`hadRecentInput`) are left out of the total. After a
+  link click the fallback swap usually falls in that window, so cold-navigation numbers
+  undercount; budget against direct loads.
+- Elements inserted or removed, such as a fallback replaced by content, are not shifts.
+  Compare snapshot boxes between `fallback` and `loaded` to catch geometry jumps.
+
+**Budgets:** a route ticket records `result()` at both widths (log it and attach it as
+the test does), then sets a budget with a justification in the ticket and asserts
+`cumulativeLayoutShift` against it. Request counts are asserted exactly: zero repeated
+initial reads per path after load, unless the ticket justifies otherwise.
+
+**Loading captures** (`tests/browser/capture.ts`): `loading-capture.spec.ts` passes a
+route list (name, path, fallback and content locators) to `captureLoading`. For each
+route at 402px, 320px and 200% zoom (201x437), with reduced motion on and off, it holds
+every Worker read, loads the route, waits for stylesheets and fonts (under
+`MEDDIES_BROWSER_DEV=1` the first paint after `commit` can precede the CSS), then saves
+the fallback screenshot, releases and saves the loaded one. It writes
+`loading-capture.json` with each capture's status labels, horizontal overflow and
+shell boxes. It is opt-in and never a CI assertion: the spec skips unless
+`MEDDIES_VISUAL_OUT` is set, and writes there.
+
+```sh
+MEDDIES_VISUAL_OUT=/tmp/meddies-capture pnpm test:browser:build loading-capture
+```
+
+Route tickets add their route to the spec and paste the JSON summary into their issue.
+A route whose data loads in the client, like Today before FE-672, uses its client
+loading status as the fallback.
+
 Locator policy, enforced by lint in `tests/browser/**`:
 
 - Prefer role, then label, then text, then a domain `data-*` id such as

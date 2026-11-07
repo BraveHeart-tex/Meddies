@@ -61,3 +61,13 @@ export const firstCalendarDay = (scope: Page | Locator) => scope.locator('button
 
 /** Loading placeholders. They must stay hidden from assistive technology. */
 export const placeholders = (page: Page) => page.locator('[data-slot="skeleton"]')
+
+/** The cold launch fallback (649·L1), shown while a route's server reads are held. */
+export const rootFallback = (page: Page) =>
+  page.getByRole('status').filter({ hasText: 'Opening Meddies' })
+
+/** The Today dose list. */
+export const todaysDoses = (page: Page) => page.getByRole('list', { name: "Today's doses" })
+
+/** The page header (title row with Settings). It sits inside `main`, so it is not a banner. */
+export const appHeader = (page: Page) => page.locator('main header').first()

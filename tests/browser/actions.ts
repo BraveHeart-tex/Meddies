@@ -28,3 +28,55 @@ export async function clickTwiceSynchronously(button: Locator) {
     element.click()
   })
 }
+
+/** One `layout-shift` performance entry, as the Layout Instability API reports it. */
+export type LayoutShiftEntry = { value: number; startTime: number; hadRecentInput: boolean }
+
+/**
+ * Layout shift has no Playwright API, so record the browser's `layout-shift` entries from the
+ * start of every document the page loads. Chromium only (the Layout Instability API).
+ */
+export async function observeLayoutShifts(page: Page) {
+  await page.addInitScript(() => {
+    const target = window as unknown as { __meddiesLayoutShifts?: LayoutShiftEntry[] }
+    // Each call adds an init script; only the first observes, so entries are not doubled.
+    if (target.__meddiesLayoutShifts) return
+    const entries: LayoutShiftEntry[] = (target.__meddiesLayoutShifts = [])
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as unknown as LayoutShiftEntry[])
+        entries.push({
+          value: entry.value,
+          startTime: entry.startTime,
+          hadRecentInput: entry.hadRecentInput,
+        })
+    }).observe({ type: 'layout-shift', buffered: true })
+  })
+}
+
+/**
+ * The current document's layout-shift entries and clock, recorded by `observeLayoutShifts`.
+ * They live in page memory, which no Playwright API reads.
+ */
+export async function layoutShifts(page: Page) {
+  return page.evaluate(() => ({
+    now: performance.now(),
+    entries: [
+      ...((window as unknown as { __meddiesLayoutShifts?: LayoutShiftEntry[] })
+        .__meddiesLayoutShifts ?? []),
+    ],
+  }))
+}
+
+/**
+ * Whether every stylesheet and web font has loaded. A held stream never fires `load`, and under
+ * `next dev` the first paint after `commit` can come before the CSS, so measuring then is wrong.
+ */
+export async function stylesheetsLoaded(page: Page) {
+  return page.evaluate(
+    () =>
+      document.fonts.status === 'loaded' &&
+      [...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].every(
+        (link) => link.sheet !== null,
+      ),
+  )
+}
