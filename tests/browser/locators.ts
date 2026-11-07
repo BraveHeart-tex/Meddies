@@ -71,3 +71,7 @@ export const todaysDoses = (page: Page) => page.getByRole('list', { name: "Today
 
 /** The page header (title row with Settings). It sits inside `main`, so it is not a banner. */
 export const appHeader = (page: Page) => page.locator('main header').first()
+
+/** Today's doses section fallback (648·T1), shown while its server reads are held. */
+export const todayFallback = (page: Page) =>
+  page.getByRole('status').filter({ hasText: 'Loading today’s doses' })

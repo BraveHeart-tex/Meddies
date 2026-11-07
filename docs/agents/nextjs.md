@@ -14,6 +14,39 @@ is the reference implementation; do not copy older client-fetch, polling or
 [FE-639](https://linear.app/karacadev/issue/FE-639/validate-todayhistory-architecture-before-route-rollout)
 gate before other routes adopt this architecture.
 
+Working Today source to copy (streaming, FE-672):
+
+- Page: [`src/app/page.tsx`](../../src/app/page.tsx) authenticates, renders the shell
+  and [`TodayHeader`](../../src/features/schedules/today-header.tsx), and streams one
+  doses section in `<Suspense>` with `HydrationBoundary`.
+- Server prefetch: [`src/features/schedules/prefetch.ts`](../../src/features/schedules/prefetch.ts)
+  into the request client from [`src/lib/request-query-client.ts`](../../src/lib/request-query-client.ts).
+- Section: [`schedule-panel.tsx`](../../src/features/schedules/schedule-panel.tsx) and
+  [`today-schedule.tsx`](../../src/features/schedules/today-schedule.tsx); fallback
+  [`today-doses-fallback.tsx`](../../src/features/schedules/today-doses-fallback.tsx)
+  (cached section on warm navigation, else the
+  [`today-skeleton.tsx`](../../src/features/schedules/today-skeleton.tsx) skeleton).
+- Query keys and options: [`src/features/schedules/queries.ts`](../../src/features/schedules/queries.ts),
+  [`src/features/medicines/queries.ts`](../../src/features/medicines/queries.ts).
+- Browser specs: [`tests/browser/today-streaming.spec.ts`](../../tests/browser/today-streaming.spec.ts);
+  component spec [`tests/today-schedule.test.tsx`](../../tests/today-schedule.test.tsx).
+
+Lessons from Today:
+
+- Shell components outside a section's `HydrationBoundary` must not create that
+  section's query (not even `enabled: false`). Hydration of an existing query is
+  deferred to an effect, so the section's observer fetches it again. Watch the cache
+  with `useCachedQueryData` (`src/lib/use-cached-query-data.ts`) instead.
+- The server cannot see the browser cache, so a section's Suspense fallback renders
+  the cached section when the session already holds its queries, and the skeleton
+  only without usable data (DESIGN.md).
+- A query with `staleTime: 0` refetches as it mounts with hydrated data. When the page's
+  server prefetch is the entry read, the route's observer sets `refetchOnMount: false`
+  (`useScheduleSnapshot({ serverEntry: true })`). Do not raise `staleTime` instead:
+  focus refresh and `fetchQuery`-based fresh reads honour it.
+- Modules the server prefetch imports (feature `queries.ts`) stay free of client-only
+  hooks such as `useSyncExternalStore`.
+
 FE-638 slices adopt these rules in stages. Until FE-624 lands, a rule the owning
 ticket lists under Out of scope is not a violation. Reviewers: read the owning
 ticket's Out of scope before reporting a missing rule.

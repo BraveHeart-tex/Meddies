@@ -178,12 +178,13 @@ into evidence, with no duration thresholds:
 Route tickets hold their reads first, then start the navigation: `page.goto(url,
 { waitUntil: 'commit' })` for a direct load, because a held stream never fires `load`,
 or a link click after `blockPrefetch` for a cold client navigation. Then call
-`expectReadsOverlap` and `expectStreamingOrder`. `history-streaming.spec.ts` is the
+`expectReadsOverlap` and `expectStreamingOrder`. `today-streaming.spec.ts` is the
 reference, including the failure state with `fail(route, 503)`.
 
 ### Request counts, layout shift and loading captures
 
-`history-streaming.spec.ts` is the reference for the counter and layout helper.
+`today-streaming.spec.ts` is the reference for the counter and layout helper, including a
+layout-shift budget.
 
 **Request counter** (`tests/browser/requests.ts`): `countApiRequests(page, app.origin)`
 counts the browser's requests per app API path (`/api/schedules`), any method, query
@@ -230,8 +231,7 @@ MEDDIES_VISUAL_OUT=/tmp/meddies-capture pnpm test:browser:build loading-capture
 ```
 
 Route tickets add their route to the spec and paste the JSON summary into their issue.
-A route whose data loads in the client, like Today before FE-672, uses its client
-loading status as the fallback.
+A route whose data loads in the client uses its client loading status as the fallback.
 
 Locator policy, enforced by lint in `tests/browser/**`:
 

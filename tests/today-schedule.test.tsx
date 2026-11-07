@@ -1,14 +1,22 @@
-import { QueryClientProvider, onlineManager, type QueryClient } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  dehydrate,
+  HydrationBoundary,
+  QueryClientProvider,
+  onlineManager,
+  type QueryClient,
+} from '@tanstack/react-query'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Medicine } from '../src/features/medicines/contract'
-import { MedicinePanel } from '../src/features/medicines/medicine-panel'
 import { medicineKeys } from '../src/features/medicines/queries'
 import type { DailySchedule, DoseOutcomeRecord } from '../src/features/schedules/contract'
 import { scheduleToday } from '../src/features/schedules/occurrences'
 import { scheduleKeys } from '../src/features/schedules/queries'
+import { SchedulePanel } from '../src/features/schedules/schedule-panel'
+import { TodayDosesFallback } from '../src/features/schedules/today-doses-fallback'
+import { TodayHeader } from '../src/features/schedules/today-header'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
 
@@ -100,10 +108,20 @@ afterEach(() => {
   onlineManager.setOnline(true)
 })
 
+/** Today's client parts as the page composes them: the shell header and the doses section. */
+function Today({ now = initialNow }: { now?: string }) {
+  return (
+    <>
+      <TodayHeader initialNow={now} />
+      <SchedulePanel mode="today" initialNow={now} />
+    </>
+  )
+}
+
 function renderToday(now = initialNow) {
   render(
     <QueryClientProvider client={client}>
-      <MedicinePanel scheduleMode="today" initialNow={now} />
+      <Today now={now} />
     </QueryClientProvider>,
   )
   return userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
@@ -134,7 +152,7 @@ describe('freshness', () => {
     await advance(3 * 60_000)
     await waitFor(() => expect(api.reads()).toBe(2))
     expect(screen.queryByRole('list', { name: "Today's doses" })).not.toBeInTheDocument()
-    expect(screen.getByText('Loading your scheduled doses and medicines...')).toBeVisible()
+    expect(screen.getByText('Loading today’s doses')).toBeVisible()
     release()
     expect(await doses()).toHaveTextContent('Scheduled')
     expect(screen.getByText('Sunday, 15 November')).toBeVisible()
@@ -152,7 +170,11 @@ describe('with a cached snapshot', () => {
     )
   }
 
-  test('entry shows the cached doses while one refresh runs', async () => {
+  // The page's server read is Today's entry read, so mounting with cached data reads nothing;
+  // focus, reconnect and Refresh Today reconcile.
+  const focus = () => fireEvent(window, new Event('focus'))
+
+  test('cached doses stay on screen while one refresh runs', async () => {
     const api = schedulesApi(initialNow, [
       scheduleFor('09:00'),
       { ...scheduleFor('10:00'), id: '00000000-0000-4000-8000-0000000000a2' },
@@ -161,10 +183,9 @@ describe('with a cached snapshot', () => {
     const release = api.hold()
     renderToday()
     expect(await doses()).toHaveTextContent('09:00')
+    focus()
     await waitFor(() => expect(api.reads()).toBe(1))
-    expect(
-      screen.queryByText('Loading your scheduled doses and medicines...'),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Loading today’s doses')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Refreshing…' })).toBeDisabled()
     release()
     expect(await doses()).toHaveTextContent('10:00')
@@ -172,21 +193,22 @@ describe('with a cached snapshot', () => {
     expect(api.reads()).toBe(1)
   })
 
-  test('focus and reconnect each refresh once', async () => {
+  test('mounting reads nothing; focus and reconnect each refresh once', async () => {
     const api = schedulesApi(initialNow)
     cache(initialNow)
     renderToday()
-    await waitFor(() => expect(api.reads()).toBe(1))
+    expect(await doses()).toHaveTextContent('Morning Tablet')
     await advance(1_000)
-    fireEvent(window, new Event('focus'))
-    await waitFor(() => expect(api.reads()).toBe(2))
+    expect(api.reads()).toBe(0)
+    focus()
+    await waitFor(() => expect(api.reads()).toBe(1))
     fireEvent(window, new Event('offline'))
     await advance(1_000)
-    expect(api.reads()).toBe(2)
+    expect(api.reads()).toBe(1)
     fireEvent(window, new Event('online'))
-    await waitFor(() => expect(api.reads()).toBe(3))
+    await waitFor(() => expect(api.reads()).toBe(2))
     await advance(5 * 60_000)
-    expect(api.reads()).toBe(3)
+    expect(api.reads()).toBe(2)
   })
 
   test('a newer server time re-anchors the statuses', async () => {
@@ -195,6 +217,7 @@ describe('with a cached snapshot', () => {
     const release = api.hold()
     renderToday()
     expect(await doses()).toHaveTextContent('Scheduled')
+    focus()
     release()
     await waitFor(() =>
       expect(screen.getByRole('list', { name: "Today's doses" })).toHaveTextContent('Not logged'),
@@ -207,6 +230,7 @@ describe('with a cached snapshot', () => {
     api.failNext()
     cache(initialNow)
     const user = renderToday()
+    focus()
     expect(await screen.findByText(/Today could not be refreshed/)).toBeVisible()
     expect(await doses()).toHaveTextContent('Morning Tablet')
     await user.click(screen.getByRole('button', { name: 'Retry Today' }))
@@ -240,7 +264,82 @@ describe('recording a dose', () => {
   })
 })
 
+describe('streamed section fallback', () => {
+  const renderFallback = () =>
+    render(
+      <QueryClientProvider client={client}>
+        <TodayDosesFallback initialNow={initialNow} />
+      </QueryClientProvider>,
+    )
+
+  test('shows the session’s cached doses while the server reads', async () => {
+    const api = schedulesApi(initialNow)
+    client.setQueryData(scheduleKeys.snapshot(), {
+      schedules: [scheduleFor('09:00')],
+      records: [],
+      now: initialNow,
+      date: '2026-11-14',
+    })
+    renderFallback()
+    expect(await doses()).toHaveTextContent('Morning Tablet')
+    expect(document.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(0)
+    await advance(1_000)
+    expect(api.reads()).toBe(0)
+  })
+
+  test('shows the skeleton without starting a read when nothing is cached', async () => {
+    const api = schedulesApi(initialNow)
+    renderFallback()
+    expect(screen.getByRole('status')).toHaveTextContent(/^Loading today’s doses$/)
+    await advance(1_000)
+    expect(api.reads()).toBe(0)
+    expect(client.getQueryCache().find({ queryKey: scheduleKeys.snapshot() })).toBeUndefined()
+  })
+})
+
+describe('server hydration', () => {
+  test('a snapshot the server just read renders without a browser read', async () => {
+    const api = schedulesApi(initialNow)
+    const serverClient = createQueryClient()
+    serverClient.setQueryData(scheduleKeys.snapshot(), {
+      schedules: [scheduleFor('09:00')],
+      records: [],
+      now: initialNow,
+      date: '2026-11-14',
+    })
+    client.clear()
+    render(
+      <QueryClientProvider client={client}>
+        {/* As the page composes it: the shell header outside the streamed section's boundary. */}
+        <TodayHeader initialNow={initialNow} />
+        <HydrationBoundary state={dehydrate(serverClient)}>
+          <SchedulePanel mode="today" initialNow={initialNow} />
+        </HydrationBoundary>
+      </QueryClientProvider>,
+    )
+    expect(await doses()).toHaveTextContent('Scheduled')
+    await advance(1_000)
+    expect(api.reads()).toBe(0)
+  })
+})
+
 describe('with no cache', () => {
+  test('the first read holds the doses section with its skeleton and one status', async () => {
+    const api = schedulesApi(initialNow)
+    const release = api.hold()
+    renderToday()
+    await waitFor(() => expect(api.reads()).toBe(1))
+    const section = screen.getByRole('region', { name: 'Your doses' })
+    expect(within(section).getByRole('status')).toHaveTextContent(/^Loading today’s doses$/)
+    const placeholders = section.querySelectorAll('[data-slot="skeleton"]')
+    expect(placeholders).toHaveLength(5)
+    for (const placeholder of placeholders)
+      expect(placeholder).toHaveAttribute('aria-hidden', 'true')
+    release()
+    expect(await doses()).toHaveTextContent('Scheduled')
+    expect(section.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(0)
+  })
+
   test('a failed first read shows the error, and retry loads Today', async () => {
     const api = schedulesApi(initialNow)
     api.failNext()

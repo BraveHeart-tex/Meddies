@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton'
+import { LoadingSection, Skeleton } from '@/components/ui/skeleton'
 
 /**
  * Today's sections before any schedule data arrives (FE-648 T1): the next-dose hero, the doses
@@ -19,5 +19,17 @@ export function TodaySkeleton() {
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * The doses section before its data arrives: one polite status over the Today skeleton. The
+ * streamed page's Suspense fallback and Today's own client loading state both use it.
+ */
+export function TodayDosesLoading() {
+  return (
+    <LoadingSection label="Loading today’s doses">
+      <TodaySkeleton />
+    </LoadingSection>
   )
 }

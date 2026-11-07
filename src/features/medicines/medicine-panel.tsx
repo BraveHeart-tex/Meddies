@@ -22,7 +22,7 @@ export function MedicinePanel({
   detailMedicineId = '',
   initialNow,
 }: {
-  scheduleMode?: 'add' | 'setup' | 'today' | 'list' | 'detail'
+  scheduleMode?: 'add' | 'setup' | 'list' | 'detail'
   scheduleMedicineId?: string
   detailMedicineId?: string
   initialNow: string
@@ -114,29 +114,27 @@ export function MedicinePanel({
   const detail = medicines.find((item) => item.id === detailMedicineId)
   return (
     <div className="flex flex-col gap-5">
-      {scheduleMode !== 'today' && (
-        <AppHeader
-          title="Medications"
-          subtitle={
-            scheduleMode === 'list' && !loading && !loadError
-              ? `${medicines.length} ${medicines.length === 1 ? 'medication' : 'medications'}`
-              : undefined
-          }
-          action={
-            scheduleMode === 'list' && (
-              <Link
-                href="/medications?add"
-                aria-label="Add a medicine"
-                className={buttonVariants({ className: 'rounded-full' })}
-              >
-                <Icon name="plus" data-icon="inline-start" />
-                Add
-              </Link>
-            )
-          }
-        />
-      )}
-      {refreshFailed && scheduleMode !== 'today' && (
+      <AppHeader
+        title="Medications"
+        subtitle={
+          scheduleMode === 'list' && !loading && !loadError
+            ? `${medicines.length} ${medicines.length === 1 ? 'medication' : 'medications'}`
+            : undefined
+        }
+        action={
+          scheduleMode === 'list' && (
+            <Link
+              href="/medications?add"
+              aria-label="Add a medicine"
+              className={buttonVariants({ className: 'rounded-full' })}
+            >
+              <Icon name="plus" data-icon="inline-start" />
+              Add
+            </Link>
+          )
+        }
+      />
+      {refreshFailed && (
         <Alert role="status">
           <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
             <p>Your medicines could not be refreshed. Showing the last successful list.</p>

@@ -1,8 +1,7 @@
 import { resolve } from 'node:path'
-import type { Page } from '@playwright/test'
 import { captureLoading } from './capture'
 import { expect, test } from './fixtures'
-import { historyList, rootFallback, todaysDoses } from './locators'
+import { historyList, rootFallback, todayFallback, todaysDoses } from './locators'
 import { addDays, insertScheduledMedicine } from './seed'
 
 // Opt-in loading evidence for design review, never a CI assertion. Run with
@@ -26,11 +25,6 @@ test.use({
   },
 })
 
-// Today has no server Worker read yet, so the root fallback shows only by chance. Holding the
-// Worker holds Today's client reads instead; FE-672 moves Today to a server-streamed fallback.
-const todayLoading = (page: Page) =>
-  page.getByRole('status').filter({ hasText: 'Loading your scheduled doses and medicines' })
-
 test('capture loading states for review', async ({ page, app }) => {
   // eslint-disable-next-line playwright/no-skipped-test -- opt-in capture, never a CI assertion
   test.skip(!out, 'Set MEDDIES_VISUAL_OUT to capture loading states')
@@ -42,7 +36,7 @@ test('capture loading states for review', async ({ page, app }) => {
       {
         name: 'today',
         path: '/',
-        fallback: todayLoading,
+        fallback: todayFallback,
         content: todaysDoses,
       },
       {

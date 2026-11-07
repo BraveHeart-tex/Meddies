@@ -25,7 +25,7 @@ export function SchedulePanel({
   /** Runs after the server confirms a first schedule. */
   onScheduleSaved?: (medicine: Medicine) => void
 }) {
-  const schedulesRead = useScheduleSnapshot()
+  const schedulesRead = useScheduleSnapshot({ serverEntry: mode === 'today' })
   const {
     snapshot,
     schedules,

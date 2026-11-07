@@ -26,14 +26,7 @@ export async function fetchScheduleSnapshot(signal?: AbortSignal): Promise<Sched
     signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
   })
   if (!response.ok) throw new Error('schedules_read_failed')
-  const data: { schedules: DailySchedule[]; records: DoseOutcomeRecord[]; today: Today } =
-    await response.json()
-  return {
-    schedules: data.schedules,
-    records: data.records,
-    now: data.today.now,
-    date: data.today.date,
-  }
+  return toScheduleSnapshot(await response.json())
 }
 
 /**
@@ -48,9 +41,27 @@ export const scheduleSnapshotQuery = () =>
     staleTime: 0,
   })
 
-/** Reads the cached snapshot; loading and load error apply only until the session has one. */
-export function useScheduleSnapshot() {
-  const read = useQuery(scheduleSnapshotQuery())
+/** The schedules API body as the cached snapshot. Shared by the browser read and server prefetch. */
+export function toScheduleSnapshot(data: {
+  schedules: DailySchedule[]
+  records: DoseOutcomeRecord[]
+  today: Pick<Today, 'now' | 'date'>
+}): ScheduleSnapshot {
+  return {
+    schedules: data.schedules,
+    records: data.records,
+    now: data.today.now,
+    date: data.today.date,
+  }
+}
+
+/**
+ * Reads the cached snapshot; loading and load error apply only until the session has one.
+ * `serverEntry`: the page's server prefetch is the entry read (Today), so mounting with cached
+ * or just-hydrated data does not read again; focus, reconnect and mutations still reconcile.
+ */
+export function useScheduleSnapshot({ serverEntry = false }: { serverEntry?: boolean } = {}) {
+  const read = useQuery({ ...scheduleSnapshotQuery(), refetchOnMount: !serverEntry })
   const { refetch } = read
   const retry = useCallback(() => void refetch(), [refetch])
   // Joins an in-flight read instead of restarting it.
