@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test'
+import { waitForClientRouter } from './actions'
 import { expect, test } from './fixtures'
 import {
   historyList,
@@ -114,6 +115,7 @@ test('warm client navigation shows cached doses instead of the skeleton', async 
   // No prefetched page may stand in for the server read held below.
   await blockPrefetch(page, '/')
   await page.goto('/')
+  await waitForClientRouter(page)
   await expect(todaysDoses(page)).toContainText('Streaming Fixture Medicine')
   const nav = page.getByRole('navigation', { name: 'Primary' })
   await nav.getByRole('link', { name: 'History' }).click()

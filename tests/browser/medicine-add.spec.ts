@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures'
-import { scrollsHorizontally } from './actions'
+import { scrollsHorizontally, waitForClientRouter } from './actions'
 
 test.use({ hasTouch: true, journey: { auth: true, storage: true } })
 
@@ -22,6 +22,7 @@ test('add a medicine: validation, failures keep values, retry saves once, handof
 
   await test.step('open Add from the list with nothing preselected', async () => {
     await page.goto('/medications')
+    await waitForClientRouter(page)
     await page.getByRole('link', { name: 'Add a medicine' }).click()
     await expect(page).toHaveURL(/\/medications\?add$/)
     await expect(page.getByRole('heading', { name: 'Add medicine' })).toBeVisible()

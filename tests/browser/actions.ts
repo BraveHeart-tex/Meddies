@@ -4,6 +4,16 @@ import type { Locator, Page } from '@playwright/test'
 // page.evaluate is allowed only in this file; give each helper a reason.
 
 /**
+ * Visible links can precede hydration; no user-facing API proves the client router owns
+ * history. Next.js 16.4.4 sets __NA when its App Router commits the history entry. An
+ * upgrade could rename this internal marker, causing this helper to time out instead of
+ * silently allowing a full document navigation.
+ */
+export async function waitForClientRouter(page: Page) {
+  await page.waitForFunction(() => window.history.state?.__NA === true)
+}
+
+/**
  * Today, the session boundary and stale Query reads refresh on window focus. A headless
  * page never gains or loses OS focus, so dispatch the event the app listens for. A FocusEvent,
  * like the browser's, carries the `relatedTarget` the Toast viewport reads.

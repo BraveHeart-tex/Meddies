@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
-import { focusWindow } from './actions'
+import { focusWindow, waitForClientRouter } from './actions'
 import { expect, test } from './fixtures'
 import { doseRow, doseStatus, doseTrigger, drawer, toastMessage } from './locators'
 import { insertScheduledMedicine } from './seed'
@@ -32,6 +32,7 @@ test.use({
 /** Enters Today by client navigation, so leaving and returning keep the session in memory. */
 async function openToday(page: Page) {
   await page.goto('/medications')
+  await waitForClientRouter(page)
   await page.getByRole('link', { name: 'Today', exact: true }).click()
   await expect(doseStatus(doseRow(page, dueAt))).toHaveAccessibleDescription('Not logged')
 }
