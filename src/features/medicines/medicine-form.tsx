@@ -49,7 +49,7 @@ async function findSavedMedicine(client: QueryClient, id: string) {
 }
 
 /**
- * Add medicine form: the production reference for React Hook Form (docs/development.md#forms).
+ * Add medicine form: the production reference for React Hook Form (docs/forms.md).
  * Editing values are kept as session drafts; `onSaved` runs only after the server confirms.
  */
 export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => void }) {

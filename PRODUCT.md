@@ -23,7 +23,7 @@ A reminder is never confused with confirmed intake. Every dose outcome is explic
 - Private Google sign-in limited to one allowlisted account. English interface. Schedules and times are in Türkiye time (Europe/Istanbul) and shown in 24-hour format, whatever the device timezone.
 - Main areas: Today (the next action and unresolved doses), Medications (manual setup and schedules), History (past outcomes and corrections), Settings.
 - Closed-app push reminders with bounded follow-ups, snooze, optional quiet hours and generic lock-screen content by default.
-- Writes require connectivity. Dose recording and correction provide optimistic feedback with an explicit unconfirmed state until server acknowledgement. Previously loaded views and drafts remain in memory across app navigation; uncertain saves retain recovery details during the session. Persistent offline viewing, queued offline writes and recovery after reload or app closure are deferred beyond MVP.
+- Writes require connectivity. Dose recording and correction provide optimistic feedback with an explicit unconfirmed state until server acknowledgement. Previously loaded views and drafts remain in memory across app navigation; unconfirmed saves retain recovery details during the session. Persistent offline viewing, queued offline writes and recovery after reload or app closure are deferred beyond MVP.
 
 ## Capabilities and Constraints
 

@@ -2,7 +2,7 @@
 
 How to write Linear issues so an agent can finish them without guessing. The
 `/to-tickets` and `/triage` skills follow these rules. Labels are defined in
-[triage labels](triage-labels.md), terms in [GLOSSARY.md](../../GLOSSARY.md).
+[triage labels](triage-labels.md), terms in [GLOSSARY.md](../GLOSSARY.md).
 
 ## Selecting work
 
@@ -14,24 +14,9 @@ Linearis has no custom-view command. From the repo root, fetch candidates with:
 node scripts/linear-next.mjs | jq '{view, next}'
 ```
 
-The helper reads credentials in memory through the installed Linearis resolver
-(`LINEAR_API_TOKEN`, encrypted stored token, then legacy token file). It sends
-read-only GraphQL requests to `https://api.linear.app/graphql`; credentials stay
-out of command arguments, output and repo files. Do not print token files, export
-resolved tokens through shell commands, or enable request/header debug logging.
-See [Linear API authentication](https://linear.app/developers/graphql).
-
-The query uses the view's live filters and saved priority direction, with Linear's
-priority tie-breaker and unprioritized issues last. It returns the first ten
-candidates and selects the first as `next`; `next: null` means the view is empty.
-The helper rejects grouping, nesting, hidden parents/sub-issues or unsupported
-ordering instead of guessing the top row. If settings change, inspect the view
-and update the helper before selecting work. Browser-only temporary filters are
-not included.
-
-Verified with Linearis 2026.8.0. Its internal `common/auth.js` resolver is an
-integration dependency: recheck it after CLI upgrades. If unavailable, fix the
-installation or run `linearis auth login`; do not dump credentials to diagnose it.
+`next: null` means the view is empty. The helper refuses view settings it cannot
+reproduce (grouping, nesting, unsupported ordering); its header comment covers
+credentials and upgrades. If it fails, fix the helper or run `linearis auth login`.
 
 Read the selected issue, its discussions and current blockers through Linearis
 before starting. Keep task order and blocker relations in Linear; fetch them again
@@ -62,28 +47,24 @@ the ticket that owns each nearby item.
   blocker cannot be linked.
 - Describe behaviour, not file paths. Link stable docs and design artifacts.
 - When handing off a design frame, quote its key geometry (sizes, radii, gaps, copy) in
-  the ticket. Commit the approved artifact as a snapshot in [docs/design](../design/README.md).
+  the ticket. Commit the approved artifact as a snapshot in [docs/design](design/README.md).
 - Five acceptance criteria at most. More means the ticket holds two slices: split it.
 - Evidence is an assertion, not a record: "the journey asserts layout shift ≤ 0.01",
   not "measure and record a budget". The assertion's comment carries the justification.
-- Consolidated loading captures and visual review belong to the wave's gate ticket
-  (FE-639 for Today and History). Route tickets register routes in
-  `loading-capture.spec.ts` and own behavioral assertions. Require route-specific
-  visual evidence only when needed for acceptance; link it from the gate without
-  recapture. Select affected routes and explicit cases under the
-  [visual verification policy](../verification.md#visual-verification).
+- Visual evidence and loading captures follow the gate-ticket rule in
+  [verification](verification.md#browser-journeys).
 - Write "Tests prove…" for logic and UI states. Name a browser journey only for
   behaviour that needs a real browser and app: route navigation, SSR, hydration and
   streaming, layout and viewport, or the auth and Worker path
-  ([verification](../verification.md)).
+  ([verification](verification.md#cheapest-proof)).
 - A ticket with sub-issues is a parent. It lists the slices, an ownership list
   and the shared rules, and its only criterion is that the slices are Done.
 
 ## Ownership
 
-Every item, including every design frame, has exactly one owner ticket. Name that
-ticket everywhere the item is mentioned. Writing two owners ("FE-638/FE-624")
-leaves the item unowned. That pattern is how FE-644 skipped work.
+Every item, including every design frame, has exactly one owner ticket, named
+everywhere the item is mentioned. An item listed under two tickets is effectively
+unowned and gets skipped.
 
 ## Creating
 

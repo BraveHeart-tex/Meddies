@@ -1,3 +1,10 @@
+// Dose writes and replay reconciliation stay together in this module.
+// - Read an exact retry before current-time and occurrence checks, so a replay keeps its
+//   original confirmation instant across midnight.
+// - Original Taken/Skipped rows are immutable; initial writes reject corrected occurrences.
+// - Races are arbitrated by the database, not preflight reads: migration 0004's
+//   cross-outcome triggers, 0005's unique occurrence/revision and owner/action keys, and
+//   one conditional compare-and-append per correction. Keep those constraints installed.
 import { and, eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import { ApplicationError } from '../../src/lib/application-error'

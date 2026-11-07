@@ -2,8 +2,8 @@ import type { Locator, Page } from '@playwright/test'
 import { layoutShifts, observeLayoutShifts, type LayoutShiftEntry } from './actions'
 import { appHeader } from './locators'
 
-// Layout stability evidence for route journeys. See docs/verification.md > Request counts,
-// layout shift and loading captures for what the numbers do and do not cover.
+// Layout stability evidence for route journeys. See tests/browser/README.md > Request counts
+// and layout shift for what the numbers do and do not cover.
 
 export type Viewport = { width: number; height: number }
 

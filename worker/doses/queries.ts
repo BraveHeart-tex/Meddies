@@ -25,6 +25,8 @@ export const takenColumns = {
   outcome: doseRecords.outcome,
 }
 
+// Legacy read contract: Taken originals, including originals later corrected (the
+// snapshot omits `records` without a date). Worker refactors retain this wire form.
 export async function listDoseRecords(
   db: DrizzleD1Database,
   ownerId: string,
@@ -44,6 +46,8 @@ export async function listDoseRecords(
     )
 }
 
+// Effective latest outcome per occurrence; originals carry revision 0 and null
+// action/opposite-outcome fields.
 export async function listDoseOutcomes(db: DrizzleD1Database, ownerId: string, date: string) {
   const start = scheduledInstant(date, '00:00')
   const end = new Date(Date.parse(start) + 86_400_000).toISOString()

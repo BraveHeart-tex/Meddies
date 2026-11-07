@@ -1,7 +1,7 @@
 # Commit conventions
 
 Use `type(FE-n): subject`. Scope to the active Linear issue, or `FE-1` when there
-is none. Read [commitlint.config.mjs](../../commitlint.config.mjs) for allowed types
+is none. Read [commitlint.config.mjs](../commitlint.config.mjs) for allowed types
 and the scope rule.
 
 Inherited conventional rules limit header, body and footer lines to 100 characters.

@@ -25,5 +25,5 @@ To run Next.js with local Worker/D1, follow the [local stack guide](docs/local-s
 
 ## Documentation
 
-See the [AGENTS.md documentation index](AGENTS.md#documentation-index) for
+See the [AGENTS.md docs index](AGENTS.md#docs) for
 development conventions, verification, authentication, and deployment guidance.

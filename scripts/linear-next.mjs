@@ -3,8 +3,20 @@ import { realpathSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-// Linearis 2026.8.0 has no view command. Reuse its credential resolver rather
-// than reading encrypted storage ourselves or passing a token through argv.
+// Prints the top candidates of the Meddies "What's Next" Linear view (docs/tickets.md).
+//
+// Linearis 2026.8.0 has no view command. Reuse its credential resolver
+// (LINEAR_API_TOKEN, encrypted stored token, then legacy token file) rather than
+// reading encrypted storage ourselves or passing a token through argv. Credentials
+// stay in memory: never print token files, export resolved tokens or enable
+// request/header debug logging. `common/auth.js` is internal to Linearis; recheck it
+// after CLI upgrades.
+//
+// The query mirrors the view's live filters and saved priority direction, with
+// Linear's priority tie-breaker and unprioritized issues last, returning ten
+// candidates and `next` as the first. Grouping, nesting, hidden parents/sub-issues
+// or unsupported ordering are rejected rather than guessed; if the view's settings
+// change, update this query. Browser-only temporary filters are not visible here.
 async function main() {
   let token
   try {

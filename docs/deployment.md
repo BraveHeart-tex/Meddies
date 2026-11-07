@@ -19,7 +19,16 @@ uses `pnpm start`; Vercel uses its Next.js integration.
 Use `.node-version` for the local Node version.
 
 Configure private authentication variables and callbacks using [Authentication](authentication.md).
-Configure the medicine Worker and database using [Storage](storage.md#deployment).
+
+## Worker and database
+
+The production D1 binding is `meddies` in `worker/wrangler.jsonc`. Set
+`MEDICINES_WORKER_SECRET` with `wrangler secret put`, and the matching secret and HTTPS
+Worker origin as Vercel Production variables; redeploy Vercel after changing them.
+Cloudflare management credentials stay in the protected release environment or on the
+maintainer machine. Keep synthetic feasibility databases separate from production.
+Releases apply `worker/migrations` before deploying the Worker (below); manual Wrangler
+commands are for coordinated recovery only.
 
 ## Ordered releases
 
@@ -61,9 +70,9 @@ The running release is never canceled by a newer push. Superseded pending commit
 may be skipped; the latest main commit includes their migrations. Do not manually
 cancel an active release or run manual production commands concurrently.
 
-### Initial setup
+### Maintainer runbook: initial setup
 
-As inspected on 2026-11-03, GitHub `BraveHeart-tex/Meddies` defaults to `main`;
+One-time setup by an authorized maintainer. As inspected on 2026-11-03, GitHub `BraveHeart-tex/Meddies` defaults to `main`;
 Vercel project `meddies` is linked to that repository with production branch `main`
 and no deploy hooks. Auth and Worker capability variables are Production-only.
 Vercel authentication protects generated deployment URLs (`all_except_custom_domains`);
@@ -91,7 +100,7 @@ Before enabling the first release, an authorized maintainer must:
   `https://meddies.borakaraca.dev`). Keep deployment protection enabled; no
   bypass token is needed. Both origins must be HTTPS without a trailing slash.
 - Configure the matching Worker secret and Vercel Production variables using
-  [Storage](storage.md#deployment) and [Authentication](authentication.md).
+  [Worker and database](#worker-and-database) and [Authentication](authentication.md).
   The Actions job does not need the medicine capability or Google secrets.
 - Set environment variable `RELEASE_SETUP_CONFIRMED=true` only after the above
   checks. The release command fails before migrations while this gate is absent.

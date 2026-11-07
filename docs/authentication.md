@@ -35,15 +35,10 @@ not revoke copied cookies on other devices or sign out of Google.
 `GET /api/session` exposes only the authenticated ID and absolute expiry, with
 `no-store`; unauthenticated requests return 401. Auth endpoints retain Auth.js CSRF,
 state and PKCE protections. Provider profiles, tokens and error causes are not logged.
-The app hides authenticated content at expiry and checks sessions when focus returns.
-Network loss does not imply sign-out; server operations always check independently.
 
-Keep server Query clients request-scoped, never shared between users. Keep
-private browser data in memory only, in one Query client per authenticated
-session; do not persist it to browser storage. Sign-out and expiry clear that
-cache, session drafts and pending mutations, and stop in-flight responses from
-repopulating them. Hydrated payloads contain display data only, never secrets
-or the Worker capability.
+Session end clears all private browser state; [client state](client-state.md#session-end)
+lists what it covers. Hydrated payloads carry display data only, never secrets or the
+Worker capability.
 
 ## Deployment verification
 

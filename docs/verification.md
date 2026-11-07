@@ -2,387 +2,106 @@
 
 ## Required checks
 
-After installing dependencies, run from the repository root:
-
 ```sh
 pnpm verify:local
 ```
 
-The command runs lint, format check, typecheck, a Webpack production build, and
-tests in order. Webpack avoids the Turbopack CSS worker's local port requirement
-in restricted agent environments. CI and releases use the default Turbopack build.
-Typechecking covers Next.js and Worker source and test TypeScript, including the
-Vitest config.
+Runs lint, format check, typecheck, a Webpack production build and `pnpm test`, in order.
+Webpack sidesteps the Turbopack CSS worker's local port requirement in restricted agent
+environments; CI and releases use Turbopack. Locally the build is skipped when no build
+input changed. Test commands: [tests/README.md](../tests/README.md).
 
-`pnpm test` builds the Worker bundle, then runs the Vitest projects in
-`vitest.config.mts`:
+## Cheapest proof
 
-- `unit`: every `.mjs` and `.ts` test that does not load the Worker bundle. Node
-  environment, 5s test and hook timeout.
-- `component`: `tests/**/*.test.tsx`, under jsdom, 5s test and hook timeout. See
-  [Component tests](#component-tests).
-- `integration`: the auth and medicine storage suites, which run the Worker bundle
-  (`.worker-build`) in local workerd/D1. 30s test and hook timeout. The auth suite
-  also starts `next start`, so it needs a production build in `.next` (`pnpm build`).
+Prove each behavior at the cheapest level that can prove it, with delays and failures
+injected through MSW or journey fixtures, never timers in product code.
 
-A test that never settles fails on its project's timeout and names the test. Pass a
-per-test timeout only when the test's own deadlines are longer, as the dev-stack
-tests do.
+- **Unit tests** prove logic: parsing, scheduling rules, reducers.
+- **[Component tests](../tests/README.md#component-tests)** prove UI states with MSW:
+  refresh keeps content, stale or out-of-order responses lose to newer state, focus and
+  reconnect refresh, rejection, unconfirmed save and conflict recovery.
+- **[Browser journeys](../tests/browser/README.md)** prove what needs a real browser and app:
+  streaming order and fallbacks on direct loads and cold navigation, overlapping reads,
+  hydration reuse (zero duplicate initial requests), layout stability against the route's
+  budget, stale-on-entry, navigation during a save, session end clearing private state,
+  and rollover driven by the scheduling clock.
 
-```sh
-pnpm test:unit                           # unit and component projects, no Worker build
-pnpm test:unit tests/http.test.mjs       # one file
-pnpm test:unit medications-list          # files matching a name
-pnpm test:integration                    # builds the Worker, then integration
-```
-
-Tests import `test` and hooks from `vitest`; there are no global test functions.
-They use synthetic configuration and identities. They do not access production
-personal data or prove a deployed Google callback or remote D1 configuration.
-`pnpm worker:build` is a dry run; it does not deploy resources.
-
-## Component tests
-
-Component tests prove a screen's loading, refresh and failure states in seconds,
-without a browser, server or Worker. They render the real feature component with
-React Testing Library and assert with jest-dom matchers, registered in
-`tests/helpers/component-setup.ts`.
-
-- Network: MSW (`tests/helpers/msw-server.ts`) answers at the network layer. Each test
-  adds its handlers with `server.use`, counting reads where the test needs it. An
-  unhandled request fails the test.
-- Query: each test creates a client with `createQueryClient()`, never
-  `sessionQueryClient()`, and seeds cached data with `setQueryData` and `updatedAt`.
-- Next.js: mock `next/navigation` with `vi.mock`.
-- Time: `vi.useFakeTimers({ shouldAdvanceTime: true })` with async advances: wrap
-  `vi.advanceTimersByTimeAsync` in `act`, and pass it to `userEvent.setup({ advanceTimers })`.
-- Focus and reconnect: dispatch real DOM events on `window` (`focus` or
-  `visibilitychange`, then `offline` and `online`), not Query's managers, so the
-  app's listener wiring is proven.
-- After each test, the setup file unmounts rendered output, resets MSW handlers and
-  restores real timers.
-
-`tests/medications-list.test.tsx` is the reference.
+Every change to data-driven UI reviews each applicable state in
+[DESIGN.md](../DESIGN.md#loading-and-saving) against the [Next.js rules](nextjs.md). Prove
+behavior rather than counting Suspense boundaries.
 
 ## Browser journeys
 
-Journeys are Playwright Test specs in `tests/browser/*.spec.ts`. The Verify workflow
-runs `pnpm test:browser` (`iphone-17`) after `scripts/verify.sh` in the same job,
-reusing its default Turbopack `.next` and `.worker-build` outputs, so a failing
-journey fails Verify and blocks Release. CI installs Chromium with
-`pnpm exec playwright install --with-deps chromium`, caches `~/.cache/ms-playwright`
-keyed on the Playwright version, and uploads `.browser-artifacts/` as the
-`browser-artifacts-<attempt>` workflow artifact on failure.
+Locally, journeys are opt-in and outside `pnpm verify:local`; CI runs all of them and a
+failure blocks Release. Once after implementation, run the journeys the ticket names plus
+the specs exercising any route or flow the change edits, in one
+`pnpm test:browser:build <names>` run, then `pnpm verify:local`.
 
-Locally, journeys stay opt-in, outside `pnpm verify:local`. Install the browser once
-with `pnpm exec playwright install chromium`, then run them through the wrapper:
+- **Budgets:** a route ticket records `result()` from the layout helper at the selected
+  widths, sets a layout-shift budget with a justification in the ticket, and asserts
+  against it. Request counts are asserted exactly: zero repeated initial reads per path
+  after load unless the ticket justifies otherwise.
+- **Gate ticket:** a wave of routes ends in a gate ticket (FE-639 for Today and History)
+  that owns consolidated loading captures and visual review. Route tickets register their
+  routes in `loading-capture.spec.ts` and own behavioral assertions. Route-specific visual
+  evidence is needed only for that ticket's acceptance, and the gate links it without
+  recapture.
 
-```sh
-pnpm test:browser:build                 # all journeys on iphone-17
-pnpm test:browser:build today-skipped   # one journey, matched by file name
-pnpm exec playwright test --project=narrow cozy-visual
-```
+## Visual verification
 
-`pnpm test:browser:build [playwright args]` always runs `pnpm worker:build`, runs
-`next build --webpack` only when the Next.js build is stale, then runs
-`playwright test --project=iphone-17` with the arguments. Outside CI, global setup
-fails fast when any build input (`src`, `public`, Next.js, TypeScript and PostCSS
-config, `package.json`, lockfile, `.env` files) is newer than `.next/BUILD_ID`; rerun through the
-wrapper. Global setup also fails when `.next/BUILD_ID` or `.worker-build/index.js`
-is missing. Run builds and journeys sequentially when they share `.next` or
-`.worker-build`.
+For meaningful UI changes (visible content, layout, typography, controls, feedback or
+motion), inspect the affected screens at 402×874 CSS px, including loading, empty,
+populated, validation, saving and recovery states where the change affects them. Add
+focused checks by risk:
 
-Local journey policy: once after implementation, run the journeys the ticket names
-plus the specs that exercise a route or flow the change edits, in one
-`pnpm test:browser:build <names>` run. Then run `pnpm verify:local`; locally it skips
-`next build` when no build input changed since the last build, so it reuses the
-wrapper's. List the
-journeys by file in the Linear evidence. CI runs all journeys.
+- **320px:** widths, spacing, wrapping, responsive layout, navigation, drawers, popups or
+  action placement. Include long names where they stress the layout.
+- **Enlarged text:** typography, labels, dense controls, fixed dimensions or containers
+  that may clip text or hide actions. Target 200% and record the setting and method.
+  Viewport resizing is not text enlargement; a CSS font-size probe is labelled synthetic.
+- **Reduced motion:** animation, transitions, gestures or motion preferences. Verify the
+  interaction at normal and reduced motion; stills do not prove motion. Skeletons stay
+  static at every setting.
+- **Keyboard and focus:** controls, forms, dialogs, popups or navigation.
+- **Physical iPhone:** installed-PWA behavior, safe areas, the software keyboard, touch
+  gestures or VoiceOver. Synthetic Chromium does not establish these; outstanding device
+  checks stay in their owning issue (FE-616 for iPhone acceptance, FE-602 for integrated
+  accessibility review).
 
-For faster iteration on one journey, `MEDDIES_BROWSER_DEV=1 pnpm test:browser <spec>`
-starts `next dev --webpack` per test instead of `next start`, with no production
-build. It needs only the Worker bundle, adds per-test startup, and is
-slower than the wrapper for the full suite. Dev output goes to `.next/dev`, so the
-production build stays usable; a running `pnpm dev` or `pnpm dev:stack` holds the
-same `.next/dev` lock, so stop it first. Dev mode is for iteration only: React
-StrictMode double effects and on-demand compilation mean it is not evidence for
-streaming, request counts or layout shift. Confirm with the wrapper before recording
-results. Global setup rejects dev mode under `CI`.
-
-To check whether a failure already exists on main, run it in a separate worktree
-instead of stashing and rebuilding:
-
-```sh
-git worktree add ../meddies-main origin/main
-cd ../meddies-main && pnpm install && pnpm test:browser:build today-skipped
-git worktree remove ../meddies-main   # when done
-```
-
-Projects set the viewport. `iphone-17` (402x874 CSS px, portrait) is the sole user's
-device and the one `pnpm test:browser` selects; a bare `pnpm exec playwright test`
-runs every project. `narrow` (320x740) is an opt-in stress check. Safari toolbars
-and safe areas make the usable height smaller than 874px, so check that content
-scrolls rather than relying on the full height.
-
-Each spec declares `test.use({ journey: { auth, storage, initialScheduleTime, seed } })`.
-Fixtures in `tests/browser/fixtures.ts` start a per-test Next.js server, a fresh local
-Worker/D1 database and, with `initialScheduleTime`, a frozen scheduling clock that
-`app.setScheduleTime` moves. `app.api` calls the app API as the signed-in user. Auth uses a short-lived synthetic Auth.js session; no
-Google provider or real credentials are used. `page.request` shares the session
-cookie for API fixtures; the `request` fixture stays anonymous. Spec files run on three
-workers locally and one in CI or dev mode, with no retries; tests within a file stay
-serial. Keep journeys isolated: each test owns its server, port, D1 and clock file. Every journey that depends on the date or time declares
-`initialScheduleTime`, so no journey depends on the wall-clock time it runs at.
-The frozen clock covers Next.js and the Worker, and the browser follows it: client
-scheduling code reads "now" from `useSchedulingClock()`
-(`src/features/schedules/scheduling-clock.tsx`), anchored on the server scheduling time
-and advanced by monotonic elapsed time, never the browser wall clock. Lint bans argless
-`new Date()` and `Date.now()` in `src/**`; only the server scheduling clock, the schedule
-operations default and auth may read the wall clock. Auth stays real time, so sessions
-never expire because of the frozen clock. Use `page.clock` only for journeys that must
-advance elapsed time, and install it at the real current time, never at
-`initialScheduleTime`, so the session stays valid.
-`pnpm test` remains browser-free.
-
-### Worker controls and streaming
-
-`page.route` sees only browser requests. Server reads go from Next.js to the Worker, so with
-`storage` the fixture puts a Node proxy (`tests/browser/worker-proxy.ts`) in front of
-Miniflare, and `app.worker` controls it. Seeding talks to D1 directly and the
-`/api/session` readiness check runs before the journey starts, so neither is affected.
-Nothing ships in the production build, and product code has no test hooks.
-
-Next.js calls the Worker as `POST /medicines` or `POST /schedules` with an `operation`
-in the body, so rules match a `WorkerRoute`: method, path prefix and optional operation.
-History reads `{ method: 'POST', path: '/schedules', operation: 'listOutcomes' }` and
-`{ method: 'POST', path: '/medicines', operation: 'list' }`.
-
-- `hold(route)`: the Worker runs the request, but the response to Next.js waits.
-- `release(route?)`: sends held responses matching `route` (all when omitted) and drops
-  hold rules it covers, so later requests pass. A broader hold rule, such as
-  `{ method: 'POST', path: '/' }`, stays until released with a route that covers it.
-- `fail(route, status)`: answers with `status` without reaching the Worker.
-- `delay(route, ms)`: fixed delay, only when a case needs one. Prefer `hold`.
-- `clear()`, `held(route?)`, and `requests(route?)`: the timing log of method, path,
-  operation, status, and monotonic `start` and `end` (unset while held).
-
-Rules change mid-test, like `setScheduleTime`. `tests/browser/streaming.ts` turns them
-into evidence, with no duration thresholds:
-
-- `expectReadsOverlap(worker, routes)`: every route has a held request, so all started
-  before any was released. A page that awaits one read before the next times out here.
-- `expectStreamingOrder(worker, { routes, fallback, content })`: the fallback is visible
-  while a read is held, then content replaces it after release.
-- `blockPrefetch(page, path)`: aborts router prefetches (`Next-Router-Prefetch`) for the
-  target; `expectBlocked()` asserts at least one was aborted. Install it before the page
-  that links to the target loads, so prefetch cannot hide the loading path. `next dev`
-  does not prefetch, so cold-navigation journeys need the production build.
-
-Route tickets hold their reads first, then start the navigation: `page.goto(url,
-{ waitUntil: 'commit' })` for a direct load, because a held stream never fires `load`,
-or a link click after `blockPrefetch` for a cold client navigation. Then call
-`expectReadsOverlap` and `expectStreamingOrder`. `today-streaming.spec.ts` is the
-reference, including the failure state with `fail(route, 503)`.
-
-### Request counts, layout shift and loading captures
-
-`today-streaming.spec.ts` is the reference for the counter and layout helper, including a
-layout-shift budget.
-
-**Request counter** (`tests/browser/requests.ts`): `countApiRequests(page, app.origin)`
-counts the browser's requests per app API path (`/api/schedules`), any method, query
-ignored. Server reads go from Next.js to the Worker and never appear, so a zero count
-proves the client reused the data the server rendered (hydration reuse). Start it
-before `page.goto`; call `reset()` just before a client navigation. A count only proves
-absence for requests started by the time it is read, so read it after the content is
-visible and, on a direct load, after `page.waitForLoadState('load')`.
-
-**Layout helper** (`tests/browser/layout.ts`): `trackLayout(page, viewport)` sets the
-viewport and observes `layout-shift` entries from the next document, so call it before
-`page.goto`. New layout checks use 402px by default and add 320px when the change
-affects narrow-layout behavior. Keep existing targeted regression coverage at both
-widths in `layoutViewports`; those tests run in CI without the `narrow` project.
-`snapshot(stage)` records the boxes of the header, Settings link and Primary nav
-(or the locators you pass); `result()` returns
-`cumulativeLayoutShift`, `shifts`, the separate `inputShift` and `inputShifts`, and the
-snapshots. For a client navigation, call `start()` just before the click. Limits:
-
-- Chromium only (Layout Instability API); not WebKit or a real iPhone.
-- A plain sum of shifts since the start, not web-vitals' largest five-second session
-  window, so a long load can only score higher.
-- Shifts within 500ms of input (`hadRecentInput`) are left out of the total. After a
-  link click the fallback swap usually falls in that window, so cold-navigation numbers
-  undercount; budget against direct loads.
-- Elements inserted or removed, such as a fallback replaced by content, are not shifts.
-  Compare snapshot boxes between `fallback` and `loaded` to catch geometry jumps.
-
-**Budgets:** a route ticket records `result()` at the selected widths (log it and
-attach it as the test does), then sets a budget with a justification in the ticket
-and asserts
-`cumulativeLayoutShift` against it. Request counts are asserted exactly: zero repeated
-initial reads per path after load, unless the ticket justifies otherwise.
-
-**Loading captures** (`tests/browser/capture.ts`) are opt-in review artifacts.
-`loading-capture.spec.ts` passes selected routes (name, path, fallback and content
-locators) to `captureLoading`. The default case is 402x874 with normal motion,
-including fallback and loaded states. Additional cases are explicit, not a viewport
-× motion matrix: `phone` (402x874, normal motion), `narrow` (320x740, normal motion),
-and `reduced-motion` (402x874, reduced motion). Callers can also pass a typed
-`CaptureCase[]` for a particular risk. Viewport resizing is not text enlargement
-or zoom; there is no zoom preset.
-
-The helper holds every Worker read, loads the route, waits for stylesheets and
-fonts (under `MEDDIES_BROWSER_DEV=1` the first paint after `commit` can precede the
-CSS), saves the fallback, releases and saves the loaded page. It writes
-`loading-capture.json` with each capture's case, status labels, horizontal overflow
-and shell boxes. The spec skips unless `MEDDIES_VISUAL_OUT` is set and writes there;
-these artifacts are never a CI visual baseline.
-
-```sh
-MEDDIES_VISUAL_OUT=/tmp/meddies-capture pnpm test:browser:build loading-capture
-# Capture only Today, adding a focused reduced-motion case:
-MEDDIES_VISUAL_OUT=/tmp/meddies-capture MEDDIES_CAPTURE_ROUTES=today MEDDIES_CAPTURE_CASES=phone,reduced-motion pnpm test:browser:build loading-capture
-```
-
-`MEDDIES_CAPTURE_ROUTES` selects registered route names (currently `today,history`);
-omitting it selects all registered routes. `MEDDIES_CAPTURE_CASES` selects the named
-cases above; omitting it selects only `phone`. Unknown or empty selections fail.
-Route tickets register routes and own behavioral assertions; the wave gate owns
-consolidated loading review (FE-639 for Today/History). Route-specific visual evidence
-is required only when needed for that ticket's acceptance, and is linked from the
-gate without recapture. Reuse current evidence for unchanged behavior. A route whose
-data loads in the client uses its client loading status as the fallback.
-
-Locator policy, enforced by lint in `tests/browser/**`:
-
-- Prefer role, then label, then text, then a domain `data-*` id such as
-  `data-dose-id`. Do not add generic `data-testid`.
-- Raw CSS selectors live only in `tests/browser/locators.ts` as named domain
-  locators, such as `doseRow(page, dueAt)` and `drawer(page)`.
-- `page.evaluate` lives only in `tests/browser/actions.ts`, each helper with a
-  comment explaining why no user-facing API works.
-- No `waitForTimeout`; use web-first assertions.
-
-Artifacts go to ignored `.browser-artifacts/`, which Playwright clears at the start of
-each run. Failures keep a trace, screenshot, video and redacted `service.log`; open a
-trace with `pnpm exec playwright show-trace <path>/trace.zip`. There is no HTML report.
-`cozy-visual` saves screenshots for design review, not as baselines, at the running
-project's viewport. Set `MEDDIES_VISUAL_OUT` to keep them outside `.browser-artifacts/`,
-for example when capturing `iphone-17` and `narrow` in separate runs.
+Pick cases that exercise each relevant risk rather than a viewport × motion × state
+matrix. Batch review after implementation, reuse current evidence for unchanged behavior,
+and repeat only after relevant fixes. The [PRODUCT.md](../PRODUCT.md) accessibility
+safeguards apply whichever checks run.
 
 ## Refactors
 
-For a pure-move refactor (code split into modules, no behavior change), review what
-the move actually changed:
+For a pure-move refactor, review what the move actually changed:
 
 ```sh
 scripts/unmoved-diff.sh HEAD            # uncommitted; git add -N new files first
 scripts/unmoved-diff.sh main...HEAD     # a branch
 ```
 
-It drops lines git detects as moved, ignoring indentation. What remains is new glue
-(imports, props, hook returns) and real edits; anything that isn't glue needs a reason.
-Prettier rewraps after an indentation change also remain; compare them by reading.
-
-## Data-driven changes
-
-Every change to data-driven UI includes a review of each applicable state in
-[DESIGN.md](../DESIGN.md#loading-and-saving) against the
-[rendering rules](agents/nextjs.md).
-
-Prove each state at the cheapest level that can prove it.
-
-[Component tests](#component-tests) prove, with MSW responses:
-
-- Refresh keeps content.
-- Stale or out-of-order responses do not overwrite newer state.
-- Focus and reconnect refresh, with no polling.
-- Rejection, lost response and conflict recovery.
-
-Route-owned journeys prove behavior only a real browser and app can, with delayed
-server responses:
-
-- Streaming order and fallbacks: on direct loads and uncached client navigation,
-  the authenticated shell and section fallbacks appear before server-backed
-  content, and independent reads overlap rather than run in sequence.
-- Hydration reuses server data, with no duplicate initial browser request for the
-  same query.
-- Layout stays stable while fallbacks resolve. Measure cumulative layout shift
-  across the load and compare it with the route's budget, justified in its ticket.
-- Stale-on-entry across real navigation.
-- Navigation during a save.
-- Sign-out or expiry clearing private client state.
-- Local rollover, when it depends on the server scheduling clock.
-
-Delay and fail responses through MSW handlers or journey fixtures, not with timers
-in product code. Do not add lint rules that count
-Suspense boundaries; prove behavior instead.
-
-Record metrics in the active Linear issue: streaming order, request counts,
-layout shift, interaction latency where relevant, viewport and project, and
-whether evidence is synthetic (Playwright) or from a real iPhone. Synthetic runs
-do not prove device performance.
-
-## Visual verification
-
-For meaningful UI changes, inspect the rendered affected screens and states at
-402×874 CSS px. Include loading, empty, populated, validation, saving and recovery
-states only where the change affects them. A meaningful UI change alters visible
-content, layout, typography, controls, feedback or motion.
-
-Add focused checks according to the change:
-
-- **320px:** changes to widths, spacing, wrapping, responsive layout, navigation,
-  drawers, popups or action placement. Include long names where they stress the layout.
-- **Enlarged text:** changes to typography, labels, dense controls, fixed dimensions
-  or containers that may clip text or hide actions. Use 200% text enlargement as a
-  conditional stress target and record the actual setting and method. Viewport
-  resizing is not text enlargement or zoom. A CSS font-size probe may supplement
-  device evidence, but must be labelled as a synthetic probe with its limits.
-- **Reduced motion:** changes to animation, transitions, gestures or motion
-  preferences. Verify the affected interaction with normal and reduced motion;
-  still screenshots alone do not prove motion behavior. Skeletons remain static
-  at every motion setting.
-- **Keyboard and focus:** changes to controls, forms, dialogs, popups or navigation.
-- **Physical iPhone:** changes whose correctness depends on installed-PWA behavior,
-  safe areas, the software keyboard, touch gestures or VoiceOver. Reuse unchanged
-  device evidence and retain outstanding device checks in their owning issue.
-  FE-616 retains human-led iPhone 17 acceptance; FE-602 retains integrated
-  accessibility review. Synthetic Chromium at 402px does not establish either.
-
-Select cases that exercise each relevant risk. Do not require a viewport × motion
-× state capture matrix. Batch review after implementation, reuse current evidence
-for unchanged behavior, and repeat only after relevant fixes or unresolved failures.
-Preserve semantic controls and labels, existing accessible contrast and visible
-focus, 44px touch targets, safe areas, text enlargement, reduced-motion support,
-non-color status cues and reachable actions, including with the keyboard open.
-Conditional checks do not make these safeguards optional.
-
-Existing exception: calendar day cells measured about 39.7px at 320px after
-FE-642 (38.6px before it). FE-650's handoff assigns this exception to FE-642.
-Keep that exception explicit in Linear;
-it does not relax the general 44px target or count as resolved by conditional checks.
-Existing 201×437 save-lifetime cases are toast-wrapping regressions, not zoom evidence.
-
-Record the revision, affected states, checks performed, evidence links and remaining
-limitations in Linear. Reference existing evidence instead of copying it into
-multiple issues. Keep useful automated regressions even when the corresponding
-manual check is conditional. Required checks and CI coverage remain unchanged.
+What remains is glue (imports, props, hook returns) and real edits; every non-glue line
+needs a reason. Prettier rewraps after indentation changes also remain.
 
 ## Manual checks
 
-For ad-hoc exploration and QA outside journeys, `agent-browser` remains available:
-`npm i -g agent-browser && agent-browser install`.
+- Ad-hoc QA: `agent-browser` (`npm i -g agent-browser && agent-browser install`).
+- Production smoke: `pnpm start` after building, then exercise the changed flow at
+  [localhost:3000](http://localhost:3000).
+- Deployed auth changes: [deployment verification](authentication.md#deployment-verification).
+- Worker or database deployment changes: verify the changed operation against the
+  deployed service and database.
 
-For a production smoke check, run `pnpm start` after building and exercise the
-changed flow at [localhost:3000](http://localhost:3000).
-For deployed authentication changes, follow
-[deployment verification](authentication.md#deployment-verification).
-For Worker or database deployment changes, verify the changed operation against
-the intended deployed service and database.
+## Evidence and completion
 
-## Completion
+Record in the active Linear issue: the revision, journeys run (by file), affected states,
+checks performed, evidence links and remaining limitations. For streaming work add
+streaming order, request counts, layout shift, viewport and project, and whether evidence
+is synthetic (Playwright) or from a real iPhone. Link existing evidence rather than
+copying it between issues.
 
-Required checks pass, applicable manual checks are recorded in the active Linear
-issue, and any unverified deployment behavior is identified there. Record failed
-or blocked checks explicitly; report verification as incomplete while they remain.
+Verification is complete when required checks pass, applicable manual checks are
+recorded, and any unverified deployment behavior is named in the issue. A failed or
+blocked check keeps verification incomplete; record it explicitly.
