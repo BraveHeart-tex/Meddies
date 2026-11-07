@@ -33,6 +33,7 @@ export function DatePicker({
   name,
   disabled,
   className,
+  finalFocus,
   'aria-describedby': describedBy,
   'aria-invalid': invalid,
 }: {
@@ -49,6 +50,8 @@ export function DatePicker({
   name?: string
   disabled?: boolean
   className?: string
+  /** Where focus goes when the calendar closes; the trigger by default. */
+  finalFocus?: React.ComponentProps<typeof PopoverContent>['finalFocus']
   'aria-describedby'?: string
   'aria-invalid'?: boolean
 }) {
@@ -102,6 +105,7 @@ export function DatePicker({
         className="w-auto p-1 max-[360px]:w-(--available-width) max-[360px]:p-0"
         // The calendar focuses the selected day itself.
         initialFocus={false}
+        finalFocus={finalFocus}
         onBlur={onPartBlur}
       >
         <Calendar

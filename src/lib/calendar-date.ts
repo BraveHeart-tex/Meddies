@@ -40,3 +40,33 @@ export function dateLabel(value: string, today: string): string {
   const label = format.format(Date.UTC(year, month - 1, day)).replace(',', '')
   return value === today ? `Today, ${label}` : label
 }
+
+/** The date-only value `days` calendar days after `value` (negative for earlier days). */
+export function shiftDate(value: string, days: number): string {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10)
+}
+
+const longFormats = {
+  thisYear: new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }),
+  otherYear: new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }),
+}
+
+/** A day heading for a date-only value: 'Thursday 5 November', with the year outside today's. */
+export function longDateLabel(value: string, today: string): string {
+  const [year, month, day] = value.split('-').map(Number)
+  const format =
+    value.slice(0, 4) === today.slice(0, 4) ? longFormats.thisYear : longFormats.otherYear
+  return format.format(Date.UTC(year, month - 1, day)).replace(',', '')
+}

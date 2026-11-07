@@ -119,7 +119,9 @@ test('failed History reads show the unavailable state', async ({ page, app }) =>
   for (const route of historyReads) app.worker.fail(route, 503)
   await page.goto('/history')
   await expect(
-    page.getByRole('alert').filter({ hasText: 'Dose history is temporarily unavailable.' }),
+    page
+      .getByRole('alert')
+      .filter({ hasText: 'History for Today, Fri 15 Jun could not be loaded.' }),
   ).toBeVisible()
   await expect(page.getByRole('link', { name: 'Retry this date' })).toBeVisible()
 })

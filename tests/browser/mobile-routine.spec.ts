@@ -25,7 +25,8 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await expect(historyDate).toHaveText(todayLabel)
     await expect(historyRows(page, today)).toHaveCount(1)
     await expect(scheduled).toContainText('Routine Medicine')
-    await expect(scheduled.getByText(status, { exact: true })).toBeVisible()
+    // The Taken badge also shows the intake time.
+    await expect(scheduled.getByText(new RegExp(`^${status}`))).toBeVisible()
   }
 
   await test.step('open signed-in Today and save a medicine', async () => {
@@ -87,7 +88,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
 
   await test.step('the recorded dose is absent from dated History before it is due', async () => {
     await page.goto(historyUrl)
-    await expect(page.getByText('No past doses for this date.')).toBeVisible()
+    await expect(page.getByText('No doses were due before now today.')).toBeVisible()
     await expect(historyDate).toHaveText(todayLabel)
     await expect(historyRows(page, today)).toHaveCount(0)
   })

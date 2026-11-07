@@ -61,28 +61,26 @@ test('review, edit and correct past doses in History', async ({ page, request },
       .getByRole('navigation', { name: 'Primary' })
       .getByRole('link', { name: 'History' })
       .click()
-    await expect(page.getByRole('heading', { name: 'Dose history' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'History', level: 1 })).toBeVisible()
   })
 
-  await test.step('submit historical date from the keyboard', async () => {
+  await test.step('pick a historical date', async () => {
     await pickDate(page, 'Choose a date', date)
     await expect(datePicker(page, 'Choose a date')).toHaveText('Thu 14 Jun')
-    await page.getByRole('button', { name: 'View' }).press('Enter')
     await expect(page).toHaveURL(new RegExp(`date=${date}`))
     await expect(rows).toHaveCount(3)
     const list = historyList(page, date)
     await expect(list).toContainText('Taken')
     await expect(list).toContainText('Skipped')
     await expect(list).toContainText('Not logged')
-    const actualIntakeDate = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Europe/Istanbul',
-      dateStyle: 'medium',
-    }).format(now)
-    await expect(list, 'Taken outcome should show its actual date').toContainText(actualIntakeDate)
-    await expect(list).toContainText('0.5 tablet')
-    await expect(list).toContainText('2 tablet')
-    await expect(list).toContainText('1.5 tablet')
-    await expect(page.getByRole('link', { name: 'Back to Today' })).toBeVisible()
+    await expect(list, 'Taken outcome should show its actual date').toContainText(
+      'Taken on Fri 15 Jun',
+    )
+    await expect(list).toContainText('took ½ tablet')
+    await expect(list).toContainText('2 tablets')
+    await expect(list).toContainText('1½ tablets')
+    // Not logged rows are not buttons (648·H1).
+    await expect(rows.nth(2).getByRole('button')).toHaveCount(0)
     await page.screenshot({ path: testInfo.outputPath('dose-history.png') })
   })
 
@@ -95,7 +93,7 @@ test('review, edit and correct past doses in History', async ({ page, request },
     await expectTime(dialog, 'Taken time in Istanbul', '09:00')
     await dialog.getByLabel(/^Amount/).fill('1.5')
     await dialog.getByRole('button', { name: 'Save intake changes' }).click()
-    await expect(first).toContainText('quantity 1.5 tablet')
+    await expect(first).toContainText('took 1½ tablets')
     await expect(
       toastMessage(page, /^History Fixture Medicine \d\d:\d\d · intake changed to .*, 1½ tablets$/),
     ).toBeVisible()
@@ -110,10 +108,10 @@ test('review, edit and correct past doses in History', async ({ page, request },
     await dialog.getByRole('button', { name: 'Save intake changes' }).click()
     await expect(intakeTime(first)).toHaveAttribute('datetime', `${date}T09:00:00.000Z`)
     await expect(first).toContainText('12:00')
-    await expect(first).toContainText('quantity 1.5 tablet')
+    await expect(first).toContainText('took 1½ tablets')
     await page.screenshot({ path: testInfo.outputPath('dose-history-edited.png') })
     await page.reload()
-    await expect(first).toContainText('quantity 1.5 tablet')
+    await expect(first).toContainText('took 1½ tablets')
     await expect(intakeTime(first)).toHaveAttribute('datetime', `${date}T09:00:00.000Z`)
   })
 
@@ -123,7 +121,7 @@ test('review, edit and correct past doses in History', async ({ page, request },
     await dialog.getByRole('button', { name: 'I skipped it' }).click()
     await dialog.getByRole('button', { name: 'Save as skipped' }).click()
     await expect(first.getByText('Skipped', { exact: true })).toBeVisible()
-    await expect(first).not.toContainText('quantity')
+    await expect(first).not.toContainText('took')
     await page.screenshot({ path: testInfo.outputPath('dose-history-corrected.png') })
   })
 
