@@ -14,6 +14,10 @@ is the reference implementation; do not copy older client-fetch, polling or
 [FE-639](https://linear.app/karacadev/issue/FE-639/validate-todayhistory-architecture-before-route-rollout)
 gate before other routes adopt this architecture.
 
+FE-638 slices adopt these rules in stages. Until FE-624 lands, a rule the owning
+ticket lists under Out of scope is not a violation. Reviewers: read the owning
+ticket's Out of scope before reporting a missing rule.
+
 ## Server rendering and streaming
 
 - Authenticate in the page, not the layout, before rendering private sections.
@@ -60,6 +64,10 @@ Record these decisions in the owning ticket for each changed route:
 
 - Create one Query client per server request and one stable browser client per
   authenticated session. Never share a client across users or requests.
+- The browser client comes from `src/lib/session-query-client.ts`, provided by
+  `SessionBoundary`. Each page mounts its own boundary; the registry hands every
+  mount the same client per session. Focus refresh listens to `visibilitychange`
+  and window `focus`.
 - Server sections prefetch into the request client and hydrate it with
   `HydrationBoundary`. Dehydrate only display data: no secrets, capabilities or
   session tokens. Dehydrating pending queries is optional, on measured benefit.
@@ -74,6 +82,7 @@ Record these decisions in the owning ticket for each changed route:
   on screen entry, window focus and reconnect, and reconcile targeted queries
   after mutations. Do not poll routinely. Advance due-time and day status from the
   scheduling clock (`useSchedulingClock()`), never the device wall clock; fetch newly required dates instead of inventing coverage.
+  Loading, refresh and failure UI: [DESIGN.md](../../DESIGN.md#loading-and-saving).
 - Newer optimistic or confirmed state wins over late hydration, stale reads and
   out-of-order responses. Cancel or ignore outdated in-flight reads before
   optimistic updates, and compare revisions when reconciling.

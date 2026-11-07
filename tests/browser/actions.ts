@@ -4,8 +4,8 @@ import type { Locator, Page } from '@playwright/test'
 // page.evaluate is allowed only in this file; give each helper a reason.
 
 /**
- * Today and the session boundary refresh on window focus. A headless page never
- * gains or loses OS focus, so dispatch the event the app listens for.
+ * Today, the session boundary and stale Query reads refresh on window focus. A headless
+ * page never gains or loses OS focus, so dispatch the event the app listens for.
  */
 export async function focusWindow(page: Page) {
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
