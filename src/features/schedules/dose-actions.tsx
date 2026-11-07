@@ -7,15 +7,11 @@ import { Icon } from '@/components/ui/icon'
 import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Medicine } from '@/features/medicines/contract'
-import {
-  istanbulDate,
-  parseDoseOutcomeRecord,
-  type DoseOccurrence,
-  type DoseOutcomeRecord,
-} from './contract'
+import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
 import { SkippedForm } from './skipped-form'
 import { doseClock, TakenForm } from './taken-form'
 import { DoseDrawer } from './dose-drawer'
+import { useDoseOutcomeMutation } from './use-dose-outcome-mutation'
 
 type Outcome = DoseOutcomeRecord['outcome']
 export type DoseDrawerOpener = { open: (outcome: Outcome) => void }
@@ -40,133 +36,39 @@ export function DoseActions({
   describedBy?: string
 }) {
   const [editor, setEditor] = useState<Outcome | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
   const [correcting, setCorrecting] = useState(false)
   const [editingDose, setEditingDose] = useState<DoseOccurrence | null>(null)
-  const [needsReview, setNeedsReview] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const locked = useRef(false)
   const rowTrigger = useRef<HTMLButtonElement>(null)
   const returnFocus = useRef<HTMLElement | null>(null)
-  const retryAction = useRef<{ fingerprint: string; id: string } | null>(null)
-  const pinnedCorrection = useRef<{ outcome: 'Taken' | 'Skipped'; revision: number } | null>(null)
   const [openedWithoutOutcome, setOpenedWithoutOutcome] = useState(false)
+  const {
+    submit,
+    saving,
+    error,
+    needsReview,
+    clearFeedback,
+    clearError,
+    dismissReview,
+    pinCorrection,
+    resetRetry,
+  } = useDoseOutcomeMutation({
+    dose,
+    refresh,
+    onRecorded,
+    onFinished() {
+      setCorrecting(false)
+      setEditingDose(null)
+      setEditor(null)
+      setDrawerOpen(false)
+      setOpenedWithoutOutcome(false)
+      requestAnimationFrame(() => rowTrigger.current?.focus())
+    },
+  })
 
   function edit(outcome: Outcome | null) {
     setEditor(outcome)
-    setError('')
-    setNeedsReview(false)
-  }
-
-  function closeAfterConflict(message: string) {
-    retryAction.current = null
-    pinnedCorrection.current = null
-    setCorrecting(false)
-    setEditingDose(null)
-    setEditor(null)
-    setDrawerOpen(false)
-    setOpenedWithoutOutcome(false)
-    setError(message)
-    setNeedsReview(true)
-    requestAnimationFrame(() => rowTrigger.current?.focus())
-  }
-
-  async function submit(outcome: Outcome, details: Record<string, unknown>) {
-    if (locked.current) return
-    locked.current = true
-    setSaving(true)
-    setError('')
-    const retry =
-      outcome === 'Taken'
-        ? 'Save could not be confirmed. Connect and retry with the same details.'
-        : 'Save could not be confirmed. Retry with the same scheduled dose or refresh Today.'
-    try {
-      const correctingExisting =
-        pinnedCorrection.current !== null && (dose.status === 'Taken' || dose.status === 'Skipped')
-      const currentRevision = pinnedCorrection.current?.revision ?? 0
-      const expectedOutcome = pinnedCorrection.current?.outcome ?? outcome
-      const fingerprint = JSON.stringify({
-        outcome,
-        details,
-        dose: dose.id,
-        revision: currentRevision,
-      })
-      if (!retryAction.current || retryAction.current.fingerprint !== fingerprint)
-        retryAction.current = { fingerprint, id: crypto.randomUUID() }
-      const payload = correctingExisting
-        ? {
-            ...details,
-            actionId: retryAction.current.id,
-            expectedRevision: currentRevision,
-            expectedOutcome,
-            outcome,
-            scheduleId: dose.scheduleId,
-            dueAt: dose.dueAt,
-          }
-        : { ...details, outcome, scheduleId: dose.scheduleId, dueAt: dose.dueAt }
-      const response = await fetch('/api/schedules', {
-        method: correctingExisting ? 'PATCH' : 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(12000),
-        body: JSON.stringify(payload),
-      })
-      if (response.status === 400) {
-        setError(
-          outcome === 'Taken'
-            ? 'Check the quantity and enter a time that has already passed.'
-            : 'This scheduled dose can no longer be skipped. Refresh Today to check its status.',
-        )
-      } else if (response.status === 401) {
-        setError('Your session ended. Sign in again to record this dose.')
-      } else if (response.status === 409) {
-        if (correctingExisting) {
-          await refresh()
-          closeAfterConflict(
-            'This dose changed elsewhere. Your correction was not saved. Review its current outcome before correcting it again.',
-          )
-        } else {
-          const reconciled = await refresh()
-          closeAfterConflict(
-            reconciled
-              ? 'This dose was already recorded. The current outcome is shown.'
-              : 'An outcome already exists for this dose. Refresh Today to review it.',
-          )
-        }
-      } else if (response.ok) {
-        const body = await response.json()
-        const record = parseDoseOutcomeRecord(body.record)
-        if (
-          record.outcome !== outcome ||
-          record.scheduleId !== dose.scheduleId ||
-          record.dueAt !== dose.dueAt ||
-          (correctingExisting &&
-            (record.revision !== currentRevision + 1 ||
-              record.actionId !== retryAction.current.id ||
-              (outcome === 'Taken' &&
-                (record.outcome !== 'Taken' ||
-                  record.takenAt !== details.takenAt ||
-                  record.quantity !== details.quantity))))
-        )
-          throw new Error('acknowledgment')
-        onRecorded(record)
-        retryAction.current = null
-        setCorrecting(false)
-        setEditingDose(null)
-        pinnedCorrection.current = null
-        setEditor(null)
-        setDrawerOpen(false)
-        setOpenedWithoutOutcome(false)
-        requestAnimationFrame(() => rowTrigger.current?.focus())
-      } else {
-        setError(retry)
-      }
-    } catch {
-      setError(retry)
-    } finally {
-      locked.current = false
-      setSaving(false)
-    }
+    clearFeedback()
   }
 
   const recorded = dose.status === 'Taken' || dose.status === 'Skipped'
@@ -185,7 +87,7 @@ export function DoseActions({
     setDrawerOpen(false)
     if (correcting) {
       setCorrecting(false)
-      pinnedCorrection.current = null
+      pinCorrection(null)
     }
   }
 
@@ -193,8 +95,7 @@ export function DoseActions({
     open(outcome: Outcome) {
       returnFocus.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null
-      setError('')
-      setNeedsReview(false)
+      clearFeedback()
       setDrawerOpen(true)
       choose(outcome)
     },
@@ -220,8 +121,7 @@ export function DoseActions({
           aria-label={triggerLabel}
           onClick={() => {
             returnFocus.current = rowTrigger.current
-            setError('')
-            setNeedsReview(false)
+            clearFeedback()
             setDrawerOpen(true)
           }}
         >
@@ -238,8 +138,7 @@ export function DoseActions({
           aria-label={triggerLabel}
           onClick={() => {
             returnFocus.current = rowTrigger.current
-            setError('')
-            setNeedsReview(false)
+            clearFeedback()
             setDrawerOpen(true)
           }}
         >
@@ -256,7 +155,7 @@ export function DoseActions({
                 variant="outline"
                 onClick={() => {
                   void refresh()
-                  setNeedsReview(false)
+                  dismissReview()
                 }}
               >
                 Review current outcome
@@ -332,17 +231,17 @@ export function DoseActions({
                     error={editingDose ? error : ''}
                     editing
                     onOpen={(open) => {
-                      setError('')
+                      clearError()
                       if (open && dose.status === 'Taken') {
                         setEditingDose(dose)
-                        pinnedCorrection.current = {
+                        pinCorrection({
                           outcome: 'Taken',
                           revision: dose.record.revision ?? 0,
-                        }
+                        })
                       }
                       if (!open) {
-                        retryAction.current = null
-                        pinnedCorrection.current = null
+                        resetRetry()
+                        pinCorrection(null)
                         setEditingDose(null)
                         setDrawerOpen(false)
                       }
@@ -356,10 +255,10 @@ export function DoseActions({
                   variant="outline"
                   aria-label={`Correct outcome for ${medicine.label} at ${doseClock(dose.dueAt)}`}
                   onClick={() => {
-                    pinnedCorrection.current = {
+                    pinCorrection({
                       outcome: dose.status,
                       revision: dose.record.revision ?? 0,
-                    }
+                    })
                     setCorrecting(true)
                   }}
                 >
