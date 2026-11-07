@@ -1,15 +1,34 @@
 import { resolve } from 'node:path'
-import { captureLoading } from './capture'
+import { captureCases, captureLoading, type CaptureRoute } from './capture'
 import { expect, test } from './fixtures'
 import { historyList, rootFallback, todayFallback, todaysDoses } from './locators'
 import { addDays, insertScheduledMedicine } from './seed'
 
 // Opt-in loading evidence for design review, never a CI assertion. Run with
 // MEDDIES_VISUAL_OUT=<dir> pnpm test:browser:build loading-capture
-// Route tickets add their route here and paste loading-capture.json into their issue.
+// Route tickets register routes here; the wave gate links consolidated review evidence.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
 const out = process.env.MEDDIES_VISUAL_OUT
+
+const routes: CaptureRoute[] = [
+  { name: 'today', path: '/', fallback: todayFallback, content: todaysDoses },
+  {
+    name: 'history',
+    path: '/history',
+    fallback: rootFallback,
+    content: (page) => historyList(page, today),
+  },
+]
+
+function selectNamed<T extends { name: string }>(available: T[], selection: string | undefined) {
+  if (selection === undefined) return available
+  return [...new Set(selection.split(',').map((name) => name.trim()))].map((name) => {
+    const item = available.find((item) => item.name === name)
+    if (!item) throw new Error(`Unknown capture selection ${JSON.stringify(name)}`)
+    return item
+  })
+}
 
 test.use({
   journey: {
@@ -29,25 +48,30 @@ test('capture loading states for review', async ({ page, app }) => {
   // eslint-disable-next-line playwright/no-skipped-test -- opt-in capture, never a CI assertion
   test.skip(!out, 'Set MEDDIES_VISUAL_OUT to capture loading states')
   test.setTimeout(180_000)
+  const selectedRoutes = selectNamed(routes, process.env.MEDDIES_CAPTURE_ROUTES)
+  const selectedCases = selectNamed(
+    Object.values(captureCases),
+    process.env.MEDDIES_CAPTURE_CASES ?? 'phone',
+  )
   const summary = await captureLoading(
     page,
     app.worker,
-    [
-      {
-        name: 'today',
-        path: '/',
-        fallback: todayFallback,
-        content: todaysDoses,
-      },
-      {
-        name: 'history',
-        path: '/history',
-        fallback: rootFallback,
-        content: (page) => historyList(page, today),
-      },
-    ],
+    selectedRoutes,
     resolve(out!),
+    selectedCases,
   )
-  // Two routes, three viewports, two motion settings, fallback and loaded.
-  expect(summary).toHaveLength(24)
+  expect(summary).toHaveLength(selectedRoutes.length * selectedCases.length * 2)
+  for (const route of selectedRoutes)
+    for (const captureCase of selectedCases) {
+      const entries = summary.filter(
+        (entry) => entry.route === route.name && entry.captureCase === captureCase.name,
+      )
+      expect(entries.map((entry) => entry.stage)).toEqual(['fallback', 'loaded'])
+      for (const entry of entries) {
+        expect(entry.path).toBe(route.path)
+        expect(entry.viewport).toBe(`${captureCase.viewport.width}x${captureCase.viewport.height}`)
+        expect(entry.reducedMotion).toBe(captureCase.reducedMotion)
+        expect(entry.screenshot).toBe(`${route.name}-${entry.stage}-${captureCase.name}.png`)
+      }
+    }
 })

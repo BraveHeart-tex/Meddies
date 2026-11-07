@@ -54,7 +54,7 @@ test('schedule drafts keep partial rows per medicine across refresh and day roll
   )
   const first = render(view('first', '2035-06-15'))
   await user.click(screen.getByRole('combobox', { name: 'Time 1 hour' }))
-  await user.click(screen.getByRole('option', { name: '08' }))
+  await user.click(await screen.findByRole('option', { name: '08' }))
   await user.click(screen.getByRole('button', { name: 'Add another time' }))
   await user.clear(screen.getByLabelText('Quantity for time 2'))
   first.rerender(view('first', '2035-06-16'))

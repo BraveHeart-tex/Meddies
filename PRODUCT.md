@@ -62,4 +62,4 @@ A reminder is never confused with confirmed intake. Every dose outcome is explic
 
 ## Accessibility & Inclusion
 
-WCAG 2.2 AA is the requirement. In addition: 44px minimum targets, layouts that work at 320px wide and at 200% zoom, visible keyboard focus, respect for reduced motion and safe areas, and status shown with text and an icon, never color alone.
+Meddies is designed for its sole user on an iPhone 17 as an installed PWA, with 402px as the primary layout width. Meddies does not claim formal WCAG conformance. Preserve semantic controls and accessible labels, readable text and accessible contrast, visible keyboard focus, 44px minimum touch targets, safe-area spacing, text enlargement, reduced-motion support, and actions reachable by scrolling and with the keyboard open. Show status with text and an icon, never color alone. Verification follows [docs/verification.md](docs/verification.md#visual-verification); conditional checks do not make these safeguards optional.

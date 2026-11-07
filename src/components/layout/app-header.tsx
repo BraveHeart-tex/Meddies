@@ -38,7 +38,7 @@ export function AppHeaderSkeleton() {
         <div className="flex h-[1lh] items-center">
           <Skeleton className="h-6.5 w-50 max-w-full rounded-lg" />
         </div>
-        {/* Greetings are 185-212px wide, so a narrower column (200% zoom) wraps the title. */}
+        {/* Greetings are 185-212px wide, so a narrower column wraps the title. */}
         <div className="hidden h-[1lh] items-center @max-[12rem]:flex">
           <Skeleton className="h-6.5 w-28 max-w-full rounded-lg" />
         </div>

@@ -7,7 +7,7 @@ import { appHeader } from './locators'
 
 export type Viewport = { width: number; height: number }
 
-/** Viewports every layout call covers in CI, without the opt-in `narrow` project. */
+/** Viewports retained by existing layout regressions; new checks select relevant widths. */
 export const layoutViewports = {
   narrow: { width: 320, height: 740 },
   iphone17: { width: 402, height: 874 },

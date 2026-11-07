@@ -9,12 +9,22 @@ import type { WorkerControls } from './worker-proxy'
 // Loading evidence for design review: fallback and loaded screenshots plus a JSON summary.
 // Never a CI assertion; loading-capture.spec.ts runs it only with MEDDIES_VISUAL_OUT set.
 
-/** 402px (iPhone 17), 320px, and 200% zoom of the iPhone 17 viewport (DESIGN.md). */
-export const captureViewports = {
-  w402: layoutViewports.iphone17,
-  w320: layoutViewports.narrow,
-  zoom200: { width: 201, height: 437 },
-} satisfies Record<string, Viewport>
+export type CaptureCase = {
+  name: string
+  viewport: Viewport
+  reducedMotion: 'reduce' | 'no-preference'
+}
+
+/** Focused cases, never an automatic viewport × motion matrix. No case emulates zoom. */
+export const captureCases = {
+  phone: { name: 'phone', viewport: layoutViewports.iphone17, reducedMotion: 'no-preference' },
+  narrow: { name: 'narrow', viewport: layoutViewports.narrow, reducedMotion: 'no-preference' },
+  'reduced-motion': {
+    name: 'reduced-motion',
+    viewport: layoutViewports.iphone17,
+    reducedMotion: 'reduce',
+  },
+} satisfies Record<string, CaptureCase>
 
 export type CaptureRoute = {
   /** File name prefix, such as `today`. */
@@ -27,6 +37,7 @@ export type CaptureRoute = {
 }
 
 export type CaptureEntry = {
+  captureCase: string
   route: string
   path: string
   stage: 'fallback' | 'loaded'
@@ -55,9 +66,9 @@ async function measure(page: Page) {
 }
 
 /**
- * For each route, viewport and reduced-motion setting: hold every Worker read, load the route,
+ * For each selected route and explicit case: hold every Worker read, load the route,
  * wait for stylesheets and fonts, then screenshot and measure the fallback; release, and do the
- * same for the loaded page. Writes `<name>-<stage>-<viewport>-<motion>.png` and
+ * same for the loaded page. Writes `<name>-<stage>-<case>.png` and
  * `loading-capture.json` to `out`, and returns the summary.
  */
 export async function captureLoading(
@@ -65,40 +76,40 @@ export async function captureLoading(
   worker: WorkerControls,
   routes: CaptureRoute[],
   out: string,
+  cases: readonly CaptureCase[] = [captureCases.phone],
 ) {
   await mkdir(out, { recursive: true })
   const summary: CaptureEntry[] = []
   for (const route of routes)
-    for (const [viewportName, viewport] of Object.entries(captureViewports))
-      for (const reducedMotion of ['reduce', 'no-preference'] as const) {
-        await page.setViewportSize(viewport)
-        await page.emulateMedia({ reducedMotion })
-        const motion = reducedMotion === 'reduce' ? 'reduced' : 'motion'
-        const shoot = async (stage: CaptureEntry['stage']) => {
-          await expect
-            .poll(() => stylesheetsLoaded(page), { message: 'stylesheets should load' })
-            .toBe(true)
-          const screenshot = `${route.name}-${stage}-${viewportName}-${motion}.png`
-          await page.screenshot({ path: resolve(out, screenshot) })
-          summary.push({
-            route: route.name,
-            path: route.path,
-            stage,
-            viewport: `${viewport.width}x${viewport.height}`,
-            reducedMotion,
-            screenshot,
-            ...(await measure(page)),
-          })
-        }
-        worker.hold(holdAll)
-        await page.goto(route.path, { waitUntil: 'commit' })
-        await expect(route.fallback(page)).toBeVisible()
-        await shoot('fallback')
-        worker.release()
-        await expect(route.content(page)).toBeVisible()
-        await expect(route.fallback(page)).toHaveCount(0)
-        await shoot('loaded')
+    for (const { name, viewport, reducedMotion } of cases) {
+      await page.setViewportSize(viewport)
+      await page.emulateMedia({ reducedMotion })
+      const shoot = async (stage: CaptureEntry['stage']) => {
+        await expect
+          .poll(() => stylesheetsLoaded(page), { message: 'stylesheets should load' })
+          .toBe(true)
+        const screenshot = `${route.name}-${stage}-${name}.png`
+        await page.screenshot({ path: resolve(out, screenshot) })
+        summary.push({
+          captureCase: name,
+          route: route.name,
+          path: route.path,
+          stage,
+          viewport: `${viewport.width}x${viewport.height}`,
+          reducedMotion,
+          screenshot,
+          ...(await measure(page)),
+        })
       }
+      worker.hold(holdAll)
+      await page.goto(route.path, { waitUntil: 'commit' })
+      await expect(route.fallback(page)).toBeVisible()
+      await shoot('fallback')
+      worker.release()
+      await expect(route.content(page)).toBeVisible()
+      await expect(route.fallback(page)).toHaveCount(0)
+      await shoot('loaded')
+    }
   await writeFile(resolve(out, 'loading-capture.json'), `${JSON.stringify(summary, null, 2)}\n`)
   return summary
 }

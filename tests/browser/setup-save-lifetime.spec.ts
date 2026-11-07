@@ -9,7 +9,14 @@ test.use({
 for (const viewport of [
   { name: 'phone', width: 402, height: 874, reducedMotion: 'no-preference' as const },
   { name: 'narrow', width: 320, height: 740, reducedMotion: 'reduce' as const },
-  { name: '200% zoom', width: 201, height: 437, reducedMotion: 'reduce' as const },
+  // Retained after FE-668 found a zero-width Toast message beside its recovery action.
+  // This is a narrow viewport regression, not text enlargement or zoom evidence.
+  {
+    name: '201px toast wrapping regression',
+    width: 201,
+    height: 437,
+    reducedMotion: 'reduce' as const,
+  },
 ]) {
   test.describe(viewport.name, () => {
     test.use({

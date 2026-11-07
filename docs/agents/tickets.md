@@ -66,8 +66,12 @@ the ticket that owns each nearby item.
 - Five acceptance criteria at most. More means the ticket holds two slices: split it.
 - Evidence is an assertion, not a record: "the journey asserts layout shift ≤ 0.01",
   not "measure and record a budget". The assertion's comment carries the justification.
-- Loading captures and visual review belong to the wave's gate ticket (FE-639 for
-  Today and History). A route ticket only adds its route to `loading-capture.spec.ts`.
+- Consolidated loading captures and visual review belong to the wave's gate ticket
+  (FE-639 for Today and History). Route tickets register routes in
+  `loading-capture.spec.ts` and own behavioral assertions. Require route-specific
+  visual evidence only when needed for acceptance; link it from the gate without
+  recapture. Select affected routes and explicit cases under the
+  [visual verification policy](../verification.md#visual-verification).
 - Write "Tests prove…" for logic and UI states. Name a browser journey only for
   behaviour that needs a real browser and app: route navigation, SSR, hydration and
   streaming, layout and viewport, or the auth and Worker path

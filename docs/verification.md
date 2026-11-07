@@ -199,9 +199,11 @@ visible and, on a direct load, after `page.waitForLoadState('load')`.
 
 **Layout helper** (`tests/browser/layout.ts`): `trackLayout(page, viewport)` sets the
 viewport and observes `layout-shift` entries from the next document, so call it before
-`page.goto`. Loop over `layoutViewports` (320px and 402px) with one test each, so CI
-covers both without the `narrow` project. `snapshot(stage)` records the boxes of the
-header, Settings link and Primary nav (or the locators you pass); `result()` returns
+`page.goto`. New layout checks use 402px by default and add 320px when the change
+affects narrow-layout behavior. Keep existing targeted regression coverage at both
+widths in `layoutViewports`; those tests run in CI without the `narrow` project.
+`snapshot(stage)` records the boxes of the header, Settings link and Primary nav
+(or the locators you pass); `result()` returns
 `cumulativeLayoutShift`, `shifts`, the separate `inputShift` and `inputShifts`, and the
 snapshots. For a client navigation, call `start()` just before the click. Limits:
 
@@ -214,27 +216,42 @@ snapshots. For a client navigation, call `start()` just before the click. Limits
 - Elements inserted or removed, such as a fallback replaced by content, are not shifts.
   Compare snapshot boxes between `fallback` and `loaded` to catch geometry jumps.
 
-**Budgets:** a route ticket records `result()` at both widths (log it and attach it as
-the test does), then sets a budget with a justification in the ticket and asserts
+**Budgets:** a route ticket records `result()` at the selected widths (log it and
+attach it as the test does), then sets a budget with a justification in the ticket
+and asserts
 `cumulativeLayoutShift` against it. Request counts are asserted exactly: zero repeated
 initial reads per path after load, unless the ticket justifies otherwise.
 
-**Loading captures** (`tests/browser/capture.ts`): `loading-capture.spec.ts` passes a
-route list (name, path, fallback and content locators) to `captureLoading`. For each
-route at 402px, 320px and 200% zoom (201x437), with reduced motion on and off, it holds
-every Worker read, loads the route, waits for stylesheets and fonts (under
-`MEDDIES_BROWSER_DEV=1` the first paint after `commit` can precede the CSS), then saves
-the fallback screenshot, releases and saves the loaded one. It writes
-`loading-capture.json` with each capture's status labels, horizontal overflow and
-shell boxes. It is opt-in and never a CI assertion: the spec skips unless
-`MEDDIES_VISUAL_OUT` is set, and writes there.
+**Loading captures** (`tests/browser/capture.ts`) are opt-in review artifacts.
+`loading-capture.spec.ts` passes selected routes (name, path, fallback and content
+locators) to `captureLoading`. The default case is 402x874 with normal motion,
+including fallback and loaded states. Additional cases are explicit, not a viewport
+× motion matrix: `phone` (402x874, normal motion), `narrow` (320x740, normal motion),
+and `reduced-motion` (402x874, reduced motion). Callers can also pass a typed
+`CaptureCase[]` for a particular risk. Viewport resizing is not text enlargement
+or zoom; there is no zoom preset.
+
+The helper holds every Worker read, loads the route, waits for stylesheets and
+fonts (under `MEDDIES_BROWSER_DEV=1` the first paint after `commit` can precede the
+CSS), saves the fallback, releases and saves the loaded page. It writes
+`loading-capture.json` with each capture's case, status labels, horizontal overflow
+and shell boxes. The spec skips unless `MEDDIES_VISUAL_OUT` is set and writes there;
+these artifacts are never a CI visual baseline.
 
 ```sh
 MEDDIES_VISUAL_OUT=/tmp/meddies-capture pnpm test:browser:build loading-capture
+# Capture only Today, adding a focused reduced-motion case:
+MEDDIES_VISUAL_OUT=/tmp/meddies-capture MEDDIES_CAPTURE_ROUTES=today MEDDIES_CAPTURE_CASES=phone,reduced-motion pnpm test:browser:build loading-capture
 ```
 
-Route tickets add their route to the spec and paste the JSON summary into their issue.
-A route whose data loads in the client uses its client loading status as the fallback.
+`MEDDIES_CAPTURE_ROUTES` selects registered route names (currently `today,history`);
+omitting it selects all registered routes. `MEDDIES_CAPTURE_CASES` selects the named
+cases above; omitting it selects only `phone`. Unknown or empty selections fail.
+Route tickets register routes and own behavioral assertions; the wave gate owns
+consolidated loading review (FE-639 for Today/History). Route-specific visual evidence
+is required only when needed for that ticket's acceptance, and is linked from the
+gate without recapture. Reuse current evidence for unchanged behavior. A route whose
+data loads in the client uses its client loading status as the fallback.
 
 Locator policy, enforced by lint in `tests/browser/**`:
 
@@ -305,6 +322,52 @@ Record metrics in the active Linear issue: streaming order, request counts,
 layout shift, interaction latency where relevant, viewport and project, and
 whether evidence is synthetic (Playwright) or from a real iPhone. Synthetic runs
 do not prove device performance.
+
+## Visual verification
+
+For meaningful UI changes, inspect the rendered affected screens and states at
+402×874 CSS px. Include loading, empty, populated, validation, saving and recovery
+states only where the change affects them. A meaningful UI change alters visible
+content, layout, typography, controls, feedback or motion.
+
+Add focused checks according to the change:
+
+- **320px:** changes to widths, spacing, wrapping, responsive layout, navigation,
+  drawers, popups or action placement. Include long names where they stress the layout.
+- **Enlarged text:** changes to typography, labels, dense controls, fixed dimensions
+  or containers that may clip text or hide actions. Use 200% text enlargement as a
+  conditional stress target and record the actual setting and method. Viewport
+  resizing is not text enlargement or zoom. A CSS font-size probe may supplement
+  device evidence, but must be labelled as a synthetic probe with its limits.
+- **Reduced motion:** changes to animation, transitions, gestures or motion
+  preferences. Verify the affected interaction with normal and reduced motion;
+  still screenshots alone do not prove motion behavior. Skeletons remain static
+  at every motion setting.
+- **Keyboard and focus:** changes to controls, forms, dialogs, popups or navigation.
+- **Physical iPhone:** changes whose correctness depends on installed-PWA behavior,
+  safe areas, the software keyboard, touch gestures or VoiceOver. Reuse unchanged
+  device evidence and retain outstanding device checks in their owning issue.
+  FE-616 retains human-led iPhone 17 acceptance; FE-602 retains integrated
+  accessibility review. Synthetic Chromium at 402px does not establish either.
+
+Select cases that exercise each relevant risk. Do not require a viewport × motion
+× state capture matrix. Batch review after implementation, reuse current evidence
+for unchanged behavior, and repeat only after relevant fixes or unresolved failures.
+Preserve semantic controls and labels, existing accessible contrast and visible
+focus, 44px touch targets, safe areas, text enlargement, reduced-motion support,
+non-color status cues and reachable actions, including with the keyboard open.
+Conditional checks do not make these safeguards optional.
+
+Existing exception: calendar day cells measured about 39.7px at 320px after
+FE-642 (38.6px before it). FE-650's handoff assigns this exception to FE-642.
+Keep that exception explicit in Linear;
+it does not relax the general 44px target or count as resolved by conditional checks.
+Existing 201×437 save-lifetime cases are toast-wrapping regressions, not zoom evidence.
+
+Record the revision, affected states, checks performed, evidence links and remaining
+limitations in Linear. Reference existing evidence instead of copying it into
+multiple issues. Keep useful automated regressions even when the corresponding
+manual check is conditional. Required checks and CI coverage remain unchanged.
 
 ## Manual checks
 
