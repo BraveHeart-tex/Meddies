@@ -1,6 +1,6 @@
 import { expect, test } from './fixtures'
 import { datePicker, expectTime, pickDate, pickTime } from './pickers'
-import { doseTrigger, historyList, historyRows, intakeTime, drawer } from './locators'
+import { doseTrigger, historyList, historyRows, intakeTime, drawer, toastMessage } from './locators'
 import { addDays, insertScheduledMedicine, insertSkippedRecord, insertTakenRecord } from './seed'
 
 // History shows the day before the frozen scheduling clock, in Europe/Istanbul.
@@ -96,9 +96,9 @@ test('review, edit and correct past doses in History', async ({ page, request },
     await dialog.getByLabel(/^Amount/).fill('1.5')
     await dialog.getByRole('button', { name: 'Save intake changes' }).click()
     await expect(first).toContainText('quantity 1.5 tablet')
-    await expect(first.getByRole('status')).toContainText(
-      /Saved changes for History Fixture Medicine.*Outcome: taken/,
-    )
+    await expect(
+      toastMessage(page, /^History Fixture Medicine \d\d:\d\d · intake changed to .*, 1½ tablets$/),
+    ).toBeVisible()
     await expect(intakeTime(first)).toHaveAttribute('datetime', originalTakenAt!)
   })
 

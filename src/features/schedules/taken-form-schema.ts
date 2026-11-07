@@ -27,6 +27,19 @@ export const instantOf = (local: string) => new Date(`${local}+03:00`)
 export const previousDate = (date: string) =>
   new Date(Date.parse(`${date}T12:00:00Z`) - 86_400_000).toJSON().slice(0, 10)
 
+/** The local minute a choice stands for, or null while Other is blank or half chosen. */
+export function takenAtLocal(
+  values: { when?: TakenAtChoice; date?: string; time?: string },
+  now: string,
+  scheduled: string,
+) {
+  if (values.when === 'now') return now
+  if (values.when === 'scheduled') return scheduled
+  return isScheduleDate(values.date) && isTimeOfDay(values.time ?? '')
+    ? `${values.date}T${values.time}`
+    : null
+}
+
 export type TakenFormOptions = {
   unit: DoseUnit
   /** The Now minute on screen; Save stores this minute (FE-648 D12). */
@@ -66,12 +79,8 @@ export function takenFormSchema({ unit, now, scheduled, original }: TakenFormOpt
       if (problem) ctx.addIssue({ code: 'custom', message: problem, path: ['quantity'] })
     })
     .transform((values) => {
-      const local =
-        values.when === 'now'
-          ? now
-          : values.when === 'scheduled'
-            ? scheduled
-            : `${values.date}T${values.time}`
+      // superRefine has passed, so Other is complete here.
+      const local = takenAtLocal(values, now, scheduled) as string
       return {
         takenAt: original?.local === local ? original.instant : instantOf(local).toJSON(),
         quantity: parseQuantity(values.quantity) as number,

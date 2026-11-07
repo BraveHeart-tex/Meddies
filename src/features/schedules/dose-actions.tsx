@@ -4,14 +4,17 @@ import { useImperativeHandle, useRef, useState, type Ref } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
-import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item'
+import { toast } from '@/components/ui/toast'
+import { dateLabel } from '@/lib/calendar-date'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Medicine } from '@/features/medicines/contract'
 import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
 import { SkippedForm } from './skipped-form'
 import { doseClock, TakenForm } from './taken-form'
 import { DoseDrawer } from './dose-drawer'
-import { useDoseOutcomeMutation } from './use-dose-outcome-mutation'
+import { outcomeConfirmation } from './dose-confirmation'
+import { ScheduledChip } from './scheduled-chip'
+import { useDoseOutcomeMutation, type RecordCheck } from './use-dose-outcome-mutation'
 
 type Outcome = DoseOutcomeRecord['outcome']
 export type DoseDrawerOpener = { open: (outcome: Outcome) => void }
@@ -20,6 +23,7 @@ export function DoseActions({
   dose,
   medicine,
   refresh,
+  checkRecorded,
   onRecorded,
   appearance = 'button',
   opener,
@@ -29,6 +33,8 @@ export function DoseActions({
   dose: DoseOccurrence
   medicine: Medicine
   refresh: () => Promise<boolean>
+  /** Reloads once after an uncertain new outcome (Today only). */
+  checkRecorded?: () => Promise<RecordCheck>
   onRecorded: (record: DoseOutcomeRecord) => void
   appearance?: 'row' | 'button'
   opener?: Ref<DoseDrawerOpener>
@@ -42,12 +48,13 @@ export function DoseActions({
   const rowTrigger = useRef<HTMLButtonElement>(null)
   const returnFocus = useRef<HTMLElement | null>(null)
   const [openedWithoutOutcome, setOpenedWithoutOutcome] = useState(false)
+  const [savingOutcome, setSavingOutcome] = useState<Outcome>('Taken')
   const {
     submit,
     saving,
     error,
     needsReview,
-    uncertain,
+    problem,
     clearFeedback,
     clearError,
     dismissReview,
@@ -56,7 +63,20 @@ export function DoseActions({
   } = useDoseOutcomeMutation({
     dose,
     refresh,
-    onRecorded,
+    checkRecorded,
+    onRecorded(record) {
+      // Confirmed by the server: a Toast without Undo (FE-648 F2, C5).
+      toast.add({
+        title: outcomeConfirmation({
+          label: medicine.label,
+          unit: medicine.unit,
+          previous: dose.status,
+          record,
+        }),
+        type: record.outcome === 'Taken' ? 'success' : 'skipped',
+      })
+      onRecorded(record)
+    },
     onFinished() {
       setCorrecting(false)
       setEditingDose(null)
@@ -66,6 +86,11 @@ export function DoseActions({
       requestAnimationFrame(() => rowTrigger.current?.focus())
     },
   })
+
+  function save(outcome: Outcome, details: Record<string, unknown>) {
+    setSavingOutcome(outcome)
+    return submit(outcome, details)
+  }
 
   function edit(outcome: Outcome | null) {
     setEditor(outcome)
@@ -104,7 +129,6 @@ export function DoseActions({
 
   const verb = recorded ? 'Review' : 'Record'
   const triggerLabel = `${verb} dose for ${medicine.label} scheduled at ${doseClock(dose.dueAt)}`
-  const sameDay = istanbulDate(new Date(dose.dueAt)) === todayDate
   const choosing = !recorded || correcting || (openedWithoutOutcome && editor !== null)
 
   return (
@@ -181,22 +205,12 @@ export function DoseActions({
           setOpenedWithoutOutcome(false)
         }}
       >
-        <Item variant="muted" size="sm" className="rounded-md bg-muted px-3.5 py-3">
-          <ItemMedia className="text-muted-foreground">
-            <Icon name="clock" size={18} />
-          </ItemMedia>
-          <ItemContent>
-            <ItemTitle className="text-body-sm font-bold text-muted-foreground">
-              Scheduled
-            </ItemTitle>
-          </ItemContent>
-          <ItemActions className="text-body-sm font-extrabold">
-            <time dateTime={dose.dueAt}>
-              {doseClock(dose.dueAt)}{' '}
-              {sameDay ? 'today' : `on ${istanbulDate(new Date(dose.dueAt))}`}
-            </time>
-          </ItemActions>
-        </Item>
+        <ScheduledChip
+          dose={dose}
+          today={todayDate}
+          savingOutcome={saving ? savingOutcome : null}
+          unconfirmed={problem?.kind === 'uncertain'}
+        />
         {openedWithoutOutcome && recorded && editor !== null && (
           <Alert role="status">
             <AlertDescription className="text-foreground">
@@ -215,13 +229,16 @@ export function DoseActions({
                   <time dateTime={dose.record.takenAt}>{doseClock(dose.record.takenAt)}</time>
                   {istanbulDate(new Date(dose.record.takenAt)) !==
                     istanbulDate(new Date(dose.dueAt)) &&
-                    ` on ${istanbulDate(new Date(dose.record.takenAt))}`}
+                    ` on ${dateLabel(
+                      istanbulDate(new Date(dose.record.takenAt)),
+                      istanbulDate(new Date(dose.dueAt)),
+                    )}`}
                 </>
               ) : (
                 'Skipped. No intake recorded.'
               )}
             </p>
-            <div className="flex flex-wrap gap-2.5">
+            <div data-base-ui-swipe-ignore="y" className="flex flex-wrap gap-2.5">
               {(dose.status === 'Taken' || editingDose !== null) &&
                 (editingDose ?? dose).status === 'Taken' && (
                   <TakenForm
@@ -229,8 +246,7 @@ export function DoseActions({
                     medicine={medicine}
                     open={editingDose !== null}
                     saving={saving}
-                    error={editingDose ? error : ''}
-                    uncertain={editingDose !== null && uncertain}
+                    problem={editingDose ? problem : null}
                     mode="edit"
                     onOpen={(open) => {
                       clearError()
@@ -248,7 +264,7 @@ export function DoseActions({
                         setDrawerOpen(false)
                       }
                     }}
-                    onSubmit={(details) => submit('Taken', details)}
+                    onSubmit={(details) => save('Taken', details)}
                   />
                 )}
               {editingDose === null && (
@@ -276,6 +292,7 @@ export function DoseActions({
               {correcting && recorded ? `Change ${dose.status.toLowerCase()} to` : 'What happened?'}
             </span>
             <ToggleGroup
+              data-base-ui-swipe-ignore="y"
               aria-labelledby={`outcome-${dose.id}`}
               variant="choice"
               size="lg"
@@ -322,11 +339,10 @@ export function DoseActions({
             medicine={medicine}
             open={editor === 'Taken'}
             saving={saving}
-            error={editor === 'Taken' ? error : ''}
-            uncertain={editor === 'Taken' && uncertain}
+            problem={editor === 'Taken' ? problem : null}
             mode={correcting && recorded ? 'correct' : 'record'}
             onOpen={closeEditor}
-            onSubmit={(details) => submit('Taken', details)}
+            onSubmit={(details) => save('Taken', details)}
           />
         )}
         {(!recorded || correcting || editor === 'Skipped') && (
@@ -335,9 +351,9 @@ export function DoseActions({
             medicine={medicine}
             open={editor === 'Skipped'}
             saving={saving}
-            error={editor === 'Skipped' ? error : ''}
+            problem={editor === 'Skipped' ? problem : null}
             onOpen={closeEditor}
-            onSubmit={() => void submit('Skipped', {})}
+            onSubmit={() => void save('Skipped', {})}
             refresh={refresh}
           />
         )}

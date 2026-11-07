@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode, RefObject } from 'react'
+import { useRef, type ReactNode, type RefObject } from 'react'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
 import {
@@ -36,6 +36,8 @@ export function DoseDrawer({
   onClose: () => void
   children: ReactNode
 }) {
+  // The title takes focus on open, so nothing is chosen for her (FE-648 R1).
+  const titleRef = useRef<HTMLHeadingElement>(null)
   return (
     <Drawer
       open={open}
@@ -50,11 +52,17 @@ export function DoseDrawer({
         onClose()
       }}
     >
-      <DrawerContent finalFocus={finalFocus}>
+      <DrawerContent initialFocus={titleRef} finalFocus={finalFocus}>
         <DrawerHeader className="flex-row items-center gap-3.5">
           <MedicationTile medicineId={medicineId} size="lg" />
           <div className="flex min-w-0 flex-1 flex-col gap-0.75 wrap-break-word">
-            <DrawerTitle className="text-[1.4375rem] leading-[1.1]">{title}</DrawerTitle>
+            <DrawerTitle
+              ref={titleRef}
+              tabIndex={-1}
+              className="text-[1.4375rem] leading-[1.1] outline-none"
+            >
+              {title}
+            </DrawerTitle>
             <DrawerDescription>{description}</DrawerDescription>
           </div>
           <DrawerClose

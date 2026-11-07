@@ -15,6 +15,7 @@ import { DoseStatusBadge } from './dose-status-badge'
 import { DoseActions, type DoseDrawerOpener } from './dose-actions'
 import { NextDose, formatDayLabel, greeting } from './next-dose'
 import type { ScheduleSnapshot } from './use-schedule-snapshot'
+import type { RecordCheck } from './use-dose-outcome-mutation'
 
 export function TodaySchedule({
   snapshot: { today, now, loading, loadError, retry: retrySchedules, applyOutcome, reconcile },
@@ -41,30 +42,29 @@ export function TodaySchedule({
     const heading = document.getElementById(`dose-${dose.id}`)
     const active = document.activeElement
     if (active === document.body || heading?.parentElement?.contains(active)) heading?.focus()
+    // A confirmed save announces itself with a Toast from DoseActions (FE-648 F2).
+    if (!reconciled) return setIntakeMessage('')
     const description = `${name(dose.medicineId)} scheduled for ${clock(dose.dueAt)}`
-    const outcome = record.outcome.toLowerCase()
-    setIntakeMessage(
-      reconciled
-        ? `${description} was already recorded as ${outcome}.`
-        : `Recorded ${description} as ${outcome}.`,
-    )
+    setIntakeMessage(`${description} was already recorded as ${record.outcome.toLowerCase()}.`)
   }
 
   function showOutcome(dose: DoseOccurrence, record: DoseOutcomeRecord) {
     applyOutcome(record, () => announceOutcome(dose, record))
   }
 
-  async function reconcileOutcome(dose: DoseOccurrence) {
-    let resolved = false
-    await reconcile((snapshot) => {
-      const record = snapshot.records.find(
+  /**
+   * Reloads Today and returns this dose's record, if any. `announce` reports a found record as
+   * already recorded (409 recovery); the uncertain-save check (FE-648 F4) stays quiet.
+   */
+  async function checkRecorded(dose: DoseOccurrence, announce: boolean): Promise<RecordCheck> {
+    let found: DoseOutcomeRecord | undefined
+    const applied = await reconcile((snapshot) => {
+      found = snapshot.records.find(
         (item) => item.scheduleId === dose.scheduleId && item.dueAt === dose.dueAt,
       )
-      if (!record) return
-      announceOutcome(dose, record, true)
-      resolved = true
+      if (found && announce) announceOutcome(dose, found, true)
     })
-    return resolved
+    return found ? { record: found } : applied ? 'missing' : 'unknown'
   }
   return (
     <div className="flex flex-col gap-5">
@@ -220,7 +220,10 @@ export function TodaySchedule({
                                 todayDate={today.date}
                                 describedBy={`dose-status-${dose.id}`}
                                 opener={dose.id === today.next?.id ? heroOpener : undefined}
-                                refresh={() => reconcileOutcome(dose)}
+                                refresh={async () =>
+                                  typeof (await checkRecorded(dose, true)) === 'object'
+                                }
+                                checkRecorded={() => checkRecorded(dose, false)}
                                 onRecorded={(record) => showOutcome(dose, record)}
                               />
                             )}

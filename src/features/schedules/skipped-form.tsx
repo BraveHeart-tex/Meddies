@@ -1,19 +1,23 @@
 'use client'
 
 import { useEffect, useId, useRef, type KeyboardEvent } from 'react'
+import { InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { useKnownOffline } from '@/lib/use-known-offline'
 import type { Medicine } from '@/features/medicines/contract'
 import type { DoseOccurrence } from './contract'
-import { doseClock } from './taken-form'
+import { DoseSaveProblem } from './dose-save-problem'
+import { doseClock } from './taken-form-schema'
+import type { SaveProblem } from './use-dose-outcome-mutation'
 
-// Explicit skip confirmation. A skip records no intake time or quantity.
+// Explicit skip confirmation (FE-648 R4). A skip records no intake time or quantity.
 export function SkippedForm({
   dose,
   medicine,
   open,
   saving,
-  error,
+  problem,
   onOpen,
   onSubmit,
   refresh,
@@ -22,13 +26,14 @@ export function SkippedForm({
   medicine: Medicine
   open: boolean
   saving: boolean
-  error: string
+  problem: SaveProblem | null
   onOpen: (open: boolean) => void
   onSubmit: () => void
   refresh: () => Promise<boolean>
 }) {
   const id = useId()
   const cancel = useRef<HTMLButtonElement>(null)
+  const offline = useKnownOffline()
 
   useEffect(() => {
     if (open) cancel.current?.focus()
@@ -47,7 +52,7 @@ export function SkippedForm({
       hidden={!open}
       disabled={saving}
       onKeyDown={handleKeyDown}
-      aria-describedby={error ? `${id}-error` : undefined}
+      aria-describedby={!saving && (problem || offline) ? `${id}-problem` : undefined}
       className="flex min-w-0 flex-col gap-4.5"
     >
       <legend className="sr-only">Confirm skipped dose</legend>
@@ -56,24 +61,37 @@ export function SkippedForm({
         aria-label={`Confirm skipping ${medicine.label}`}
         className="flex flex-col gap-4.5"
       >
-        <p className="text-center text-body-sm text-muted-foreground [overflow-wrap:anywhere]">
-          Skip {medicine.label}, scheduled for {doseClock(dose.dueAt)} Istanbul time? No intake is
-          recorded.
-        </p>
-        {error && (
-          <Alert id={`${id}-error`} variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+        <Alert className="[overflow-wrap:anywhere]">
+          <InfoIcon aria-hidden="true" />
+          <AlertDescription>
+            Skip {medicine.label}, scheduled for {doseClock(dose.dueAt)}? No intake time or quantity
+            is recorded.
+          </AlertDescription>
+        </Alert>
+        {!saving && (
+          <DoseSaveProblem
+            id={`${id}-problem`}
+            outcome="Skipped"
+            problem={problem}
+            offline={offline}
+          />
         )}
-        <div className="flex flex-col gap-1.5">
+        {/* A swipe that starts on a control never closes the drawer (FE-648 D14). */}
+        <div data-base-ui-swipe-ignore="y" className="flex flex-col gap-1.5">
           <Button
             type="button"
             size="drawer"
             className="w-full whitespace-normal"
-            disabled={saving}
+            disabled={saving || offline}
             onClick={onSubmit}
           >
-            {saving ? 'Saving skip...' : 'Save as skipped'}
+            {saving
+              ? 'Saving...'
+              : offline
+                ? 'Connect to save'
+                : problem?.kind === 'uncertain'
+                  ? 'Retry saving as skipped'
+                  : 'Save as skipped'}
           </Button>
           <Button
             ref={cancel}
@@ -84,7 +102,7 @@ export function SkippedForm({
           >
             Cancel
           </Button>
-          {error && (
+          {problem?.kind === 'rejected' && (
             <Button type="button" variant="outline" onClick={() => void refresh()}>
               Refresh Today
             </Button>

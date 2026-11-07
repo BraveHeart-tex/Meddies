@@ -22,6 +22,7 @@ export function useScheduleSnapshot(initialNow: string) {
   const [loadError, setLoadError] = useState(false)
   const mounted = useRef(false)
   const generation = useRef(0)
+  // Resolves true when the fresh snapshot was applied.
   const load = useCallback(async (beforeApply?: (snapshot: Snapshot) => void) => {
     const current = ++generation.current
     try {
@@ -31,12 +32,14 @@ export function useScheduleSnapshot(initialNow: string) {
       })
       if (!response.ok) throw new Error('load')
       const data: Snapshot = await response.json()
-      if (!mounted.current || current !== generation.current) return
+      if (!mounted.current || current !== generation.current) return false
       beforeApply?.(data)
       setSnapshot(data)
       setLoadError(false)
+      return true
     } catch {
       if (mounted.current && current === generation.current) setLoadError(true)
+      return false
     } finally {
       if (mounted.current && current === generation.current) setLoading(false)
     }
@@ -99,7 +102,10 @@ export function useScheduleSnapshot(initialNow: string) {
     return load()
   }
 
-  /** Reloads, calling `beforeApply` with the fresh snapshot before it replaces the current one. */
+  /**
+   * Reloads, calling `beforeApply` with the fresh snapshot before it replaces the current one.
+   * Resolves true when that snapshot was applied.
+   */
   function reconcile(beforeApply: (snapshot: Snapshot) => void) {
     return load(beforeApply)
   }

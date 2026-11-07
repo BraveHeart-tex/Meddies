@@ -16,7 +16,7 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 - Use Drawer for every slide-in panel: a content-sized bottom drawer on phone and desktop, capped at a readable width, without snap points. Swiping, Close, backdrop press, and Escape dismiss it and discard unsaved input; refuse all of them while a save is pending and disable Close. Keep its swipe handle and Cozy Care scrim, radius, and safe-area padding.
 - The record drawer asks _What happened?_ with an explicit outcome choice and saves nothing until the user saves. Taken offers _Now_, the scheduled time once it has passed, or _Other_ date and time, plus an amount. Skipped confirms the skip and records no intake time or quantity.
 - Keep medication identity tiles decorative. Distinguish _Scheduled_, _Due now_, _Not logged_, _Taken_, and _Skipped_ with text and icon. Keep scheduled time separate from actual intake and from skip confirmation.
-- Keep explicit confirmation, progress, retries, correction, and stale-state handling. Use a factual success announcement after the server confirms the save; `toast.add({ title, type: 'success', actionProps })` shows it with an Undo. Use loading, empty, and recovery states appropriate to the screen.
+- Keep explicit confirmation, progress, retries, correction, and stale-state handling. Use a factual success announcement after the server confirms the save; `toast.add({ title, type })` shows it. Dose outcomes have no Undo (FE-648 F2): correct them through the dose drawer. Use loading, empty, and recovery states appropriate to the screen.
 
 ## Loading and saving
 
@@ -25,7 +25,7 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 - Fill skeletons with the sunken surface (the hero uses blush). Use no shimmer or pulse under reduced motion. Mark skeletons `aria-hidden` and give each loading section one polite `role="status"` label, such as _Loading Today_. Don't announce individual placeholders or background refreshes.
 - Refreshing keeps content and shows progress only on the refresh control. A failed refresh keeps content and adds a recoverable alert.
 - Saving disables the form and labels the primary action _Saving…_. Dose recording and correction show the chosen outcome on affected rows as a _Saving…_ outline badge until the server confirms; setup and schedule edits never show optimistic state.
-- A definite failure rolls back the optimistic change, keeps the entered values, and shows an alert above the primary action. An unconfirmed save keeps values and turns the primary action into _Retry_: _Save could not be confirmed. Your details are still here. Connect and retry._ A conflict applies nothing and offers _Review current outcome_.
+- A definite failure rolls back the optimistic change, keeps the entered values, and shows an alert above the primary action. An unconfirmed save keeps values and turns the primary action into _Retry_: _Save could not be confirmed. Your details are still here. Connect and retry._ A form with no details (skip) omits the middle sentence; after a fresh load finds no record, add _Meddies checked and found no record yet._ A conflict applies nothing and offers _Review current outcome_.
 - Pending saves and their failures stay visible after navigating away. Check loading, refreshing, saving, and failure states at 402px, 320px, and 200% zoom with reduced motion.
 
 ## Reference screens

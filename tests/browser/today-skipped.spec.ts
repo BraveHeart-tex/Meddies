@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { expect, test } from './fixtures'
 import { scrollsHorizontally } from './actions'
-import { doseStatus, doseTrigger, drawer } from './locators'
+import { doseStatus, doseTrigger, drawer, toastMessage } from './locators'
 
 // The dose is due one minute after the frozen scheduling clock, so it stays today's dose.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
@@ -16,8 +16,6 @@ test('skip a dose from the keyboard and correct it back to Taken', async ({
   const label = 'M'.repeat(120)
   const dialog = drawer(page)
   const row = page.getByRole('list', { name: "Today's doses" }).getByRole('listitem')
-  const outcome = (text: string) =>
-    page.getByRole('main').getByRole('status').filter({ hasText: text })
 
   await test.step('seed authenticated fixtures', async () => {
     const medicineId = randomUUID()
@@ -55,7 +53,7 @@ test('skip a dose from the keyboard and correct it back to Taken', async ({
   })
 
   await test.step('confirm skipped outcome', async () => {
-    await expect(outcome('as skipped.')).toContainText(label)
+    await expect(toastMessage(page, `${label} 09:01 · skipped, no intake recorded`)).toBeVisible()
     expect(
       await scrollsHorizontally(page),
       'the confirmation must fit the viewport with a 120-character unbroken name',
@@ -76,7 +74,7 @@ test('skip a dose from the keyboard and correct it back to Taken', async ({
     await dialog.getByRole('button', { name: /^Correct outcome/ }).press('Enter')
     await dialog.getByRole('button', { name: 'I took it' }).press('Enter')
     await dialog.getByRole('button', { name: 'Save correction' }).press('Enter')
-    await expect(outcome('as taken.')).toBeVisible()
+    await expect(toastMessage(page, /· changed to taken at \d\d:\d\d, 1 tablet$/)).toBeVisible()
     await expect(doseStatus(row)).toHaveAccessibleDescription(/Taken/)
     await page.screenshot({ path: testInfo.outputPath('today-corrected.png') })
     await page.reload()

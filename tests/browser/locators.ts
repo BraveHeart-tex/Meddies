@@ -5,8 +5,13 @@ import type { Locator, Page } from '@playwright/test'
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-/** The open dose drawer. */
-export const drawer = (page: Page) => page.getByRole('dialog')
+/** The open dose drawer. Toasts are dialogs too, so match the drawer popup only. */
+export const drawer = (page: Page) =>
+  page.getByRole('dialog').and(page.locator('[data-slot="drawer-popup"]'))
+
+/** A confirmation toast, matched by its text. */
+export const toastMessage = (page: Page, text: string | RegExp) =>
+  page.getByRole('region', { name: 'Notifications' }).getByText(text)
 
 /** A Today row, keyed by its scheduled instant (ISO string). */
 export const doseRow = (page: Page, dueAt: string) =>

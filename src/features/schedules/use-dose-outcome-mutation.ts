@@ -6,6 +6,16 @@ import { parseDoseOutcomeRecord, type DoseOccurrence, type DoseOutcomeRecord } f
 type Outcome = DoseOutcomeRecord['outcome']
 type PinnedCorrection = { outcome: 'Taken' | 'Skipped'; revision: number }
 
+/** What a fresh load of Today found for this dose: its record, none, or the load failed. */
+export type RecordCheck = { record: DoseOutcomeRecord } | 'missing' | 'unknown'
+
+/**
+ * Why the last save was not confirmed, shown inside the drawer (FE-648 F3, F4). An `uncertain`
+ * save may have reached the server; `checked` means a fresh load found no record yet.
+ */
+export type SaveProblem =
+  { kind: 'rejected' | 'unauthorized' } | { kind: 'uncertain'; checked: boolean }
+
 /**
  * Owns saving a dose outcome: PUT for a new outcome, PATCH for a pinned correction, acknowledgment
  * checks, error copy, conflict refresh-then-close, the synchronous duplicate-submit lock and the
@@ -16,17 +26,19 @@ export function useDoseOutcomeMutation({
   refresh,
   onRecorded,
   onFinished,
+  checkRecorded,
 }: {
   dose: DoseOccurrence
   refresh: () => Promise<boolean>
+  /** Reloads Today once after an uncertain save; a record from this save ends it (F4). */
+  checkRecorded?: () => Promise<RecordCheck>
   onRecorded: (record: DoseOutcomeRecord) => void
   onFinished: () => void
 }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [needsReview, setNeedsReview] = useState(false)
-  // The last save may have reached the server: a retry reuses its action id.
-  const [uncertain, setUncertain] = useState(false)
+  const [problem, setProblem] = useState<SaveProblem | null>(null)
   const locked = useRef(false)
   const retryAction = useRef<{ fingerprint: string; id: string } | null>(null)
   const pinnedCorrection = useRef<PinnedCorrection | null>(null)
@@ -44,15 +56,15 @@ export function useDoseOutcomeMutation({
     locked.current = true
     setSaving(true)
     setError('')
-    setUncertain(false)
+    setProblem(null)
     const retry =
       outcome === 'Taken'
         ? 'Save could not be confirmed. Connect and retry with the same details.'
         : 'Save could not be confirmed. Retry with the same scheduled dose or refresh Today.'
+    const correctingExisting =
+      pinnedCorrection.current !== null && (dose.status === 'Taken' || dose.status === 'Skipped')
+    const currentRevision = pinnedCorrection.current?.revision ?? 0
     try {
-      const correctingExisting =
-        pinnedCorrection.current !== null && (dose.status === 'Taken' || dose.status === 'Skipped')
-      const currentRevision = pinnedCorrection.current?.revision ?? 0
       const expectedOutcome = pinnedCorrection.current?.outcome ?? outcome
       const fingerprint = JSON.stringify({
         outcome,
@@ -80,12 +92,14 @@ export function useDoseOutcomeMutation({
         body: JSON.stringify(payload),
       })
       if (response.status === 400) {
+        setProblem({ kind: 'rejected' })
         setError(
           outcome === 'Taken'
             ? 'Not saved. Taken time must be a time that has already passed. Change the time and save again.'
             : 'This scheduled dose can no longer be skipped. Refresh Today to check its status.',
         )
       } else if (response.status === 401) {
+        setProblem({ kind: 'unauthorized' })
         setError('Your session ended. Sign in again to record this dose.')
       } else if (response.status === 409) {
         if (correctingExisting) {
@@ -122,12 +136,39 @@ export function useDoseOutcomeMutation({
         pinnedCorrection.current = null
         onFinished()
       } else {
-        setError(retry)
-        setUncertain(true)
+        throw new Error('uncertain')
       }
     } catch {
-      setError(retry)
-      setUncertain(true)
+      // One check (F4), skipped when known offline. A new outcome landed when a record with this
+      // outcome exists; a correction landed when the next revision carries this action id.
+      const check: RecordCheck =
+        checkRecorded && navigator.onLine
+          ? await checkRecorded().catch((): RecordCheck => 'unknown')
+          : 'unknown'
+      const found = typeof check === 'object' ? check.record : null
+      const landed =
+        found !== null &&
+        found.outcome === outcome &&
+        (correctingExisting
+          ? found.revision === currentRevision + 1 && found.actionId === retryAction.current?.id
+          : true)
+      if (found && landed) {
+        onRecorded(found)
+        retryAction.current = null
+        pinnedCorrection.current = null
+        onFinished()
+      } else if (found && (!correctingExisting || (found.revision ?? 0) !== currentRevision)) {
+        // Recorded or changed elsewhere: nothing of this save applies.
+        await refresh()
+        closeAfterConflict(
+          correctingExisting
+            ? 'This dose changed elsewhere. Your correction was not saved. Review its current outcome before correcting it again.'
+            : 'This dose was already recorded. The current outcome is shown.',
+        )
+      } else {
+        setError(retry)
+        setProblem({ kind: 'uncertain', checked: check !== 'unknown' })
+      }
     } finally {
       locked.current = false
       setSaving(false)
@@ -139,17 +180,17 @@ export function useDoseOutcomeMutation({
     saving,
     error,
     needsReview,
-    uncertain,
+    problem,
     /** Clears the error and the review prompt. */
     clearFeedback() {
       setError('')
-      setUncertain(false)
+      setProblem(null)
       setNeedsReview(false)
     },
     /** Clears the error only, keeping the review prompt. */
     clearError() {
       setError('')
-      setUncertain(false)
+      setProblem(null)
     },
     /** Hides the review prompt, keeping the error. */
     dismissReview() {

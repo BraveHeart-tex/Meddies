@@ -3,9 +3,9 @@
 import { useId, useState, type KeyboardEvent } from 'react'
 import { Controller, useForm, useWatch, type FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { InfoIcon } from 'lucide-react'
 import { QuantityStepper } from '@/components/quantity-stepper'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { InfoIcon } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import {
@@ -22,12 +22,15 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import type { Medicine } from '@/features/medicines/contract'
 import type { DoseOccurrence } from './contract'
+import { DoseSaveProblem } from './dose-save-problem'
 import { useCurrentMinute } from './use-current-minute'
+import type { SaveProblem } from './use-dose-outcome-mutation'
 import {
   doseClock,
   instantOf,
   localMinute,
   previousDate,
+  takenAtLocal,
   takenFormDefaults,
   takenFormSchema,
   type TakenAtChoice,
@@ -54,7 +57,7 @@ const screenOrder = ['when', 'date', 'time', 'quantity'] as const
 
 type Mode = 'record' | 'edit' | 'correct'
 
-const primary: Record<Mode, { save: string; retry: string }> = {
+const primaryLabels: Record<Mode, { save: string; retry: string }> = {
   record: { save: 'Save as taken', retry: 'Retry saving as taken' },
   edit: { save: 'Save intake changes', retry: 'Retry saving intake changes' },
   correct: { save: 'Save correction', retry: 'Retry saving correction' },
@@ -71,8 +74,7 @@ export function TakenForm({
   medicine,
   open,
   saving,
-  error,
-  uncertain = false,
+  problem,
   onOpen,
   onSubmit,
   mode = 'record',
@@ -81,15 +83,15 @@ export function TakenForm({
   medicine: Medicine
   open: boolean
   saving: boolean
-  error: string
-  /** The last save could not be confirmed; a retry with unchanged details saves once. */
-  uncertain?: boolean
+  /** Why the last save was not confirmed; an uncertain retry with unchanged details saves once. */
+  problem: SaveProblem | null
   onOpen: (open: boolean) => void
   onSubmit: (details: TakenFormOutput) => Promise<void>
   mode?: Mode
 }) {
   const id = useId()
   // A pending or unconfirmed Now save keeps its minute, so a retry has the same details (D12, F4).
+  const uncertain = problem?.kind === 'uncertain'
   const now = useCurrentMinute(!saving && !uncertain)
   const offline = useKnownOffline()
   const scheduled = localMinute(dose.dueAt)
@@ -120,17 +122,10 @@ export function TakenForm({
     uncertain && submitted !== JSON.stringify(schema.safeParse(values).data ?? null)
 
   const scheduledHasPassed = scheduled <= now
-  const takenAt =
-    values.when === 'now'
-      ? now
-      : values.when === 'scheduled'
-        ? scheduled
-        : values.date && values.time
-          ? `${values.date}T${values.time}`
-          : ''
+  const takenAt = takenAtLocal(values, now, scheduled)
   const today = now.slice(0, 10)
   const yesterday = previousDate(today)
-  const labels = primary[mode]
+  const labels = primaryLabels[mode]
 
   async function save(details: TakenFormOutput) {
     setSubmitted(JSON.stringify(details))
@@ -337,33 +332,22 @@ export function TakenForm({
               )}
             />
           </FieldGroup>
-          {uncertain && !saving ? (
-            <Alert id={`${id}-problem`} variant="destructive">
-              <AlertTitle>Save could not be confirmed.</AlertTitle>
-              <AlertDescription>
-                Your details are still here.{' '}
-                {changedSinceSave
-                  ? 'Changing details starts a new save.'
-                  : 'Connect and retry; it will not be saved twice.'}
-              </AlertDescription>
-            </Alert>
-          ) : offline && !saving ? (
-            <Alert id={`${id}-problem`}>
-              <InfoIcon aria-hidden="true" />
-              <AlertDescription>You&apos;re offline. Your details stay here.</AlertDescription>
-            </Alert>
-          ) : error ? (
-            <Alert id={`${id}-problem`} variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : null}
+          {!saving && (
+            <DoseSaveProblem
+              id={`${id}-problem`}
+              outcome="Taken"
+              problem={problem}
+              offline={offline}
+              changed={changedSinceSave}
+            />
+          )}
           <div className="flex flex-col gap-1.5">
             <Button
               type="submit"
               size="drawer"
               className="w-full whitespace-normal"
               disabled={saving || offline}
-              aria-describedby={error || offline ? `${id}-problem` : undefined}
+              aria-describedby={!saving && (problem || offline) ? `${id}-problem` : undefined}
             >
               {saving
                 ? 'Saving...'

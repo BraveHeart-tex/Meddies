@@ -28,14 +28,6 @@ export function HistoryDoseActions({
   if (!medicine) return <DoseStatusBadge status={current.status} />
   return (
     <>
-      <p role="status" className="sr-only">
-        {confirmed && (
-          <span key={confirmed.revision}>
-            Saved changes for {medicine.label}, scheduled for {formatHistoryTime(dose.dueAt)}.{' '}
-            Outcome: {confirmed.outcome.toLowerCase()}.
-          </span>
-        )}
-      </p>
       <DoseStatusBadge status={current.status} />
       {current.status === 'Taken' && (
         <p className="text-sm">
