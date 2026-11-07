@@ -58,3 +58,6 @@ export const calendarDay = (scope: Page | Locator, date: string) =>
 
 /** The first day shown by an open date picker, to tell which month it displays. */
 export const firstCalendarDay = (scope: Page | Locator) => scope.locator('button[data-day]').first()
+
+/** Loading placeholders. They must stay hidden from assistive technology. */
+export const placeholders = (page: Page) => page.locator('[data-slot="skeleton"]')

@@ -8,6 +8,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { test as base, type APIResponse, type BrowserContext } from '@playwright/test'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
 import { encode } from 'next-auth/jwt'
+import { startWorkerProxy, type WorkerControls, type WorkerProxy } from './worker-proxy'
 
 export { expect } from '@playwright/test'
 
@@ -28,6 +29,7 @@ type Server = {
   origin: string
   token?: { secret: string; value: string; expires: number }
   setScheduleTime(instant: string): Promise<void>
+  worker?: WorkerControls
 }
 
 export type App = {
@@ -38,6 +40,11 @@ export type App = {
   expireSession(): Promise<void>
   /** Call the app API as the signed-in user; fails unless the response is 200. */
   api(method: string, path: string, data: object): Promise<APIResponse>
+  /**
+   * Hold, release, fail or delay the server's Worker requests and read their timing log.
+   * Requires `storage`. Seeding and the readiness check run before a journey can set rules.
+   */
+  worker: WorkerControls
 }
 
 export const ownerId = 'google:browser-journey'
@@ -136,6 +143,7 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
       await rename(`${clockFile}.next`, clockFile)
     }
     let worker: Miniflare | undefined
+    let proxy: WorkerProxy | undefined
     let child: ChildProcess | undefined
     let logs = ''
     try {
@@ -149,7 +157,11 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
         await applyD1Migrations(db)
         await journey.seed?.({ db, ownerId })
       }
-      const workerUrl = worker ? await worker.ready : undefined
+      // Next.js reaches the Worker through a proxy, so journeys can control server reads.
+      if (worker)
+        proxy = await startWorkerProxy(await worker.ready, {
+          onError: (line) => (logs = `${logs}${line}\n`.slice(-8000)),
+        })
       const port = await freePort()
       const origin = `http://localhost:${port}`
       const expires = Math.floor(Date.now() / 1000) + 900
@@ -178,7 +190,7 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
             ...env,
             NODE_ENV: dev ? 'development' : 'production',
             MEDDIES_BROWSER_CLOCK_FILE: clockFile ?? '',
-            MEDICINES_WORKER_URL: workerUrl?.toString() ?? '',
+            MEDICINES_WORKER_URL: proxy?.url.toString() ?? '',
             MEDICINES_WORKER_SECRET: worker ? workerSecret : '',
             AUTH_URL: origin,
             AUTH_SECRET: token ? secret : '',
@@ -214,7 +226,9 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
       }
       if (!ready) throw new Error('Next.js /api/session readiness check failed')
 
-      await use({ origin, token, setScheduleTime })
+      // Journeys get the controls only, not the proxy's lifecycle.
+      const { url: _url, close: _close, ...controls } = proxy ?? {}
+      await use({ origin, token, setScheduleTime, worker: proxy && (controls as WorkerControls) })
     } finally {
       if (logs && testInfo.status !== testInfo.expectedStatus)
         await testInfo.attach('service.log', {
@@ -222,6 +236,7 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
           contentType: 'text/plain',
         })
       if (child) await stop(child)
+      await proxy?.close()
       await worker?.dispose()
       if (clockFile) await unlink(clockFile).catch(() => {})
     }
@@ -240,6 +255,10 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
       origin: server.origin,
       setScheduleTime: server.setScheduleTime,
       expireSession: () => expireSession(context, server),
+      get worker() {
+        if (!server.worker) throw new Error('Journey must declare storage to control the Worker')
+        return server.worker
+      },
       api: async (method, path, data) => {
         // context.request shares the browser's session cookie.
         const response = await context.request.fetch(path, {

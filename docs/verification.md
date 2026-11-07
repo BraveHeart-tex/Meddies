@@ -141,6 +141,46 @@ advance elapsed time, and install it at the real current time, never at
 `initialScheduleTime`, so the session stays valid.
 `pnpm test` remains browser-free.
 
+### Worker controls and streaming
+
+`page.route` sees only browser requests. Server reads go from Next.js to the Worker, so with
+`storage` the fixture puts a Node proxy (`tests/browser/worker-proxy.ts`) in front of
+Miniflare, and `app.worker` controls it. Seeding talks to D1 directly and the
+`/api/session` readiness check runs before the journey starts, so neither is affected.
+Nothing ships in the production build, and product code has no test hooks.
+
+Next.js calls the Worker as `POST /medicines` or `POST /schedules` with an `operation`
+in the body, so rules match a `WorkerRoute`: method, path prefix and optional operation.
+History reads `{ method: 'POST', path: '/schedules', operation: 'listOutcomes' }` and
+`{ method: 'POST', path: '/medicines', operation: 'list' }`.
+
+- `hold(route)`: the Worker runs the request, but the response to Next.js waits.
+- `release(route?)`: sends held responses matching `route` (all when omitted) and drops
+  hold rules it covers, so later requests pass. A broader hold rule, such as
+  `{ method: 'POST', path: '/' }`, stays until released with a route that covers it.
+- `fail(route, status)`: answers with `status` without reaching the Worker.
+- `delay(route, ms)`: fixed delay, only when a case needs one. Prefer `hold`.
+- `clear()`, `held(route?)`, and `requests(route?)`: the timing log of method, path,
+  operation, status, and monotonic `start` and `end` (unset while held).
+
+Rules change mid-test, like `setScheduleTime`. `tests/browser/streaming.ts` turns them
+into evidence, with no duration thresholds:
+
+- `expectReadsOverlap(worker, routes)`: every route has a held request, so all started
+  before any was released. A page that awaits one read before the next times out here.
+- `expectStreamingOrder(worker, { routes, fallback, content })`: the fallback is visible
+  while a read is held, then content replaces it after release.
+- `blockPrefetch(page, path)`: aborts router prefetches (`Next-Router-Prefetch`) for the
+  target; `expectBlocked()` asserts at least one was aborted. Install it before the page
+  that links to the target loads, so prefetch cannot hide the loading path. `next dev`
+  does not prefetch, so cold-navigation journeys need the production build.
+
+Route tickets hold their reads first, then start the navigation: `page.goto(url,
+{ waitUntil: 'commit' })` for a direct load, because a held stream never fires `load`,
+or a link click after `blockPrefetch` for a cold client navigation. Then call
+`expectReadsOverlap` and `expectStreamingOrder`. `history-streaming.spec.ts` is the
+reference, including the failure state with `fail(route, 503)`.
+
 Locator policy, enforced by lint in `tests/browser/**`:
 
 - Prefer role, then label, then text, then a domain `data-*` id such as
