@@ -67,6 +67,8 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await expectTime(page, 'Time 1', time)
     await page.getByRole('button', { name: 'Retry saving schedule' }).press('Enter')
     await expect(page.getByText('Schedule saved for Routine Medicine.')).toBeVisible()
+    // The saved message shows before the replace to ?medicine=ID; reloading earlier reopens setup.
+    await expect(page).toHaveURL(/[?&]medicine=/)
     await page.reload()
     await expect(page.getByText(`Every day at ${time}`)).toHaveCount(1)
   })
