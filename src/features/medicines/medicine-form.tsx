@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import Link from 'next/link'
@@ -21,6 +22,7 @@ import { Input } from '@/components/ui/input'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { parseMedicine, type Medicine } from './contract'
+import { medicinesQuery } from './queries'
 import {
   medicineFormDefaults,
   medicineFormSchema,
@@ -36,15 +38,11 @@ const UNITS = [
 /** Request failures shown at form level. Types drive the alert, the primary label and locking. */
 type SaveProblem = 'rejected' | 'unauthorized' | 'conflict' | 'uncertain'
 
-async function findSavedMedicine(id: string) {
+/** Reconciling read: refreshes the cached list and finds the attempted medicine in it. */
+async function findSavedMedicine(client: QueryClient, id: string) {
   try {
-    const response = await fetch('/api/medicines', {
-      cache: 'no-store',
-      signal: AbortSignal.timeout(12000),
-    })
-    if (!response.ok) return null
-    const data = await response.json()
-    return (data.medicines as unknown[]).map(parseMedicine).find((item) => item.id === id) ?? null
+    const medicines = await client.fetchQuery({ ...medicinesQuery(), staleTime: 0 })
+    return medicines.find((item) => item.id === id) ?? null
   } catch {
     return null
   }
@@ -60,6 +58,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
     defaultValues: medicineFormDefaults,
   })
   const offline = useKnownOffline()
+  const queryClient = useQueryClient()
   // Retry identity: reused while the validated details are unchanged, so a retry after an
   // uncertain result saves at most one medicine.
   const action = useRef<{ id: string; fingerprint: string } | null>(null)
@@ -98,7 +97,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
         else if (response.status === 409) problem = 'conflict'
       } catch {}
       // Reconcile once before claiming the save is unconfirmed (647·M2).
-      if (!saved && problem === 'uncertain') saved = await findSavedMedicine(id)
+      if (!saved && problem === 'uncertain') saved = await findSavedMedicine(queryClient, id)
       if (saved) {
         action.current = null
         if (mounted.current) form.reset(medicineFormDefaults)

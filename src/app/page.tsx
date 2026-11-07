@@ -25,7 +25,7 @@ export default async function HomePage({
   })()
   if (session?.user?.id) {
     return (
-      <SessionBoundary expires={session.expires}>
+      <SessionBoundary ownerId={session.user.id} expires={session.expires}>
         <AppShell>
           <MedicinePanel scheduleMode="today" initialNow={schedulingNow().toISOString()} />
         </AppShell>

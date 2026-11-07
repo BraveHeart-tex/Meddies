@@ -75,7 +75,7 @@ export default async function HistoryPage({
   }
 
   return (
-    <SessionBoundary expires={session.expires}>
+    <SessionBoundary ownerId={session.user.id} expires={session.expires}>
       <SchedulingClockProvider serverNow={now.toISOString()}>
         <AppShell>
           <div className="space-y-2">

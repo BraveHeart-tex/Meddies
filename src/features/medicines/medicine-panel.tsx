@@ -1,18 +1,20 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronLeftIcon } from 'lucide-react'
 import { SchedulePanel } from '@/features/schedules/schedule-panel'
-import { buttonVariants } from '@/components/ui/button'
-import { Alert, AlertTitle } from '@/components/ui/alert'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Icon } from '@/components/ui/icon'
 import { AppHeader } from '@/components/layout/app-header'
 import { MedicationTile } from './medication-tile'
 import { MedicineForm } from './medicine-form'
-import { parseMedicine, type Medicine } from './contract'
+import type { Medicine } from './contract'
+import { medicineKeys, medicinesQuery, withSavedMedicine } from './queries'
 
 export function MedicinePanel({
   scheduleMode = 'list',
@@ -31,48 +33,30 @@ export function MedicinePanel({
   const [savedMedicine, setSavedMedicine] = useState<Medicine | null>(null)
   // Handoff from schedule setup to the medicine's page (FE-647 D4), carried the same way.
   const [scheduledMedicine, setScheduledMedicine] = useState<Medicine | null>(null)
-  const [medicines, setMedicines] = useState<Medicine[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState(false)
+  const queryClient = useQueryClient()
+  const medicinesRead = useQuery(medicinesQuery())
+  const medicines = medicinesRead.data ?? []
+  // Cached content stays on screen while it refreshes; loading and error states apply only
+  // until the session has a list (FE-666).
+  const hasMedicines = medicinesRead.data !== undefined
+  const loadError = !hasMedicines && medicinesRead.isError && !medicinesRead.isFetching
+  const loading = !hasMedicines && !loadError
+  // A failed refresh keeps the cached list and adds a recoverable alert (DESIGN.md). Today
+  // renders its own alert beside the last list; other screens show it above their content.
+  const refreshFailed = hasMedicines && medicinesRead.isError
   const mounted = useRef(true)
-  const generation = useRef(0)
   const mode = useRef(scheduleMode)
   const setupMedicineId = useRef(scheduleMedicineId)
   const detailHeading = useRef<HTMLHeadingElement>(null)
-  const load = useCallback(async () => {
-    const current = ++generation.current
-    try {
-      const response = await fetch('/api/medicines', {
-        cache: 'no-store',
-        signal: AbortSignal.timeout(12000),
-      })
-      if (!response.ok) throw new Error('load')
-      const data = await response.json()
-      const loaded = data.medicines.map(parseMedicine)
-      if (mounted.current && current === generation.current) {
-        setMedicines(loaded)
-        setLoadError(false)
-      }
-    } catch {
-      if (mounted.current && current === generation.current) setLoadError(true)
-    } finally {
-      if (mounted.current && current === generation.current) setLoading(false)
-    }
-  }, [])
   function retryMedicines() {
-    setLoading(true)
-    setLoadError(false)
-    void load()
+    void medicinesRead.refetch()
   }
   useEffect(() => {
     mounted.current = true
-    // load updates state only after the network settles.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load()
     return () => {
       mounted.current = false
     }
-  }, [load])
+  }, [])
   useEffect(() => {
     mode.current = scheduleMode
     setupMedicineId.current = scheduleMedicineId
@@ -103,15 +87,15 @@ export function MedicinePanel({
   }
 
   function saved(medicine: Medicine) {
-    setMedicines((previous) => [...previous.filter((item) => item.id !== medicine.id), medicine])
+    queryClient.setQueryData<Medicine[]>(medicineKeys.list(), (list) =>
+      withSavedMedicine(list, medicine),
+    )
     setSavedMedicine(medicine)
     // Never navigate someone who has already left the Add screen.
     if (mounted.current && mode.current === 'add')
       router.replace(`/medications?medicine=${encodeURIComponent(medicine.id)}`)
-    // A fresh read includes older medicines even if the initial list was still pending.
-    setLoadError(false)
-    setLoading(true)
-    void load()
+    // Reconcile: a fresh read includes older medicines even if the initial list was pending.
+    void queryClient.invalidateQueries({ queryKey: medicineKeys.all })
   }
 
   if (scheduleMode === 'add')
@@ -156,6 +140,21 @@ export function MedicinePanel({
             )
           }
         />
+      )}
+      {refreshFailed && scheduleMode !== 'today' && (
+        <Alert role="status">
+          <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
+            <p>Your medicines could not be refreshed. Showing the last successful list.</p>
+            <Button
+              variant="outline"
+              className="min-h-11"
+              disabled={medicinesRead.isFetching}
+              onClick={retryMedicines}
+            >
+              {medicinesRead.isFetching ? 'Retrying…' : 'Retry loading medicines'}
+            </Button>
+          </AlertDescription>
+        </Alert>
       )}
       {scheduleMode === 'detail' && detail && (
         <Card role="region" aria-labelledby="medicine-detail" className="[overflow-wrap:anywhere]">
@@ -212,7 +211,7 @@ export function MedicinePanel({
         mode={scheduleMode}
         initialMedicineId={scheduleMedicineId || detailMedicineId}
         medicinesLoading={loading}
-        medicinesError={loadError}
+        medicinesError={scheduleMode === 'today' ? refreshFailed || loadError : loadError}
         retryMedicines={retryMedicines}
       />
     </div>

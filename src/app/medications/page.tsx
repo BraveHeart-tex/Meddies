@@ -39,7 +39,7 @@ export default async function MedicationsPage({
       </main>
     )
   return (
-    <SessionBoundary expires={session.expires}>
+    <SessionBoundary ownerId={session.user.id} expires={session.expires}>
       <AppShell>
         <MedicinePanel
           scheduleMode={

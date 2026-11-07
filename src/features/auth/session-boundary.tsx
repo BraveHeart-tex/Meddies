@@ -1,13 +1,36 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
+import { isServer, QueryClientProvider } from '@tanstack/react-query'
+import {
+  createQueryClient,
+  endSessionQueryClient,
+  sessionQueryClient,
+} from '@/lib/session-query-client'
 
-/** Hide authenticated content at absolute expiry, including after returning to a backgrounded tab. */
-export function SessionBoundary({ expires, children }: { expires: string; children: ReactNode }) {
+/**
+ * Hide authenticated content at absolute expiry, including after returning to a backgrounded tab.
+ * Provides the session's Query client: one per server request, one per browser session.
+ */
+export function SessionBoundary({
+  ownerId,
+  expires,
+  children,
+}: {
+  ownerId: string
+  expires: string
+  children: ReactNode
+}) {
   const [expired, setExpired] = useState(false)
+  // Each page mounts its own boundary; the browser registry hands every mount the same client.
+  // Expiry is absolute, so the key stays stable for the whole session.
+  const [client] = useState(() =>
+    isServer ? createQueryClient() : sessionQueryClient(`${ownerId}:${expires}`),
+  )
   useEffect(() => {
     const expire = () => {
       setExpired(true)
+      endSessionQueryClient()
       const current = `${window.location.pathname}${window.location.search}`
       const knownTarget = ['/', '/history', '/medications', '/settings'].includes(
         window.location.pathname,
@@ -44,5 +67,9 @@ export function SessionBoundary({ expires, children }: { expires: string; childr
       document.removeEventListener('visibilitychange', check)
     }
   }, [expires])
-  return expired ? <p role="status">Your session ended. Please sign in again.</p> : children
+  return expired ? (
+    <p role="status">Your session ended. Please sign in again.</p>
+  ) : (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  )
 }

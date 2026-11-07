@@ -63,6 +63,29 @@ const eslintConfig = defineConfig([
     files: wallClockOwners,
     rules: { 'no-restricted-syntax': ['error', routeLinkSyntax] },
   },
+  // Browser code reads through authenticated API routes, never server wiring or storage transport.
+  {
+    files: [
+      'src/components/**/*.{ts,tsx}',
+      'src/features/**/*.tsx',
+      'src/features/*/queries.ts',
+      'src/lib/session-query-client.ts',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            'server-only',
+            '**/server',
+            '**/operations',
+            '**/lib/http',
+            '**/lib/medicine-storage',
+          ],
+        },
+      ],
+    },
+  },
   // Worker code may consume neutral contracts/rules, never app wiring or browser policy.
   {
     files: ['worker/**/*.ts'],

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { signIn, signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
+import { endSessionQueryClient } from '@/lib/session-query-client'
 
 export function AuthControl({
   signedIn = false,
@@ -23,6 +24,7 @@ export function AuthControl({
         await signOut({ redirect: false })
         const response = await fetch('/api/session', { cache: 'no-store' })
         if (response.status !== 401) throw new Error('Sign-out not confirmed')
+        endSessionQueryClient()
         window.location.replace('/?reason=signed-out')
       } else {
         const localTarget = returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/'
