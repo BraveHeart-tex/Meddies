@@ -43,7 +43,11 @@ function medicinesApi(initial: Medicine[]) {
       return HttpResponse.json({ medicines: list })
     }),
     http.get('/api/schedules', () =>
-      HttpResponse.json({ schedules: [], records: [], today: null }),
+      HttpResponse.json({
+        schedules: [],
+        records: [],
+        today: { date: '2026-11-14', now: '2026-11-14T08:00:00.000Z', doses: [], next: null },
+      }),
     ),
   )
   return {

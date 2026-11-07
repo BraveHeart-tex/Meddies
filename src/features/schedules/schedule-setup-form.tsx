@@ -5,33 +5,37 @@ import Link from 'next/link'
 import { InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { useQueryClient } from '@tanstack/react-query'
 import type { Medicine } from '@/features/medicines/contract'
 import { MedicationTile } from '@/features/medicines/medication-tile'
-import { istanbulDate, type DailySchedule } from './contract'
+import { useMedicines } from '@/features/medicines/queries'
+import type { DailySchedule } from './contract'
 import { ScheduleForm } from './schedule-form'
-import type { ScheduleSnapshot } from './use-schedule-snapshot'
+import { applySchedule, type SchedulesRead } from './queries'
 
 /**
  * First schedule setup for the `?schedule=ID` medicine (FE-647 A7, S5, S6). The form shows only
  * once Meddies knows the medicine has no schedule; `onSaved` runs after server confirmation.
  */
 export function ScheduleSetupForm({
-  snapshot: { schedules, now, loading, loadError, retry: retrySchedules, insertSchedule },
+  schedulesRead: { schedules, loading, loadError, retry: retrySchedules },
+  today,
   medicineId,
-  medicines,
-  medicinesLoading,
-  medicinesError,
-  retryMedicines,
   onSaved,
 }: {
-  snapshot: ScheduleSnapshot
+  schedulesRead: SchedulesRead
+  /** Istanbul date on the scheduling clock. */
+  today: string
   medicineId: string
-  medicines: Medicine[]
-  medicinesLoading: boolean
-  medicinesError: boolean
-  retryMedicines: () => void
   onSaved?: (medicine: Medicine) => void
 }) {
+  const queryClient = useQueryClient()
+  const {
+    medicines,
+    loading: medicinesLoading,
+    loadError: medicinesError,
+    retry: retryMedicines,
+  } = useMedicines()
   const [conflict, setConflict] = useState(false)
   const [savedId, setSavedId] = useState('')
   const medicine = medicines.find((item) => item.id === medicineId)
@@ -40,7 +44,7 @@ export function ScheduleSetupForm({
 
   function saved(confirmed: DailySchedule) {
     setSavedId(confirmed.id)
-    void insertSchedule(confirmed)
+    void applySchedule(queryClient, confirmed)
     if (medicine) onSaved?.(medicine)
   }
 
@@ -99,7 +103,7 @@ export function ScheduleSetupForm({
       <ScheduleForm
         key={medicine.id}
         medicine={medicine}
-        today={istanbulDate(new Date(now))}
+        today={today}
         onSaved={saved}
         onConflict={() => setConflict(true)}
       />

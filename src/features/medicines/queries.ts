@@ -1,4 +1,4 @@
-import { queryOptions } from '@tanstack/react-query'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 import { parseMedicine, type Medicine } from './contract'
 
 /** Shared medicine query keys. Mutations update and reconcile these exact keys. */
@@ -24,6 +24,25 @@ export const medicinesQuery = () =>
     queryKey: medicineKeys.list(),
     queryFn: ({ signal }) => fetchMedicines(signal),
   })
+
+/**
+ * Reads the cached medicines. Cached content stays on screen while it refreshes; loading and
+ * load error apply only until the session has a list (FE-666).
+ */
+export function useMedicines() {
+  const read = useQuery(medicinesQuery())
+  const hasMedicines = read.data !== undefined
+  const loadError = !hasMedicines && read.isError && !read.isFetching
+  return {
+    medicines: read.data ?? [],
+    loading: !hasMedicines && !loadError,
+    loadError,
+    /** A refresh failed; the cached list stays on screen with a recoverable alert. */
+    refreshFailed: hasMedicines && read.isError,
+    refreshing: read.isFetching,
+    retry: () => void read.refetch(),
+  }
+}
 
 /** A confirmed save replaces or appends that medicine in the cached list. */
 export function withSavedMedicine(list: Medicine[] | undefined, medicine: Medicine) {

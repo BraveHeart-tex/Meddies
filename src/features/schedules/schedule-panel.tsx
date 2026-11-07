@@ -1,51 +1,68 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import type { Medicine } from '@/features/medicines/contract'
+import { useMedicines } from '@/features/medicines/queries'
 import { SchedulingClockProvider } from './scheduling-clock'
-import { useScheduleSnapshot } from './use-schedule-snapshot'
+import { useScheduleSnapshot } from './queries'
 import { TodaySchedule } from './today-schedule'
 import { ScheduleSetupForm } from './schedule-setup-form'
+import { istanbulDate } from './contract'
 import { weekdaySummary } from './weekdays'
 import { MedicationRoutineGroups } from './medication-routine-groups'
 
 export function SchedulePanel({
-  medicines,
   mode = 'setup',
   initialMedicineId = '',
-  medicinesLoading,
-  medicinesError,
-  retryMedicines,
   onScheduleSaved,
   initialNow,
 }: {
-  /** The server scheduling time at render, until a schedules snapshot replaces it. */
+  /** The server scheduling time at render, until a newer schedules snapshot replaces it. */
   initialNow: string
-  medicines: Medicine[]
   mode?: 'today' | 'setup' | 'list' | 'detail'
   initialMedicineId?: string
-  medicinesLoading: boolean
-  medicinesError: boolean
-  retryMedicines: () => void
   /** Runs after the server confirms a first schedule. */
   onScheduleSaved?: (medicine: Medicine) => void
 }) {
-  const snapshot = useScheduleSnapshot(initialNow)
-  const { schedules, now, loading, loadError, retry: retrySchedules } = snapshot
+  const schedulesRead = useScheduleSnapshot()
+  const {
+    snapshot,
+    schedules,
+    loading,
+    loadError,
+    refreshFailed,
+    refreshing,
+    retry: retrySchedules,
+  } = schedulesRead
+  const {
+    medicines,
+    loading: medicinesLoading,
+    loadError: medicinesError,
+    retry: retryMedicines,
+  } = useMedicines()
+  // The latest server scheduling time anchors the clock: a snapshot cached before this render
+  // is older than `initialNow`, one read since is newer.
+  const now = snapshot && snapshot.now > initialNow ? snapshot.now : initialNow
   const selectedSchedule = schedules.find((schedule) => schedule.medicineId === initialMedicineId)
-  const name = (id: string) => medicines.find((medicine) => medicine.id === id)?.label ?? 'Medicine'
   return (
     <SchedulingClockProvider serverNow={now}>
       <div className="space-y-10">
-        {mode === 'today' && (
-          <TodaySchedule
-            snapshot={snapshot}
-            name={name}
-            medicines={medicines}
-            medicinesLoading={medicinesLoading}
-            medicinesError={medicinesError}
-            retryMedicines={retryMedicines}
-          />
+        {mode === 'today' && <TodaySchedule schedulesRead={schedulesRead} serverNow={now} />}
+        {refreshFailed && (mode === 'list' || mode === 'detail') && (
+          <Alert role="status">
+            <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
+              <p>Saved routines could not be refreshed. Showing the last successful list.</p>
+              <Button
+                variant="outline"
+                className="min-h-11"
+                disabled={refreshing}
+                onClick={retrySchedules}
+              >
+                {refreshing ? 'Retrying…' : 'Retry loading routines'}
+              </Button>
+            </AlertDescription>
+          </Alert>
         )}
         {mode === 'list' && (
           <section aria-labelledby="medicine-routines-heading" className="flex flex-col gap-4">
@@ -125,12 +142,9 @@ export function SchedulePanel({
         )}
         {mode === 'setup' && (
           <ScheduleSetupForm
-            snapshot={snapshot}
+            schedulesRead={schedulesRead}
+            today={istanbulDate(new Date(now))}
             medicineId={initialMedicineId}
-            medicines={medicines}
-            medicinesLoading={medicinesLoading}
-            medicinesError={medicinesError}
-            retryMedicines={retryMedicines}
             onSaved={onScheduleSaved}
           />
         )}

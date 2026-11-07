@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronLeftIcon } from 'lucide-react'
@@ -14,7 +14,7 @@ import { AppHeader } from '@/components/layout/app-header'
 import { MedicationTile } from './medication-tile'
 import { MedicineForm } from './medicine-form'
 import type { Medicine } from './contract'
-import { medicineKeys, medicinesQuery, withSavedMedicine } from './queries'
+import { medicineKeys, useMedicines, withSavedMedicine } from './queries'
 
 export function MedicinePanel({
   scheduleMode = 'list',
@@ -34,23 +34,18 @@ export function MedicinePanel({
   // Handoff from schedule setup to the medicine's page (FE-647 D4), carried the same way.
   const [scheduledMedicine, setScheduledMedicine] = useState<Medicine | null>(null)
   const queryClient = useQueryClient()
-  const medicinesRead = useQuery(medicinesQuery())
-  const medicines = medicinesRead.data ?? []
-  // Cached content stays on screen while it refreshes; loading and error states apply only
-  // until the session has a list (FE-666).
-  const hasMedicines = medicinesRead.data !== undefined
-  const loadError = !hasMedicines && medicinesRead.isError && !medicinesRead.isFetching
-  const loading = !hasMedicines && !loadError
-  // A failed refresh keeps the cached list and adds a recoverable alert (DESIGN.md). Today
-  // renders its own alert beside the last list; other screens show it above their content.
-  const refreshFailed = hasMedicines && medicinesRead.isError
+  const {
+    medicines,
+    loading,
+    loadError,
+    refreshFailed,
+    refreshing,
+    retry: retryMedicines,
+  } = useMedicines()
   const mounted = useRef(true)
   const mode = useRef(scheduleMode)
   const setupMedicineId = useRef(scheduleMedicineId)
   const detailHeading = useRef<HTMLHeadingElement>(null)
-  function retryMedicines() {
-    void medicinesRead.refetch()
-  }
   useEffect(() => {
     mounted.current = true
     return () => {
@@ -148,10 +143,10 @@ export function MedicinePanel({
             <Button
               variant="outline"
               className="min-h-11"
-              disabled={medicinesRead.isFetching}
+              disabled={refreshing}
               onClick={retryMedicines}
             >
-              {medicinesRead.isFetching ? 'Retrying…' : 'Retry loading medicines'}
+              {refreshing ? 'Retrying…' : 'Retry loading medicines'}
             </Button>
           </AlertDescription>
         </Alert>
@@ -207,12 +202,8 @@ export function MedicinePanel({
       <SchedulePanel
         initialNow={initialNow}
         onScheduleSaved={scheduled}
-        medicines={medicines}
         mode={scheduleMode}
         initialMedicineId={scheduleMedicineId || detailMedicineId}
-        medicinesLoading={loading}
-        medicinesError={scheduleMode === 'today' ? refreshFailed || loadError : loadError}
-        retryMedicines={retryMedicines}
       />
     </div>
   )

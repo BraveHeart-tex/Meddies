@@ -1,6 +1,7 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -8,30 +9,46 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Icon } from '@/components/ui/icon'
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
 import { AppHeader } from '@/components/layout/app-header'
-import type { Medicine } from '@/features/medicines/contract'
+import { useMedicines } from '@/features/medicines/queries'
 import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
 import { doseClock as clock } from './taken-form'
 import { DoseStatusBadge } from './dose-status-badge'
 import { DoseActions, type DoseDrawerOpener } from './dose-actions'
 import { NextDose, formatDayLabel, greeting } from './next-dose'
-import type { ScheduleSnapshot } from './use-schedule-snapshot'
+import { scheduleToday } from './occurrences'
+import { applyRecord, readFreshSnapshot, type SchedulesRead } from './queries'
+import { useScheduleNow } from './use-schedule-now'
 import type { RecordCheck } from './use-dose-outcome-mutation'
 
 export function TodaySchedule({
-  snapshot: { today, now, loading, loadError, retry: retrySchedules, applyOutcome, reconcile },
-  name,
-  medicines,
-  medicinesLoading,
-  medicinesError,
-  retryMedicines,
+  schedulesRead: { snapshot, loading, loadError, refreshFailed, refreshing, retry, ensureFresh },
+  serverNow,
 }: {
-  snapshot: ScheduleSnapshot
-  name: (id: string) => string
-  medicines: Medicine[]
-  medicinesLoading: boolean
-  medicinesError: boolean
-  retryMedicines: () => void
+  schedulesRead: SchedulesRead
+  /** The latest server scheduling time; the clock re-anchors on each new one. */
+  serverNow: string
 }) {
+  const queryClient = useQueryClient()
+  const {
+    medicines,
+    loading: medicinesLoading,
+    loadError: medicinesLoadError,
+    refreshFailed: medicinesRefreshFailed,
+    retry: retryMedicines,
+  } = useMedicines()
+  const medicinesError = medicinesLoadError || medicinesRefreshFailed
+  const name = (id: string) => medicines.find((medicine) => medicine.id === id)?.label ?? 'Medicine'
+  const now = useScheduleNow(serverNow)
+  // Statuses follow the scheduling clock. Records cover only the snapshot's date, so a new day
+  // waits for its own read instead of inventing coverage.
+  const today = useMemo(() => {
+    if (!snapshot || istanbulDate(new Date(now)) !== snapshot.date) return null
+    return scheduleToday(snapshot.schedules, new Date(now), snapshot.records)
+  }, [snapshot, now])
+  const awaitingDay = snapshot !== undefined && today === null
+  useEffect(() => {
+    if (awaitingDay) ensureFresh()
+  }, [awaitingDay, ensureFresh])
   const heroOpener = useRef<DoseDrawerOpener>(null)
   const [intakeMessage, setIntakeMessage] = useState('')
   const doseText = (dose: DoseOccurrence, quantity = dose.quantity) => {
@@ -49,7 +66,8 @@ export function TodaySchedule({
   }
 
   function showOutcome(dose: DoseOccurrence, record: DoseOutcomeRecord) {
-    applyOutcome(record, () => announceOutcome(dose, record))
+    announceOutcome(dose, record)
+    void applyRecord(queryClient, record)
   }
 
   /**
@@ -57,14 +75,13 @@ export function TodaySchedule({
    * already recorded (409 recovery); the uncertain-save check (FE-648 F4) stays quiet.
    */
   async function checkRecorded(dose: DoseOccurrence, announce: boolean): Promise<RecordCheck> {
-    let found: DoseOutcomeRecord | undefined
-    const applied = await reconcile((snapshot) => {
-      found = snapshot.records.find(
-        (item) => item.scheduleId === dose.scheduleId && item.dueAt === dose.dueAt,
-      )
-      if (found && announce) announceOutcome(dose, found, true)
-    })
-    return found ? { record: found } : applied ? 'missing' : 'unknown'
+    const fresh = await readFreshSnapshot(queryClient).catch(() => null)
+    if (!fresh) return 'unknown'
+    const found = fresh.records.find(
+      (item) => item.scheduleId === dose.scheduleId && item.dueAt === dose.dueAt,
+    )
+    if (found && announce) announceOutcome(dose, found, true)
+    return found ? { record: found } : 'missing'
   }
   return (
     <div className="flex flex-col gap-5">
@@ -83,7 +100,9 @@ export function TodaySchedule({
             </Alert>
           )}
         </div>
-        {(loading || (medicinesLoading && medicines.length === 0)) && (
+        {(loading ||
+          (awaitingDay && !refreshFailed) ||
+          (medicinesLoading && medicines.length === 0)) && (
           <p role="status" className="text-body-sm text-muted-foreground">
             Loading your scheduled doses and medicines...
           </p>
@@ -102,12 +121,12 @@ export function TodaySchedule({
             </AlertDescription>
           </Alert>
         )}
-        {loadError && (
+        {(loadError || refreshFailed) && (
           <Alert>
             <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
               <p>Today could not be refreshed. Connect to the internet and retry.</p>
-              <Button variant="outline" onClick={retrySchedules}>
-                Retry Today
+              <Button variant="outline" disabled={refreshing} onClick={retry}>
+                {refreshing ? 'Retrying…' : 'Retry Today'}
               </Button>
             </AlertDescription>
           </Alert>
@@ -244,14 +263,9 @@ export function TodaySchedule({
         <p className="px-6 text-center text-body-sm text-muted-foreground">
           All dates and times use Europe/Istanbul, wherever your device is.
         </p>
-        {!loadError && (
-          <Button
-            variant="ghost"
-            className="self-center"
-            disabled={loading}
-            onClick={retrySchedules}
-          >
-            Refresh Today
+        {!loadError && !refreshFailed && (
+          <Button variant="ghost" className="self-center" disabled={refreshing} onClick={retry}>
+            {refreshing && !loading ? 'Refreshing…' : 'Refresh Today'}
           </Button>
         )}
       </section>
