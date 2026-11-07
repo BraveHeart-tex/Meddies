@@ -1,0 +1,257 @@
+'use client'
+
+import { useRef, useState } from 'react'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Card, CardContent } from '@/components/ui/card'
+import { Icon } from '@/components/ui/icon'
+import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
+import { AppHeader } from '@/components/layout/app-header'
+import type { Medicine } from '@/features/medicines/contract'
+import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
+import { doseClock as clock } from './taken-form'
+import { DoseStatusBadge } from './dose-status-badge'
+import { DoseActions, type DoseDrawerOpener } from './dose-actions'
+import { NextDose, formatDayLabel, greeting } from './next-dose'
+import type { ScheduleSnapshot } from './use-schedule-snapshot'
+
+export function TodaySchedule({
+  snapshot: { today, now, loading, loadError, retry: retrySchedules, applyOutcome, reconcile },
+  name,
+  medicines,
+  medicinesLoading,
+  medicinesError,
+  retryMedicines,
+}: {
+  snapshot: ScheduleSnapshot
+  name: (id: string) => string
+  medicines: Medicine[]
+  medicinesLoading: boolean
+  medicinesError: boolean
+  retryMedicines: () => void
+}) {
+  const heroOpener = useRef<DoseDrawerOpener>(null)
+  const [intakeMessage, setIntakeMessage] = useState('')
+  const doseText = (dose: DoseOccurrence, quantity = dose.quantity) => {
+    const medicine = medicines.find((item) => item.id === dose.medicineId)
+    return `${quantity} ${medicine?.unit ?? 'unit'}${quantity === 1 ? '' : 's'}`
+  }
+  function announceOutcome(dose: DoseOccurrence, record: DoseOutcomeRecord, reconciled = false) {
+    const heading = document.getElementById(`dose-${dose.id}`)
+    const active = document.activeElement
+    if (active === document.body || heading?.parentElement?.contains(active)) heading?.focus()
+    const description = `${name(dose.medicineId)} scheduled for ${clock(dose.dueAt)}`
+    const outcome = record.outcome.toLowerCase()
+    setIntakeMessage(
+      reconciled
+        ? `${description} was already recorded as ${outcome}.`
+        : `Recorded ${description} as ${outcome}.`,
+    )
+  }
+
+  function showOutcome(dose: DoseOccurrence, record: DoseOutcomeRecord) {
+    applyOutcome(record, () => announceOutcome(dose, record))
+  }
+
+  async function reconcileOutcome(dose: DoseOccurrence) {
+    let resolved = false
+    await reconcile((snapshot) => {
+      const record = snapshot.records.find(
+        (item) => item.scheduleId === dose.scheduleId && item.dueAt === dose.dueAt,
+      )
+      if (!record) return
+      announceOutcome(dose, record, true)
+      resolved = true
+    })
+    return resolved
+  }
+  return (
+    <div className="flex flex-col gap-5">
+      <AppHeader eyebrow={formatDayLabel(now)} title={greeting(now)} />
+      <section aria-labelledby="today-heading" className="flex flex-col gap-5">
+        <h2 id="today-heading" className="sr-only">
+          Your doses
+        </h2>
+        <div role="status" className="empty:sr-only">
+          {intakeMessage && (
+            <Alert role="none" variant="confirmation" className="[overflow-wrap:anywhere]">
+              <span className="grid size-6.5 place-items-center rounded-full bg-dose-taken text-dose-taken-foreground">
+                <Icon name="check" size={14} strokeWidth={2.4} />
+              </span>
+              <AlertDescription className="font-bold">{intakeMessage}</AlertDescription>
+            </Alert>
+          )}
+        </div>
+        {(loading || (medicinesLoading && medicines.length === 0)) && (
+          <p role="status" className="text-body-sm text-muted-foreground">
+            Loading your scheduled doses and medicines...
+          </p>
+        )}
+        {medicinesError && (
+          <Alert role={medicines.length === 0 ? 'alert' : 'status'}>
+            <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
+              <p>
+                {medicines.length === 0
+                  ? 'Your medicines could not be loaded. Today is unavailable until they can be refreshed.'
+                  : 'Medicine details could not be refreshed. Showing the last successful list.'}
+              </p>
+              <Button variant="outline" onClick={retryMedicines}>
+                Retry loading medicines
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        {loadError && (
+          <Alert>
+            <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
+              <p>Today could not be refreshed. Connect to the internet and retry.</p>
+              <Button variant="outline" onClick={retrySchedules}>
+                Retry Today
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        {today &&
+          (!medicinesError || medicines.length > 0) &&
+          (!medicinesLoading || medicines.length > 0) && (
+            <>
+              {today.next && (
+                <NextDose
+                  dose={today.next}
+                  date={today.date}
+                  medicine={medicines.find((item) => item.id === today.next?.medicineId)}
+                  name={name(today.next.medicineId)}
+                  doseText={doseText(today.next)}
+                  onRecord={
+                    today.doses.some((dose) => dose.id === today.next?.id) &&
+                    medicines.some((item) => item.id === today.next?.medicineId)
+                      ? (outcome) => heroOpener.current?.open(outcome)
+                      : undefined
+                  }
+                />
+              )}
+              {today.doses.length ? (
+                <section aria-labelledby="today-doses-heading" className="flex flex-col gap-3.5">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 px-1">
+                    <h3 id="today-doses-heading" className="text-heading font-extrabold">
+                      Today’s doses
+                    </h3>
+                    <p className="text-caption font-bold text-muted-foreground">
+                      {
+                        today.doses.filter(
+                          (dose) => dose.status === 'Taken' || dose.status === 'Skipped',
+                        ).length
+                      }{' '}
+                      of {today.doses.length} logged
+                    </p>
+                  </div>
+                  <ul aria-label="Today's doses" className="flex flex-col gap-2.5">
+                    {[...today.doses]
+                      .sort((left, right) => {
+                        const rank = (dose: DoseOccurrence) =>
+                          dose.status === 'Upcoming'
+                            ? 1
+                            : dose.status === 'Taken' || dose.status === 'Skipped'
+                              ? 2
+                              : 0
+                        return rank(left) - rank(right) || left.dueAt.localeCompare(right.dueAt)
+                      })
+                      .map((dose) => {
+                        const medicine = medicines.find((item) => item.id === dose.medicineId)
+                        const done = dose.status === 'Taken' || dose.status === 'Skipped'
+                        const recordedAt =
+                          dose.status === 'Taken'
+                            ? dose.record.takenAt
+                            : dose.status === 'Skipped'
+                              ? dose.record.recordedAt
+                              : ''
+                        return (
+                          <Item
+                            key={dose.id}
+                            render={<li data-dose-id={dose.id} />}
+                            variant={
+                              dose.status === 'Not logged' || dose.status === 'Due now'
+                                ? 'attention'
+                                : 'card'
+                            }
+                            className="has-[[data-row-trigger]:active]:scale-[0.98] has-[[data-row-trigger]:active]:bg-muted motion-reduce:has-[[data-row-trigger]:active]:scale-100"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={cn(
+                                'w-11.5 shrink-0 font-extrabold',
+                                done && 'text-muted-foreground',
+                              )}
+                            >
+                              <time dateTime={dose.dueAt}>{clock(dose.dueAt)}</time>
+                            </span>
+                            <ItemContent className="gap-0.75">
+                              <ItemTitle>
+                                <h4 id={`dose-${dose.id}`} tabIndex={-1}>
+                                  <span className="sr-only">{clock(dose.dueAt)} · </span>
+                                  {name(dose.medicineId)}
+                                </h4>
+                              </ItemTitle>
+                              <ItemDescription>
+                                {[medicine?.strength, doseText(dose)].filter(Boolean).join(' · ')}
+                                {dose.status === 'Taken' &&
+                                  dose.record.quantity !== dose.quantity &&
+                                  ` · took ${doseText(dose, dose.record.quantity)}`}
+                                {recordedAt &&
+                                  istanbulDate(new Date(recordedAt)) !== today.date &&
+                                  ` · ${dose.status === 'Taken' ? 'taken' : 'skipped'} on ${istanbulDate(new Date(recordedAt))}`}
+                              </ItemDescription>
+                            </ItemContent>
+                            <DoseStatusBadge
+                              id={`dose-status-${dose.id}`}
+                              status={dose.status}
+                              time={
+                                recordedAt ? (
+                                  <time dateTime={recordedAt}>{clock(recordedAt)}</time>
+                                ) : undefined
+                              }
+                            />
+                            {medicine && (
+                              <DoseActions
+                                dose={dose}
+                                medicine={medicine}
+                                appearance="row"
+                                todayDate={today.date}
+                                describedBy={`dose-status-${dose.id}`}
+                                opener={dose.id === today.next?.id ? heroOpener : undefined}
+                                refresh={() => reconcileOutcome(dose)}
+                                onRecorded={(record) => showOutcome(dose, record)}
+                              />
+                            )}
+                          </Item>
+                        )
+                      })}
+                  </ul>
+                </section>
+              ) : (
+                <Card variant="dashed">
+                  <CardContent>
+                    <p>No doses scheduled for today.</p>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+        <p className="px-6 text-center text-body-sm text-muted-foreground">
+          All dates and times use Europe/Istanbul, wherever your device is.
+        </p>
+        {!loadError && (
+          <Button
+            variant="ghost"
+            className="self-center"
+            disabled={loading}
+            onClick={retrySchedules}
+          >
+            Refresh Today
+          </Button>
+        )}
+      </section>
+    </div>
+  )
+}
