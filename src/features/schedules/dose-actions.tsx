@@ -18,6 +18,7 @@ import { RecordedElsewhere, RecordedOutcome } from './recorded-outcome'
 import type { AttemptForm, RecordCheck } from './dose-saves'
 import { useDoseDrawerDraft } from './use-dose-drawer-draft'
 import { useDoseOutcomeMutation } from './use-dose-outcome-mutation'
+import { useSchedulingClock } from './scheduling-clock'
 
 type Outcome = DoseOutcomeRecord['outcome']
 export type DoseDrawerOpener = { open: (outcome: Outcome) => void }
@@ -36,7 +37,7 @@ export function DoseActions({
   dose: DoseOccurrence
   medicine: Medicine
   refresh: () => Promise<boolean>
-  /** Reloads once after an uncertain new outcome (Today only). */
+  /** Reads the dose's view again after an unconfirmed save. */
   checkRecorded?: () => Promise<RecordCheck>
   onRecorded: (record: DoseOutcomeRecord) => boolean | void
   appearance?: 'row' | 'button'
@@ -44,6 +45,7 @@ export function DoseActions({
   todayDate?: string
   describedBy?: string
 }) {
+  const clock = useSchedulingClock()
   // Unsaved drawer details survive navigation for the session (FE-674).
   const draft = useDoseDrawerDraft(dose.id)
   const [editor, setEditor] = useState<Outcome | null>(draft.initial?.editor ?? null)
@@ -71,6 +73,7 @@ export function DoseActions({
     dose,
     medicine,
     drawerOpen,
+    today: () => istanbulDate(clock.now()),
     refresh,
     checkRecorded,
     onRecorded(record) {

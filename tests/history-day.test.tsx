@@ -6,6 +6,7 @@ import type { Medicine } from '../src/features/medicines/contract'
 import type { DoseOccurrence } from '../src/features/schedules/contract'
 import { HistoryDateNav } from '../src/features/schedules/history-date-nav'
 import { HistoryDay } from '../src/features/schedules/history-day'
+import { SchedulingClockProvider } from '../src/features/schedules/scheduling-clock'
 import { createQueryClient } from '../src/lib/session-query-client'
 
 let search = new URLSearchParams()
@@ -66,12 +67,14 @@ const occurrence = (time: string, rest: Partial<DoseOccurrence> = {}) =>
 function renderDay(props: Partial<Parameters<typeof HistoryDay>[0]> = {}) {
   return render(
     <QueryClientProvider client={createQueryClient()}>
-      <HistoryDay
-        date="2026-11-05"
-        today="2026-11-06"
-        result={{ status: 'loaded', doses: [], medicines: [medicine] }}
-        {...props}
-      />
+      <SchedulingClockProvider serverNow="2026-11-06T09:00:00.000Z">
+        <HistoryDay
+          date="2026-11-05"
+          today="2026-11-06"
+          result={{ status: 'loaded', doses: [], medicines: [medicine] }}
+          {...props}
+        />
+      </SchedulingClockProvider>
     </QueryClientProvider>,
   )
 }

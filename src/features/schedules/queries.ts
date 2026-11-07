@@ -1,6 +1,13 @@
 import { useCallback } from 'react'
 import { queryOptions, replaceEqualDeep, useQuery, type QueryClient } from '@tanstack/react-query'
-import type { DailySchedule, DoseOccurrence, DoseOutcomeRecord, Today } from './contract'
+import {
+  istanbulDate,
+  type DailySchedule,
+  type DoseOccurrenceKey,
+  type DoseOccurrence,
+  type DoseOutcomeRecord,
+  type Today,
+} from './contract'
 
 /** The owner's schedules and the server's Today records, at the server scheduling time `now`. */
 export type ScheduleSnapshot = {
@@ -51,6 +58,8 @@ export const historyDayQuery = (date: string) =>
     queryKey: scheduleKeys.history(date),
     queryFn: ({ signal }) => fetchHistoryDay(date, signal),
     staleTime: 0,
+    structuralSharing: (old, next) =>
+      mergeHistoryDay(old as DoseOccurrence[] | undefined, next as DoseOccurrence[]),
   })
 
 /** Browser read of the owner's schedules snapshot through the authenticated API route. */
@@ -140,33 +149,93 @@ export function mergeSnapshot(
 }
 
 /** Current confirmed outcome, used to distinguish an old receipt from the latest outcome. */
-export function currentRecord(
-  client: QueryClient,
-  record: Pick<DoseOutcomeRecord, 'scheduleId' | 'dueAt'>,
-) {
-  return client
-    .getQueryData<ScheduleSnapshot>(scheduleKeys.snapshot())
-    ?.records.find((item) => item.scheduleId === record.scheduleId && item.dueAt === record.dueAt)
+export function currentRecord(client: QueryClient, dose: DoseOccurrenceKey) {
+  return cachedRecords(client, historyDate(dose.dueAt))
+    .filter((item) => sameDose(item, dose))
+    .reduce<DoseOutcomeRecord | undefined>(
+      (latest, item) => (!latest || (item.revision ?? 0) > (latest.revision ?? 0) ? item : latest),
+      undefined,
+    )
 }
 
-/** A confirmed outcome replaces that occurrence's record, then a fresh read reconciles. */
-export function applyRecord(client: QueryClient, record: DoseOutcomeRecord) {
-  client.setQueryData<ScheduleSnapshot>(
-    scheduleKeys.snapshot(),
+/** The dose's History date: the Istanbul day it was due, whenever it was taken. */
+export const historyDate = (dueAt: string) => istanbulDate(new Date(dueAt))
+
+/** Whether two records or occurrences are the same scheduled dose. */
+export const sameDose = (left: DoseOccurrenceKey, right: DoseOccurrenceKey) =>
+  left.scheduleId === right.scheduleId && left.dueAt === right.dueAt
+
+/** The confirmed records a History date read shows. */
+export const historyRecords = (doses: DoseOccurrence[]) =>
+  doses.flatMap((dose) => ('record' in dose ? [dose.record] : []))
+
+/** Whether a query key is one History date's doses. */
+export const isHistoryKey = (queryKey: readonly unknown[]) =>
+  queryKey.length === 3 && queryKey[0] === scheduleKeys.all[0] && queryKey[1] === 'history'
+
+/** Every cached confirmed record from Today and the History dates, or only `date`'s. */
+export function cachedRecords(client: QueryClient, date?: string) {
+  const snapshot = client.getQueryData<ScheduleSnapshot>(scheduleKeys.snapshot())
+  const days = client.getQueriesData<DoseOccurrence[]>({
+    queryKey: date ? scheduleKeys.history(date) : [...scheduleKeys.all, 'history'],
+  })
+  return [...(snapshot?.records ?? []), ...days.flatMap(([, doses]) => historyRecords(doses ?? []))]
+}
+
+/** Like `mergeSnapshot` for one History date: a recorded outcome only advances its revision. */
+export function mergeHistoryDay(
+  current: DoseOccurrence[] | undefined,
+  incoming: DoseOccurrence[],
+): DoseOccurrence[] {
+  if (!current) return incoming
+  const doses = incoming.map((dose) => {
+    const previous = current.find((item) => sameDose(item, dose))
+    if (!previous || !('record' in previous)) return dose
+    if ('record' in dose && (dose.record.revision ?? 0) > (previous.record.revision ?? 0))
+      return dose
+    return { ...dose, status: previous.status, record: previous.record } as DoseOccurrence
+  })
+  return replaceEqualDeep(current, doses)
+}
+
+/**
+ * Writes a confirmed record into Today's cached snapshot when the dose is due on its date and
+ * into the dose's cached History date. Returns the keys it covers. Never moves a revision back.
+ */
+export function writeRecord(client: QueryClient, record: DoseOutcomeRecord) {
+  const date = historyDate(record.dueAt)
+  const snapshot = client.getQueryData<ScheduleSnapshot>(scheduleKeys.snapshot())
+  const dueToday = !snapshot || snapshot.date === date
+  if (snapshot && dueToday)
+    client.setQueryData<ScheduleSnapshot>(scheduleKeys.snapshot(), (current) =>
+      mergeSnapshot(current, {
+        ...snapshot,
+        records: [...snapshot.records.filter((item) => !sameDose(item, record)), record],
+      }),
+    )
+  client.setQueryData<DoseOccurrence[]>(
+    scheduleKeys.history(date),
     (current) =>
       current &&
-      mergeSnapshot(current, {
-        ...current,
-        records: [
-          ...current.records.filter(
-            (item) => item.scheduleId !== record.scheduleId || item.dueAt !== record.dueAt,
-          ),
-          record,
-        ],
-      }),
+      mergeHistoryDay(
+        current,
+        current.map((dose) =>
+          sameDose(dose, record)
+            ? ({ ...dose, status: record.outcome, record } as DoseOccurrence)
+            : dose,
+        ),
+      ),
   )
+  return [...(dueToday ? [scheduleKeys.snapshot()] : []), scheduleKeys.history(date)]
+}
+
+/** A confirmed outcome replaces that occurrence's record, then fresh reads reconcile its keys. */
+export function applyRecord(client: QueryClient, record: DoseOutcomeRecord) {
+  const keys = writeRecord(client, record)
   // Cancels older in-flight reads so they cannot overwrite the confirmed record.
-  return client.invalidateQueries({ queryKey: scheduleKeys.all })
+  return Promise.all(
+    keys.map((queryKey) => client.invalidateQueries({ queryKey, exact: true })),
+  ).then(() => undefined)
 }
 
 /** A confirmed schedule replaces or appends that schedule, then a fresh read reconciles. */
@@ -189,4 +258,10 @@ export function applySchedule(client: QueryClient, schedule: DailySchedule) {
 export async function readFreshSnapshot(client: QueryClient) {
   await client.cancelQueries({ queryKey: scheduleKeys.snapshot() })
   return client.fetchQuery(scheduleSnapshotQuery())
+}
+
+/** `readFreshSnapshot` for one History date. */
+export async function readFreshHistoryDay(client: QueryClient, date: string) {
+  await client.cancelQueries({ queryKey: scheduleKeys.history(date), exact: true })
+  return client.fetchQuery(historyDayQuery(date))
 }

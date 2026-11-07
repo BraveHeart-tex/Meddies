@@ -170,7 +170,7 @@ test('a 401 from the browser read shows that the session ended', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('Your session ended.')
 })
 
-test('a History correction reconciles only its own date', async () => {
+test('a past-date History correction reconciles its own date, not Today or other dates', async () => {
   search = new URLSearchParams('date=2026-11-05')
   const dueAt = new Date('2026-11-05T08:00:00+03:00').toISOString()
   const taken = {

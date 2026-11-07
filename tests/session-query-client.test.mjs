@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { endSessionQueryClient, sessionQueryClient } from '../src/lib/session-query-client.ts'
+import { historyDayQuery, scheduleKeys } from '../src/features/schedules/queries.ts'
 
 const key = ['medicines', 'list']
 
@@ -34,6 +35,24 @@ test('a response that settles after the session changes cannot repopulate the ne
   assert.equal(next.getQueryData(key), undefined)
   assert.equal(previous.getQueryData(key), undefined)
   endSessionQueryClient()
+})
+
+test('session end clears cached History dates and a late History response cannot refill them', async () => {
+  const client = sessionQueryClient('owner-a:2026-11-14T00:00:00.000Z')
+  client.setQueryData(scheduleKeys.history('2026-11-05'), [])
+  let settle
+  const late = client
+    .fetchQuery({
+      ...historyDayQuery('2026-11-04'),
+      queryFn: () => new Promise((resolve) => (settle = resolve)),
+    })
+    .catch(() => 'cancelled')
+  endSessionQueryClient()
+  settle([])
+  assert.equal(await late, 'cancelled')
+  assert.equal(client.getQueryData(scheduleKeys.history('2026-11-05')), undefined)
+  assert.equal(client.getQueryData(scheduleKeys.history('2026-11-04')), undefined)
+  assert.deepEqual(client.getQueryCache().findAll({ queryKey: scheduleKeys.all }), [])
 })
 
 test('ending the session clears its cache and the next session starts empty', () => {

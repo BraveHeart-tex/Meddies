@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { HydrationBoundary } from '@tanstack/react-query'
+import { HistoryHydration } from '@/features/schedules/history-hydration'
 import { auth, authConfigured } from '@/features/auth/server'
 import { SessionBoundary } from '@/features/auth/session-boundary'
 import { schedulingNow } from '@/features/schedules/server'
@@ -28,9 +28,9 @@ async function HistoryDateResults({
   notice?: 'invalid'
 }) {
   return (
-    <HydrationBoundary state={await prefetchHistory(date)}>
+    <HistoryHydration state={await prefetchHistory(date)}>
       <HistoryResults today={today} notice={notice} />
-    </HydrationBoundary>
+    </HistoryHydration>
   )
 }
 

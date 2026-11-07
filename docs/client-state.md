@@ -24,18 +24,20 @@ scope.
 - **Dose saves** live in the session dose save store (`dose-saves.ts`). A pending save
   survives the drawer and Today, its row badge reads the store, and a result with no
   drawer watching arrives as a Toast.
-- **Optimistic doses.** Dose recording and correction update the affected Today and
-  History cache entries optimistically with a visible pending state, then apply the
-  authoritative response and reconcile those exact query keys. Optimistic display does not
-  establish server receipt, stock changes or reminder cancellation.
+- **Optimistic doses.** The pending badge on Today and History rows is the only optimistic
+  state; nothing is written to the cache before the server confirms. A confirmed record,
+  from either view, is written into Today's snapshot when the dose is due today and into
+  the dose's cached History date, then those exact query keys reconcile. Merges never move
+  a revision back, so stale reads and late hydration cannot undo it.
 - **Server-confirmed only.** Medicine setup, schedule edits and snooze show no optimistic
   state, and new writes need connectivity.
-- **Definite rejection** rolls back only that mutation's change, never a newer unrelated
-  one.
+- **Definite rejection** clears only that save's pending state and writes no cache, never
+  touching a newer unrelated save.
 - **Unconfirmed save.** A timeout or lost response keeps the attempted details and action
   ID, reconciles, and offers a retry of the same request. Unconfirmed dose saves stay on
-  their rows, are rechecked on focus and reconnect, and confirm once a matching record
-  arrives.
+  their rows, are rechecked on focus and reconnect by reading Today (dose due today) or
+  the dose's History date, and confirm once any Today or History date read shows a
+  matching record.
 - **Conflict** needs explicit user recovery; the server's current outcome is shown, never
   silently overwritten.
 

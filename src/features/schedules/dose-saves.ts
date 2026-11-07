@@ -1,11 +1,23 @@
 import { hashKey, type QueryClient } from '@tanstack/react-query'
 import { toast } from '@/components/ui/toast'
+import { dateLabel } from '@/lib/calendar-date'
 import type { DoseUnit } from '@/lib/dose-quantity'
 import { sessionSaves } from '@/lib/session-saves'
 import { parseDoseOutcomeRecord, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
 import { reconciledConfirmation } from './dose-confirmation'
 import { matchesDoseReceipt, type DoseAttempt } from './dose-receipt'
-import { scheduleKeys, scheduleSnapshotQuery, type ScheduleSnapshot } from './queries'
+import {
+  cachedRecords,
+  historyDate,
+  historyDayQuery,
+  historyRecords,
+  isHistoryKey,
+  sameDose,
+  scheduleKeys,
+  scheduleSnapshotQuery,
+  writeRecord,
+  type ScheduleSnapshot,
+} from './queries'
 import { doseClock } from './taken-form-schema'
 
 type Outcome = DoseOutcomeRecord['outcome']
@@ -26,6 +38,8 @@ export type DoseSave = {
   correction: PinnedCorrection | null
   form?: AttemptForm
   medicine: { label: string; unit: DoseUnit }
+  /** Istanbul today, read when needed, to name where the dose lives after a day rolls over. */
+  today: () => string
   pending: boolean
   problem: SaveProblem | null
   error: string
@@ -46,6 +60,7 @@ export type DoseSaveRequest = {
   correction: PinnedCorrection | null
   form?: AttemptForm
   medicine: DoseSave['medicine']
+  today: () => string
 }
 
 export const doseSaveKey = (dose: Pick<DoseOccurrence, 'scheduleId' | 'dueAt'>) =>
@@ -70,14 +85,24 @@ class DoseSaves {
   private stop: () => void
 
   constructor(private client: QueryClient) {
-    // Any successful snapshot read, Today's own or the recheck below, can establish receipt.
+    // Any Today or History date read, the screen's own, the recheck below or a server-streamed
+    // hydration ('added' or 'setState'), can establish receipt. Reconciling writes to the cache and adds
+    // Toasts, so it runs after the cache has finished announcing the read.
     const unsubscribe = client.getQueryCache().subscribe((event) => {
-      if (
-        event.type === 'updated' &&
-        event.action.type === 'success' &&
-        event.query.queryHash === snapshotHash
-      )
-        this.reconcile(event.query.state.data as ScheduleSnapshot | undefined)
+      const read =
+        event.type === 'added' ||
+        (event.type === 'updated' &&
+          (event.action.type === 'success' || event.action.type === 'setState'))
+      if (!read) return
+      const { queryHash, queryKey, state } = event.query
+      if (state.data === undefined) return
+      const records =
+        queryHash === snapshotHash
+          ? (state.data as ScheduleSnapshot).records
+          : isHistoryKey(queryKey)
+            ? historyRecords(state.data as DoseOccurrence[])
+            : null
+      if (records) queueMicrotask(() => this.reconcile(records))
     })
     const recheck = () => {
       if (document.visibilityState === 'visible') this.recheck()
@@ -139,7 +164,7 @@ class DoseSaves {
     return () => {
       this.openDrawers.delete(key)
       // A record found while the drawer was open is applied once it closes.
-      this.reconcile(this.client.getQueryData(scheduleKeys.snapshot()))
+      this.reconcile(cachedRecords(this.client))
     }
   }
   private finish(key: string) {
@@ -199,6 +224,7 @@ class DoseSaves {
       correction,
       form: request.form,
       medicine: request.medicine,
+      today: request.today,
       pending: true,
       problem: null,
       error: '',
@@ -292,22 +318,39 @@ class DoseSaves {
     const save = this.entries.get(key)
     if (!save || this.observers.get(key)) return
     const head = `${save.medicine.label} ${doseClock(dose.dueAt)} ·`
+    const date = historyDate(dose.dueAt)
+    const today = save.today()
+    // Today shows only doses due today; History shows every dose on its History date.
+    const open = date === today ? 'Open Today' : `Open History for ${dateLabel(date, today)}`
     toast.add({
       title: isUnconfirmed(save)
-        ? `${head} save not confirmed. Open Today to retry`
+        ? `${head} save not confirmed. ${open} to retry`
         : save.needsReview
-          ? `${head} not saved. Review its current outcome on Today`
-          : `${head} not saved. Open Today to try again`,
+          ? `${head} not saved. ${open} to review its current outcome`
+          : `${head} not saved. ${open} to try again`,
       type: 'warning',
       timeout: 0,
     })
   }
 
-  /** Focus and reconnect read Today again while an attempt is unconfirmed (F5). */
+  /**
+   * Focus and reconnect read again where each unconfirmed attempt's dose lives (F5): Today for
+   * a dose due on its date, otherwise the dose's History date.
+   */
   private recheck() {
-    if (![...this.entries.values()].some(isUnconfirmed)) return
-    // Joins a read already in flight, such as Today's own focus refresh.
-    void this.client.fetchQuery({ ...scheduleSnapshotQuery(), staleTime: 0 }).catch(() => {})
+    const reads = new Map<string, boolean>()
+    for (const save of this.entries.values()) {
+      if (!isUnconfirmed(save) || !save.attempt) continue
+      const date = historyDate(save.attempt.payload.dueAt)
+      reads.set(date, date === save.today())
+    }
+    // Each joins a read already in flight, such as the screen's own focus refresh.
+    for (const [date, dueToday] of reads) {
+      const read = dueToday
+        ? this.client.fetchQuery({ ...scheduleSnapshotQuery(), staleTime: 0 })
+        : this.client.fetchQuery({ ...historyDayQuery(date), staleTime: 0 })
+      void read.catch(() => {})
+    }
   }
 
   /**
@@ -315,14 +358,12 @@ class DoseSaves {
    * A different current outcome leaves a closed row explicit review instead of a lasting
    * "Not confirmed"; an open drawer keeps offering Retry (FE-673).
    */
-  private reconcile(snapshot: ScheduleSnapshot | undefined) {
-    if (!snapshot) return
+  private reconcile(records: DoseOutcomeRecord[]) {
+    if (!this.active) return
     for (const [key, save] of this.entries) {
       if (!isUnconfirmed(save) || !save.attempt) continue
-      const { scheduleId, dueAt } = save.attempt.payload
-      const found = snapshot.records.find(
-        (record) => record.scheduleId === scheduleId && record.dueAt === dueAt,
-      )
+      const attempt = save.attempt.payload
+      const found = records.find((record) => sameDose(record, attempt))
       if (!found) continue
       if (!matchesDoseReceipt(found, save.attempt)) {
         const changed = !save.correction || (found.revision ?? 0) !== save.correction.revision
@@ -336,6 +377,8 @@ class DoseSaves {
       }
       this.set(key, undefined)
       this.finish(key)
+      // The read covered one view; the other view's cache shows the record too.
+      writeRecord(this.client, found)
       toast.add({
         title: reconciledConfirmation({ ...save.medicine, record: found }),
         type: found.outcome === 'Taken' ? 'success' : 'skipped',

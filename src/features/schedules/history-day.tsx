@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -12,12 +12,12 @@ import { dateLabel, longDateLabel } from '@/lib/calendar-date'
 import { quantityLabel } from '@/lib/dose-quantity'
 import { cn } from '@/lib/utils'
 import type { Medicine } from '@/features/medicines/contract'
-import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
+import { istanbulDate, type DoseOccurrence } from './contract'
 import { DoseActions } from './dose-actions'
-import { doseSaveKey } from './dose-saves'
+import { doseSaveKey, type RecordCheck } from './dose-saves'
 import { DoseStatusBadge } from './dose-status-badge'
 import { dayHeadingId, historyHref, useHistoryDayFocus } from './history-date-nav'
-import { scheduleKeys } from './queries'
+import { applyRecord, currentRecord, readFreshHistoryDay, sameDose } from './queries'
 import { doseClock as clock } from './taken-form'
 import { useDoseSaves } from './use-dose-outcome-mutation'
 
@@ -178,20 +178,18 @@ function HistoryDoseRow({
   today: string
   medicine?: Medicine
 }) {
-  const [confirmed, setConfirmed] = useState<DoseOutcomeRecord | null>(null)
   const client = useQueryClient()
   const saves = useDoseSaves()
-  // A correction reconciles only this date; Today and other dates are FE-680's.
-  const invalidateDate = () =>
-    client.invalidateQueries({ queryKey: scheduleKeys.history(date), exact: true })
-  const serverRevision = 'record' in dose ? (dose.record.revision ?? 0) : 0
-  const current =
-    confirmed && (confirmed.revision ?? 0) > serverRevision
-      ? ({ ...dose, status: confirmed.outcome, record: confirmed } as DoseOccurrence)
-      : dose
-  const done = recorded(current)
+  /** Reads this History date again and returns this dose's record, if any (FE-648 F4). */
+  async function checkRecorded(): Promise<RecordCheck> {
+    const doses = await readFreshHistoryDay(client, date).catch(() => null)
+    if (!doses) return 'unknown'
+    const found = doses.find((item) => sameDose(item, dose))
+    return found && 'record' in found ? { record: found.record } : 'missing'
+  }
+  const done = recorded(dose)
   const unit = medicine?.unit ?? 'tablet'
-  const takenAt = current.status === 'Taken' ? current.record.takenAt : ''
+  const takenAt = dose.status === 'Taken' ? dose.record.takenAt : ''
   const takenDate = takenAt ? istanbulDate(new Date(takenAt)) : ''
   return (
     <Item
@@ -214,9 +212,9 @@ function HistoryDoseRow({
         </ItemTitle>
         <ItemDescription>
           {[medicine?.strength, quantityLabel(dose.quantity, unit)].filter(Boolean).join(' · ')}
-          {current.status === 'Taken' &&
-            current.record.quantity !== dose.quantity &&
-            ` · took ${quantityLabel(current.record.quantity, unit)}`}
+          {dose.status === 'Taken' &&
+            dose.record.quantity !== dose.quantity &&
+            ` · took ${quantityLabel(dose.record.quantity, unit)}`}
           {takenDate && takenDate !== date && (
             <span className="block font-bold text-foreground">
               Taken on {dateLabel(takenDate, today).replace(/^Today, /, '')}
@@ -230,7 +228,7 @@ function HistoryDoseRow({
       <DoseStatusBadge
         id={`dose-status-${dose.id}`}
         pending={saves.pendingDose(doseSaveKey(dose))}
-        status={current.status}
+        status={dose.status}
         time={
           takenAt ? (
             <time data-dose-intake-time dateTime={takenAt}>
@@ -241,17 +239,17 @@ function HistoryDoseRow({
       />
       {done && medicine && (
         <DoseActions
-          dose={current}
+          dose={dose}
           medicine={medicine}
           appearance="row"
           describedBy={`dose-status-${dose.id}`}
-          refresh={async () => {
-            await invalidateDate()
-            return false
-          }}
+          refresh={async () => typeof (await checkRecorded()) === 'object'}
+          checkRecorded={checkRecorded}
           onRecorded={(record) => {
-            setConfirmed(record)
-            void invalidateDate()
+            const superseded =
+              (currentRecord(client, record)?.revision ?? 0) > (record.revision ?? 0)
+            void applyRecord(client, record)
+            return superseded
           }}
         />
       )}

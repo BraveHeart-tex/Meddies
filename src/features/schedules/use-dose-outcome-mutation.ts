@@ -33,8 +33,11 @@ export function useDoseOutcomeMutation({
   onFinished,
   checkRecorded,
   drawerOpen,
+  today,
 }: {
   drawerOpen: boolean
+  /** Istanbul today, read whenever the save needs it. */
+  today: () => string
   dose: DoseOccurrence
   medicine: DoseSave['medicine']
   refresh: () => Promise<boolean>
@@ -78,6 +81,7 @@ export function useDoseOutcomeMutation({
         details,
         form,
         medicine,
+        today,
         // After a remount, an unconfirmed correction retries with its own preconditions.
         correction: pinnedCorrection.current ?? (uncertain ? (save?.correction ?? null) : null),
       })
