@@ -29,6 +29,8 @@ the ticket that owns each nearby item.
 - Set blockers as native Linear relations. Add a "Blocked by" section only when a
   blocker cannot be linked.
 - Describe behaviour, not file paths. Link stable docs and design artifacts.
+- When handing off a design frame, quote its key geometry (sizes, radii, gaps, copy) in
+  the ticket. Commit the approved artifact as a snapshot in [docs/design](../design/README.md).
 - Write "Tests prove…" for logic and UI states. Name a browser journey only for
   behaviour that needs a real browser and app: route navigation, SSR, hydration and
   streaming, layout and viewport, or the auth and Worker path

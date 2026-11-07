@@ -8,3 +8,5 @@ experiments
 .worker-build/
 .agents/skills/meddies-design/
 .impeccable
+# Verbatim design artifact snapshots
+docs/design/*.html

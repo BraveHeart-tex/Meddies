@@ -1,0 +1,714 @@
+<!-- Approved design snapshot, 2026-11-07. Live artifact (review, comments, screenshots): https://claude.ai/code/artifact/94a7837c-23b1-4eca-8995-a05f02069ecb (version 1793975825-49da). 21 embedded screenshots stripped. Read-only: change the artifact, then refresh this copy. -->
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Meddies Screen and Control Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single reading column (design review doc) with wide figures - flow map, galleries, tables - that scroll inside their own frames. Cozy Care is light-only, so this page commits to one light theme. */
+:root {
+  --cream: #FBF5EE;
+  --sunken: #F3EAE1;
+  --line: #EEDFD4;
+  --line-strong: #E3D3C8;
+  --card: #FFFFFF;
+  --blush: #F7DCE3;
+  --blush-line: #E9A3B6;
+  --berry: #B23A66;
+  --berry-ink: #8E2C52;
+  --ink: #3B2A2F;
+  --ink-2: #5E474C;
+  --muted: #7A6266;
+  --sage-bg: #E3EEE2; --sage: #2F5F3D;
+  --amber-bg: #FBE9D2; --amber: #8A4E0E;
+  --red: #A12C3A; --red-bg: #FBE4E4;
+  --id-butter: #FDF0C9; --id-butter-fg: #F2C85B;
+  --id-blush-fg: #E9A3B6;
+  --id-peach: #FCE3D3; --id-peach-fg: #E89A5F;
+  --id-plum: #EADFE6; --id-plum-fg: #9C6F86;
+  --id-mist: #E6EEF0; --id-mist-fg: #7E9AA3;
+  --font: "Nunito", ui-rounded, -apple-system, system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --step--1: 0.8125rem; --step-0: 0.9375rem; --step-1: 1.0625rem; --step-2: 1.1875rem; --step-3: 1.5rem; --step-4: 1.8125rem;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--cream); color: var(--ink);
+  font-family: var(--font); font-size: var(--step-0); line-height: 1.55; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 40px 80px; display: flex; flex-direction: column; gap: 56px; }
+.prose { max-width: 68ch; }
+h1, h2, h3, h4 { margin: 0; font-weight: 800; text-wrap: balance; line-height: 1.2; }
+h1 { font-size: var(--step-4); }
+h2 { font-size: var(--step-3); }
+h3 { font-size: var(--step-2); }
+h4 { font-size: var(--step-1); }
+p { margin: 0; }
+section { display: flex; flex-direction: column; gap: 18px; }
+.eyebrow { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 800; color: var(--muted); }
+.lede { font-size: var(--step-1); color: var(--ink-2); max-width: 64ch; }
+.muted { color: var(--muted); }
+code, .mono { font-family: var(--mono); font-size: 0.82em; font-weight: 500; }
+code { background: var(--sunken); padding: 1px 5px; border-radius: 6px; overflow-wrap: anywhere; }
+a { color: var(--berry-ink); }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid rgba(178,58,102,.45); outline-offset: 2px; border-radius: 6px; }
+ul.plain { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 6px; }
+
+/* header */
+.top { display: flex; flex-direction: column; gap: 14px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-strong); background: var(--card); border-radius: 999px; padding: 3px 11px; font-size: var(--step--1); font-weight: 700; color: var(--ink-2); }
+.chip.status { background: var(--blush); border-color: transparent; color: var(--berry-ink); font-weight: 800; }
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.summary > div { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
+.summary b { font-weight: 800; }
+
+/* tables */
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 18px; background: var(--card); }
+table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: var(--step--1); }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+th { font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); font-weight: 800; background: var(--sunken); position: sticky; top: 0; }
+tr:last-child td { border-bottom: 0; }
+td strong { font-weight: 800; }
+.tag { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 1px 9px; font-weight: 800; font-size: 0.75rem; white-space: nowrap; }
+.tag.ok { background: var(--sage-bg); color: var(--sage); }
+.tag.part { background: var(--amber-bg); color: var(--amber); }
+.tag.old { background: var(--sunken); color: var(--ink-2); border: 1px dashed var(--line-strong); }
+.tag.later { background: var(--sunken); color: var(--muted); }
+.tag.dec { background: var(--blush); color: var(--berry-ink); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; display: inline-block; }
+
+/* flow map */
+.figure { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 14px; overflow-x: auto; }
+.figure svg { display: block; min-width: 900px; width: 100%; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: var(--step--1); color: var(--ink-2); padding: 6px 4px 0; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { display: inline-block; width: 28px; height: 0; border-top: 2px solid var(--ink-2); }
+.legend i.drawer { border-top: 2px dashed var(--berry); }
+.legend i.rec { border-top: 2px dotted var(--amber); }
+.legend i.prop { border-top: 2px solid var(--blush-line); }
+
+/* gallery */
+.gallery { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 10px; scroll-snap-type: x proximity; }
+.gallery figure { margin: 0; flex: 0 0 216px; display: flex; flex-direction: column; gap: 8px; scroll-snap-align: start; }
+.gallery img { width: 216px; max-width: 100%; border-radius: 16px; border: 1px solid var(--line-strong); background: var(--card); display: block; }
+.gallery figcaption { font-size: var(--step--1); color: var(--ink-2); line-height: 1.4; }
+.gallery figcaption b { color: var(--ink); font-weight: 800; display: block; }
+
+/* rules */
+.rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.rule { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.rule h3 { font-size: var(--step-1); }
+
+/* ---------- mock components (Cozy Care kit look) ---------- */
+.mocks { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 18px; align-items: start; }
+.mock { display: flex; flex-direction: column; gap: 10px; }
+.mock > .cap { font-size: var(--step--1); color: var(--ink-2); }
+.mock > .cap b { color: var(--ink); font-weight: 800; }
+.phone { background: var(--cream); border: 1px solid var(--line-strong); border-radius: 30px; padding: 18px 16px; display: flex; flex-direction: column; gap: 14px; max-width: 370px; width: 100%; }
+.m-back { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; font-weight: 800; color: var(--ink-2); font-size: var(--step-0); align-self: flex-start; padding-right: 8px; }
+.m-hdr { display: flex; align-items: flex-start; gap: 12px; }
+.m-hdr .t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.m-hdr .t h4 { font-size: 1.4375rem; line-height: 1.12; overflow-wrap: anywhere; }
+.m-set { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); display: grid; place-items: center; flex: none; color: var(--ink); }
+.tile { width: 46px; height: 46px; border-radius: 16px; display: grid; place-items: center; flex: none; }
+.tile.lg { width: 52px; height: 52px; border-radius: 18px; }
+.tile i { display: block; width: 44%; height: 44%; border-radius: 50%; }
+.tile.plum { background: var(--id-plum); } .tile.plum i { background: var(--id-plum-fg); border-radius: 6px; }
+.tile.peach { background: var(--id-peach); } .tile.peach i { background: var(--id-peach-fg); width: 22%; height: 55%; border-radius: 99px; transform: rotate(40deg); }
+.tile.butter { background: var(--id-butter); } .tile.butter i { background: var(--id-butter-fg); }
+.tile.blush { background: var(--blush); } .tile.blush i { background: var(--id-blush-fg); border: 2px solid var(--berry); }
+.tile.mist { background: var(--id-mist); } .tile.mist i { background: #fff; border: 2px solid var(--id-mist-fg); }
+.sub { color: var(--ink-2); font-size: var(--step--1); font-weight: 600; }
+.lbl { font-size: 0.8125rem; font-weight: 800; }
+.m-card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.m-card.dashed { border: 1.5px dashed var(--line-strong); }
+.m-row { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 14px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-height: 64px; }
+.m-row.att { border: 1.5px solid var(--blush-line); }
+.m-row .time { width: 46px; font-weight: 800; flex: none; }
+.m-row .time.done { color: var(--muted); }
+.m-row .c { flex: 1; min-width: 8rem; display: flex; flex-direction: column; gap: 2px; }
+.m-row .c b { font-weight: 800; overflow-wrap: anywhere; }
+.m-row .note { flex-basis: 100%; font-size: var(--step--1); color: var(--ink-2); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 4px 10px; font-size: 0.8125rem; font-weight: 800; white-space: nowrap; }
+.badge svg { flex: none; }
+.b-taken { background: var(--sage-bg); color: var(--sage); }
+.b-unlogged { background: var(--amber-bg); color: var(--amber); }
+.b-skipped { background: var(--sunken); color: var(--muted); }
+.b-sched { border: 1px solid var(--line-strong); color: var(--ink-2); padding: 3px 9px; }
+.b-due { background: var(--blush); color: var(--berry-ink); }
+.b-pending { border: 1px dashed var(--line-strong); color: var(--ink-2); padding: 3px 9px; background: var(--card); }
+.field { display: flex; flex-direction: column; gap: 8px; container-type: inline-size; }
+.field .help { font-size: var(--step--1); color: var(--ink-2); }
+.field .err { font-size: var(--step--1); color: var(--red); font-weight: 800; display: flex; gap: 6px; align-items: flex-start; }
+.ctrl { min-height: 46px; border: 1px solid #C9B2AA; border-radius: 16px; background: var(--card); padding: 0 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink); }
+.ctrl.inv { border: 2px solid var(--red); }
+.ctrl .ph { color: #8F7A7E; }
+.tg { display: grid; grid-template-columns: repeat(4, minmax(44px, 1fr)); gap: 8px; }
+@container (min-width: 344px) { .tg { grid-template-columns: repeat(7, minmax(44px, 1fr)); } }
+.tg span { min-height: 44px; min-width: 44px; border: 1px solid var(--line-strong); border-radius: 16px; background: var(--card); display: grid; place-items: center; font-weight: 800; font-size: var(--step--1); padding: 0 8px; }
+.tg span.on { background: var(--blush); border-color: var(--berry); color: var(--berry-ink); }
+.tg.inv span { border-color: var(--red); }
+.stepper { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--line); background: var(--card); border-radius: 18px; padding: 8px 8px 8px 16px; flex-wrap: wrap; }
+.stepper .ctl { display: flex; align-items: center; gap: 8px; }
+.sq { width: 44px; height: 44px; border-radius: 14px; background: var(--sunken); display: grid; place-items: center; color: var(--ink); }
+.sq.off { opacity: .45; }
+.num { width: 58px; height: 44px; border: 1px solid #C9B2AA; border-radius: 14px; display: grid; place-items: center; font-weight: 800; font-size: var(--step-1); background: var(--card); }
+.btn { min-height: 52px; border-radius: 18px; display: grid; place-items: center; font-weight: 800; padding: 0 18px; text-align: center; }
+.btn.pri { background: var(--berry); color: #fff; }
+.btn.pri.busy { background: #C9718F; }
+.btn.out { background: var(--card); border: 1px solid var(--line-strong); color: var(--ink); min-height: 44px; }
+.btn.ghost { color: var(--ink); min-height: 44px; }
+.btn.soft { background: var(--blush); color: var(--berry-ink); min-height: 36px; border-radius: 12px; font-size: var(--step--1); padding: 0 12px; }
+.alert { border-radius: 18px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; font-size: var(--step--1); border: 1px solid var(--line); background: var(--card); }
+.alert.ok { background: var(--sage-bg); border-color: transparent; color: var(--sage); flex-direction: row; align-items: center; font-weight: 800; }
+.alert.bad { border-color: #E7B9BF; color: var(--red); }
+.alert.warn { background: var(--amber-bg); border-color: transparent; color: var(--amber); }
+.alert .btn.out { align-self: flex-start; min-height: 44px; font-size: var(--step--1); }
+.alert b { font-weight: 800; color: inherit; }
+.sk { background: var(--sunken); border-radius: 22px; }
+.toast { background: var(--card); border-radius: 18px; box-shadow: 0 12px 28px -12px rgba(59,42,47,.35), 0 0 0 1px var(--line); padding: 12px 14px; display: flex; gap: 10px; align-items: center; font-weight: 800; font-size: var(--step--1); }
+.ok-ico { width: 26px; height: 26px; border-radius: 50%; background: var(--sage-bg); color: var(--sage); display: grid; place-items: center; flex: none; }
+.drawer { background: var(--cream); border-radius: 32px 32px 0 0; box-shadow: 0 -8px 30px -12px rgba(48,28,34,.25); padding: 10px 16px 18px; display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--line); }
+.handle { width: 38px; height: 5px; border-radius: 9px; background: #DCCBC0; align-self: center; }
+.schip { background: var(--sunken); border-radius: 16px; padding: 10px 14px; display: flex; justify-content: space-between; gap: 8px; font-size: var(--step--1); flex-wrap: wrap; }
+.schip b { font-weight: 800; }
+.divider { height: 1px; background: var(--line); }
+
+/* checklist + approval */
+.check { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.check li { display: flex; gap: 10px; align-items: flex-start; }
+.box { width: 20px; height: 20px; flex: none; border-radius: 6px; border: 1.5px solid var(--line-strong); background: var(--card); margin-top: 2px; display: grid; place-items: center; color: var(--sage); }
+.box.done { background: var(--sage-bg); border-color: transparent; }
+.approve { background: var(--blush); border-radius: 28px; padding: 22px; display: flex; flex-direction: column; gap: 10px; }
+.approve h2 { color: var(--berry-ink); }
+details { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 12px 16px; }
+summary { cursor: pointer; font-weight: 800; }
+details[open] summary { margin-bottom: 10px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+@media (max-width: 480px) { .wrap { padding-block: 24px 56px; gap: 44px; } }
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">FE-646 · Design 1 of 5 · Cozy Care</p>
+  <h1>Meddies screen and control map</h1>
+  <p class="lede">The connected map of every implemented screen, query state, drawer and recovery surface, plus one usage rule per shared control. Later journey designs (FE-647 to FE-650) build on these rules. Nothing here changes production code or the approved interaction contract.</p>
+  <div class="meta">
+    <span class="chip status">Approved by Bora · D1 to D6 accepted</span>
+    <span class="chip">6 Nov 2026</span>
+    <span class="chip">Evidence: production build, synthetic data</span>
+    <span class="chip">402 × 874 primary · 320 × 740 stress</span>
+  </div>
+  <div class="summary">
+    <div><span class="eyebrow">Already coherent</span><p>Today, the shared dose drawer and the Medications list follow the kit. They are the reference for everything else.</p></div>
+    <div><span class="eyebrow">Pre-kit surfaces</span><p>Medicine detail, schedule setup, History, Settings, sign-in and the signed-out pages still use plain text, underline links and ISO dates.</p></div>
+    <div><span class="eyebrow">Decided</span><p><b>D1 to D6 accepted</b> as recommended on 6 Nov 2026. D2 needs a separate DESIGN.md wording update (toast without Undo).</p></div>
+  </div>
+</header>
+
+<!-- ============ 1. FLOW MAP ============ -->
+<section id="flow">
+  <h2>Route and flow map</h2>
+  <p class="prose">Three primary destinations plus header Settings stay as they are. A route change is a navigation: Back, reload and deep links work. A drawer is not a navigation: dismissing it discards the draft and never changes the URL. Lines in pink are proposed; everything else is current behavior.</p>
+  <div class="figure" role="img" aria-label="Flow map. Sign-in leads to Today, Medications or History via returnTo. The three primary destinations link to each other through the bottom nav. Today and History open the shared dose drawer. Medications leads to Add medicine, then the saved handoff, then schedule setup or back to the list. A list row opens medicine detail, which leads to schedule setup. Settings signs out to sign-in. Session expiry anywhere in the signed-in area returns to sign-in with the intended page.">
+    <svg viewBox="0 0 960 520" xmlns="http://www.w3.org/2000/svg" font-family="Nunito, ui-rounded, system-ui, sans-serif">
+      <defs>
+        <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5E474C"/></marker>
+        <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B23A66"/></marker>
+        <marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8A4E0E"/></marker>
+        <marker id="ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#E9A3B6"/></marker>
+      </defs>
+      <!-- signed-in area -->
+      <rect x="222" y="14" width="726" height="494" rx="26" fill="#FBF5EE" stroke="#E3D3C8" stroke-dasharray="3 5"/>
+      <text x="240" y="500" font-size="12" font-weight="800" fill="#7A6266">SIGNED-IN AREA · SessionBoundary hides private content at expiry</text>
+
+      <!-- edges -->
+      <!-- nav -->
+      <path d="M422 64 H476" stroke="#5E474C" stroke-width="1.6" fill="none" marker-end="url(#a)" marker-start="url(#a)"/>
+      <path d="M662 64 H736" stroke="#5E474C" stroke-width="1.6" fill="none" marker-end="url(#a)" marker-start="url(#a)"/>
+      <text x="449" y="56" font-size="11" fill="#5E474C" text-anchor="middle">nav</text>
+      <text x="699" y="56" font-size="11" fill="#5E474C" text-anchor="middle">nav</text>
+      <!-- sign in -> today -->
+      <path d="M200 262 C 215 262, 215 64, 236 64" stroke="#5E474C" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+      <text x="96" y="232" font-size="11" fill="#5E474C">Continue with Google</text>
+      <text x="96" y="246" font-size="11" fill="#5E474C">→ returnTo page</text>
+      <!-- expiry -->
+      <path d="M222 300 H204" stroke="#8A4E0E" stroke-width="2" stroke-dasharray="2 4" fill="none" marker-end="url(#aa)"/>
+      <text x="24" y="330" font-size="11" fill="#8A4E0E" font-weight="700">expiry or 401 →</text>
+      <text x="24" y="344" font-size="11" fill="#8A4E0E" font-weight="700">?reason=expired&amp;returnTo</text>
+      <!-- today drawer -->
+      <path d="M300 94 V166" stroke="#B23A66" stroke-width="1.8" stroke-dasharray="6 4" fill="none" marker-end="url(#ab)"/>
+      <path d="M362 166 V94" stroke="#B23A66" stroke-width="1.8" stroke-dasharray="6 4" fill="none" marker-end="url(#ab)"/>
+      <text x="252" y="134" font-size="11" fill="#B23A66" text-anchor="middle">row,</text>
+      <text x="252" y="147" font-size="11" fill="#B23A66" text-anchor="middle">hero</text>
+      <text x="370" y="128" font-size="11" fill="#B23A66">confirmed save,</text>
+      <text x="370" y="141" font-size="11" fill="#B23A66">dismiss = discard</text>
+      <!-- history drawer -->
+      <path d="M800 94 V166" stroke="#B23A66" stroke-width="1.8" stroke-dasharray="6 4" fill="none" marker-end="url(#ab)"/>
+      <path d="M862 166 V94" stroke="#B23A66" stroke-width="1.8" stroke-dasharray="6 4" fill="none" marker-end="url(#ab)"/>
+      <text x="756" y="134" font-size="11" fill="#B23A66" text-anchor="middle">row</text>
+      <!-- meds -> add -->
+      <path d="M572 94 V156" stroke="#5E474C" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+      <text x="580" y="130" font-size="11" fill="#5E474C">Add</text>
+      <!-- add -> handoff -->
+      <path d="M572 214 V266" stroke="#5E474C" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+      <text x="580" y="245" font-size="11" fill="#5E474C">server confirms</text>
+      <!-- handoff -> setup -->
+      <path d="M664 296 C 760 296, 830 330, 830 396" stroke="#5E474C" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+      <text x="712" y="288" font-size="11" fill="#5E474C">Set schedule</text>
+      <!-- handoff -> list (done for now) -->
+      <path d="M664 278 C 700 278, 700 70, 668 70" stroke="#5E474C" stroke-width="1.4" fill="none" stroke-dasharray="1 0" marker-end="url(#a)" opacity=".7"/>
+      <text x="676" y="190" font-size="11" fill="#5E474C">Done for now</text>
+      <!-- meds -> detail -->
+      <path d="M482 94 V396" stroke="#5E474C" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+      <text x="490" y="352" font-size="11" fill="#5E474C">row</text>
+      <text x="490" y="366" font-size="11" fill="#5E474C">(Add schedule</text>
+      <text x="490" y="380" font-size="11" fill="#5E474C">→ setup)</text>
+      <!-- detail -> setup -->
+      <path d="M664 424 H736" stroke="#5E474C" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+      <text x="670" y="416" font-size="11" fill="#5E474C">Set schedule</text>
+      <!-- proposed: setup back, setup saved -> detail -->
+      <path d="M736 446 C 712 470, 690 470, 666 452" stroke="#E9A3B6" stroke-width="2.2" fill="none" marker-end="url(#ap)"/>
+      <text x="672" y="486" font-size="11" fill="#8E2C52" font-weight="700">Back · saved → detail (D4)</text>
+      <!-- proposed: detail back -->
+      <path d="M560 396 C 530 340, 530 140, 556 98" stroke="#E9A3B6" stroke-width="2.2" fill="none" marker-end="url(#ap)"/>
+      <text x="532" y="300" font-size="11" fill="#8E2C52" font-weight="700" text-anchor="end">Back</text>
+      <!-- settings -->
+      <path d="M240 432 C 215 432, 215 300, 204 290" stroke="#5E474C" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+      <text x="96" y="420" font-size="11" fill="#5E474C">Sign out →</text>
+      <text x="96" y="434" font-size="11" fill="#5E474C">?reason=signed-out</text>
+
+      <!-- nodes -->
+      <g font-size="14" font-weight="800" fill="#3B2A2F">
+        <rect x="20" y="262" width="180" height="58" rx="16" fill="#FFFFFF" stroke="#C9B2AA" stroke-dasharray="4 3"/>
+        <text x="34" y="286">Sign-in</text>
+        <text x="34" y="306" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500" fill="#7A6266">/ (signed out)</text>
+
+        <rect x="240" y="36" width="180" height="58" rx="16" fill="#F7DCE3" stroke="#E9A3B6"/>
+        <text x="254" y="60">Today</text>
+        <text x="254" y="80" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500" fill="#8E2C52">/</text>
+
+        <rect x="480" y="36" width="184" height="58" rx="16" fill="#F7DCE3" stroke="#E9A3B6"/>
+        <text x="494" y="60">Medications</text>
+        <text x="494" y="80" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500" fill="#8E2C52">/medications</text>
+
+        <rect x="740" y="36" width="190" height="58" rx="16" fill="#F7DCE3" stroke="#E9A3B6"/>
+        <text x="754" y="60">History</text>
+        <text x="754" y="80" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500" fill="#8E2C52">/history?date=</text>
+
+        <rect x="240" y="168" width="180" height="58" rx="16" fill="#FFFFFF" stroke="#B23A66" stroke-dasharray="6 4"/>
+        <text x="254" y="192">Dose drawer</text>
+        <text x="254" y="212" font-size="11" font-weight="600" fill="#7A6266">record · review · correct</text>
+
+        <rect x="740" y="168" width="190" height="58" rx="16" fill="#FFFFFF" stroke="#B23A66" stroke-dasharray="6 4"/>
+        <text x="754" y="192">Same dose drawer</text>
+        <text x="754" y="212" font-size="11" font-weight="600" fill="#7A6266">review · correct only</text>
+
+        <rect x="480" y="158" width="184" height="56" rx="16" fill="#FFFFFF" stroke="#E3D3C8"/>
+        <text x="494" y="182">Add medicine</text>
+        <text x="494" y="201" font-size="11" font-weight="600" fill="#7A6266">inline, end of list (D1)</text>
+
+        <rect x="480" y="268" width="184" height="56" rx="16" fill="#FFFFFF" stroke="#E3D3C8"/>
+        <text x="494" y="292">Saved handoff</text>
+        <text x="494" y="311" font-size="11" font-weight="600" fill="#7A6266">Set schedule · Done for now</text>
+
+        <rect x="480" y="398" width="184" height="58" rx="16" fill="#FFFFFF" stroke="#E3D3C8"/>
+        <text x="494" y="422">Medicine detail</text>
+        <text x="494" y="442" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500" fill="#7A6266">?medicine=ID</text>
+
+        <rect x="740" y="398" width="190" height="58" rx="16" fill="#FFFFFF" stroke="#E3D3C8"/>
+        <text x="754" y="422">First schedule</text>
+        <text x="754" y="442" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500" fill="#7A6266">?schedule=ID</text>
+
+        <rect x="240" y="404" width="180" height="58" rx="16" fill="#FFFFFF" stroke="#E3D3C8"/>
+        <text x="254" y="428">Settings</text>
+        <text x="254" y="448" font-size="11" font-weight="600" fill="#7A6266">header icon, every page</text>
+      </g>
+    </svg>
+    <div class="legend">
+      <span><i></i>Route transition (URL changes, Back works)</span>
+      <span><i class="drawer"></i>Drawer open / close (no URL change)</span>
+      <span><i class="rec"></i>Session recovery</span>
+      <span><i class="prop"></i>Proposed</span>
+    </div>
+  </div>
+
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:18%">Moment</th><th>Rule</th><th style="width:28%">Source today</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Entry</strong></td><td>Private routes need the approved account. Signed out, every private URL shows one sign-in screen that keeps <code>returnTo</code> (whitelisted: <code>/</code>, <code>/medications</code>, <code>?medicine=</code>, <code>?schedule=</code>, <code>/history?date=</code>, <code>/settings</code>).</td><td>Home shows sign-in. Medications, History and Settings each render their own plain "Sign in" link page instead. Unify on the home sign-in screen.</td></tr>
+        <tr><td><strong>Back and return</strong></td><td>Browser Back is always correct. Sub-screens (detail, setup) also get a visible Back to their parent in the header. Primary destinations never show a "Back to Today" link; the nav covers it. Returning to Today or History restores cached content and the selected date.</td><td>History and Settings show an underlined "Back to Today". Detail and setup have no visible Back.</td></tr>
+        <tr><td><strong>Cancel and discard</strong></td><td>Drawer: Close, Cancel, backdrop, Escape and swipe discard the unsaved draft. All are refused while a save is pending; Close is disabled. Page forms: leaving keeps the in-memory draft (FE-612); there is no Cancel button on a page form.</td><td>Matches FE-631. Page drafts do not survive navigation yet (implementation owner FE-640).</td></tr>
+        <tr><td><strong>Successful save</strong></td><td>Dose: the drawer closes on confirmation, focus returns to the row, and a factual confirmation is announced (D2). Medicine: the form becomes the saved handoff. Schedule: go to medicine detail, which shows the saved routine (D4).</td><td>Schedule save shows "Schedule saved." in place and resets the form.</td></tr>
+        <tr><td><strong>Session recovery</strong></td><td>At expiry, private content is hidden and the app goes to sign-in with "Your session ended. Sign in again." and the intended page. A 401 during a save shows the session alert in the form, keeping values visible until the user leaves.</td><td>History renders its own inline "Your session ended" link page. Sign-in after expiry rendered as "temporarily unavailable" in the fixture (auth not configured locally).</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ 2. INVENTORY ============ -->
+<section id="inventory">
+  <h2>Surface inventory</h2>
+  <p class="prose">Every route, query state, drawer and recovery surface in <code>src/app</code> and the feature panels. "Rendered" means captured from the production build with synthetic auth and data; "source" means read from code only.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:17%">Surface</th><th style="width:15%">Entry</th><th style="width:8%">Kind</th><th>States present</th><th style="width:10%">Kit adoption</th><th style="width:11%">Evidence</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Today</strong></td><td><code>/</code> signed in</td><td>Page</td><td>Loading text, Up next hero, sorted dose rows, empty day, medicines failed (no data / stale data), Today refresh failed, confirmation alert, Refresh Today</td><td><span class="tag ok">Aligned</span></td><td>Rendered</td></tr>
+        <tr><td><strong>Dose drawer · record</strong></td><td>Today row or hero Taken / Skip</td><td>Drawer</td><td>What happened?, Taken (Now / At scheduled / Other date + time, amount), Skipped confirm, saving, uncertain, 400 rejected, recorded-while-open, already recorded (409)</td><td><span class="tag ok">Aligned</span></td><td>Rendered; 409 source + existing spec</td></tr>
+        <tr><td><strong>Dose drawer · review and correct</strong></td><td>Recorded row (Today or History)</td><td>Drawer</td><td>Recorded summary, Edit intake, Correct outcome, revision conflict</td><td><span class="tag part">Partial</span> ISO dates</td><td>Rendered; conflict source + spec</td></tr>
+        <tr><td><strong>Medications list</strong></td><td><code>/medications</code></td><td>Page</td><td>Loading, empty, medicines failed, routines failed, On a schedule / No schedule groups</td><td><span class="tag ok">Aligned</span></td><td>Rendered</td></tr>
+        <tr><td><strong>Add medicine</strong></td><td>Header Add (anchor) on list</td><td>Inline section</td><td>Fields, required (browser bubble), saving, uncertain + retry, 400, 401, 409, confirmed</td><td><span class="tag part">Partial</span></td><td>Rendered; 400/401/409 source</td></tr>
+        <tr><td><strong>Saved handoff</strong></td><td>After confirmed medicine save</td><td>Inline section</td><td>Set schedule, Done for now; duplicate "saved" messages</td><td><span class="tag part">Partial</span></td><td>Rendered</td></tr>
+        <tr><td><strong>Medicine detail</strong></td><td><code>?medicine=ID</code> from row</td><td>Query state</td><td>Loading, saved routine, no schedule + Set schedule, not found, load failed</td><td><span class="tag old">Pre-kit</span></td><td>Rendered</td></tr>
+        <tr><td><strong>First schedule</strong></td><td><code>?schedule=ID</code> from handoff, row, detail</td><td>Query state</td><td>Loading, form, validation, saving, uncertain + retry, saved, already scheduled, not found, no medicines</td><td><span class="tag old">Pre-kit</span></td><td>Rendered; save failure source</td></tr>
+        <tr><td><strong>History</strong></td><td><code>/history?date=</code></td><td>Page</td><td>Date picker + View, doses for date, no past doses, invalid date, unavailable + retry, session ended</td><td><span class="tag old">Pre-kit</span></td><td>Rendered; unavailable source</td></tr>
+        <tr><td><strong>Settings</strong></td><td>Header icon</td><td>Page</td><td>Sign out, signing out, sign-out failed</td><td><span class="tag old">Pre-kit</span></td><td>Rendered; pending/failure source</td></tr>
+        <tr><td><strong>Sign-in</strong></td><td><code>/</code>, <code>/sign-in/error</code></td><td>Page</td><td>Default, connecting, failed, access denied, callback error, session ended, signed out, not configured</td><td><span class="tag old">Pre-kit</span></td><td>Rendered (not-configured variant); rest source</td></tr>
+        <tr><td><strong>Signed-out deep links</strong></td><td><code>/medications</code>, <code>/history</code>, <code>/settings</code></td><td>Page</td><td>Per-route "Sign in to view…" + link</td><td><span class="tag old">Pre-kit</span></td><td>Rendered</td></tr>
+        <tr><td><strong>App loading</strong></td><td>Route segment loading</td><td>Boundary</td><td>"Opening Meddies…"</td><td><span class="tag old">Pre-kit</span></td><td>Source</td></tr>
+        <tr><td><strong>App error</strong></td><td>Route error boundary</td><td>Boundary</td><td>"Meddies couldn't open" + Try again</td><td><span class="tag old">Pre-kit</span></td><td>Source</td></tr>
+        <tr><td><strong>Session expiry</strong></td><td>Timer, focus, 401</td><td>Boundary</td><td>Hides content, "Your session ended", redirect with <code>returnTo</code></td><td><span class="tag old">Pre-kit</span></td><td>Rendered (History); source</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Rendered baseline</h3>
+  <div class="gallery" tabindex="0" aria-label="Screenshots of current screens, scroll sideways">
+    <figure><img alt="Today with Up next hero and four dose rows" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Today</b>Reference screen. Attention border on unresolved rows.</figcaption></figure>
+    <figure><img alt="Dose drawer with I took it selected" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Dose drawer · Taken</b>Reference for option sets and the quantity stepper.</figcaption></figure>
+    <figure><img alt="Skip save could not be confirmed" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Uncertain skip</b>Three stacked actions; Cancel competes with retry.</figcaption></figure>
+    <figure><img alt="Review drawer for a taken dose" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Review drawer</b>Recorded summary, Edit intake, Correct outcome.</figcaption></figure>
+    <figure><img alt="Medications list" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Medications</b>Add form sits under the list, behind the nav.</figcaption></figure>
+    <figure><img alt="Uncertain medicine save" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Uncertain medicine save</b>Values kept, retry label changes.</figcaption></figure>
+    <figure><img alt="Saved handoff below the add form" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Saved handoff</b>"Magnesium saved." and "Magnesium is saved." both show.</figcaption></figure>
+    <figure><img alt="Medicine detail with routine above identity" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Detail</b>Routine sits above the medicine; "(1)" and ISO date.</figcaption></figure>
+    <figure><img alt="Medicine detail without schedule" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Detail · no schedule</b>Hand-rolled button link.</figcaption></figure>
+    <figure><img alt="Schedule setup with native checkboxes" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>First schedule</b>Native checkboxes, raw quantity input; browser bubble blocks the inline weekday error.</figcaption></figure>
+    <figure><img alt="Setup when a schedule exists" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Setup · already scheduled</b>Read-only routine inside the form card.</figcaption></figure>
+    <figure><img alt="History list for previous day" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>History</b>Plain rows, "2 capsule", separate Review buttons.</figcaption></figure>
+    <figure><img alt="History drawer cross midnight" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Cross-midnight intake</b>Separate times are right; ISO dates are not.</figcaption></figure>
+    <figure><img alt="Settings page" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Settings</b>Header icon is active but no nav tab is; extra Back link.</figcaption></figure>
+    <figure><img alt="Sign-in page" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Sign-in</b>Unstyled headings, no card, no wordmark.</figcaption></figure>
+    <figure><img alt="History session ended page" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Signed-out History</b>Per-route fallback page.</figcaption></figure>
+    <figure><img alt="Today loading text" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Today loading</b>Text only; layout jumps when rows arrive.</figcaption></figure>
+    <figure><img alt="Today medicines failed" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Load failed</b>Retry plus a second Refresh Today below.</figcaption></figure>
+    <figure><img alt="Today empty" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Empty day</b>Dashed card, no next step.</figcaption></figure>
+    <figure><img alt="Today at 320 pixels" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Today at 320 px</b>Badges wrap under the name; holds up.</figcaption></figure>
+    <figure><img alt="Dose drawer at 320 pixels" src="" data-stripped="screenshot: see the live artifact"><figcaption><b>Drawer at 320 px</b>Option set wraps; stepper stays usable.</figcaption></figure>
+  </div>
+</section>
+
+<!-- ============ 3. SCREEN RULES ============ -->
+<section id="rules">
+  <h2>Screen rules</h2>
+  <div class="rules">
+    <div class="rule">
+      <h3>Page or drawer</h3>
+      <p><b>Drawer</b> for one decision about one existing dose: record, review, correct. It fits one screen with the keyboard closed, has one primary action, and its dismissal discards.</p>
+      <p><b>Page</b> (route or query state) for anything that creates or changes setup: medicine, schedule, and later edits. Pages are deep-linkable, survive reload as a location, keep in-memory drafts across navigation, and need server confirmation to save.</p>
+      <p class="muted">No other drawers are proposed. Settings stays a page.</p>
+    </div>
+    <div class="rule">
+      <h3>Header and action placement</h3>
+      <p><b>Primary destinations:</b> <code>AppHeader</code> with title, optional eyebrow and subtitle, at most one page action (pill <code>Button</code>) left of Settings.</p>
+      <p><b>Sub-screens:</b> a Back row ("‹ Medications") above an identity header: tile, medicine name, strength · unit. Settings stays at the right.</p>
+      <p><b>Form end:</b> one full-width primary <code>Button size="lg"</code> (page) or <code>size="drawer"</code> (drawer). Secondary actions are <code>outline</code>, Cancel is <code>ghost</code>, row actions are <code>soft size="sm"</code>.</p>
+    </div>
+    <div class="rule">
+      <h3>Medicine identity hierarchy</h3>
+      <p>Same order everywhere a medicine appears: decorative <code>MedicationTile</code> → name (heaviest, wraps, never truncated) → strength · unit → routine or dose detail → status.</p>
+      <p>Strength describes the product ("200 mg"). Quantity is how much is taken ("1 tablet"). They never share a label, and quantity always carries its unit with correct plural.</p>
+      <p>Detail puts identity first and the routine second. Today and the drawer already do.</p>
+    </div>
+    <div class="rule">
+      <h3>Dose anatomy (Today and History)</h3>
+      <p>One <code>Item</code> row for both: scheduled time column → name / strength · quantity → <code>DoseStatusBadge</code>. The whole row opens the drawer. History drops its plain card and separate "Review dose" button.</p>
+      <p>Actual intake is its own line: "Taken 00:15 · Thu 8 Nov · 1 capsule". It shows the date only when it differs from the scheduled date. Skipped reads "Skipped · no intake recorded".</p>
+      <p>History "Not logged" rows are not interactive; earlier-date initial logging is separate scope.</p>
+    </div>
+    <div class="rule">
+      <h3>Dates and times</h3>
+      <p>24-hour <code>HH:MM</code>, Europe/Istanbul. Dates in copy use the picker's format, "Thu, 8 Nov", adding the year only outside the current year. ISO dates (<code>2035-11-07</code>) never appear in the UI.</p>
+      <p>The Istanbul note appears once per screen (Today footer, form description), not in every label.</p>
+    </div>
+    <div class="rule">
+      <h3>Feedback placement</h3>
+      <p>Field problems: under the field. Save problems: one <code>Alert</code> directly above the primary button, which changes to "Retry …". Load or refresh problems: one <code>Alert</code> at the top of the affected section, with one retry button, and loaded content stays below it.</p>
+      <p>One retry per problem. Remove the second "Refresh Today" when the refresh alert is showing.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. CONTROL MAP ============ -->
+<section id="controls">
+  <h2>Control to design-system mapping</h2>
+  <p class="prose">Each concern maps to an existing component in <code>src/components/ui</code>. No new component system. Where a composition repeats, it becomes a shared feature component built only from these parts.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:15%">Concern</th><th style="width:22%">Use</th><th style="width:27%">Where it differs today</th><th>Rule</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Label, help, error</strong></td><td><code>Field</code>, <code>FieldLabel</code>, <code>FieldDescription</code>, <code>FieldError</code>; <code>FieldSet</code> + <code>FieldLegend</code> for groups</td><td>Add medicine uses Field without FieldError. Setup and History use raw <code>&lt;label&gt;</code> and <code>&lt;p role="alert"&gt;</code>. <code>FieldError</code> is unused. Native <code>required</code> bubbles pre-empt inline errors.</td><td>Every input sits in a Field. Errors render in <code>FieldError</code> under the control, with <code>aria-invalid</code>. Forms use <code>noValidate</code> so the app's own errors always show. Optional fields say "(optional)".</td></tr>
+        <tr><td><strong>Text entry</strong></td><td><code>Input</code></td><td>Consistent.</td><td>Keep. 46 px height, input border, solid focus ring.</td></tr>
+        <tr><td><strong>Pick one from a list</strong></td><td><code>Select</code></td><td>Unit and medicine pickers already use it (FE-635).</td><td>Use for lists of 3 or more or lists that grow. Two to three short, always-visible options use <code>ToggleGroup</code>.</td></tr>
+        <tr><td><strong>Quantity</strong></td><td>Stepper composition: <code>Button variant="secondary" size="icon"</code> − / +, centered <code>Input</code>, unit text, in a bordered row</td><td>Drawer uses the stepper. Schedule setup uses a raw <code>&lt;input type="number" class="meddies-field"&gt;</code>.</td><td><span class="tag ok">D3</span> Stepper for every dose quantity. Step 0.5 for tablets, 1 for capsules; minimum = step; − disabled at minimum. Typing stays allowed. Extract one <code>QuantityStepper</code> from TakenForm.</td></tr>
+        <tr><td><strong>Weekday choice</strong></td><td><code>ToggleGroup</code> multiple, <code>variant="outline"</code></td><td>Native checkboxes, Sunday first, full names, wrapping unevenly. <code>Checkbox</code> component exists but is unused.</td><td><span class="tag ok">D3</span> Seven 44 px toggles "Mon" to "Sun" (Monday first), one row of 7 when 344 px fits, otherwise 4 + 3, with full-name accessible labels. All selected reads "Every day". Empty selection shows <code>FieldError</code> "Choose at least one day."</td></tr>
+        <tr><td><strong>Outcome choice</strong></td><td><code>ToggleGroup variant="choice" size="lg"</code></td><td>Drawer only. Consistent.</td><td>Keep "I took it" / "I skipped it". Only for the dose outcome.</td></tr>
+        <tr><td><strong>Quick option set</strong></td><td><code>ToggleGroup variant="outline"</code></td><td>"Taken at" Now / At 14:00 / Other.</td><td>Keep. Same control for weekday choice, so option sets look the same everywhere.</td></tr>
+        <tr><td><strong>Date</strong></td><td><code>DatePicker</code> (Popover + Calendar)</td><td>Setup and Taken form OK. History pairs it with a separate View submit.</td><td>History navigates on date pick and drops View; the date stays in the URL. Label "Date", not "Choose a date".</td></tr>
+        <tr><td><strong>Time</strong></td><td><code>TimePicker</code> (hour and minute Selects)</td><td>Consistent (FE-636).</td><td>Keep. A time row in setup is Time + Quantity side by side when width allows, stacked at 320 px; Remove is an icon button with an accessible label.</td></tr>
+        <tr><td><strong>Primary and secondary actions</strong></td><td><code>Button</code> default / outline / ghost / soft</td><td>Detail uses a hand-rolled <code>&lt;a class="bg-primary…"&gt;</code>. Underline links act as navigation on Settings, History and signed-out pages.</td><td>One berry primary per view. Navigation uses real links styled through <code>Button</code> (<code>nativeButton={false}</code>) or the nav. No bare underline links except inside running text.</td></tr>
+        <tr><td><strong>Dose status</strong></td><td><code>DoseStatusBadge</code> over <code>Badge</code> taken / unlogged / skipped / scheduled / due</td><td>History shows the badge, but its intake line is free text.</td><td>Always text + icon. Scheduled time stays in the time column; the badge carries the actual time only for Taken.</td></tr>
+        <tr><td><strong>Saving / unconfirmed</strong></td><td><code>Badge variant="outline"</code> + clock icon, text "Saving…"; Button busy label</td><td>Not built. Saves wait for the server before anything changes.</td><td><span class="tag ok">D5</span> While the drawer save is pending, the row behind shows the chosen outcome as "Saving…". It changes to the real badge only after confirmation.</td></tr>
+        <tr><td><strong>Loading</strong></td><td>Skeleton geometry (FE-622 builds it)</td><td>Text lines ("Loading your scheduled doses…").</td><td>Skeletons only when there is no usable data, shaped like the real layout (see below). During refresh, keep content and show progress on the refresh control only.</td></tr>
+        <tr><td><strong>Success</strong></td><td><code>Alert variant="confirmation"</code> today; <code>Toast</code> available</td><td>Today uses an inline Alert. DESIGN.md says Toast with Undo. Toast is unused; Undo is not a capability.</td><td><span class="tag ok">D2</span> Decide one channel for dose confirmation.</td></tr>
+        <tr><td><strong>Failure and recovery</strong></td><td><code>Alert</code> default (load), <code>destructive</code> (save), outline retry <code>Button</code></td><td>Setup and detail use plain <code>&lt;p role="alert"&gt;</code>. Skip failure stacks three buttons.</td><td>Use the state table below. Retry is the primary button's new label, not an extra button.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ 5. STATES ============ -->
+<section id="states">
+  <h2>State language</h2>
+  <p class="prose">One treatment per state, shared by every flow. Copy names what happened and what is kept.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:15%">State</th><th style="width:27%">Treatment</th><th>Copy pattern</th><th style="width:20%">Applies to</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Initial loading</strong></td><td>Skeleton in layout geometry, <code>role="status"</code> text for screen readers</td><td>(sr) "Loading Today"</td><td>Today, Medications, detail, setup, History</td></tr>
+        <tr><td><strong>Refreshing</strong></td><td>Content stays; refresh control shows "Refreshing…"</td><td>none visible beyond the control</td><td>Today, History, lists</td></tr>
+        <tr><td><strong>Empty</strong></td><td><code>Card variant="dashed"</code> with one next step</td><td>"No doses scheduled for today." + link to Medications when there are no medicines</td><td>Today, Medications, History date</td></tr>
+        <tr><td><strong>Validation</strong></td><td><code>FieldError</code> under each field; focus moves to the first invalid field</td><td>"Choose at least one day." · "Choose a time." · "Choose today or a later date."</td><td>Medicine, schedule, Taken</td></tr>
+        <tr><td><strong>Saving</strong></td><td>Fields disabled; primary shows "Saving …"; drawer dismissal refused</td><td>"Saving schedule…" · "Saving intake…"</td><td>All saves</td></tr>
+        <tr><td><strong>Unconfirmed (optimistic)</strong></td><td>Affected rows show chosen outcome as "Saving…" outline badge</td><td>"Saving…"</td><td>Dose record and correction only. Setup never shows optimistic state.</td></tr>
+        <tr><td><strong>Confirmed</strong></td><td>Real badge + one factual announcement (D2)</td><td>"Magnesium 14:00 · taken at 14:02" · "Schedule saved for Magnesium · every day at 14:00"</td><td>All saves</td></tr>
+        <tr><td><strong>Definite failure</strong></td><td><code>Alert destructive</code> above primary; optimistic effect rolled back; values kept</td><td>"Check the quantity and choose a time that has passed."</td><td>All saves</td></tr>
+        <tr><td><strong>Uncertain receipt</strong></td><td><code>Alert destructive</code>; values and action identity kept; primary becomes Retry</td><td>"Save could not be confirmed. Your details are still here. Connect and retry."</td><td>All saves</td></tr>
+        <tr><td><strong>Conflict</strong></td><td><code>Alert</code> in the row with "Review current outcome"; drawer closed, nothing applied</td><td>"This dose changed elsewhere. Your correction was not saved."</td><td>Dose correction, medicine 409</td></tr>
+        <tr><td><strong>Load failed</strong></td><td><code>Alert</code> + one outline retry; stale content kept below when present</td><td>"Today could not be refreshed. Showing what was loaded at 14:02."</td><td>All lists and detail</td></tr>
+        <tr><td><strong>Session ended</strong></td><td>Private content hidden; sign-in screen with reason and return</td><td>"Your session ended. Sign in again to return to History."</td><td>Everywhere</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ 6. PATTERNS ============ -->
+<section id="patterns">
+  <h2>Patterns, demonstrated</h2>
+  <p class="prose">Static mockups in the kit's look with synthetic data. They show the rules, not final screen layouts; FE-647 and FE-648 design the full journeys.</p>
+  <div class="mocks">
+
+    <div class="mock">
+      <p class="cap"><b>Sub-screen header and identity</b> · medicine detail, long name at 402 px</p>
+      <div class="phone">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="m-back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>Medications</span>
+          <span class="m-set" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 6h9M15 6h2M3 14h2M8 14h9"/><circle cx="13.5" cy="6" r="1.6"/><circle cx="6.5" cy="14" r="1.6"/></svg></span>
+        </div>
+        <div class="m-hdr">
+          <span class="tile lg mist"><i></i></span>
+          <div class="t"><h4>Levothyroxine sodium extended 75 micrograms</h4><span class="sub">No strength saved · tablet</span></div>
+        </div>
+        <div class="m-card dashed">
+          <span class="eyebrow">Routine</span>
+          <p>No schedule saved yet.</p>
+          <div class="btn pri">Set schedule</div>
+        </div>
+        <p class="sub">Medicine details can't be edited yet.</p>
+      </div>
+    </div>
+
+    <div class="mock">
+      <p class="cap"><b>Schedule fields with validation</b> · weekday toggles, time, quantity stepper</p>
+      <div class="phone">
+        <div class="field">
+          <span class="lbl">Repeat on</span>
+          <div class="tg inv"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+          <span class="err"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 3 2 17h16L10 3Z" stroke-linejoin="round"/><path d="M10 8v4M10 14.5v.5" stroke-linecap="round"/></svg>Choose at least one day.</span>
+        </div>
+        <div class="field">
+          <span class="lbl">Start date</span>
+          <div class="ctrl"><span>Thu, 8 Nov 2035</span><span class="muted">▾</span></div>
+        </div>
+        <div class="divider"></div>
+        <div class="field">
+          <span class="lbl">Time 1</span>
+          <div style="display:flex;gap:8px"><div class="ctrl" style="flex:1"><span>08</span><span class="muted">▾</span></div><div class="ctrl" style="flex:1"><span>00</span><span class="muted">▾</span></div></div>
+        </div>
+        <div class="stepper">
+          <span class="lbl">Quantity</span>
+          <div class="ctl"><span class="sq">−</span><span class="num">1½</span><span class="lbl">tablets</span><span class="sq">+</span></div>
+        </div>
+        <span class="sub">How much you take each time. Separate from product strength.</span>
+        <div class="btn out">Add another time</div>
+        <div class="btn pri">Save schedule</div>
+      </div>
+    </div>
+
+    <div class="mock">
+      <p class="cap"><b>Dose anatomy</b> · one row shape for Today and History, every status</p>
+      <div class="phone">
+        <div class="m-row att"><span class="time">08:00</span><div class="c"><b>Iron bisglycinate</b><span class="sub">14 mg · 1 tablet</span></div><span class="badge b-unlogged"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2.2 2"><circle cx="8" cy="8" r="6"/></svg>Not logged</span></div>
+        <div class="m-row att"><span class="time">14:00</span><div class="c"><b>Magnesium</b><span class="sub">200 mg · 1 tablet</span></div><span class="badge b-due"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>Due now</span></div>
+        <div class="m-row"><span class="time">14:00</span><div class="c"><b>Magnesium</b><span class="sub">200 mg · 1 tablet</span></div><span class="badge b-pending"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>Taken · Saving…</span></div>
+        <div class="m-row"><span class="time">20:00</span><div class="c"><b>Omega-3</b><span class="sub">1000 mg · 2 capsules</span></div><span class="badge b-sched"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>Scheduled</span></div>
+        <div class="m-row"><span class="time done">20:00</span><div class="c"><b>Omega-3</b><span class="sub">1000 mg · 2 capsules</span></div><span class="badge b-taken"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8.5 3 3 6-7"/></svg>Taken 00:15</span><span class="note">Took 1 capsule on Thu, 8 Nov</span></div>
+        <div class="m-row"><span class="time done">14:00</span><div class="c"><b>Magnesium</b><span class="sub">200 mg · 1 tablet</span></div><span class="badge b-skipped"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6"/><path d="m4 12 8-8"/></svg>Skipped</span><span class="note">No intake recorded</span></div>
+      </div>
+    </div>
+
+    <div class="mock">
+      <p class="cap"><b>Drawer save failure</b> · uncertain skip, one retry, values kept</p>
+      <div class="phone" style="padding-bottom:0;gap:0;background:#EADBD6">
+        <div class="drawer">
+          <span class="handle"></span>
+          <div class="m-hdr"><span class="tile lg blush"><i></i></span><div class="t"><h4>Magnesium</h4><span class="sub">200 mg · tablet</span></div><span class="m-set" style="opacity:.5" aria-hidden="true">✕</span></div>
+          <div class="schip"><span>Scheduled</span><b>14:00 today</b></div>
+          <p class="sub" style="text-align:center">Skip Magnesium, scheduled for 14:00? No intake is recorded.</p>
+          <div class="alert bad"><b>Save could not be confirmed.</b><span>Your choice is still here. Connect and retry; it won't be saved twice.</span></div>
+          <div class="btn pri">Retry saving as skipped</div>
+          <div class="btn ghost">Cancel</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock">
+      <p class="cap"><b>Feedback set</b> · confirmation, conflict, stale data, session ended</p>
+      <div class="phone">
+        <div class="toast"><span class="ok-ico"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8.5 3 3 6-7"/></svg></span>Magnesium 14:00 · taken at 14:02</div>
+        <div class="alert"><b style="color:var(--ink)">This dose changed elsewhere.</b><span>Your correction was not saved. Check its current outcome before correcting it again.</span><div class="btn out">Review current outcome</div></div>
+        <div class="alert warn"><b>Today could not be refreshed.</b><span>Showing what was loaded at 14:02.</span><div class="btn out">Retry</div></div>
+        <div class="m-card" style="align-items:flex-start"><span style="font-weight:900;font-size:1.25rem">Meddies</span><p><b style="font-weight:800">Your session ended.</b> Sign in again to return to History for Wed, 7 Nov.</p><div class="btn pri" style="align-self:stretch">Continue with Google</div></div>
+      </div>
+    </div>
+
+    <div class="mock">
+      <p class="cap"><b>Skeleton geometry</b> · Today first load, for FE-622</p>
+      <div class="phone">
+        <div class="sk" style="height:14px;width:45%;border-radius:8px"></div>
+        <div class="sk" style="height:30px;width:70%;border-radius:10px"></div>
+        <div class="sk" style="height:196px;border-radius:28px;background:#F7DCE3"></div>
+        <div class="sk" style="height:18px;width:40%;border-radius:8px"></div>
+        <div class="sk" style="height:64px"></div>
+        <div class="sk" style="height:64px"></div>
+        <div class="sk" style="height:64px"></div>
+        <p class="sub">Hero 28 px radius, rows 64 px min with 10 px gaps, matching loaded layout so nothing jumps. Medications: four 76 px rows. History: 46 px date field + three rows. Static fill with reduced motion.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ 7. DECISIONS ============ -->
+<section id="decisions">
+  <h2>Decisions and escalations</h2>
+  <p class="prose">Bora accepted all six recommendations on 6 Nov 2026. Nothing has changed in DESIGN.md, PRODUCT.md or FE-612 yet; the D2 wording update is a separate change.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:6%">ID</th><th style="width:22%">Question</th><th>Accepted decision</th><th style="width:20%">Touches</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag ok">D1</span></td><td>Where does Add medicine live?</td><td>Its own query state, <code>/medications?add</code>, with the sub-screen header. Today it is an anchor to a form at the end of the list, under the nav. A page state keeps the draft, supports Back and matches the page rule. A drawer was considered and rejected: dismissal discards, it has no full-height camera view and no Back between steps. Future barcode scanning becomes a second entry mode on this screen that prefills the same form for review; manual entry always stays. Scanning is not in PRODUCT.md yet and gets no placeholder.</td><td>New query state (contract-compatible: "Add a medicine manually from Medications"). FE-647.</td></tr>
+        <tr><td><span class="tag ok">D2</span></td><td>How is a confirmed dose announced?</td><td><code>Toast</code> with the factual text and <em>no Undo</em>, after server confirmation. It doesn't shift Today's layout. Undo waits until it is a real capability; Correct outcome covers mistakes.</td><td>Conflict with DESIGN.md ("with an Undo"). Escalated; DESIGN.md wording to be updated separately if approved.</td></tr>
+        <tr><td><span class="tag ok">D3</span></td><td>Quantity and weekday controls</td><td>Stepper for all dose quantities; <code>ToggleGroup</code> Mon to Sun for weekdays, Monday first (Türkiye convention), all selected by default.</td><td>FE-641/643 form migration. Weekday order changes display only, not stored values.</td></tr>
+        <tr><td><span class="tag ok">D4</span></td><td>Where does a confirmed schedule save land?</td><td>Replace the URL with <code>?medicine=ID</code>, show the saved routine and the confirmation. Today the setup form resets in place with "Schedule saved."</td><td>Navigation change within FE-612 ("show its routine when one exists"). FE-647.</td></tr>
+        <tr><td><span class="tag ok">D5</span></td><td>Optimistic dose presentation</td><td>Drawer stays open and blocks dismissal while pending (FE-631); rows behind it show "Saving…" with the chosen outcome. On confirmation: real badge, drawer closes, D2 announcement. On definite failure the row rolls back.</td><td>Matches FE-612 Nov 6 addendum; implementation owner FE-620.</td></tr>
+        <tr><td><span class="tag ok">D6</span></td><td>History controls and row shape</td><td>Pick a date to navigate (no View button); reuse the Today row; remove "Back to Today". Same for Settings.</td><td>FE-648 / FE-649.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <details>
+    <summary>Defects found in evidence (for implementation owners, not design decisions)</summary>
+    <ul class="plain">
+      <li>History quantity pluralization: "Omega-3 - 2 capsule".</li>
+      <li>ISO dates in the review drawer ("20:00 on 2035-11-07"), detail ("Starts 2035-11-07.") and setup.</li>
+      <li>Routine summary shows quantity as an unlabeled "(1)".</li>
+      <li>Saved handoff announces twice: "Magnesium saved." and "Magnesium is saved."</li>
+      <li>Native <code>required</code> on the time picker blocks submit before the app's own weekday error can show.</li>
+      <li>Settings header icon shows <code>aria-current</code> styling while no nav tab is current; acceptable, but confirm in FE-649.</li>
+      <li>Today with failed loading shows both "Retry loading medicines" and "Refresh Today".</li>
+    </ul>
+  </details>
+</section>
+
+<!-- ============ 8. COVERAGE ============ -->
+<section id="coverage">
+  <h2>Capability coverage</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th style="width:30%">Capability</th><th style="width:16%">Wave</th><th>Backlog</th></tr></thead>
+      <tbody>
+        <tr><td>Manual medicine add, saved handoff, detail (read-only)</td><td><span class="tag ok">Design now</span></td><td>FE-647</td></tr>
+        <tr><td>Daily and selected-weekday schedules, first setup</td><td><span class="tag ok">Design now</span></td><td>FE-647</td></tr>
+        <tr><td>Today, record Taken / Skipped, review and correct</td><td><span class="tag ok">Design now</span></td><td>FE-648</td></tr>
+        <tr><td>Dated History with cross-date intake</td><td><span class="tag ok">Design now</span></td><td>FE-648</td></tr>
+        <tr><td>Settings, sign-in, restricted account, session recovery</td><td><span class="tag ok">Design now</span></td><td>FE-649</td></tr>
+        <tr><td>Interval schedules, edit, end, pause, resume</td><td><span class="tag later">Later wave</span></td><td>FE-560 to FE-564</td></tr>
+        <tr><td>Occasional (unscheduled) intake</td><td><span class="tag later">Later wave</span></td><td>FE-565</td></tr>
+        <tr><td>Push reminders, quiet hours, privacy</td><td><span class="tag later">Later wave</span></td><td>FE-566 onward</td></tr>
+        <tr><td>Stock and refills, low-stock threshold</td><td><span class="tag later">Later wave</span></td><td>FE-583 onward</td></tr>
+        <tr><td>Export, history deletion, account deletion</td><td><span class="tag later">Later wave</span></td><td>FE-592 to FE-594</td></tr>
+        <tr><td>Medicine-details editing, earlier-date initial logging</td><td><span class="tag later">Separate scope</span></td><td>FE-612 notes</td></tr>
+        <tr><td>Persistent offline viewing, queued offline writes</td><td><span class="tag later">Beyond MVP</span></td><td>PRODUCT.md</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="prose muted">No placeholders for later-wave capabilities appear in any screen.</p>
+</section>
+
+<!-- ============ 9. EVIDENCE ============ -->
+<section id="evidence">
+  <h2>Evidence and limits</h2>
+  <div class="rules">
+    <div class="rule">
+      <h3>What was rendered</h3>
+      <p>Production build at commit <code>b42cb86</code>, Playwright Chromium, synthetic Auth.js session and fresh local Worker/D1, frozen Istanbul clock (Thu 8 Nov 2035, 14:02). 40 states captured at 402 × 874 and 320 × 740, including failure states forced by request interception.</p>
+      <p class="muted">The capture spec lived in a scratch folder and was not added to the repo.</p>
+    </div>
+    <div class="rule">
+      <h3>Source only</h3>
+      <ul class="plain">
+        <li>Configured sign-in button, connecting, failed and access-denied states (fixture has no Google config, so it shows "temporarily unavailable").</li>
+        <li>Sign-out pending and failure.</li>
+        <li>App loading and error boundaries.</li>
+        <li>400 / 401 / 409 save responses (409 covered by existing browser specs).</li>
+      </ul>
+    </div>
+    <div class="rule">
+      <h3>Not verified</h3>
+      <ul class="plain">
+        <li>200% zoom, VoiceOver, keyboard avoidance and safe areas on a physical iPhone (FE-616).</li>
+        <li>Reduced motion in the live drawer.</li>
+        <li>The mockups above are static; they prove no runtime accessibility or behavior.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 10. ACCEPTANCE ============ -->
+<section id="acceptance">
+  <h2>Acceptance checklist</h2>
+  <ul class="check">
+    <li><span class="box done">✓</span><span>Every current route, query-state screen, drawer and recovery surface appears in the map and inventory.</span></li>
+    <li><span class="box done">✓</span><span>Control mapping names existing components and variants, not lookalikes. The only new pieces are compositions (QuantityStepper) and a Lucide chevron-left for Back.</span></li>
+    <li><span class="box done">✓</span><span>Patterns are shown with medicine and schedule examples and their field and feedback states.</span></li>
+    <li><span class="box done">✓</span><span>Conflicts with DESIGN.md (D2) and navigation changes (D1, D4) are escalated, not applied.</span></li>
+    <li><span class="box done">✓</span><span>Bora's approval recorded in FE-646, with answers to D1 to D6.</span></li>
+  </ul>
+  <div class="approve">
+    <h2>Approved</h2>
+    <p>Bora approved this map and accepted D1 to D6 as recommended on 6 Nov 2026. FE-647 (Medications → add → saved → detail → first schedule) and FE-622 skeleton geometry can start from it.</p>
+  </div>
+</section>
+
+</div>
+
+</body></html>

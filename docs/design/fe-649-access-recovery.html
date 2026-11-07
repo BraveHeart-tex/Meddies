@@ -1,0 +1,690 @@
+<!-- Approved design snapshot, 2026-11-07. Live artifact (review, comments, screenshots): https://claude.ai/code/artifact/e7f6bee3-2af9-4835-8e65-efd05edd469b (version 1793992116-5003). Read-only: change the artifact, then refresh this copy. -->
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Meddies Access and Recovery</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column for rules and tables; journeys run as sideways strips of phone frames with numbered notes under each. Cozy Care is light-only (DESIGN.md), so this page commits to the one light theme with explicit colors. Same system as FE-646 / FE-647 / FE-648. */
+/* Layout: one reading column for rules and tables; journeys run as sideways strips of phone frames with numbered notes under each. Cozy Care is light-only (DESIGN.md), so this page commits to the one light theme with explicit colors. Same system as FE-646 / FE-647. */
+:root {
+  --cream: #FBF5EE; --sunken: #F3EAE1; --line: #EEDFD4; --line-strong: #E3D3C8; --input: #C9B2AA;
+  --card: #FFFFFF; --blush: #F7DCE3; --blush-line: #E9A3B6; --berry: #B23A66; --berry-ink: #8E2C52;
+  --ink: #3B2A2F; --ink-2: #5E474C; --muted: #7A6266; --ph: #8F7A7E;
+  --sage-bg: #E3EEE2; --sage: #2F5F3D; --amber-bg: #FBE9D2; --amber: #8A4E0E; --red: #A12C3A; --red-line: #E7B9BF;
+  --id-butter: #FDF0C9; --id-butter-fg: #F2C85B; --id-blush-fg: #E9A3B6; --id-peach: #FCE3D3; --id-peach-fg: #E89A5F;
+  --id-plum: #EADFE6; --id-plum-fg: #9C6F86; --id-mist: #E6EEF0; --id-mist-fg: #7E9AA3;
+  --scrim: rgba(59,42,47,.38);
+  --font: "Nunito", ui-rounded, -apple-system, system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --step--1: 0.8125rem; --step-0: 0.9375rem; --step-1: 1.0625rem; --step-2: 1.1875rem; --step-3: 1.5rem; --step-4: 1.8125rem;
+  --focus: 0 0 0 3px rgba(178,58,102,.45);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--cream); color: var(--ink); font-family: var(--font); font-size: var(--step-0); line-height: 1.55; font-weight: 600; font-variant-numeric: tabular-nums;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 40px 80px; display: flex; flex-direction: column; gap: 56px; }
+.prose { max-width: 68ch; }
+h1, h2, h3, h4, h5 { margin: 0; font-weight: 800; text-wrap: balance; line-height: 1.2; }
+h1 { font-size: var(--step-4); } h2 { font-size: var(--step-3); } h3 { font-size: var(--step-2); }
+p { margin: 0; }
+section { display: flex; flex-direction: column; gap: 18px; }
+.eyebrow { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 800; color: var(--muted); }
+.lede { font-size: var(--step-1); color: var(--ink-2); max-width: 66ch; }
+code { font-family: var(--mono); font-size: 0.82em; font-weight: 500; background: var(--sunken); padding: 1px 5px; border-radius: 6px; overflow-wrap: anywhere; }
+a { color: var(--berry-ink); }
+a:focus-visible, .strip:focus-visible, .tbl:focus-visible, .figure:focus-visible { outline: 3px solid rgba(178,58,102,.45); outline-offset: 2px; border-radius: 8px; }
+ul.plain { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 6px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-strong); background: var(--card); border-radius: 999px; padding: 3px 11px; font-size: var(--step--1); font-weight: 700; color: var(--ink-2); }
+.chip.status { background: var(--amber-bg); border-color: transparent; color: var(--amber); font-weight: 800; }
+.top { display: flex; flex-direction: column; gap: 14px; }
+
+.decs { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; }
+.dec { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 8px; }
+.dec .id { font-family: var(--mono); font-weight: 500; font-size: var(--step--1); color: var(--berry-ink); background: var(--blush); border-radius: 8px; padding: 1px 8px; align-self: flex-start; }
+.dec.exc .id { background: var(--amber-bg); color: var(--amber); }
+.dec h3 { font-size: var(--step-1); }
+.dec p { font-size: var(--step--1); color: var(--ink-2); }
+.dec p b { color: var(--ink); font-weight: 800; }
+.notebox { background: var(--sunken); border-radius: 18px; padding: 14px 16px; font-size: var(--step--1); color: var(--ink-2); max-width: 80ch; }
+.notebox b { color: var(--ink); font-weight: 800; }
+
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 18px; background: var(--card); }
+table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: var(--step--1); }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+th { font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); font-weight: 800; background: var(--sunken); }
+tr:last-child td { border-bottom: 0; }
+td strong { font-weight: 800; }
+
+.figure { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 14px; overflow-x: auto; }
+.figure svg { display: block; min-width: 980px; width: 100%; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: var(--step--1); color: var(--ink-2); padding: 6px 4px 0; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { display: inline-block; width: 28px; border-top: 2px solid var(--ink-2); }
+.legend i.dr { border-top: 2px dashed var(--berry); }
+.legend i.back { border-top: 2px dotted var(--muted); }
+
+.strip { display: flex; gap: 22px; overflow-x: auto; padding: 4px 2px 14px; scroll-snap-type: x proximity; }
+.frame { flex: 0 0 344px; max-width: 100%; display: flex; flex-direction: column; gap: 10px; scroll-snap-align: start; margin: 0; }
+.fhead { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.fid { font-family: var(--mono); font-weight: 500; font-size: var(--step--1); color: var(--berry-ink); }
+.fhead b { font-weight: 800; }
+.url { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); background: var(--sunken); border-radius: 8px; padding: 3px 9px; overflow-wrap: anywhere; align-self: flex-start; }
+.notes { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 5px; font-size: var(--step--1); color: var(--ink-2); line-height: 1.45; }
+.notes b { color: var(--ink); font-weight: 800; }
+
+/* ---------- phone mock (Cozy Care kit look) ---------- */
+.phone { width: 344px; max-width: 100%; background: var(--cream); border: 1px solid var(--line-strong); border-radius: 30px; overflow: hidden; display: flex; flex-direction: column; position: relative; min-height: 600px; }
+.phone.narrow { width: 300px; }
+.scr { padding: 16px 16px 18px; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+.nav { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--card); border-top: 1px solid var(--line); padding: 8px 10px 12px; font-size: 0.72rem; font-weight: 800; color: var(--muted); text-align: center; }
+.nav span { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.nav span::before { content: ""; width: 20px; height: 20px; border-radius: 7px; background: var(--sunken); }
+.nav span.on { color: var(--berry-ink); }
+.nav span.on::before { background: var(--blush); }
+.kbd { background: #D9D2CF; height: 170px; display: grid; place-items: center; color: #6F6467; font-size: var(--step--1); font-weight: 800; flex: none; }
+.ah { display: flex; align-items: flex-start; gap: 10px; }
+.ah .t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ah h4 { font-size: 1.6rem; line-height: 1.1; }
+.set { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); display: grid; place-items: center; flex: none; }
+.set::before { content: ""; width: 16px; height: 16px; border-radius: 50%; border: 3px solid var(--ink-2); }
+.sub { color: var(--ink-2); font-size: var(--step--1); font-weight: 600; }
+.ey { font-size: 0.72rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 800; color: var(--muted); }
+.tile { width: 42px; height: 42px; border-radius: 15px; display: grid; place-items: center; flex: none; }
+.tile.lg { width: 50px; height: 50px; border-radius: 17px; }
+.tile i { display: block; width: 44%; height: 44%; border-radius: 50%; }
+.tile.plum { background: var(--id-plum); } .tile.plum i { background: var(--id-plum-fg); border-radius: 6px; }
+.tile.peach { background: var(--id-peach); } .tile.peach i { background: var(--id-peach-fg); width: 22%; height: 55%; border-radius: 99px; transform: rotate(40deg); }
+.tile.butter { background: var(--id-butter); } .tile.butter i { background: var(--id-butter-fg); }
+.tile.mist { background: var(--id-mist); } .tile.mist i { background: #fff; border: 2px solid var(--id-mist-fg); }
+.tile.blush { background: var(--blush); } .tile.blush i { background: var(--id-blush-fg); border: 2px solid var(--berry); }
+.tile.onacc { background: #fff; }
+
+/* hero */
+.hero { background: var(--blush); border-radius: 26px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.hero .hh { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hero .hh .ey { color: var(--berry-ink); }
+.hero .hb { display: flex; gap: 12px; align-items: center; }
+.hero .hb .t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hero .hb b { font-size: 1.25rem; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+.hero .ha { display: flex; gap: 10px; }
+.hero .ha .btn { flex: 1; min-height: 48px; }
+.hero .ha .btn.skip { flex: 0 0 104px; background: var(--card); color: var(--ink); }
+
+/* dose rows */
+.grp { display: flex; flex-direction: column; gap: 10px; }
+.gh { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 0 4px; flex-wrap: wrap; }
+.gh h5 { font-size: var(--step-1); }
+.dr { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 13px 14px; display: grid; grid-template-columns: 44px minmax(0,1fr) auto; column-gap: 10px; row-gap: 6px; align-items: center; }
+.dr.att { border: 1.5px solid var(--blush-line); }
+.dr.focus { box-shadow: var(--focus); }
+.dr.inert { background: transparent; border-style: dashed; }
+.dr .tm { font-weight: 800; align-self: start; padding-top: 1px; }
+.dr.done .tm { color: var(--muted); }
+.dr .c { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.dr .c b { font-weight: 800; overflow-wrap: anywhere; line-height: 1.3; }
+.dr .bd { justify-self: end; }
+.dr .note { grid-column: 2 / -1; font-size: var(--step--1); color: var(--ink-2); font-weight: 700; }
+.dr .note.warn { color: var(--amber); }
+.dr .ra { grid-column: 1 / -1; }
+.narrow .dr { grid-template-columns: 40px minmax(0,1fr); }
+.narrow .dr .bd { grid-column: 2; justify-self: start; }
+.badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 4px 10px; font-size: 0.78rem; font-weight: 800; white-space: nowrap; }
+.badge svg { flex: none; }
+.b-taken { background: var(--sage-bg); color: var(--sage); }
+.b-unlogged { background: var(--amber-bg); color: var(--amber); }
+.b-skipped { background: var(--sunken); color: var(--muted); }
+.b-sched { border: 1px solid var(--line-strong); color: var(--ink-2); padding: 3px 9px; background: var(--card); }
+.b-due { background: var(--berry); color: #fff; }
+.b-pending { border: 1.5px dashed var(--input); color: var(--ink-2); padding: 3px 9px; background: var(--card); }
+.b-unconf { border: 1.5px dashed var(--amber); color: var(--amber); padding: 3px 9px; background: var(--card); }
+.summary-line { font-size: var(--step--1); font-weight: 800; color: var(--muted); }
+
+/* drawer */
+.phone.dw { background: var(--cream); }
+.behind { padding: 14px 16px 0; display: flex; flex-direction: column; gap: 10px; filter: saturate(.8); position: relative; }
+.behind::after { content: ""; position: absolute; inset: 0; background: var(--scrim); }
+.drawer { background: var(--cream); border-radius: 30px 30px 0 0; margin-top: -12px; position: relative; z-index: 1; padding: 10px 16px 20px; display: flex; flex-direction: column; gap: 14px; flex: 1; box-shadow: 0 -10px 30px -14px rgba(48,28,34,.35); }
+.handle { width: 38px; height: 5px; border-radius: 9px; background: #DCCBC0; align-self: center; }
+.dh { display: flex; gap: 12px; align-items: center; }
+.dh .t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dh b { font-size: 1.3rem; line-height: 1.1; font-weight: 800; overflow-wrap: anywhere; }
+.close { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--card); display: grid; place-items: center; font-weight: 800; color: var(--ink-2); flex: none; }
+.close.off { opacity: .4; }
+.schip { background: var(--sunken); border-radius: 16px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: var(--step--1); flex-wrap: wrap; }
+.schip .l { display: flex; align-items: center; gap: 7px; color: var(--ink-2); font-weight: 700; }
+.schip b { font-weight: 800; }
+.q { font-weight: 800; }
+.choice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.choice > span { min-height: 64px; border: 1px solid var(--input); border-radius: 18px; background: var(--card); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-weight: 800; color: var(--ink); }
+.choice > span.on { background: var(--blush); border-color: var(--berry); color: var(--berry-ink); }
+.choice > span.off { opacity: .4; }
+.choice .ic { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); flex: none; }
+.choice > span.on .ic { background: var(--berry); color: #fff; }
+.fs { display: flex; flex-direction: column; gap: 8px; }
+.fl { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.fl .off { font-size: 0.78rem; color: var(--muted); font-weight: 700; }
+.tg { display: flex; gap: 6px; flex-wrap: wrap; }
+.tg span { flex: 1 1 auto; min-height: 44px; border: 1px solid var(--input); border-radius: 14px; background: var(--card); display: grid; place-items: center; font-weight: 800; font-size: 0.82rem; padding: 0 10px; white-space: nowrap; }
+.tg span.on { background: var(--blush); border-color: var(--berry); color: var(--berry-ink); }
+.tg span.new { box-shadow: 0 0 0 2px var(--sage-bg); }
+.ctrl { min-height: 46px; border: 1px solid var(--input); border-radius: 16px; background: var(--card); padding: 0 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink); white-space: nowrap; }
+.ctrl.focus { box-shadow: var(--focus); border-color: var(--berry); }
+.ctrl .caret { color: var(--muted); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tsel { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.stp { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 8px 8px 8px 14px; flex-wrap: wrap; }
+.stp .ct { display: flex; align-items: center; gap: 6px; }
+.sq { width: 44px; height: 44px; border-radius: 14px; background: var(--sunken); display: grid; place-items: center; font-weight: 900; flex: none; }
+.sq.off { opacity: .4; }
+.num { min-width: 92px; height: 44px; border: 1px solid var(--input); border-radius: 14px; display: grid; place-items: center; font-weight: 800; background: var(--card); white-space: nowrap; padding: 0 8px; }
+.num.focus { box-shadow: var(--focus); border-color: var(--berry); }
+.btn { min-height: 52px; border-radius: 18px; display: grid; place-items: center; font-weight: 800; padding: 0 18px; text-align: center; }
+.btn.pri { background: var(--berry); color: #fff; }
+.btn.busy { background: #C9718F; color: #fff; }
+.btn.dis { background: var(--sunken); color: var(--muted); }
+.btn.out { background: var(--card); border: 1px solid var(--line-strong); color: var(--ink); min-height: 46px; }
+.btn.ghost { color: var(--ink-2); min-height: 44px; }
+.btn.ghost.off { opacity: .4; }
+.acts { display: flex; flex-direction: column; gap: 6px; }
+.row2 { display: flex; gap: 8px; flex-wrap: wrap; }
+.row2 .btn { flex: 1 1 130px; }
+.hint { text-align: center; font-size: var(--step--1); color: var(--muted); }
+.rec { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.rec .kv { display: flex; justify-content: space-between; gap: 10px; font-size: var(--step--1); }
+.rec .kv span:first-child { color: var(--ink-2); font-weight: 700; }
+.rec .kv span:last-child { font-weight: 800; text-align: right; }
+.alert { border-radius: 18px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; font-size: var(--step--1); border: 1px solid var(--line); background: var(--card); line-height: 1.45; }
+.alert b { font-weight: 800; }
+.alert.ok { background: var(--sage-bg); border-color: transparent; color: var(--sage); }
+.alert.bad { border-color: var(--red-line); color: var(--red); }
+.alert.bad .bd { color: var(--ink-2); }
+.alert.warn { background: var(--amber-bg); border-color: transparent; color: var(--amber); }
+.alert.warn .bd { color: var(--ink-2); }
+.alert.info { background: var(--sunken); border-color: transparent; color: var(--ink-2); }
+.alert .btn { min-height: 44px; font-size: var(--step--1); align-self: flex-start; margin-top: 4px; }
+.sk { background: var(--sunken); border-radius: 22px; }
+.toast { position: absolute; left: 14px; right: 14px; bottom: 74px; background: var(--card); border-radius: 18px; box-shadow: 0 12px 28px -12px rgba(59,42,47,.35), 0 0 0 1px var(--line); padding: 12px 14px; display: flex; gap: 10px; align-items: center; font-weight: 800; font-size: var(--step--1); z-index: 3; line-height: 1.35; }
+.toast .ok-ico { width: 26px; height: 26px; border-radius: 50%; background: var(--sage-bg); color: var(--sage); display: grid; place-items: center; flex: none; }
+.foot { font-size: 0.78rem; color: var(--muted); text-align: center; }
+.datenav { display: grid; grid-template-columns: 44px 1fr 44px; gap: 8px; align-items: center; }
+.iconbtn { width: 44px; height: 44px; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--card); display: grid; place-items: center; font-weight: 900; color: var(--ink-2); }
+.iconbtn.off { opacity: .4; }
+.empty { border: 1.5px dashed var(--line-strong); border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 8px; }
+.empty b { font-weight: 800; }
+
+/* anatomy */
+.anat { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 18px; align-items: start; }
+.anat .phone { min-height: 0; }
+.spec { display: flex; flex-direction: column; gap: 10px; }
+.spec dl { margin: 0; display: grid; grid-template-columns: 9.5em 1fr; gap: 8px 14px; font-size: var(--step--1); }
+.spec dt { font-weight: 800; }
+.spec dd { margin: 0; color: var(--ink-2); }
+
+.check { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.check li { display: flex; gap: 10px; align-items: flex-start; }
+.box { width: 20px; height: 20px; flex: none; border-radius: 6px; border: 1.5px solid var(--line-strong); background: var(--card); margin-top: 2px; display: grid; place-items: center; color: var(--sage); font-size: .8rem; font-weight: 900; }
+.box.done { background: var(--sage-bg); border-color: transparent; }
+.approve { background: var(--amber-bg); border-radius: 28px; padding: 22px; display: flex; flex-direction: column; gap: 10px; }
+.approve h2 { color: var(--amber); }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.panel h3 { font-size: var(--step-1); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+@media (max-width: 480px) { .wrap { padding-block: 24px 56px; gap: 44px; } .frame { flex-basis: 300px; } .phone { width: 300px; } .spec dl { grid-template-columns: 1fr; } }
+
+/* FE-649 additions */
+.set.on { background: var(--blush); border-color: var(--blush-line); }
+.set.on::before { border-color: var(--berry-ink); }
+.nav.none span.on { color: var(--muted); }
+.signin { padding: 28px 18px 22px; display: flex; flex-direction: column; gap: 18px; flex: 1; }
+.wm { font-size: 1.9rem; font-weight: 900; letter-spacing: -0.01em; color: var(--ink); line-height: 1; }
+.si-h { font-size: 1.35rem; font-weight: 800; line-height: 1.2; }
+.si-card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.st-card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.st-card h5 { font-size: var(--step-1); }
+.st-card .kv { display: flex; justify-content: space-between; gap: 10px; font-size: var(--step--1); flex-wrap: wrap; }
+.st-card .kv span:first-child { color: var(--ink-2); font-weight: 700; }
+.st-card .kv span:last-child { font-weight: 800; }
+.btn.danger-out { background: var(--card); border: 1px solid var(--line-strong); color: var(--ink); min-height: 52px; }
+.gone { border: 1.5px dashed var(--line-strong); border-radius: 22px; padding: 16px; display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: var(--step--1); }
+.gone b { color: var(--ink); font-weight: 800; }
+.dec.conf .id { background: var(--amber-bg); color: var(--amber); }
+.sr { font-family: var(--mono); font-size: .7rem; color: var(--muted); }
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">FE-649 · Design 4 of 5 · Cozy Care</p>
+  <h1>Settings, sign-in and session recovery</h1>
+  <p class="lede">The edges of the private app: getting in with the approved Google account, Settings and sign-out, and what happens when a session ends in the middle of a flow. Built on the approved FE-646 map (D1 to D6), FE-647 (D7 to D9) and FE-648 (D10 to D14). Synthetic data, Fri 6 Nov 2026, Istanbul time.</p>
+  <div class="meta">
+    <span class="chip status" style="background:var(--sage-bg);color:var(--sage)">Approved by Bora · D15, D17 to D19 accepted · D16 declined</span>
+    <span class="chip">402 × 874 primary · 320 checked</span>
+    <span class="chip">No production code changed</span>
+  </div>
+</header>
+
+<section id="decisions">
+  <h2>Decisions for Bora</h2>
+  <p class="prose">Five choices went beyond the earlier maps. On 6 Nov 2026 Bora accepted D15, D17, D18 and D19 as recommended and declined D16. D17 changes two approved screens (FE-647 "session ended" in the form, FE-648 F7 in the drawer); that change is recorded in both issues.</p>
+  <div class="decs">
+    <div class="dec"><span class="id">D15</span><h3>Settings is a header page with no Back link</h3>
+      <p>Settings opens from the header on every page, so it has no single parent and a "Back to Today" would be wrong half the time. Rule: <b>a visible Back row appears only on sub-screens with one fixed parent</b> (Add medicine, medicine detail, schedule setup). Settings keeps the bottom nav with no tab selected, and the header Settings button shows as current. Browser Back and the iOS edge swipe return to wherever she came from.</p>
+      <p><b>Alternative:</b> a Back row on Settings that calls history back. It falls back to Today on a cold launch into <code>/settings</code>, which is the ambiguity this removes.</p></div>
+    <div class="dec" style="opacity:.7"><span class="id">D16 · declined</span><h3>No destination line on sign-in</h3>
+      <p><b>Declined by Bora on 6 Nov 2026:</b> the line adds little. Sign-in still returns to the intended page, including the History date, through <code>returnTo</code>; it just doesn't say so on screen.</p></div>
+    <div class="dec conf"><span class="id">D17 · conflict</span><h3>One path for every session end</h3>
+      <p>Expiry timer, a 401 from the session check on focus, or a 401 from any save all lead to the same place. Meddies confirms with <code>/api/session</code>, then clears private cache, drafts and pending attempts (FE-638), and replaces the page with sign-in "Your session ended" plus the return page. <b>Private content and unsaved details are not shown after that.</b></p>
+      <p><b>Accepted. This changes approved screens:</b> FE-647 "session ended" and FE-648 F7 kept the form details visible with "Sign in again". Under D17 those states last only as long as the session check (no extra screen). <b>Alternative:</b> keep the in-form alert until she taps Sign in again. It shows private content after the session has ended, which the FE-649 acceptance rules out.</p></div>
+    <div class="dec"><span class="id">D18</span><h3>Sign-out warns only about unconfirmed saves</h3>
+      <p>Sign-out is one tap with no confirmation. The exception is a dose or setup save that is still in flight or Not confirmed (D5, D13). Then an Alert names it and offers <b>Stay signed in</b> or <b>Sign out anyway</b>. The copy never says the save was cancelled. It says Meddies can't show the result until she signs in again.</p>
+      <p><b>Alternative:</b> block sign-out until saves settle. An uncertain save may never settle in this session, so she could be stuck.</p></div>
+    <div class="dec"><span class="id">D19</span><h3>Settings shows the session end, not the email</h3>
+      <p>The session deliberately exposes no email or Google profile to the browser (docs/authentication.md). Settings says <b>"Signed in with your approved Google account"</b> and <b>"Session ends Fri 13 Nov at 14:02"</b>, from the seven-day absolute deadline. That tells her when she will be asked again, which explains a sign-in a week later.</p>
+      <p><b>Alternative:</b> expose the email to show "karaca…@gmail.com". That adds personal data to the client session for little gain.</p></div>
+  </div>
+  <div class="notebox"><b>Not added in this wave:</b> reminder preferences (FE-566 push, FE-572 quiet hours, FE-573 snooze, FE-574 notification privacy), stock settings (FE-583, FE-589), export (FE-592), history deletion (FE-593) and account deletion (FE-594). Settings gets no placeholders for them; each backlog item designs its own entry later.</div>
+</section>
+
+<section id="map">
+  <h2>Access map</h2>
+  <p class="prose">One sign-in screen at <code>/</code> serves every signed-out case; the reason and return page travel in the URL. Solid lines are route changes, amber dotted lines are session ends.</p>
+  <div class="figure" tabindex="0" role="img" aria-label="Access map. Any private URL opened while signed out replaces itself with the sign-in screen carrying returnTo. Continue with Google opens Google's account chooser. An approved account returns to the intended page, including the History date. A different account comes back as restricted, still carrying returnTo, and can choose again. Provider or network failures stay on sign-in with a retry. In the signed-in app, Settings signs out to sign-in with reason signed-out and no return page. Session expiry or a confirmed 401 anywhere clears private data and replaces the page with sign-in, reason expired, and the current page as returnTo.">
+    <svg viewBox="0 0 1000 400" xmlns="http://www.w3.org/2000/svg" font-family="Nunito, ui-rounded, system-ui, sans-serif">
+      <defs>
+        <marker id="m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5E474C"/></marker>
+        <marker id="m3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8A4E0E"/></marker>
+        <marker id="m4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#A12C3A"/></marker>
+      </defs>
+      <rect x="600" y="14" width="386" height="372" rx="26" fill="#FBF5EE" stroke="#E3D3C8" stroke-dasharray="3 5"/>
+      <text x="618" y="376" font-size="11" font-weight="800" fill="#7A6266">SIGNED-IN APP · SessionBoundary</text>
+      <!-- deep link -> sign-in -->
+      <path d="M180 64 H236" stroke="#5E474C" stroke-width="1.8" fill="none" marker-end="url(#m1)"/>
+      <text x="186" y="54" font-size="11" fill="#5E474C">replace</text>
+      <!-- sign-in -> google -->
+      <path d="M400 64 H446" stroke="#5E474C" stroke-width="1.8" fill="none" marker-end="url(#m1)"/>
+      <!-- google -> app -->
+      <path d="M570 64 H636" stroke="#2F5F3D" stroke-width="2" fill="none" marker-end="url(#m1)"/>
+      <text x="574" y="54" font-size="11" fill="#2F5F3D" font-weight="700">approved</text>
+      <!-- google -> restricted -->
+      <path d="M508 94 V170 H402" stroke="#A12C3A" stroke-width="1.8" fill="none" marker-end="url(#m4)"/>
+      <text x="516" y="140" font-size="11" fill="#A12C3A" font-weight="700">other account</text>
+      <!-- restricted -> google again -->
+      <path d="M300 152 C 300 120, 420 120, 456 96" stroke="#5E474C" stroke-width="1.6" fill="none" marker-end="url(#m1)"/>
+      <text x="304" y="124" font-size="11" fill="#5E474C">choose again</text>
+      <!-- failure -->
+      <path d="M318 94 C 300 240, 300 250, 318 262" stroke="#A12C3A" stroke-width="1.6" fill="none" marker-end="url(#m4)"/>
+      <text x="196" y="236" font-size="11" fill="#A12C3A" font-weight="700">no connection,</text>
+      <text x="196" y="250" font-size="11" fill="#A12C3A" font-weight="700">provider error</text>
+      <!-- settings signout -->
+      <path d="M690 300 C 560 330, 460 330, 402 300" stroke="#5E474C" stroke-width="1.8" fill="none" marker-end="url(#m1)"/>
+      <text x="470" y="346" font-size="11" fill="#5E474C">Sign out · ?reason=signed-out</text>
+      <!-- expiry -->
+      <path d="M636 210 C 560 210, 470 214, 402 222" stroke="#8A4E0E" stroke-width="2" stroke-dasharray="2 4" fill="none" marker-end="url(#m3)"/>
+      <text x="420" y="204" font-size="11" fill="#8A4E0E" font-weight="700">expiry or confirmed 401 →</text>
+      <text x="420" y="248" font-size="11" fill="#8A4E0E" font-weight="700">?reason=expired&amp;returnTo=current</text>
+      <!-- header to settings -->
+      <path d="M780 94 V270" stroke="#5E474C" stroke-width="1.6" fill="none" marker-end="url(#m1)"/>
+      <text x="788" y="186" font-size="11" fill="#5E474C">header Settings</text>
+      <g font-size="14" font-weight="800" fill="#3B2A2F">
+        <rect x="20" y="36" width="160" height="58" rx="16" fill="#FFFFFF" stroke="#C9B2AA" stroke-dasharray="4 3"/>
+        <text x="34" y="60">Private URL</text><text x="34" y="80" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500" fill="#7A6266">/history?date=…</text>
+        <rect x="240" y="36" width="160" height="58" rx="16" fill="#FFFFFF" stroke="#B23A66"/>
+        <text x="254" y="60">Sign-in</text><text x="254" y="80" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500" fill="#8E2C52">/?returnTo=</text>
+        <rect x="448" y="36" width="122" height="58" rx="16" fill="#F3EAE1" stroke="#E3D3C8"/>
+        <text x="462" y="60">Google</text><text x="462" y="80" font-size="11" font-weight="600" fill="#7A6266">account chooser</text>
+        <rect x="638" y="36" width="330" height="58" rx="16" fill="#F7DCE3" stroke="#E9A3B6"/>
+        <text x="652" y="60">Intended page</text><text x="652" y="80" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500" fill="#8E2C52">/history?date=2026-11-05</text>
+        <rect x="240" y="152" width="160" height="58" rx="16" fill="#FFFFFF" stroke="#E7B9BF"/>
+        <text x="254" y="176">Restricted</text><text x="254" y="196" font-size="11" font-weight="600" fill="#A12C3A">returnTo kept</text>
+        <rect x="240" y="262" width="160" height="58" rx="16" fill="#FFFFFF" stroke="#E7B9BF"/>
+        <text x="254" y="286">Sign-in failed</text><text x="254" y="306" font-size="11" font-weight="600" fill="#7A6266">same screen, retry</text>
+        <rect x="638" y="180" width="200" height="58" rx="16" fill="#FFFFFF" stroke="#E3D3C8"/>
+        <text x="652" y="204">Any private page</text><text x="652" y="224" font-size="11" font-weight="600" fill="#7A6266">Today · Medications · History</text>
+        <rect x="690" y="272" width="180" height="58" rx="16" fill="#FFFFFF" stroke="#E3D3C8"/>
+        <text x="704" y="296">Settings</text><text x="704" y="316" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500" fill="#7A6266">/settings</text>
+      </g>
+    </svg>
+    <div class="legend">
+      <span><i></i>Route change</span>
+      <span><i class="back" style="border-top-color:#8A4E0E"></i>Session ends</span>
+    </div>
+  </div>
+</section>
+
+<section id="walk-entry">
+  <h2>Walkthrough · deep link, wrong account, return</h2>
+  <p class="prose">She opens a saved History link while signed out, picks her work Google account by mistake, then picks the approved one and lands on the same date.</p>
+  <div class="strip" tabindex="0" aria-label="Entry walkthrough, scroll sideways" data-screens="A1 A2 A3 A4 A5"></div>
+</section>
+
+<section id="walk-expiry">
+  <h2>Walkthrough · session ends mid-flow</h2>
+  <p class="prose">Seven days after sign-in, the session ends while she is correcting an outcome in History. One case with nothing pending, one with a save in flight.</p>
+  <div class="strip" tabindex="0" aria-label="Expiry walkthrough, scroll sideways" data-screens="X1 X2 X3 X4 X5"></div>
+</section>
+
+<section id="signin-states">
+  <h2>Sign-in states</h2>
+  <p class="prose">One screen, one primary button, at most one Alert above it. Failures say what happened and that nothing in Meddies changed.</p>
+  <div class="strip" tabindex="0" aria-label="Sign-in states, scroll sideways" data-screens="S1 S2 S3 S4 S5 S6 S7 S8"></div>
+</section>
+
+<section id="settings-states">
+  <h2>Settings states</h2>
+  <p class="prose">Account and sign-out, nothing else in this wave. Sign-out progress, failure and the unconfirmed-save warning (D18).</p>
+  <div class="strip" tabindex="0" aria-label="Settings states, scroll sideways" data-screens="G1 G2 G3 G4 G5 G6"></div>
+</section>
+
+<section id="app-states">
+  <h2>Loading, unavailable and error</h2>
+  <p class="prose">Cold launch, a page that cannot load, the app error boundary and a session check that cannot reach the server. These complete the feedback set from FE-648 T1, T5 and T6.</p>
+  <div class="strip" tabindex="0" aria-label="App states, scroll sideways" data-screens="L1 L2 L3 L4"></div>
+</section>
+
+<section id="causes">
+  <h2>Which failure is which</h2>
+  <p class="prose">Network and app failures keep her where she is. Only a confirmed session end or a refused account leads to sign-in. Network loss alone never signs her out.</p>
+  <div class="tbl" tabindex="0">
+    <table>
+      <thead><tr><th style="width:20%">Cause</th><th style="width:22%">Where she is</th><th>Copy</th><th style="width:20%">Action</th></tr></thead>
+      <tbody>
+        <tr><td><strong>No connection, server 5xx, timeout</strong></td><td>Same page. Loaded content stays (FE-648 T5); without content, page Alert (T6, L2).</td><td>"Today could not be refreshed. Showing what was loaded at 13:41." / "… could not be loaded. Nothing has been recorded or changed."</td><td>One Retry on the Alert</td></tr>
+        <tr><td><strong>Session check unreachable</strong></td><td>Same page, nothing shown (L4). Saves still check on the server.</td><td>None. Checked again on next focus.</td><td>None</td></tr>
+        <tr><td><strong>Session ended</strong> (deadline, 401 confirmed)</td><td>Sign-in, <code>reason=expired</code>, return page (D17).</td><td>"Your session ended. Changes you hadn't saved were cleared."</td><td>Continue with Google</td></tr>
+        <tr><td><strong>Restricted account</strong> (AccessDenied)</td><td>Sign-in, return page kept.</td><td>"This Google account can't open Meddies."</td><td>Choose another Google account</td></tr>
+        <tr><td><strong>Provider or callback error</strong></td><td>Sign-in, return page kept.</td><td>"Sign-in with Google didn't finish. Nothing in Meddies changed."</td><td>Try again</td></tr>
+        <tr><td><strong>Google unreachable</strong> before redirect</td><td>Sign-in.</td><td>"Couldn't reach Google. Check your connection and try again."</td><td>Try again</td></tr>
+        <tr><td><strong>Sign-in not configured</strong></td><td>Sign-in, no Google button.</td><td>"Sign-in is unavailable right now. Try again later."</td><td>Reload</td></tr>
+        <tr><td><strong>Unexpected app error</strong></td><td>Error boundary (L3), shell kept where possible.</td><td>"This page couldn't open. Your records haven't changed."</td><td>Try again · Open Today</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="rules">
+  <h2>Interaction rules</h2>
+  <div class="tbl" tabindex="0">
+    <table>
+      <thead><tr><th style="width:22%">Moment</th><th>Behavior</th><th style="width:22%">Source</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Signed-out private URL</strong></td><td>Replace (not push) with <code>/?returnTo=…</code>, so Back after sign-in does not loop through sign-in. Replaces the per-route "Sign in to view…" pages on History, Medications and Settings.</td><td>FE-612, FE-646 entry rule</td></tr>
+        <tr><td><strong>Return page</strong></td><td>Allowed: <code>/</code>, <code>/medications</code>, <code>?add</code>, <code>?medicine=ID</code>, <code>?schedule=ID</code>, <code>/history</code>, <code>/history?date=</code>, <code>/settings</code>. Anything else returns to Today. The list follows the current <code>safeReturnTo</code> plus D1's <code>?add</code>.</td><td>Code, D1</td></tr>
+        <tr><td><strong>Wrong account or provider error</strong></td><td>Stay on sign-in with the return page kept. Continue opens Google's chooser every time (<code>prompt=select_account</code>), so picking another account needs no Google sign-out.</td><td>Code, needs check (see evidence)</td></tr>
+        <tr><td><strong>After sign-in</strong></td><td>Land on the return page with fresh data; History date restored. Focus on the page heading. No welcome message.</td><td>FE-612</td></tr>
+        <tr><td><strong>Session ends</strong></td><td>D17: confirm, clear private cache, drafts and pending attempts, replace with sign-in. Open drawers close without their dismissal guards. In-flight responses arriving later are dropped (FE-638).</td><td>FE-612, FE-638, D17</td></tr>
+        <tr><td><strong>Save pending at session end</strong></td><td>Sign-in adds "A save was still in progress. After signing in, check whether it was recorded." Never "cancelled", never "not saved".</td><td>FE-612, FE-620</td></tr>
+        <tr><td><strong>Focus and reconnect</strong></td><td>Session check runs on focus, pageshow and visibility. Unreachable is not a sign-out. Deadline passed is a session end without a request.</td><td>Code, docs/authentication.md</td></tr>
+        <tr><td><strong>Sign out</strong></td><td>One tap (D18 exception). Pending: button "Signing out…", disabled. Confirmed by a 401 from <code>/api/session</code>, then replace with sign-in "You're signed out". Failure keeps her signed in and says so.</td><td>Code, D18</td></tr>
+        <tr><td><strong>Settings navigation</strong></td><td>D15: nav with no tab selected, header button current, no Back row. Back and edge swipe return to the previous page with its state.</td><td>D15, FE-646 Back rule</td></tr>
+        <tr><td><strong>Home Screen launch</strong></td><td>Opens Today. Signed out, that is the sign-in screen with no return line.</td><td>FE-612</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="controls">
+  <h2>Control mapping</h2>
+  <p class="prose">Every control is an existing component in <code>src/components/ui</code> or the layout folder. No new variants.</p>
+  <div class="tbl" tabindex="0">
+    <table>
+      <thead><tr><th style="width:20%">Element</th><th style="width:30%">Component / variant</th><th>Rules</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Sign-in frame</strong></td><td>Plain <code>main</code>, no AppShell, no nav</td><td>Signed out has no private navigation. Safe-area top padding as in AppShell.</td></tr>
+        <tr><td><strong>Wordmark</strong></td><td>Text, <code>text-display font-extrabold</code></td><td>"Meddies" written, never drawn. <code>h1</code> is the screen heading, not the wordmark.</td></tr>
+        <tr><td><strong>Sign-in card</strong></td><td>Card default</td><td>Heading "Sign in", one sentence, Button.</td></tr>
+                <tr><td><strong>Continue with Google</strong></td><td>Button default (berry), <code>lg</code>, full width</td><td>One primary per screen. No Google logo drawn. Pending: "Opening Google…", disabled, <code>aria-busy</code>.</td></tr>
+        <tr><td><strong>Restricted retry</strong></td><td>Same Button, label "Choose another Google account"</td><td>Same action; label states the outcome.</td></tr>
+        <tr><td><strong>Reason / failure</strong></td><td>Alert: <code>info</code> (ended, signed out), <code>destructive</code> (failed, restricted), <code>warning</code> (unavailable)</td><td>Above the card. Info is <code>role="status"</code>; failures <code>role="alert"</code>. Never two Alerts.</td></tr>
+        <tr><td><strong>Settings header</strong></td><td>AppHeader title "Settings"</td><td>Settings link <code>aria-current="page"</code>, blush. No action slot.</td></tr>
+        <tr><td><strong>Account section</strong></td><td>Card + label/value rows</td><td>"Signed in with your approved Google account", "Session ends Fri 13 Nov at 14:02" (D19).</td></tr>
+        <tr><td><strong>Sign out</strong></td><td>Button <code>outline</code>, <code>lg</code>, full width</td><td>Not berry: it is not the screen's main job. Helper: "Signs you out of Meddies on this iPhone. Your Google account stays signed in."</td></tr>
+        <tr><td><strong>D18 warning</strong></td><td>Alert <code>warning</code> + Button default "Stay signed in" + Button <code>ghost</code> "Sign out anyway"</td><td>Safe choice is primary. Names the save.</td></tr>
+        <tr><td><strong>Time zone</strong></td><td>Card + caption</td><td>"Times are Istanbul time, 24-hour, wherever your device is." Read-only fact, no control.</td></tr>
+        <tr><td><strong>Cold launch</strong></td><td>Skeleton (FE-622) inside AppShell</td><td>Header, hero and rows; <code>role="status"</code> "Opening Meddies". Replaces the text-only <code>loading.tsx</code>.</td></tr>
+        <tr><td><strong>Error boundary</strong></td><td>Alert <code>destructive</code> + Button <code>outline</code> "Try again" + link "Open Today"</td><td>Replaces the plain <code>error.tsx</code>. Never mentions sign-in.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="truth">
+  <h2>Product rules kept explicit</h2>
+  <div class="cols">
+    <div class="panel"><h3>Nothing private after the end</h3><ul class="plain">
+      <li>Signed-out screens show no medicine names, doses or counts.</li>
+      <li>After a session end or sign-out, drafts and Not confirmed attempts are gone; copy says so instead of promising they wait.</li>
+      <li>Reload and Home Screen launch obey the same boundary.</li></ul></div>
+    <div class="panel"><h3>No claims about pending work</h3><ul class="plain">
+      <li>A save in flight at sign-out or expiry is "in progress", never "cancelled" or "lost".</li>
+      <li>She checks Today or History after signing in; the server is the record.</li>
+      <li>No offline queue or stored drafts.</li></ul></div>
+    <div class="panel"><h3>Truthful sign-out</h3><ul class="plain">
+      <li>Sign-out clears this browser's session. It does not sign out of Google or other devices, and Settings says so.</li>
+      <li>"You're signed out" appears only after the server confirms.</li>
+      <li>No account email shown (D19).</li></ul></div>
+  </div>
+</section>
+
+<section id="a11y">
+  <h2>Mobile and keyboard behavior</h2>
+  <div class="cols">
+    <div class="panel"><h3>Phone</h3><ul class="plain">
+      <li>Targets 44 px or more; Continue with Google and Sign out 52 px.</li>
+      <li>Sign-in content starts below the safe-area top; nothing pinned to the bottom, so no home-indicator clash.</li>
+      <li>No text fields anywhere on these screens, so no keyboard handling.</li>
+      <li>320 px and 200% zoom: Alerts and label/value rows wrap; buttons stay full width (S8, G6).</li></ul></div>
+    <div class="panel"><h3>Focus and announcements</h3><ul class="plain">
+      <li>Sign-in with a reason: focus on the <code>h1</code>; the info Alert is read as a polite status once.</li>
+      <li>Failures: <code>role="alert"</code>; focus stays on the button.</li>
+      <li>After sign-in: focus on the return page's heading.</li>
+      <li>Sign-out pending: the button keeps focus and announces "Signing out".</li>
+      <li>Reduced motion: no transitions on these screens beyond the standard Button press.</li></ul></div>
+  </div>
+</section>
+
+<section id="evidence">
+  <h2>Evidence, limits and handoff</h2>
+  <div class="cols">
+    <div class="panel"><h3>Based on</h3><ul class="plain">
+      <li>Source at <code>b42cb86</code>: <code>app/page.tsx</code> (sign-in, <code>safeReturnTo</code>), <code>app/settings/page.tsx</code>, <code>app/history/page.tsx</code>, <code>app/loading.tsx</code>, <code>app/error.tsx</code>, <code>auth/controls.tsx</code>, <code>auth/session-boundary.tsx</code>, <code>auth/server.ts</code>, layout header and shell.</li>
+      <li>docs/authentication.md, PRODUCT.md, DESIGN.md, FE-612, FE-638, FE-620; FE-646 to FE-648 decisions.</li></ul></div>
+    <div class="panel"><h3>Not verified</h3><ul class="plain">
+      <li>Mockups are static HTML at about 344 px and prove no runtime behavior.</li>
+      <li><b>Return page through the error route:</b> Auth.js sends refusals to <code>/sign-in/error?error=AccessDenied</code>; whether the callback URL survives is not checked. A5 needs it.</li>
+      <li>Real Google callback, restricted account and expiry need the deployment check in docs/authentication.md.</li>
+      <li>VoiceOver, safe areas, 200% zoom and Home Screen launch on device (FE-616).</li></ul></div>
+  </div>
+  <div class="tbl" tabindex="0">
+    <table>
+      <thead><tr><th style="width:24%">Implementation owner</th><th>Takes from this design</th></tr></thead>
+      <tbody>
+        <tr><td><strong>FE-627</strong> Settings and access audit</td><td>S1 to S8, G1 to G6, signed-out redirect, D15, D19, cause table.</td></tr>
+        <tr><td><strong>FE-638</strong> session foundations</td><td>D17 single session-end path and cleanup, D18 pending-save query, dropping late responses.</td></tr>
+        <tr><td><strong>FE-620</strong> architecture</td><td>Pending-at-expiry wording; no cancellation claims.</td></tr>
+        <tr><td><strong>FE-622</strong> skeletons</td><td>L1 cold launch inside AppShell.</td></tr>
+        <tr><td><strong>FE-639</strong> integrated gate</td><td>A1 to A5 and X1 to X5 as browser journeys.</td></tr>
+        <tr><td><strong>FE-650</strong> final review</td><td>Check D17 against FE-647 and FE-648 screens once accepted.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="acceptance">
+  <h2>Acceptance checklist</h2>
+  <ul class="check">
+    <li><span class="box done">✓</span><span>Connected walkthroughs cover deep-link entry, wrong account, return to the History date, and session end with and without a pending save (A1 to A5, X1 to X5).</span></li>
+    <li><span class="box done">✓</span><span>Settings and recovery use the shell, Card, Alert, Button and Skeleton patterns from the core flows; no new variants.</span></li>
+    <li><span class="box done">✓</span><span>Private content and drafts are not shown after cleanup; copy matches actual sign-out and session behavior.</span></li>
+    <li><span class="box done">✓</span><span>States, mobile and focus notes, control mapping and evidence limits recorded.</span></li>
+    <li><span class="box done">✓</span><span>No reminder, stock, export or deletion screens; backlog items linked.</span></li>
+    <li><span class="box done">✓</span><span>D15, D17, D18 and D19 accepted, D16 declined; D17 recorded in FE-647 and FE-648.</span></li>
+    <li><span class="box done">✓</span><span>Bora's approval of the screens recorded in FE-649.</span></li>
+  </ul>
+  <div class="approve" style="background:var(--sage-bg)">
+    <h2 style="color:var(--sage)">Approved</h2>
+    <p class="prose">Bora approved these screens on 6 Nov 2026, accepting D15, D17, D18 and D19 and declining D16. Approval unblocks the FE-627 Settings and access audit and the final design, FE-650. It does not complete code or device verification.</p>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function () {
+  const svg = {
+    check: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2 5 8.5l4.5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    clock: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 3.4V6l1.8 1.1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+    open: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2.2 1.8"/></svg>',
+    skip: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3 9 9 3" stroke="currentColor" stroke-width="1.4"/></svg>',
+    dots: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="3" cy="6" r="1.1" fill="currentColor"/><circle cx="6" cy="6" r="1.1" fill="currentColor"/><circle cx="9" cy="6" r="1.1" fill="currentColor"/></svg>',
+    alert: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 3.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="6" cy="8.4" r=".8" fill="currentColor"/></svg>',
+    lock: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><rect x="2.5" y="5.2" width="7" height="5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.2 5.2V3.9a1.8 1.8 0 0 1 3.6 0v1.3" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>',
+    hist: '<svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6a4 4 0 1 0 1.2-2.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M2 2.2v1.6h1.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M6 4v2.2l1.4.9" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+    meds: '<svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="4" width="9" height="4" rx="2" fill="none" stroke="currentColor" stroke-width="1.3" transform="rotate(-35 6 6)"/></svg>'
+  };
+  const B = {
+    sched: () => `<span class="badge b-sched">${svg.clock}Scheduled</span>`,
+    nl: () => `<span class="badge b-unlogged">${svg.open}Not logged</span>`,
+    taken: (t) => `<span class="badge b-taken">${svg.check}Taken${t ? ' ' + t : ''}</span>`,
+    skip: () => `<span class="badge b-skipped">${svg.skip}Skipped</span>`,
+    saving: (o) => `<span class="badge b-pending">${svg.dots}Saving · ${o}</span>`,
+    unconf: () => `<span class="badge b-unconf">${svg.alert}Not confirmed</span>`
+  };
+  const tile = (k, lg) => `<span class="tile ${k} ${lg ? 'lg' : ''}" aria-hidden="true"><i></i></span>`;
+  const nav = (on) => `<div class="nav ${on ? '' : 'none'}" aria-hidden="true"><span class="${on === 't' ? 'on' : ''}">Today</span><span class="${on === 'm' ? 'on' : ''}">Medications</span><span class="${on === 'h' ? 'on' : ''}">History</span></div>`;
+  const phone = (body, o = {}) => `<div class="phone ${o.narrow ? 'narrow' : ''}"><div class="scr">${body}</div>${o.nonav ? '' : nav(o.nav === undefined ? 't' : o.nav)}${o.toast || ''}</div>`;
+  const alert = (k, t, b, a) => `<div class="alert ${k}">${t ? `<b>${t}</b>` : ''}${b ? `<span class="bd">${b}</span>` : ''}${a || ''}</div>`;
+
+  const M = {
+    omega: { k: 'peach', n: 'Omega-3', s: '1000 mg', u: 'capsule' },
+    iron: { k: 'butter', n: 'Iron bisglycinate', s: '14 mg', u: 'tablet' },
+    mag: { k: 'plum', n: 'Magnesium', s: '200 mg', u: 'tablet' },
+    vitd: { k: 'mist', n: 'Vitamin D3', s: '1000 IU', u: 'capsule' },
+    levo: { k: 'blush', n: 'Levothyroxine sodium extended release 75 micrograms', s: '', u: 'tablet' },
+    mel: { k: 'plum', n: 'Melatonin', s: '1 mg', u: 'tablet' }
+  };
+  const qty = (q, u) => `${q} ${u}${(q === '1' || q === '½') ? '' : 's'}`;
+  const metaOf = (m, q) => [m.s, qty(q, m.u)].filter(Boolean).join(' · ');
+  const row = (time, m, q, badge, o = {}) => `<div class="dr ${o.done ? 'done' : ''} ${o.focus ? 'focus' : ''} ${o.inert ? 'inert' : ''}"><span class="tm">${time}</span><div class="c"><b>${m.n}</b><span class="sub">${metaOf(m, q)}</span></div><span class="bd">${badge}</span>${o.note ? `<span class="note">${o.note}</span>` : ''}</div>`;
+
+  // history (Thu 5 Nov)
+  const histHdr = (date, o = {}) => `<div class="ah"><div class="t"><h4 class="${o.focus ? '' : ''}" ${o.focus ? 'style="box-shadow:var(--focus);border-radius:8px;align-self:flex-start;padding:0 4px"' : ''}>History</h4></div><span class="set" aria-hidden="true"></span></div><div class="datenav"><span class="iconbtn" aria-hidden="true">‹</span><div class="ctrl"><span>${date}</span><span class="caret">▾</span></div><span class="iconbtn ${o.nextOff ? 'off' : ''}" aria-hidden="true">›</span></div>`;
+  const dayHead = (d, n) => `<div class="gh"><h5>${d}</h5><span class="summary-line">${n}</span></div>`;
+  const hLevo = row('07:00', M.levo, '1', B.taken('07:02'), { done: 1 });
+  const hMag8 = row('08:00', M.mag, '1', B.taken('08:00'), { done: 1 });
+  const hIron = row('08:00', M.iron, '½', B.nl(), { inert: 1 });
+  const hOmega = (b) => row('14:00', M.omega, '2', b || B.taken('14:10'), { done: 1 });
+  const hMel = row('22:30', M.mel, '½', B.taken('00:10'), { done: 1, note: 'Taken on Fri 6 Nov' });
+  const historyDay = (o = {}) => phone(`${histHdr('Thu 5 Nov', o)}${dayHead('Thursday 5 November', '6 of 7 logged')}${hLevo}${hMag8}${hIron}${hOmega(o.omega)}${hMel}`, { nav: 'h' });
+
+  // drawer over history
+  const behind = (rows) => `<div class="behind" aria-hidden="true">${rows}</div>`;
+  const drawerPhone = (bg, content) => `<div class="phone dw">${behind(bg)}<div class="drawer">${content}</div></div>`;
+  const dhead = (m, closeOff) => `<span class="handle" aria-hidden="true"></span><div class="dh">${tile(m.k, true)}<div class="t"><b>${m.n}</b><span class="sub">${[m.s, m.u].filter(Boolean).join(' · ')}</span></div><span class="close ${closeOff ? 'off' : ''}" aria-hidden="true">✕</span></div>`;
+  const schip = (when, badge) => `<div class="schip"><span class="l">${svg.clock}Scheduled <b>${when}</b></span>${badge}</div>`;
+  const choiceS = `<div class="fs"><span class="q">Change taken to</span><div class="choice"><span class="off"><span class="ic">${svg.check}</span>I took it</span><span class="on"><span class="ic">${svg.skip}</span>I skipped it</span></div></div>`;
+  const correction = (busy) => `${dhead(M.omega, busy)}${schip('14:00 on Thu 5 Nov', B.taken('14:10'))}${choiceS}${alert('info', '', 'Skip Omega-3, scheduled for 14:00 on Thu 5 Nov? The intake at 14:10 is removed. The schedule does not change.')}<div class="acts"><span class="btn ${busy ? 'busy' : 'pri'}">${busy ? 'Saving …' : 'Save correction'}</span><span class="btn ghost ${busy ? 'off' : ''}">Cancel</span></div>`;
+
+  // sign-in
+  const signin = (o = {}) => `<div class="phone ${o.narrow ? 'narrow' : ''}"><div class="signin">
+      <span class="wm">Meddies</span>
+      ${o.alert || ''}
+      <div class="si-card">
+        <h4 class="si-h" ${o.focusH ? 'style="box-shadow:var(--focus);border-radius:8px;align-self:flex-start;padding:0 4px"' : ''}>${o.h || 'Sign in'}</h4>
+        <p class="sub">${o.p || 'Use your approved Google account to open your routine.'}</p>
+        ${o.noBtn ? (o.btnAlt || '') : `<span class="btn ${o.busy ? 'busy' : 'pri'}">${o.btn || 'Continue with Google'}</span>`}
+        ${o.hint ? `<p class="hint">${o.hint}</p>` : ''}
+      </div>
+    </div></div>`;
+  const histDest = '';
+
+  // settings
+  const setHdr = `<div class="ah"><div class="t"><h4>Settings</h4></div><span class="set on" aria-hidden="true"></span></div>`;
+  const account = (o = {}) => `<div class="st-card"><h5>Account</h5><p class="sub">Signed in with your approved Google account.</p><div class="kv"><span>Session ends</span><span>Fri 13 Nov at 14:02</span></div>${o.alert || ''}${o.actions || `<span class="btn danger-out ${o.busy ? 'dis' : ''}">${o.btn || 'Sign out'}</span>`}<p class="sub" style="font-size:.78rem">Signs you out of Meddies on this iPhone. Your Google account stays signed in.</p></div>`;
+  const tzCard = `<div class="st-card"><h5>Time</h5><p class="sub">Times are Istanbul time, 24-hour, wherever your device is.</p></div>`;
+  const settings = (o = {}) => phone(`${setHdr}${account(o)}${tzCard}`, { nav: '', narrow: o.narrow });
+
+  const S = {
+    // entry walkthrough
+    A1: { t: 'Saved link, signed out', url: '/history?date=2026-11-05 → replace', html: signin({ dest: histDest }),
+      n: ['She opens a History link from her Home Screen notes. No session, so the page is <b>replaced</b> with sign-in carrying the return page.', 'No private data is shown. The return page travels in the URL only.', 'Back after sign-in will not return here.'] },
+    A2: { t: 'Opening Google', url: '/?returnTo=%2Fhistory%3Fdate%3D2026-11-05', html: signin({ dest: histDest, busy: 1, btn: 'Opening Google…', hint: 'Google asks which account to use.' }),
+      n: ['Button busy and disabled, <code>aria-busy</code>; a second tap does nothing.', 'Google shows its account chooser every time.'] },
+    A3: { t: 'Wrong account', url: '/sign-in/error?error=AccessDenied …', html: signin({ alert: alert('bad', 'This Google account can\'t open Meddies.', 'Meddies is private to one approved account. Choose that account to continue.'), dest: histDest, btn: 'Choose another Google account' }),
+      n: ['She picked her work account. Restricted, not failed: the copy says which.', 'Never names or hints at the approved address.', 'Return page kept (<b>needs check</b>: callback URL through the error route).'] },
+    A4: { t: 'Approved account', url: 'Google → callback', html: signin({ dest: histDest, busy: 1, btn: 'Opening Google…', hint: 'Signing in…' }),
+      n: ['Same button opens the chooser; she picks the approved account.', 'Google signs her in and returns through the Auth.js callback.'] },
+    A5: { t: 'Back on the same date', url: '/history?date=2026-11-05', html: historyDay({ focus: 1 }),
+      n: ['Lands on <b>Thu 5 Nov</b>, fresh data. Focus on the page heading.', 'No welcome Toast; the page is the confirmation.', 'Back goes to whatever she had before the link, not to sign-in.'] },
+
+    // expiry walkthrough
+    X1: { t: 'Correcting at the deadline', url: '/history?date=2026-11-05 · drawer', html: drawerPhone(hOmega(), correction()),
+      n: ['Fri 13 Nov, 14:02: the seven-day deadline passes while she has an unsaved correction open on Thu 5 Nov.', 'No save has started.'] },
+    X2: { t: 'Session ended', url: '/?reason=expired&returnTo=%2Fhistory%3Fdate%3D2026-11-05', html: signin({ alert: alert('info', 'Your session ended.', 'Changes you hadn\'t saved were cleared.'), dest: histDest, focusH: 1 }),
+      n: ['D17: the drawer and page are gone in one step. No in-drawer "Sign in again" alert.', 'The copy says the draft is cleared rather than promising it waits.', 'Focus on the heading; the Alert is read once as status.'] },
+    X3: { t: 'Back to the date', url: '/history?date=2026-11-05', html: historyDay({ focus: 1 }),
+      n: ['Same date restored. Omega-3 still Taken 14:10 because the correction was never saved.', 'The drawer does not reopen; she starts the correction again.'] },
+    X4: { t: 'Expired while saving', url: '/history?date=2026-11-05 · drawer → sign-in', html: signin({ alert: alert('info', 'Your session ended.', 'A save was still in progress. After signing in, check whether it was recorded. Changes you hadn\'t saved were cleared.'), dest: histDest }),
+      n: ['She tapped Save correction; the save got 401 (or the deadline passed with it in flight).', 'D17: confirmed with the session check, then cleared. The copy never claims it was cancelled or lost.', 'No medicine name: signed-out screens show nothing private.'] },
+    X5: { t: 'Check the result', url: '/history?date=2026-11-05', html: historyDay({ focus: 1 }),
+      n: ['The row shows what the server has. Here the correction did not land, so Omega-3 is still Taken.', 'If it had landed, the row would read Skipped. Either way the page is the source of truth.'] },
+
+    // sign-in states
+    S1: { t: 'Default', url: '/', html: signin({}),
+      n: ['Card heading is the <code>h1</code>.'] },
+    S2: { t: 'Opening Google', url: '/', html: signin({ busy: 1, btn: 'Opening Google…' }),
+      n: ['Replaces "Connecting to Google…" + "Please wait." (two messages for one state).'] },
+    S3: { t: 'Couldn\'t reach Google', url: '/', html: signin({ alert: alert('bad', 'Couldn\'t reach Google.', 'Check your connection and try again.'), btn: 'Try again' }),
+      n: ['The request to start sign-in failed before leaving Meddies. Replaces "Something went wrong".'] },
+    S4: { t: 'Provider error', url: '/sign-in/error?error=Callback', html: signin({ alert: alert('bad', 'Sign-in with Google didn\'t finish.', 'Nothing in Meddies changed. Try again.'), dest: histDest, btn: 'Try again' }),
+      n: ['Any non-AccessDenied error from Auth.js: cancelled chooser, state or PKCE mismatch, provider outage.', 'No error codes shown; none are logged with personal data either.'] },
+    S5: { t: 'Restricted', url: '/sign-in/error?error=AccessDenied', html: signin({ alert: alert('bad', 'This Google account can\'t open Meddies.', 'Meddies is private to one approved account. Choose that account to continue.'), btn: 'Choose another Google account' }),
+      n: ['As A3, without a return page.'] },
+    S6: { t: 'Session ended', url: '/?reason=expired&returnTo=%2Fmedications%3Fmedicine%3D…', html: signin({ alert: alert('info', 'Your session ended.', 'Changes you hadn\'t saved were cleared.') }),
+      n: ['Returns to the medicine page after sign-in; nothing about it is shown here.', 'Unknown return pages fall back to Today.'] },
+    S7: { t: 'Signed out', url: '/?reason=signed-out', html: signin({ alert: alert('info', 'You\'re signed out of Meddies on this iPhone.', 'Your Google account stays signed in.') }),
+      n: ['After G1. No return page: next sign-in opens Today.', 'States exactly what sign-out did and did not do.'] },
+    S8: { t: 'Unavailable · 320 px', url: '/', html: signin({ narrow: 1, alert: alert('warn', 'Sign-in is unavailable right now.', 'Nothing in Meddies has changed. Try again later.'), noBtn: 1, btnAlt: '<span class="btn out">Reload</span>', dest: histDest }),
+      n: ['Server not configured. No Google button because it cannot work.', 'At 320 px the Alert wraps; nothing truncates.'] },
+
+    // settings
+    G1: { t: 'Settings', url: '/settings', html: settings(),
+      n: ['D15: nav with no tab selected, header button current, no "Back to Today".', 'D19: session end instead of email.', 'Sign out is outline: one primary per view, and it is not this page\'s main job.'] },
+    G2: { t: 'Signing out', url: '/settings', html: settings({ busy: 1, btn: 'Signing out…' }),
+      n: ['Disabled and announced. Confirmed by a 401 from the session check before leaving.'] },
+    G3: { t: 'Sign-out not confirmed', url: '/settings', html: settings({ alert: alert('bad', 'Sign-out not confirmed.', 'You\'re still signed in on this iPhone. Check your connection and try again.'), btn: 'Try signing out again' }),
+      n: ['Truthful: she is still signed in. One Alert, the button carries the retry.'] },
+    G4: { t: 'Unconfirmed save (D18)', url: '/settings', html: settings({ alert: alert('warn', 'A save isn\'t confirmed yet.', 'Omega-3 14:00 · Taken. If you sign out now, Meddies can\'t show whether it was saved. Check Today after you sign in again.'), actions: '<div class="acts"><span class="btn pri">Stay signed in</span><span class="btn ghost">Sign out anyway</span></div>' }),
+      n: ['Shown when she taps Sign out with a Saving or Not confirmed attempt in this session.', 'Stay signed in keeps everything; the attempt keeps reconciling (D13).', 'Sign out anyway clears it; X4 wording applies.'] },
+    G5: { t: 'From History, Back', url: '/settings → Back', html: historyDay({}),
+      n: ['Opened Settings from History Thu 5 Nov, then Back: same date and scroll position.', 'Nav goes to the primary pages as usual.'] },
+    G6: { t: '320 px', url: '/settings', html: settings({ narrow: 1 }),
+      n: ['Label/value row wraps; buttons stay full width.'] },
+
+    // app states
+    L1: { t: 'Cold launch', url: '/', html: phone(`<div class="ah"><div class="t"><span class="sk" style="height:12px;width:120px;border-radius:6px"></span><span class="sk" style="height:26px;width:200px;border-radius:8px;margin-top:6px"></span></div><span class="set" aria-hidden="true"></span></div><div class="sk" style="height:176px;border-radius:26px"></div><div class="sk" style="height:18px;width:40%;border-radius:8px"></div><div class="sk" style="height:66px"></div><div class="sk" style="height:66px"></div><span class="sr">sr: "Opening Meddies"</span>`),
+      n: ['Replaces the text-only "Opening Meddies…". Same FE-622 shapes as Today T1, inside the shell so nothing jumps.', 'Only while signed in; signed out goes straight to S1.'] },
+    L2: { t: 'Page can\'t load', url: '/medications', html: phone(`<div class="ah"><div class="t"><h4>Medications</h4></div><span class="set" aria-hidden="true"></span></div>${alert('bad', 'Medications could not be loaded.', 'Connect to the internet and retry. Nothing has been changed.', '<span class="btn out">Retry</span>')}`, { nav: 'm' }),
+      n: ['Network or server failure: same pattern as Today T6 and History H5.', 'Never sends her to sign-in.'] },
+    L3: { t: 'Error boundary', url: 'any page', html: phone(`<div class="ah"><div class="t"><h4>Meddies</h4></div><span class="set" aria-hidden="true"></span></div>${alert('bad', 'This page couldn\'t open.', 'Your records haven\'t changed. Try again, or go to Today.', '<div class="row2"><span class="btn out">Try again</span><span class="btn ghost">Open Today</span></div>')}`, { nav: '' }),
+      n: ['Unexpected render error. Header and nav stay when the shell survives.', 'Replaces "Meddies couldn\'t open / Please check your connection": the cause may not be the connection.'] },
+    L4: { t: 'Session check offline', url: '/history?date=2026-11-05', html: historyDay({}),
+      n: ['Returning to the app offline: the session check fails to reach the server.', 'Nothing changes on screen. Network loss is not a sign-out; saves still check on the server.', 'If the deadline has passed, D17 runs without a request.'] }
+  };
+
+  document.querySelectorAll('.strip[data-screens]').forEach((strip) => {
+    strip.innerHTML = strip.dataset.screens.split(' ').map((id) => {
+      const s = S[id];
+      if (!s) return '';
+      return `<figure class="frame"><div class="fhead"><span class="fid">${id}</span><b>${s.t}</b></div><span class="url">${s.url}</span>${s.html}<ol class="notes">${s.n.map((x) => `<li>${x}</li>`).join('')}</ol></figure>`;
+    }).join('');
+  });
+})();
+</script>
+
+</body></html>
