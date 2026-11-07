@@ -1,7 +1,7 @@
 import { resolve } from 'node:path'
 import { captureCases, captureLoading, type CaptureRoute } from './capture'
 import { expect, test } from './fixtures'
-import { historyList, rootFallback, todayFallback, todaysDoses } from './locators'
+import { historyFallback, historyList, todayFallback, todaysDoses } from './locators'
 import { addDays, insertScheduledMedicine } from './seed'
 
 // Opt-in loading evidence for design review, never a CI assertion. Run with
@@ -16,7 +16,7 @@ const routes: CaptureRoute[] = [
   {
     name: 'history',
     path: '/history',
-    fallback: rootFallback,
+    fallback: historyFallback,
     content: (page) => historyList(page, today),
   },
 ]

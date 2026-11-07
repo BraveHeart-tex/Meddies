@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { queryOptions, replaceEqualDeep, useQuery, type QueryClient } from '@tanstack/react-query'
-import type { DailySchedule, DoseOutcomeRecord, Today } from './contract'
+import type { DailySchedule, DoseOccurrence, DoseOutcomeRecord, Today } from './contract'
 
 /** The owner's schedules and the server's Today records, at the server scheduling time `now`. */
 export type ScheduleSnapshot = {
@@ -16,7 +16,42 @@ export type ScheduleSnapshot = {
 export const scheduleKeys = {
   all: ['schedules'] as const,
   snapshot: () => [...scheduleKeys.all, 'snapshot'] as const,
+  /** One History date's doses. */
+  history: (date: string) => [...scheduleKeys.all, 'history', date] as const,
 }
+
+/** A failed browser read; `status` lets a screen tell an ended session (401) from an outage. */
+export class ScheduleReadError extends Error {
+  constructor(readonly status: number) {
+    super('schedules_read_failed')
+  }
+}
+
+/** Browser read of one History date's doses through the authenticated API route. */
+export async function fetchHistoryDay(
+  date: string,
+  signal?: AbortSignal,
+): Promise<DoseOccurrence[]> {
+  const timeout = AbortSignal.timeout(12000)
+  const response = await fetch(`/api/schedules/history?date=${encodeURIComponent(date)}`, {
+    cache: 'no-store',
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+  })
+  if (!response.ok) throw new ScheduleReadError(response.status)
+  const data: { doses: DoseOccurrence[] } = await response.json()
+  return data.doses
+}
+
+/**
+ * Stale at once, like the Today snapshot: a revisited date shows its cached doses and refreshes
+ * quietly. No polling; default gc time. The page's server prefetch is the entry read.
+ */
+export const historyDayQuery = (date: string) =>
+  queryOptions({
+    queryKey: scheduleKeys.history(date),
+    queryFn: ({ signal }) => fetchHistoryDay(date, signal),
+    staleTime: 0,
+  })
 
 /** Browser read of the owner's schedules snapshot through the authenticated API route. */
 export async function fetchScheduleSnapshot(signal?: AbortSignal): Promise<ScheduleSnapshot> {

@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Icon } from '@/components/ui/icon'
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
@@ -17,12 +17,13 @@ import { DoseActions } from './dose-actions'
 import { doseSaveKey } from './dose-saves'
 import { DoseStatusBadge } from './dose-status-badge'
 import { dayHeadingId, historyHref, useHistoryDayFocus } from './history-date-nav'
+import { scheduleKeys } from './queries'
 import { doseClock as clock } from './taken-form'
 import { useDoseSaves } from './use-dose-outcome-mutation'
 
 export type HistoryDayResult =
   | { status: 'loaded'; doses: DoseOccurrence[]; medicines: Medicine[] }
-  | { status: 'unavailable' }
+  | { status: 'unavailable'; retry: () => void }
   | { status: 'unauthorized' }
 
 const recorded = (dose: DoseOccurrence) => dose.status === 'Taken' || dose.status === 'Skipped'
@@ -79,10 +80,9 @@ export function HistoryDay({
           </AlertTitle>
           <AlertDescription className="flex flex-col items-start gap-2">
             <p>Connect to the internet and retry. Your records have not changed.</p>
-            {/* A full load reads this date again. */}
-            <a className={buttonVariants({ variant: 'outline' })} href={historyHref(date)}>
+            <Button type="button" variant="outline" onClick={result.retry}>
               Retry this date
-            </a>
+            </Button>
           </AlertDescription>
         </Alert>
       ) : result.doses.length === 0 ? (
@@ -175,8 +175,11 @@ function HistoryDoseRow({
   medicine?: Medicine
 }) {
   const [confirmed, setConfirmed] = useState<DoseOutcomeRecord | null>(null)
-  const router = useRouter()
+  const client = useQueryClient()
   const saves = useDoseSaves()
+  // A correction reconciles only this date; Today and other dates are FE-680's.
+  const invalidateDate = () =>
+    client.invalidateQueries({ queryKey: scheduleKeys.history(date), exact: true })
   const serverRevision = 'record' in dose ? (dose.record.revision ?? 0) : 0
   const current =
     confirmed && (confirmed.revision ?? 0) > serverRevision
@@ -239,12 +242,12 @@ function HistoryDoseRow({
           appearance="row"
           describedBy={`dose-status-${dose.id}`}
           refresh={async () => {
-            router.refresh()
+            await invalidateDate()
             return false
           }}
           onRecorded={(record) => {
             setConfirmed(record)
-            router.refresh()
+            void invalidateDate()
           }}
         />
       )}

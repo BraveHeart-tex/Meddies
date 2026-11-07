@@ -1,13 +1,23 @@
 'use client'
 
 import { useEffect, useState, type RefObject } from 'react'
-import { useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { shiftDate } from '@/lib/calendar-date'
+import { isScheduleDate } from './contract'
 
 export const historyHref = (date: string) => `/history?date=${date}`
+
+/**
+ * The History date in the URL. Bare `/history` means today; the server already replaced a future
+ * or malformed date with today (648·H6), so anything else invalid reads as today too.
+ */
+export function useHistoryDate(today: string) {
+  const date = useSearchParams().get('date')
+  return date !== null && isScheduleDate(date) && date <= today ? date : today
+}
 
 /** The current History day's focus target: its heading, or the alert or empty message. */
 export const dayHeadingId = 'history-day-heading'
@@ -15,6 +25,11 @@ export const dayHeadingId = 'history-day-heading'
 // Set by a date change here and consumed by the next History day that mounts, so focus moves to
 // its heading after navigation but not on a direct load or reload (FE-648 a11y).
 let focusRequested = false
+
+/** Moves focus to the next History day that mounts, as after a date change or Retry. */
+export function requestDayFocus() {
+  focusRequested = true
+}
 
 /** Focuses `target` when it mounts after a History date change. */
 export function useHistoryDayFocus(target: RefObject<HTMLElement | null>) {
@@ -34,17 +49,18 @@ const currentDayHeading: RefObject<HTMLElement | null> = {
 
 /**
  * History's date bar (D11): Previous day, the DatePicker and Next day. Every change pushes
- * `/history?date=`, so Back returns to the date seen before and reload keeps the current one.
+ * `/history?date=` with the native History API, so the results read the dated query without a
+ * server round trip, Back returns to the date seen before and reload keeps the current one.
  */
-export function HistoryDateNav({ date, today }: { date: string; today: string }) {
-  const router = useRouter()
+export function HistoryDateNav({ today }: { today: string }) {
+  const date = useHistoryDate(today)
   // After a pick, the closing calendar restores focus to the day heading instead of its
   // trigger. It does so after its exit animation, when the new day may already have mounted, so
   // the target is looked up then. Escape still returns focus to the trigger.
   const [picked, setPicked] = useState(false)
   const [value, setValue] = useState(date)
   const [shown, setShown] = useState(date)
-  // A new date from the server (Back, Forward) replaces the picked one.
+  // A new date in the URL (Back, Forward) replaces the picked one.
   if (shown !== date) {
     setShown(date)
     setValue(date)
@@ -52,8 +68,8 @@ export function HistoryDateNav({ date, today }: { date: string; today: string })
   function go(next: string) {
     if (next === value || next > today) return
     setValue(next)
-    focusRequested = true
-    router.push(historyHref(next))
+    requestDayFocus()
+    window.history.pushState(null, '', historyHref(next))
   }
   return (
     <nav aria-label="History date" className="flex min-w-0 items-center gap-2">

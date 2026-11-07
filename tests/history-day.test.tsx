@@ -8,34 +8,41 @@ import { HistoryDateNav } from '../src/features/schedules/history-date-nav'
 import { HistoryDay } from '../src/features/schedules/history-day'
 import { createQueryClient } from '../src/lib/session-query-client'
 
-const push = vi.fn()
+let search = new URLSearchParams()
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push, replace: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
+  useSearchParams: () => search,
   usePathname: () => '/history',
 }))
 
-beforeEach(() => push.mockReset())
+// Date changes use the native History API, so the results read the dated query (FE-679).
+const push = vi.spyOn(window.history, 'pushState')
+const pushed = () => push.mock.lastCall?.[2]
+beforeEach(() => {
+  push.mockReset()
+  search = new URLSearchParams()
+})
 
 test('Previous day and Next day push the neighbouring dates (D11)', async () => {
-  render(<HistoryDateNav date="2026-11-01" today="2026-11-06" />)
+  search = new URLSearchParams('date=2026-11-01')
+  render(<HistoryDateNav today="2026-11-06" />)
   await userEvent.click(screen.getByRole('button', { name: 'Previous day' }))
-  expect(push).toHaveBeenLastCalledWith('/history?date=2026-10-31')
+  expect(pushed()).toBe('/history?date=2026-10-31')
   // Steps from the date shown, so Next day returns to 1 November.
   await userEvent.click(screen.getByRole('button', { name: 'Next day' }))
-  expect(push).toHaveBeenLastCalledWith('/history?date=2026-11-01')
+  expect(pushed()).toBe('/history?date=2026-11-01')
 })
 
 test('Next day is disabled on today', () => {
-  render(<HistoryDateNav date="2026-11-06" today="2026-11-06" />)
+  render(<HistoryDateNav today="2026-11-06" />)
   expect(screen.getByRole('button', { name: 'Next day' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Previous day' })).toBeEnabled()
 })
 
 test('picking a date pushes it', async () => {
-  render(<HistoryDateNav date="2026-11-06" today="2026-11-06" />)
+  render(<HistoryDateNav today="2026-11-06" />)
   await userEvent.click(screen.getByRole('button', { name: /Choose a date/ }))
   await userEvent.click(document.querySelector<HTMLElement>('button[data-day="2026-11-03"]')!)
-  expect(push).toHaveBeenLastCalledWith('/history?date=2026-11-03')
+  expect(pushed()).toBe('/history?date=2026-11-03')
 })
 
 const medicine: Medicine = {
@@ -118,14 +125,13 @@ test('an empty day says nothing was scheduled (648·H3)', () => {
   expect(screen.getByText('No doses were scheduled on Sunday 1 November.')).toBeVisible()
 })
 
-test('an unavailable day offers one retry for that date (648·H5)', () => {
-  renderDay({ date: '2026-11-04', result: { status: 'unavailable' } })
+test('an unavailable day offers one retry for that date (648·H5)', async () => {
+  const retry = vi.fn()
+  renderDay({ date: '2026-11-04', result: { status: 'unavailable', retry } })
   const alert = screen.getByRole('alert')
   expect(alert).toHaveTextContent('History for Wed 4 Nov could not be loaded.')
-  expect(within(alert).getByRole('link', { name: 'Retry this date' })).toHaveAttribute(
-    'href',
-    '/history?date=2026-11-04',
-  )
+  await userEvent.click(within(alert).getByRole('button', { name: 'Retry this date' }))
+  expect(retry).toHaveBeenCalledOnce()
 })
 
 test('an invalid date shows today instead and replaces the URL (648·H6)', () => {

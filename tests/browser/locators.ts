@@ -75,3 +75,7 @@ export const appHeader = (page: Page) => page.locator('main header').first()
 /** Today's doses section fallback (648·T1), shown while its server reads are held. */
 export const todayFallback = (page: Page) =>
   page.getByRole('status').filter({ hasText: 'Loading today’s doses' })
+
+/** History's results fallback (648·H4), shown while a date's reads are held. */
+export const historyFallback = (page: Page) =>
+  page.getByRole('status').filter({ hasText: 'Loading history' })
