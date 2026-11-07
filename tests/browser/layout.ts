@@ -10,7 +10,7 @@ export type Viewport = { width: number; height: number }
 /** Viewports retained by existing layout regressions; new checks select relevant widths. */
 export const layoutViewports = {
   narrow: { width: 320, height: 740 },
-  iphone17: { width: 402, height: 874 },
+  phone: { width: 402, height: 874 },
 } satisfies Record<string, Viewport>
 
 export type Box = { x: number; y: number; width: number; height: number }

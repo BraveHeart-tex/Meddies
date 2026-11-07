@@ -9,13 +9,16 @@ Install the browser once with `pnpm exec playwright install chromium`, then use 
 wrapper:
 
 ```sh
-pnpm test:browser:build                 # all journeys on iphone-17
+pnpm test:browser:build                 # every journey except @visual, on phone
 pnpm test:browser:build today-skipped   # one journey, matched by file name
-pnpm exec playwright test --project=narrow cozy-visual
+pnpm test:browser:visual                # only the @visual journeys, on phone
+pnpm exec playwright test --project=narrow --grep @visual cozy-visual
 ```
 
 The wrapper always runs `pnpm worker:build`, runs `next build --webpack` only when the
-build is stale, then `playwright test --project=iphone-17` with your arguments. Outside CI,
+build is stale, then `playwright test --project=phone` with your arguments.
+`pnpm test:browser:build` and `pnpm test:browser` (what CI runs) skip journeys tagged
+`@visual`; `pnpm test:browser:visual` is the same wrapper selecting only them. Outside CI,
 global setup fails fast when a build input is newer than `.next/BUILD_ID`, or when
 `.next/BUILD_ID` or `.worker-build/index.js` is missing; rerun through the wrapper. Run
 builds and journeys sequentially when they share `.next` or `.worker-build`.
@@ -42,8 +45,8 @@ git worktree remove ../meddies-main
 
 ## Projects
 
-`iphone-17` (402x874, portrait) is the sole user's device and what `pnpm test:browser`
-selects; a bare `pnpm exec playwright test` runs every project. `narrow` (320x740) is an
+`phone` is Chromium at the iPhone 17 CSS size (402x874, portrait), not WebKit, iOS or an
+installed PWA, and what `pnpm test:browser` selects; a bare `pnpm exec playwright test` runs every project. `narrow` (320x740) is an
 opt-in stress check. Safari toolbars and safe areas shrink the usable height below 874px,
 so assert that content scrolls rather than relying on the full height.
 
@@ -125,14 +128,17 @@ use 402px, adding 320px when narrow layout is affected. Limits:
 
 ## Loading captures
 
+Visual journeys are tagged `@visual` and run only through `pnpm test:browser:visual`:
+`history-spacing`, `cozy-visual` and `loading-capture`.
+
 [`capture.ts`](capture.ts) produces opt-in review artifacts, never a CI baseline.
 `loading-capture.spec.ts` registers routes (name, path, fallback and content locators). The
 helper holds every Worker read, saves the fallback, releases and saves the loaded page,
 and writes `loading-capture.json` (case, status labels, overflow, shell boxes).
 
 ```sh
-MEDDIES_VISUAL_OUT=/tmp/meddies-capture pnpm test:browser:build loading-capture
-MEDDIES_VISUAL_OUT=/tmp/meddies-capture MEDDIES_CAPTURE_ROUTES=today MEDDIES_CAPTURE_CASES=phone,reduced-motion pnpm test:browser:build loading-capture
+MEDDIES_VISUAL_OUT=/tmp/meddies-capture pnpm test:browser:visual loading-capture
+MEDDIES_VISUAL_OUT=/tmp/meddies-capture MEDDIES_CAPTURE_ROUTES=today MEDDIES_CAPTURE_CASES=phone,reduced-motion pnpm test:browser:visual loading-capture
 ```
 
 Cases: `phone` (402x874, the default), `narrow` (320x740) and `reduced-motion` (402x874), or

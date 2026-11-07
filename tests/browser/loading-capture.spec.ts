@@ -44,7 +44,7 @@ test.use({
   },
 })
 
-test('capture loading states for review', async ({ page, app }) => {
+test('capture loading states for review', { tag: '@visual' }, async ({ page, app }) => {
   // eslint-disable-next-line playwright/no-skipped-test -- opt-in capture, never a CI assertion
   test.skip(!out, 'Set MEDDIES_VISUAL_OUT to capture loading states')
   test.setTimeout(180_000)

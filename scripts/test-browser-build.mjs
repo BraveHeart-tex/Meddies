@@ -1,9 +1,14 @@
 #!/usr/bin/env node
 // Runs browser journeys against fresh builds: always bundles the Worker (~1s), rebuilds
-// Next.js with Webpack only when a build input changed, then runs the iphone-17 project.
+// Next.js with Webpack only when a build input changed, then runs the phone project.
+// Journeys tagged @visual are skipped unless --visual is the first argument.
 // Usage: pnpm test:browser:build [playwright args]
+//        pnpm test:browser:visual [playwright args]
 import { spawnSync } from 'node:child_process'
 import { staleBuildReason } from '../tests/helpers/journey-build.mjs'
+
+const visual = process.argv[2] === '--visual'
+const playwrightArgs = process.argv.slice(visual ? 3 : 2)
 
 function run(label, command, args) {
   const started = performance.now()
@@ -23,6 +28,7 @@ run('playwright', 'pnpm', [
   'exec',
   'playwright',
   'test',
-  '--project=iphone-17',
-  ...process.argv.slice(2),
+  '--project=phone',
+  visual ? '--grep=@visual' : '--grep-invert=@visual',
+  ...playwrightArgs,
 ])

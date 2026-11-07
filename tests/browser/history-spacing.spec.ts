@@ -61,75 +61,76 @@ const viewports = [
 ]
 
 for (const { width, height } of viewports)
-  test(`History sections are 20px apart and the header matches Today at ${width}px`, async ({
-    page,
-    app,
-  }, testInfo) => {
-    await page.setViewportSize({ width, height })
+  test(
+    `History sections are 20px apart and the header matches Today at ${width}px`,
+    { tag: '@visual' },
+    async ({ page, app }, testInfo) => {
+      await page.setViewportSize({ width, height })
 
-    await test.step("the header sits where Today's does", async () => {
-      await page.goto('/')
-      await expect(doseRow(page, `${today}T05:00:00.000Z`)).toBeVisible()
-      const todayHeader = await appHeader(page).boundingBox()
-      await page
-        .getByRole('navigation', { name: 'Primary' })
-        .getByRole('link', { name: 'History' })
-        .click()
-      await expect(page.getByRole('heading', { level: 1, name: 'History' })).toBeVisible()
-      const historyHeader = await appHeader(page).boundingBox()
-      expect({ x: historyHeader!.x, y: historyHeader!.y, width: historyHeader!.width }).toEqual({
-        x: todayHeader!.x,
-        y: todayHeader!.y,
-        width: todayHeader!.width,
+      await test.step("the header sits where Today's does", async () => {
+        await page.goto('/')
+        await expect(doseRow(page, `${today}T05:00:00.000Z`)).toBeVisible()
+        const todayHeader = await appHeader(page).boundingBox()
+        await page
+          .getByRole('navigation', { name: 'Primary' })
+          .getByRole('link', { name: 'History' })
+          .click()
+        await expect(page.getByRole('heading', { level: 1, name: 'History' })).toBeVisible()
+        const historyHeader = await appHeader(page).boundingBox()
+        expect({ x: historyHeader!.x, y: historyHeader!.y, width: historyHeader!.width }).toEqual({
+          x: todayHeader!.x,
+          y: todayHeader!.y,
+          width: todayHeader!.width,
+        })
       })
-    })
 
-    await test.step('loaded day (648·H1, H2)', async () => {
-      const yesterday = addDays(today, -1)
-      await page.goto(`/history?date=${yesterday}`)
-      const loaded = historyDay(page, 'Thursday 14 June, 1 dose')
-      await expectSectionGaps(appHeader(page), dateNav(page), loaded)
-      // Inside the day, the heading stays 14px above its rows.
-      const heading = loaded.getByRole('heading', { level: 2 })
-      expect(await gaps(heading, historyList(page, yesterday))).toEqual([14])
-      await page.screenshot({ path: testInfo.outputPath(`history-loaded-${width}.png`) })
-    })
+      await test.step('loaded day (648·H1, H2)', async () => {
+        const yesterday = addDays(today, -1)
+        await page.goto(`/history?date=${yesterday}`)
+        const loaded = historyDay(page, 'Thursday 14 June, 1 dose')
+        await expectSectionGaps(appHeader(page), dateNav(page), loaded)
+        // Inside the day, the heading stays 14px above its rows.
+        const heading = loaded.getByRole('heading', { level: 2 })
+        expect(await gaps(heading, historyList(page, yesterday))).toEqual([14])
+        await page.screenshot({ path: testInfo.outputPath(`history-loaded-${width}.png`) })
+      })
 
-    await test.step('empty day (648·H3)', async () => {
-      await page.goto(`/history?date=${addDays(startDate, -1)}`)
-      await expectSectionGaps(
-        appHeader(page),
-        dateNav(page),
-        historyDay(page, 'No doses were scheduled on Monday 11 June.'),
-      )
-    })
+      await test.step('empty day (648·H3)', async () => {
+        await page.goto(`/history?date=${addDays(startDate, -1)}`)
+        await expectSectionGaps(
+          appHeader(page),
+          dateNav(page),
+          historyDay(page, 'No doses were scheduled on Monday 11 June.'),
+        )
+      })
 
-    await test.step('invalid-date notice above today (648·H6)', async () => {
-      await page.goto('/history?date=2035-12-24')
-      await expectSectionGaps(
-        appHeader(page),
-        dateNav(page),
-        page.getByRole('alert').filter({ hasText: 'That date is not available.' }),
-        historyDay(page, 'Friday 15 June, 1 dose'),
-      )
-      await page.screenshot({ path: testInfo.outputPath(`history-invalid-${width}.png`) })
-    })
+      await test.step('invalid-date notice above today (648·H6)', async () => {
+        await page.goto('/history?date=2035-12-24')
+        await expectSectionGaps(
+          appHeader(page),
+          dateNav(page),
+          page.getByRole('alert').filter({ hasText: 'That date is not available.' }),
+          historyDay(page, 'Friday 15 June, 1 dose'),
+        )
+        await page.screenshot({ path: testInfo.outputPath(`history-invalid-${width}.png`) })
+      })
 
-    await test.step('results fallback (648·H4)', async () => {
-      for (const route of historyReads) app.worker.hold(route)
-      await page.goto('/history', { waitUntil: 'commit' })
-      await expectSectionGaps(appHeader(page), dateNav(page), historyFallbackSection(page))
-      app.worker.release()
-    })
+      await test.step('results fallback (648·H4)', async () => {
+        for (const route of historyReads) app.worker.hold(route)
+        await page.goto('/history', { waitUntil: 'commit' })
+        await expectSectionGaps(appHeader(page), dateNav(page), historyFallbackSection(page))
+        app.worker.release()
+      })
 
-    await test.step('unavailable day (648·H5)', async () => {
-      for (const route of historyReads) app.worker.fail(route, 503)
-      await page.goto('/history')
-      await expectSectionGaps(
-        appHeader(page),
-        dateNav(page),
-        historyDay(page, 'History for Today, Fri 15 Jun could not be loaded.'),
-      )
-      app.worker.clear()
-    })
-  })
+      await test.step('unavailable day (648·H5)', async () => {
+        for (const route of historyReads) app.worker.fail(route, 503)
+        await page.goto('/history')
+        await expectSectionGaps(
+          appHeader(page),
+          dateNav(page),
+          historyDay(page, 'History for Today, Fri 15 Jun could not be loaded.'),
+        )
+        app.worker.clear()
+      })
+    },
+  )
