@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
-import { createRequire } from 'node:module'
-const require = createRequire(import.meta.url)
-const { json, mutationGuard, failure } = require('../src/lib/http.ts')
-const { readJsonRequest } = require('../src/lib/json-request.ts')
-const { ApplicationError } = require('../src/lib/application-error.ts')
+import { test } from 'vitest'
+import { json, mutationGuard, failure } from '../src/lib/http.ts'
+import { readJsonRequest } from '../src/lib/json-request.ts'
+import { ApplicationError } from '../src/lib/application-error.ts'
 
 const request = (headers, body = '{}') =>
   new Request('https://meddies.test/api/schedules', {

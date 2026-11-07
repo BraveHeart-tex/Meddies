@@ -22,7 +22,9 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "playwright.config.ts",
-    "tests/browser/**/*.ts",
+    "vitest.config.mts",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],

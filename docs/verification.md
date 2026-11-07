@@ -11,10 +11,30 @@ pnpm verify:local
 The command runs lint, format check, typecheck, a Webpack production build, and
 tests in order. Webpack avoids the Turbopack CSS worker's local port requirement
 in restricted agent environments. CI and releases use the default Turbopack build.
-The HTTP suite uses the production Next.js build.
-Typechecking covers Next.js and Worker source. Tests bundle the Worker and cover
-application operations, local workerd/D1 integration, and production Next.js HTTP
-paths using synthetic configuration and identities. They do not access production
+Typechecking covers Next.js and Worker source and test TypeScript, including the
+Vitest config.
+
+`pnpm test` builds the Worker bundle, then runs both Vitest projects in
+`vitest.config.mts`:
+
+- `unit`: every test that does not load the Worker bundle. Node environment, 5s test
+  and hook timeout.
+- `integration`: the auth and medicine storage suites, which run the Worker bundle
+  (`.worker-build`) in local workerd/D1. 30s test and hook timeout. The auth suite
+  also starts `next start`, so it needs a production build in `.next` (`pnpm build`).
+
+A test that never settles fails on its project's timeout and names the test. Pass a
+per-test timeout only when the test's own deadlines are longer, as the dev-stack
+tests do.
+
+```sh
+pnpm test:unit                           # unit project, no Worker build
+pnpm test:unit tests/http.test.mjs       # one file
+pnpm test:integration                    # builds the Worker, then integration
+```
+
+Tests import `test` and hooks from `vitest`; there are no global test functions.
+They use synthetic configuration and identities. They do not access production
 personal data or prove a deployed Google callback or remote D1 configuration.
 `pnpm worker:build` is a dry run; it does not deploy resources.
 

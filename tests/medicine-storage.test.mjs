@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { after, before, test } from 'node:test'
+import { afterAll, beforeAll, test } from 'vitest'
 import { createWorker } from '../worker/index.ts'
 import { createScheduleOperations } from '../src/features/schedules/operations.ts'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
@@ -24,7 +24,7 @@ const call = (command, authorization = `Bearer ${secret}`) =>
     headers: { authorization, 'content-type': 'application/json' },
     body: JSON.stringify(command),
   })
-before(async () => {
+beforeAll(async () => {
   runtime = new Miniflare(
     convertV4MiniflareOptions({
       modules: true,
@@ -71,7 +71,7 @@ before(async () => {
     },
   })
 })
-after(async () => {
+afterAll(async () => {
   await runtime?.dispose()
 })
 

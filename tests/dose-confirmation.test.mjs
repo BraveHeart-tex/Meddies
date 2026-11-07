@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { outcomeConfirmation } from '../src/features/schedules/dose-confirmation.ts'
 
 const key = { scheduleId: '6e0b55ee-2e10-4e00-80f2-a736c2f50f95' }

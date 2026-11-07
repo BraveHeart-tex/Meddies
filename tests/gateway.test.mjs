@@ -1,32 +1,20 @@
 import assert from 'node:assert/strict'
-import { createRequire, registerHooks } from 'node:module'
-import { after, test } from 'node:test'
+import { afterAll, test, vi } from 'vitest'
+import { send as medicineSend } from '../src/features/medicines/server.ts'
+import { send as scheduleSend } from '../src/features/schedules/server.ts'
+import { PUT } from '../src/app/api/schedules/route.ts'
+// Mocked below; the synthetic wiring lets tests toggle the session.
+import { setAuthenticated } from '@/features/auth/server'
 
 // Replace server-only wiring, leaving the feature gateways and transport intact.
-const hooks = registerHooks({
-  resolve(specifier, context, nextResolve) {
-    if (specifier === 'server-only')
-      return {
-        url: new URL('./helpers/server-wiring.cjs', import.meta.url).href,
-        shortCircuit: true,
-      }
-    if (specifier === '@/features/auth/server')
-      return {
-        url: new URL('./helpers/server-wiring.cjs', import.meta.url).href,
-        shortCircuit: true,
-      }
-    return nextResolve(specifier, context)
-  },
-})
-const require = createRequire(import.meta.url)
-const { send: medicineSend } = require('../src/features/medicines/server.ts')
-const { send: scheduleSend } = require('../src/features/schedules/server.ts')
+vi.mock('server-only', () => ({}))
+vi.mock('@/features/auth/server', () => import('./helpers/server-wiring.cjs'))
 const originalFetch = globalThis.fetch
 const originalUrl = process.env.MEDICINES_WORKER_URL
 const originalSecret = process.env.MEDICINES_WORKER_SECRET
 process.env.MEDICINES_WORKER_URL = 'https://worker.test'
 process.env.MEDICINES_WORKER_SECRET = 'synthetic-capability'
-after(() => {
+afterAll(() => {
   globalThis.fetch = originalFetch
   for (const [key, value] of [
     ['MEDICINES_WORKER_URL', originalUrl],
@@ -35,7 +23,6 @@ after(() => {
     if (value === undefined) delete process.env[key]
     else process.env[key] = value
   }
-  hooks.deregister()
 })
 const list = { operation: 'list', ownerId: 'google:test' }
 test('gateway preserves Worker status mapping and hides network, redirect and JSON failures', async () => {
@@ -93,7 +80,6 @@ test('feature decoders preserve malformed envelope and invalid field mappings', 
 })
 
 test('schedules HTTP dispatch retains omitted Taken, strict Skipped and session owner', async () => {
-  const { PUT } = require('../src/app/api/schedules/route.ts')
   const scheduleId = '10000000-0000-4000-8000-000000000001'
   const dueAt = '2026-11-06T06:00:00.000Z'
   const takenAt = '2026-11-06T06:05:00.000Z'
@@ -130,7 +116,6 @@ test('schedules HTTP dispatch retains omitted Taken, strict Skipped and session 
     record: { scheduleId, dueAt, outcome: 'Skipped', recordedAt: dueAt },
   })
   assert.equal((await put({ scheduleId, dueAt, outcome: 'Skipped', quantity: 1 })).status, 400)
-  const { setAuthenticated } = require('./helpers/server-wiring.cjs')
   setAuthenticated(false)
   try {
     assert.equal((await put({ outcome: 'Invalid' })).status, 400)

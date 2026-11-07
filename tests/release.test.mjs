@@ -3,12 +3,12 @@ import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
-import { test } from 'node:test'
+import { test } from 'vitest'
 
 const sha = spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim()
 async function fixture(t) {
   const dir = await mkdtemp(join(tmpdir(), 'meddies-release-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
+  t.onTestFinished(() => rm(dir, { recursive: true, force: true }))
   const log = join(dir, 'commands')
   await writeFile(
     join(dir, 'pnpm'),
@@ -138,7 +138,7 @@ test('rerun after Worker failure reapplies pending migrations before deployment'
 
 test('failed verification stops before build and tests', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'meddies-verify-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
+  t.onTestFinished(() => rm(dir, { recursive: true, force: true }))
   const log = join(dir, 'commands')
   await writeFile(
     join(dir, 'pnpm'),

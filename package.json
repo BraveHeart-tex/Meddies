@@ -14,7 +14,9 @@
     "*.{json,md,css}": "prettier --write --ignore-unknown"
   },
   "scripts": {
-    "test": "pnpm worker:build && node --import tsx --test tests/*.test.mjs",
+    "test": "pnpm worker:build && vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "pnpm worker:build && vitest run --project integration",
     "test:browser": "playwright test --project=iphone-17",
     "test:browser:build": "node scripts/test-browser-build.mjs",
     "lint": "eslint .",
@@ -69,9 +71,9 @@
     "lint-staged": "17.6.0",
     "miniflare": "5.20261103.0-beta",
     "prettier": "^3.9.10",
-    "tsx": "^4.23.15",
     "typescript": "5.9.3",
     "vercel": "65.10.0",
+    "vitest": "5.0.5",
     "wrangler": "4.157.0"
   }
 }

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { isTimeOfDay, joinTime, timeParts } from '../src/lib/time-of-day.ts'
 
 test('a half-chosen time keeps the chosen half and stays distinguishable from empty', () => {

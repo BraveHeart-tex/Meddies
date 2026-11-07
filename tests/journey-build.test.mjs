@@ -2,11 +2,11 @@ import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, rm, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { after, test } from 'node:test'
+import { afterAll, test } from 'vitest'
 import { journeySetupError } from './helpers/journey-build.mjs'
 
 const roots = []
-after(() => Promise.all(roots.map((root) => rm(root, { recursive: true, force: true }))))
+afterAll(() => Promise.all(roots.map((root) => rm(root, { recursive: true, force: true }))))
 
 const minutesAgo = (minutes) => new Date(Date.now() - minutes * 60_000)
 

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { endSessionQueryClient, sessionQueryClient } from '../src/lib/session-query-client.ts'
 
 const key = ['medicines', 'list']

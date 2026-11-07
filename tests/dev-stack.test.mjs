@@ -5,12 +5,20 @@ import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { test } from 'node:test'
+import { test } from 'vitest'
 
 const script = fileURLToPath(new URL('../scripts/dev-stack.mjs', import.meta.url))
 const secret = 'a'.repeat(40)
+// Every script run has its own deadline, so a stuck command fails with its output.
+// Each test's timeout covers its runs' deadlines (including the fixture's cleanup stop),
+// which exceed the 5s default.
+const commandDeadline = 30_000
+const startDeadline = 205_000
+const budget = ({ starts = 0, commands = 0 }) => ({
+  timeout: starts * startDeadline + commands * commandDeadline + 5_000,
+})
 
-function run(args, cwd, extraEnv = {}, timeout = 30000) {
+function run(args, cwd, extraEnv = {}, timeout = commandDeadline) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [script, ...args], {
       cwd,
@@ -65,7 +73,7 @@ if (args[0] === 'exec' || args[0] === 'dev') {
   )
   await chmod(fakePnpm, 0o755)
   const env = { PATH: `${bin}:${process.env.PATH}`, ...extra }
-  t.after(async () => {
+  t.onTestFinished(async () => {
     await run(['stop'], cwd, { PATH: `${bin}:${process.env.PATH}` })
     await rm(cwd, { recursive: true, force: true })
   })
@@ -80,96 +88,120 @@ async function canBind(port) {
   })
 }
 
-test('status reports missing local configuration without printing secret values', async (t) => {
-  const { cwd } = await fixture(t)
-  await rm(path.join(cwd, '.env.local'))
-  await rm(path.join(cwd, 'worker/.dev.vars'))
-  const result = await run(['status'], cwd)
-  assert.notEqual(result.code, 0)
-  assert.match(result.output, /MEDICINES_WORKER_SECRET/)
-  assert.doesNotMatch(result.output, /secret-value/)
-})
+test(
+  'status reports missing local configuration without printing secret values',
+  budget({ commands: 2 }),
+  async (t) => {
+    const { cwd } = await fixture(t)
+    await rm(path.join(cwd, '.env.local'))
+    await rm(path.join(cwd, 'worker/.dev.vars'))
+    const result = await run(['status'], cwd)
+    assert.notEqual(result.code, 0)
+    assert.match(result.output, /MEDICINES_WORKER_SECRET/)
+    assert.doesNotMatch(result.output, /secret-value/)
+  },
+)
 
-test('start, status, repeated start, stop, and repeated stop preserve local D1 state', async (t) => {
-  if (!(await canBind(3000)) || !(await canBind(8787)))
-    return t.skip('sandbox does not permit binding the fixed local development ports')
-  const { cwd, env } = await fixture(t)
-  const started = await run(['start'], cwd, env, 205000)
-  assert.equal(started.code, 0, started.output)
-  assert.match(started.output, /Local stack ready/)
-  const repeated = await run(['start'], cwd, env, 205000)
-  assert.equal(repeated.code, 0, repeated.output)
-  assert.match(repeated.output, /Reusing stack/)
-  const status = await run(['status'], cwd, env)
-  assert.equal(status.code, 0, status.output)
-  assert.match(status.output, /Worker ready/)
-  assert.match(status.output, /App ready/)
-  const stopStarted = Date.now()
-  assert.equal((await run(['stop'], cwd, env)).code, 0)
-  assert.ok(
-    Date.now() - stopStarted < 6000,
-    'normal stop should not wait for the escalation deadline',
-  )
-  assert.equal((await run(['stop'], cwd, env)).code, 0)
-  assert.match(
-    await readFile(path.join(cwd, 'worker/.wrangler/state/migrations'), 'utf8'),
-    /applied/,
-  )
-})
+test(
+  'start, status, repeated start, stop, and repeated stop preserve local D1 state',
+  budget({ starts: 2, commands: 4 }),
+  async (t) => {
+    if (!(await canBind(3000)) || !(await canBind(8787)))
+      return t.skip('sandbox does not permit binding the fixed local development ports')
+    const { cwd, env } = await fixture(t)
+    const started = await run(['start'], cwd, env, startDeadline)
+    assert.equal(started.code, 0, started.output)
+    assert.match(started.output, /Local stack ready/)
+    const repeated = await run(['start'], cwd, env, startDeadline)
+    assert.equal(repeated.code, 0, repeated.output)
+    assert.match(repeated.output, /Reusing stack/)
+    const status = await run(['status'], cwd, env)
+    assert.equal(status.code, 0, status.output)
+    assert.match(status.output, /Worker ready/)
+    assert.match(status.output, /App ready/)
+    const stopStarted = Date.now()
+    assert.equal((await run(['stop'], cwd, env)).code, 0)
+    assert.ok(
+      Date.now() - stopStarted < 6000,
+      'normal stop should not wait for the escalation deadline',
+    )
+    assert.equal((await run(['stop'], cwd, env)).code, 0)
+    assert.match(
+      await readFile(path.join(cwd, 'worker/.wrangler/state/migrations'), 'utf8'),
+      /applied/,
+    )
+  },
+)
 
-test('migration failure reports its stage and leaves no owned runner', async (t) => {
-  const { cwd, env } = await fixture(t, { TEST_MIGRATION_FAIL: '1' })
-  const result = await run(['start'], cwd, env)
-  assert.notEqual(result.code, 0)
-  assert.match(result.output, /failed at migration/)
-  assert.match(result.output, /migration\.log/)
-  assert.equal((await run(['status'], cwd, env)).code, 1)
-})
+test(
+  'migration failure reports its stage and leaves no owned runner',
+  budget({ commands: 3 }),
+  async (t) => {
+    const { cwd, env } = await fixture(t, { TEST_MIGRATION_FAIL: '1' })
+    const result = await run(['start'], cwd, env)
+    assert.notEqual(result.code, 0)
+    assert.match(result.output, /failed at migration/)
+    assert.match(result.output, /migration\.log/)
+    assert.equal((await run(['status'], cwd, env)).code, 1)
+  },
+)
 
-test('early Next exit reports its stage and cleans up Worker', async (t) => {
-  if (!(await canBind(3000)) || !(await canBind(8787)))
-    return t.skip('sandbox does not permit binding the fixed local development ports')
-  const { cwd, env } = await fixture(t, { TEST_APP_EXIT: '1' })
-  const result = await run(['start'], cwd, env, 205000)
-  assert.notEqual(result.code, 0)
-  assert.match(result.output, /failed at app/)
-  assert.match(result.output, /app\.log/)
-  const stopped = await run(['stop'], cwd, env)
-  assert.equal(stopped.code, 0, stopped.output)
-})
+test(
+  'early Next exit reports its stage and cleans up Worker',
+  budget({ starts: 1, commands: 2 }),
+  async (t) => {
+    if (!(await canBind(3000)) || !(await canBind(8787)))
+      return t.skip('sandbox does not permit binding the fixed local development ports')
+    const { cwd, env } = await fixture(t, { TEST_APP_EXIT: '1' })
+    const result = await run(['start'], cwd, env, startDeadline)
+    assert.notEqual(result.code, 0)
+    assert.match(result.output, /failed at app/)
+    assert.match(result.output, /app\.log/)
+    const stopped = await run(['stop'], cwd, env)
+    assert.equal(stopped.code, 0, stopped.output)
+  },
+)
 
-test('exited app wrapper cannot leave its service group behind', async (t) => {
-  if (!(await canBind(3000)) || !(await canBind(8787)))
-    return t.skip('sandbox does not permit binding the fixed local development ports')
-  const { cwd, env } = await fixture(t, { TEST_APP_WRAPPER_EXIT: '1' })
-  const result = await run(['start'], cwd, env, 205000)
-  assert.notEqual(result.code, 0)
-  assert.match(result.output, /failed at app/)
-  await new Promise((resolve) => setTimeout(resolve, 300))
-  assert.equal(await canBind(3000), true)
-  assert.equal(await canBind(8787), true)
-})
+test(
+  'exited app wrapper cannot leave its service group behind',
+  budget({ starts: 1, commands: 1 }),
+  async (t) => {
+    if (!(await canBind(3000)) || !(await canBind(8787)))
+      return t.skip('sandbox does not permit binding the fixed local development ports')
+    const { cwd, env } = await fixture(t, { TEST_APP_WRAPPER_EXIT: '1' })
+    const result = await run(['start'], cwd, env, startDeadline)
+    assert.notEqual(result.code, 0)
+    assert.match(result.output, /failed at app/)
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    assert.equal(await canBind(3000), true)
+    assert.equal(await canBind(8787), true)
+  },
+)
 
-test('busy unrelated port fails without changing its listener', async (t) => {
-  const server = net.createServer()
-  try {
-    await new Promise((resolve, reject) => {
-      server.once('error', reject)
-      server.listen(3000, '127.0.0.1', resolve)
-    })
-  } catch {
-    t.skip('sandbox does not permit binding the fixed local development port')
-    return
-  }
-  t.after(() => new Promise((resolve) => server.close(resolve)))
-  const { cwd, env } = await fixture(t)
-  const result = await run(['start'], cwd, env)
-  assert.notEqual(result.code, 0)
-  assert.match(result.output, /Port 3000 is occupied/)
-  assert.equal(server.listening, true)
-})
+test(
+  'busy unrelated port fails without changing its listener',
+  budget({ commands: 2 }),
+  async (t) => {
+    const server = net.createServer()
+    try {
+      await new Promise((resolve, reject) => {
+        server.once('error', reject)
+        server.listen(3000, '127.0.0.1', resolve)
+      })
+    } catch {
+      t.skip('sandbox does not permit binding the fixed local development port')
+      return
+    }
+    t.onTestFinished(() => new Promise((resolve) => server.close(resolve)))
+    const { cwd, env } = await fixture(t)
+    const result = await run(['start'], cwd, env)
+    assert.notEqual(result.code, 0)
+    assert.match(result.output, /Port 3000 is occupied/)
+    assert.equal(server.listening, true)
+  },
+)
 
-test('stale state is explicit and stop never signals it', async (t) => {
+test('stale state is explicit and stop never signals it', budget({ commands: 3 }), async (t) => {
   const { cwd, env } = await fixture(t)
   await mkdir(path.join(cwd, '.dev-stack'))
   await writeFile(

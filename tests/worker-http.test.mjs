@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { createWorker } from '../worker/index.ts'
 
 const secret = 'synthetic-worker-secret-at-least-32-characters'

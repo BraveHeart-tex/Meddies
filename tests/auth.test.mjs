@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process'
 import { once } from 'node:events'
 import { createServer } from 'node:net'
 import { setTimeout as delay } from 'node:timers/promises'
-import { after, before, test } from 'node:test'
+import { afterAll, beforeAll, test } from 'vitest'
 import { encode } from 'next-auth/jwt'
 import { createWorker } from '../worker/index.ts'
 import { istanbulDate } from '../src/features/schedules/contract.ts'
@@ -38,7 +38,7 @@ async function csrfSession() {
   return { csrfToken, cookies }
 }
 
-before(async () => {
+beforeAll(async () => {
   worker = new Miniflare(
     convertV4MiniflareOptions({
       modules: true,
@@ -90,7 +90,7 @@ before(async () => {
   assert.fail('production server did not become ready')
 })
 
-after(async () => {
+afterAll(async () => {
   await worker?.dispose()
   if (child && child.exitCode === null) {
     child.kill('SIGTERM')

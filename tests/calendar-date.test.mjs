@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { calendarDay, dateLabel, dateValue } from '../src/lib/calendar-date.ts'
 
 const zones = ['Pacific/Kiritimati', 'America/Los_Angeles', 'Pacific/Pago_Pago', 'Europe/Istanbul']

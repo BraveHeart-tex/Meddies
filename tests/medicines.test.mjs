@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { createMedicineOperations } from '../src/features/medicines/operations.ts'
 
 test('medicine operations reject invalid labels and units before persistence', async () => {
