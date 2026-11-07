@@ -5,13 +5,12 @@ import Link from 'next/link'
 import { InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { useQueryClient } from '@tanstack/react-query'
 import type { Medicine } from '@/features/medicines/contract'
 import { MedicationTile } from '@/features/medicines/medication-tile'
 import { useMedicines } from '@/features/medicines/queries'
 import type { DailySchedule } from './contract'
 import { ScheduleForm } from './schedule-form'
-import { applySchedule, type SchedulesRead } from './queries'
+import { type SchedulesRead } from './queries'
 
 /**
  * First schedule setup for the `?schedule=ID` medicine (FE-647 A7, S5, S6). The form shows only
@@ -29,7 +28,6 @@ export function ScheduleSetupForm({
   medicineId: string
   onSaved?: (medicine: Medicine) => void
 }) {
-  const queryClient = useQueryClient()
   const {
     medicines,
     loading: medicinesLoading,
@@ -44,7 +42,6 @@ export function ScheduleSetupForm({
 
   function saved(confirmed: DailySchedule) {
     setSavedId(confirmed.id)
-    void applySchedule(queryClient, confirmed)
     if (medicine) onSaved?.(medicine)
   }
 

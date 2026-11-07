@@ -1,4 +1,4 @@
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query'
 import { parseMedicine, type Medicine } from './contract'
 
 /** Shared medicine query keys. Mutations update and reconcile these exact keys. */
@@ -23,6 +23,17 @@ export const medicinesQuery = () =>
   queryOptions({
     queryKey: medicineKeys.list(),
     queryFn: ({ signal }) => fetchMedicines(signal),
+    // Medicines are immutable and cannot be deleted yet. A stale list cannot erase a save.
+    structuralSharing: (old, next) => {
+      const current = old as Medicine[] | undefined
+      const incoming = next as Medicine[]
+      return current
+        ? [
+            ...incoming,
+            ...current.filter((item) => !incoming.some((value) => value.id === item.id)),
+          ]
+        : incoming
+    },
   })
 
 /**
@@ -46,5 +57,17 @@ export function useMedicines() {
 
 /** A confirmed save replaces or appends that medicine in the cached list. */
 export function withSavedMedicine(list: Medicine[] | undefined, medicine: Medicine) {
-  return list && [...list.filter((item) => item.id !== medicine.id), medicine]
+  return [...(list ?? []).filter((item) => item.id !== medicine.id), medicine]
+}
+
+/** Cancel reads begun before confirmation, publish the saved medicine, then reconcile. */
+export async function confirmMedicine(
+  client: QueryClient,
+  medicine: Medicine,
+  active = () => true,
+) {
+  await client.cancelQueries({ queryKey: medicineKeys.all })
+  if (!active()) return
+  client.setQueryData<Medicine[]>(medicineKeys.list(), (list) => withSavedMedicine(list, medicine))
+  void client.invalidateQueries({ queryKey: medicineKeys.all })
 }

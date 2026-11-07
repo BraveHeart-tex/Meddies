@@ -122,8 +122,10 @@ Record these decisions in the owning ticket for each changed route:
 
 ## Session interaction
 
-Lifetime and Drafts are the target state, delivered by FE-638. Until it lands,
-forms keep values and pending saves only while their screen is mounted.
+Medicine Add and schedule setup drafts and submitted saves live in session memory,
+scoped to the browser Query client. Route unmounts never cancel these saves.
+The session feedback host keeps pending saves visible and reports confirmation or
+recovery through the app-level Toast host (FE-668). Dose save lifetime is owned by FE-624.
 
 `/medications` query states (`?add`, `?medicine`, `?schedule`) render one mounted
 `MedicinePanel`, so its client state persists across them; reset per-screen state

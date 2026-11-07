@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { InfoIcon } from 'lucide-react'
@@ -23,6 +23,11 @@ import { useKnownOffline } from '@/lib/use-known-offline'
 import { useSessionFormDraft } from '@/lib/use-session-form-draft'
 import type { Medicine } from '@/features/medicines/contract'
 import type { DailySchedule } from './contract'
+import { useQueryClient } from '@tanstack/react-query'
+import { requestSave, type SaveProblem } from '@/lib/session-saves'
+import { useSessionSave } from '@/lib/use-session-save'
+import { discardSessionFormDraft } from '@/lib/use-session-form-draft'
+import { applySchedule } from './queries'
 import {
   newTimeRow,
   scheduleFormDefaults,
@@ -34,9 +39,6 @@ import { ScheduleTimeRow } from './schedule-time-row'
 import { SHORT_WEEKDAYS, WEEK_ORDER, WEEKDAY_NAMES, weekdaySummary } from './weekdays'
 
 const MAX_TIMES = 24
-
-/** Request failures shown at form level; a 409 leaves the form (647·S5) instead. */
-type SaveProblem = 'rejected' | 'unauthorized' | 'uncertain'
 
 /**
  * First schedule for one saved medicine (FE-647 A7 to A9, S1 to S4; FE-650 D22). Values stay
@@ -56,7 +58,13 @@ export function ScheduleForm({
   onConflict: () => void
 }) {
   // Start date of an unconfirmed save: its retry keeps the same request after midnight.
-  const [retryStartDate, setRetryStartDate] = useState<string>()
+  const queryClient = useQueryClient()
+  const key = `schedule:setup:${medicine.id}`
+  const saveState = useSessionSave<DailySchedule>(key)
+  const retryStartDate =
+    saveState.problem === 'unconfirmed' || saveState.pending
+      ? (saveState.attempt?.payload.startDate as string | undefined)
+      : undefined
   const form = useForm<ScheduleFormValues, unknown, ScheduleFormOutput>({
     resolver: zodResolver(scheduleFormSchema({ unit: medicine.unit, today, retryStartDate })),
     defaultValues: scheduleFormDefaults(medicine.unit, today),
@@ -65,20 +73,17 @@ export function ScheduleForm({
   const weekdays = useWatch({ control: form.control, name: 'weekdays' })
   const draft = useSessionFormDraft(`schedule:setup:${medicine.id}`, form)
   const offline = useKnownOffline()
-  // Retry identity: reused while the validated details are unchanged (647·S3).
-  const action = useRef<{ id: string; fingerprint: string } | null>(null)
-  // Synchronous duplicate-submit guard; isSubmitting updates only after a render.
-  const lock = useRef(false)
+  useEffect(() => {
+    const saved = saveState.attempt?.result?.saved as DailySchedule | undefined
+    if (!saved) return
+    form.reset(scheduleFormDefaults(medicine.unit, today))
+    draft.discard()
+    onSaved(saved)
+    saveState.store.clear(key)
+  }, [saveState.attempt, saveState.store, key, form, draft, medicine.unit, today, onSaved])
   // Focus target after a row is removed, applied once the rows re-render.
   const pendingFocus = useRef<number | 'add' | null>(null)
   const addButton = useRef<HTMLButtonElement>(null)
-  const mounted = useRef(true)
-  useEffect(() => {
-    mounted.current = true
-    return () => {
-      mounted.current = false
-    }
-  }, [])
   useEffect(() => {
     const target = pendingFocus.current
     if (target === null) return
@@ -88,47 +93,33 @@ export function ScheduleForm({
   })
 
   async function save(values: ScheduleFormOutput) {
-    if (lock.current) return
-    lock.current = true
-    try {
-      const details = { medicineId: medicine.id, ...values }
-      const fingerprint = JSON.stringify(details)
-      if (action.current?.fingerprint !== fingerprint)
-        action.current = { id: crypto.randomUUID(), fingerprint }
-      let saved: DailySchedule | null = null
-      let problem: SaveProblem | 'conflict' = 'uncertain'
-      try {
-        const response = await fetch('/api/schedules', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...details, id: action.current.id }),
-          signal: AbortSignal.timeout(12000),
-        })
-        if (response.ok) saved = (await response.json()).schedules[0]
-        else if (response.status === 400) problem = 'rejected'
-        else if (response.status === 401) problem = 'unauthorized'
-        else if (response.status === 409) problem = 'conflict'
-      } catch {}
-      if (saved) {
-        action.current = null
-        if (mounted.current) {
-          setRetryStartDate(undefined)
-          form.reset(scheduleFormDefaults(medicine.unit, today))
+    await saveState.store.submit(
+      key,
+      {
+        payload: { medicineId: medicine.id, ...values },
+        label: medicine.label,
+        kind: 'schedule',
+        href: `/medications?schedule=${encodeURIComponent(medicine.id)}`,
+        openHref: `/medications?medicine=${encodeURIComponent(medicine.id)}`,
+      },
+      async (payload, active) => {
+        const result = await requestSave(
+          '/api/schedules',
+          payload,
+          (data) => (data as { schedules: DailySchedule[] }).schedules[0],
+        )
+        if (result.saved && active()) {
+          discardSessionFormDraft(queryClient, key)
+          await queryClient.cancelQueries({ queryKey: ['schedules'] })
+          if (active()) void applySchedule(queryClient, result.saved)
         }
-        draft.discard()
-        onSaved(saved)
-        return
-      }
-      if (!mounted.current) return
-      if (problem === 'conflict') return onConflict()
-      // A definite rejection was not stored: the next save is a new request.
-      if (problem !== 'uncertain') action.current = null
-      setRetryStartDate(problem === 'uncertain' ? values.startDate : undefined)
-      form.setError('root.server', { type: problem })
-    } finally {
-      lock.current = false
-    }
+        return result
+      },
+    )
   }
+  useEffect(() => {
+    if (saveState.problem === 'conflict') onConflict()
+  }, [saveState.problem, onConflict])
 
   // Duplicate-time errors depend on other rows: revalidate every row once errors are showing.
   function revalidateRows() {
@@ -141,8 +132,8 @@ export function ScheduleForm({
     revalidateRows()
   }
 
-  const { isSubmitting, errors } = form.formState
-  const problem = errors.root?.server?.type as SaveProblem | undefined
+  const isSubmitting = Boolean(saveState.pending)
+  const problem = saveState.problem
   const minDate = retryStartDate && retryStartDate < today ? retryStartDate : today
 
   return (
@@ -162,9 +153,8 @@ export function ScheduleForm({
             variant="ghost"
             disabled={isSubmitting}
             onClick={() => {
-              if (lock.current) return
-              action.current = null
-              setRetryStartDate(undefined)
+              if (saveState.pending) return
+              saveState.store.clear(key)
               form.reset(scheduleFormDefaults(medicine.unit, today))
               draft.discard()
             }}
@@ -297,7 +287,7 @@ export function ScheduleForm({
           ? 'Saving schedule...'
           : offline
             ? 'Connect to save'
-            : problem === 'uncertain'
+            : problem === 'unconfirmed'
               ? 'Retry saving schedule'
               : 'Save schedule'}
       </Button>
@@ -307,7 +297,7 @@ export function ScheduleForm({
 
 function SaveProblemAlert({ problem, label }: { problem: SaveProblem; label: string }) {
   const copy = {
-    uncertain: {
+    unconfirmed: {
       title: 'Save could not be confirmed.',
       body: `${label} is saved. Its schedule details are still here; retry saves them once.`,
     },
@@ -319,6 +309,7 @@ function SaveProblemAlert({ problem, label }: { problem: SaveProblem; label: str
       title: 'Your session ended.',
       body: `${label} is saved without a schedule. Sign in again to save it.`,
     },
+    conflict: { title: 'A schedule is already recorded.', body: 'Open Medications to review it.' },
   }[problem]
   return (
     <Alert id="schedule-save-problem" variant="destructive">

@@ -8,6 +8,10 @@ import type { FieldValues, UseFormReturn } from 'react-hook-form'
 // or browser storage; dropping that client also makes its drafts collectable.
 const drafts = new WeakMap<QueryClient, Map<string, unknown>>()
 
+export function discardSessionFormDraft(client: QueryClient, key: string) {
+  drafts.get(client)?.delete(key)
+}
+
 /** Preserve raw editing values, including incomplete fields, until save or explicit discard. */
 export function useSessionFormDraft<T extends FieldValues, O extends FieldValues>(
   key: string,

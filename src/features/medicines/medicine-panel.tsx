@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronLeftIcon } from 'lucide-react'
@@ -14,7 +13,7 @@ import { AppHeader } from '@/components/layout/app-header'
 import { MedicationTile } from './medication-tile'
 import { MedicineForm } from './medicine-form'
 import type { Medicine } from './contract'
-import { medicineKeys, useMedicines, withSavedMedicine } from './queries'
+import { useMedicines } from './queries'
 
 export function MedicinePanel({
   scheduleMode = 'list',
@@ -33,7 +32,6 @@ export function MedicinePanel({
   const [savedMedicine, setSavedMedicine] = useState<Medicine | null>(null)
   // Handoff from schedule setup to the medicine's page (FE-647 D4), carried the same way.
   const [scheduledMedicine, setScheduledMedicine] = useState<Medicine | null>(null)
-  const queryClient = useQueryClient()
   const {
     medicines,
     loading,
@@ -82,15 +80,10 @@ export function MedicinePanel({
   }
 
   function saved(medicine: Medicine) {
-    queryClient.setQueryData<Medicine[]>(medicineKeys.list(), (list) =>
-      withSavedMedicine(list, medicine),
-    )
     setSavedMedicine(medicine)
     // Never navigate someone who has already left the Add screen.
     if (mounted.current && mode.current === 'add')
       router.replace(`/medications?medicine=${encodeURIComponent(medicine.id)}`)
-    // Reconcile: a fresh read includes older medicines even if the initial list was pending.
-    void queryClient.invalidateQueries({ queryKey: medicineKeys.all })
   }
 
   if (scheduleMode === 'add')

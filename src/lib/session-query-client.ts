@@ -1,3 +1,4 @@
+import { endSessionSaves } from './session-saves'
 import { focusManager, QueryClient } from '@tanstack/react-query'
 
 // Query refreshes stale reads when the page becomes visible; also treat window focus as
@@ -52,6 +53,7 @@ export function endSessionQueryClient() {
   if (!current) return
   const { client } = current
   current = null
+  endSessionSaves(client)
   const queries = client.getQueryCache().getAll()
   // A cancelled fetch reschedules garbage collection on its settled query; drop that timer too.
   void client.cancelQueries().finally(() => queries.forEach((query) => query.destroy()))

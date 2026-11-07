@@ -64,7 +64,7 @@ function ToastContent({ className, ...props }: ToastPrimitive.Content.Props) {
     <ToastPrimitive.Content
       data-slot="toast-content"
       className={cn(
-        'flex h-full min-h-13 items-center gap-2.5 overflow-hidden py-2 pr-2 pl-3.5 transition-opacity duration-220 ease-calm motion-reduce:transition-none data-behind:opacity-0 data-expanded:opacity-100',
+        'flex h-full min-h-13 flex-wrap items-center gap-2.5 overflow-hidden py-2 pr-2 pl-3.5 transition-opacity duration-220 ease-calm motion-reduce:transition-none data-behind:opacity-0 data-expanded:opacity-100',
         className,
       )}
       {...props}
@@ -180,11 +180,11 @@ function ToastList() {
     <Toast key={toastItem.id} toast={toastItem}>
       <ToastContent>
         <ToastIcon type={toastItem.type} />
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex min-w-0 flex-1 basis-24 flex-col gap-0.5">
           <ToastTitle />
           <ToastDescription />
         </div>
-        {toastItem.actionProps ? <ToastAction /> : null}
+        {toastItem.actionProps ? <ToastAction className="ml-auto" /> : null}
       </ToastContent>
     </Toast>
   ))

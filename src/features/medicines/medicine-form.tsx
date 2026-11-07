@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
@@ -23,7 +22,10 @@ import { useKnownOffline } from '@/lib/use-known-offline'
 import { useSessionFormDraft } from '@/lib/use-session-form-draft'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { parseMedicine, type Medicine } from './contract'
-import { medicinesQuery } from './queries'
+import { medicinesQuery, confirmMedicine } from './queries'
+import { requestSave, type SaveProblem } from '@/lib/session-saves'
+import { useSessionSave } from '@/lib/use-session-save'
+import { discardSessionFormDraft } from '@/lib/use-session-form-draft'
 import {
   medicineFormDefaults,
   medicineFormSchema,
@@ -35,9 +37,6 @@ const UNITS = [
   { value: 'tablet', label: 'Tablet' },
   { value: 'capsule', label: 'Capsule' },
 ] as const
-
-/** Request failures shown at form level. Types drive the alert, the primary label and locking. */
-type SaveProblem = 'rejected' | 'unauthorized' | 'conflict' | 'uncertain'
 
 /** Reconciling read: refreshes the cached list and finds the attempted medicine in it. */
 async function findSavedMedicine(client: QueryClient, id: string) {
@@ -61,63 +60,40 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
   const draft = useSessionFormDraft('medicine:add', form)
   const offline = useKnownOffline()
   const queryClient = useQueryClient()
-  // Retry identity: reused while the validated details are unchanged, so a retry after an
-  // uncertain result saves at most one medicine.
-  const action = useRef<{ id: string; fingerprint: string } | null>(null)
-  // Synchronous duplicate-submit guard; RHF's isSubmitting updates only after a render.
-  const lock = useRef(false)
-  // Name in the failed save, for the alert copy; kept apart from the edited values.
-  const [problemLabel, setProblemLabel] = useState('')
-  const mounted = useRef(true)
-  useEffect(() => {
-    mounted.current = true
-    return () => {
-      mounted.current = false
-    }
-  }, [])
-
+  const saveState = useSessionSave<Medicine>('medicine:add', (saved) => {
+    form.reset(medicineFormDefaults)
+    draft.discard()
+    onSaved(saved)
+  })
   async function save(values: MedicineFormOutput) {
-    if (lock.current) return
-    lock.current = true
-    try {
-      const fingerprint = JSON.stringify([values.label, values.strength, values.unit])
-      if (action.current?.fingerprint !== fingerprint)
-        action.current = { id: crypto.randomUUID(), fingerprint }
-      const { id } = action.current
-      let saved: Medicine | null = null
-      let problem: SaveProblem = 'uncertain'
-      try {
-        const response = await fetch('/api/medicines', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, ...values }),
-          signal: AbortSignal.timeout(12000),
-        })
-        if (response.ok) saved = parseMedicine((await response.json()).medicines[0])
-        else if (response.status === 400) problem = 'rejected'
-        else if (response.status === 401) problem = 'unauthorized'
-        else if (response.status === 409) problem = 'conflict'
-      } catch {}
-      // Reconcile once before claiming the save is unconfirmed (647·M2).
-      if (!saved && problem === 'uncertain') saved = await findSavedMedicine(queryClient, id)
-      if (saved) {
-        action.current = null
-        if (mounted.current) form.reset(medicineFormDefaults)
-        draft.discard()
-        onSaved(saved)
-        return
-      }
-      if (mounted.current) {
-        setProblemLabel(values.label)
-        form.setError('root.server', { type: problem })
-      }
-    } finally {
-      lock.current = false
-    }
+    await saveState.store.submit(
+      'medicine:add',
+      {
+        payload: { ...values },
+        label: values.label,
+        kind: 'medicine',
+        href: '/medications?add',
+      },
+      async (payload, active) => {
+        let result = await requestSave('/api/medicines', payload, (data) =>
+          parseMedicine((data as { medicines: unknown[] }).medicines[0]),
+        )
+        if (result.problem === 'unconfirmed' && active()) {
+          const saved = await findSavedMedicine(queryClient, payload.id as string)
+          if (saved) result = { saved }
+        }
+        if (result.saved && active()) {
+          discardSessionFormDraft(queryClient, 'medicine:add')
+          await confirmMedicine(queryClient, result.saved, active)
+        }
+        return result
+      },
+    )
   }
 
-  const { isSubmitting, errors } = form.formState
-  const problem = errors.root?.server?.type as SaveProblem | undefined
+  const isSubmitting = Boolean(saveState.pending)
+  const problem = saveState.problem
+  const problemLabel = saveState.attempt?.label ?? ''
   const locked = isSubmitting || problem === 'conflict'
 
   return (
@@ -136,8 +112,8 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
             variant="ghost"
             disabled={isSubmitting}
             onClick={() => {
-              if (lock.current) return
-              action.current = null
+              if (saveState.pending) return
+              saveState.store.clear('medicine:add')
               form.reset(medicineFormDefaults)
               draft.discard()
             }}
@@ -270,7 +246,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
             ? 'Saving medicine...'
             : offline
               ? 'Connect to save'
-              : problem === 'uncertain'
+              : problem === 'unconfirmed'
                 ? 'Retry saving medicine'
                 : 'Save medicine'}
         </Button>
@@ -281,7 +257,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
 
 function SaveProblemAlert({ problem, label }: { problem: SaveProblem; label: string }) {
   const copy = {
-    uncertain: {
+    unconfirmed: {
       title: 'Save could not be confirmed.',
       body: `Your details are still here. Retry saves ${label} once, even if the first try arrived. If you change the details, check Medications first so it isn't saved twice.`,
     },
