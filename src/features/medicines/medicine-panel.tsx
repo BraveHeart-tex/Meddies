@@ -29,12 +29,15 @@ export function MedicinePanel({
   // Handoff from Add to the saved medicine's page (FE-647 D7). Panel state carries it across
   // the replace navigation (one mounted panel per /medications); a reload drops it.
   const [savedMedicine, setSavedMedicine] = useState<Medicine | null>(null)
+  // Handoff from schedule setup to the medicine's page (FE-647 D4), carried the same way.
+  const [scheduledMedicine, setScheduledMedicine] = useState<Medicine | null>(null)
   const [medicines, setMedicines] = useState<Medicine[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const mounted = useRef(true)
   const generation = useRef(0)
   const mode = useRef(scheduleMode)
+  const setupMedicineId = useRef(scheduleMedicineId)
   const detailHeading = useRef<HTMLHeadingElement>(null)
   const load = useCallback(async () => {
     const current = ++generation.current
@@ -72,8 +75,10 @@ export function MedicinePanel({
   }, [load])
   useEffect(() => {
     mode.current = scheduleMode
-  }, [scheduleMode])
+    setupMedicineId.current = scheduleMedicineId
+  }, [scheduleMode, scheduleMedicineId])
   const justSavedHere = scheduleMode === 'detail' && savedMedicine?.id === detailMedicineId
+  const justScheduledHere = scheduleMode === 'detail' && scheduledMedicine?.id === detailMedicineId
   // The panel stays mounted across query-state navigation, so drop the confirmation once she
   // leaves the saved medicine's page (Back must not show it again).
   const screen = `${scheduleMode}:${detailMedicineId}`
@@ -81,12 +86,21 @@ export function MedicinePanel({
   if (previousScreen !== screen) {
     setPreviousScreen(screen)
     if (savedMedicine && scheduleMode !== 'add' && !justSavedHere) setSavedMedicine(null)
+    if (scheduledMedicine && scheduleMode !== 'setup' && !justScheduledHere)
+      setScheduledMedicine(null)
   }
   useEffect(() => {
-    if (!justSavedHere) return
+    if (!justSavedHere && !justScheduledHere) return
     // After the replace navigation, focus the page heading (FE-647 a11y).
     detailHeading.current?.focus()
-  }, [justSavedHere])
+  }, [justSavedHere, justScheduledHere])
+
+  function scheduled(medicine: Medicine) {
+    setScheduledMedicine(medicine)
+    // Never navigate someone who has already left this medicine's setup.
+    if (mounted.current && mode.current === 'setup' && setupMedicineId.current === medicine.id)
+      router.replace(`/medications?medicine=${encodeURIComponent(medicine.id)}`)
+  }
 
   function saved(medicine: Medicine) {
     setMedicines((previous) => [...previous.filter((item) => item.id !== medicine.id), medicine])
@@ -186,8 +200,14 @@ export function MedicinePanel({
           </div>
         </section>
       )}
+      {justScheduledHere && (
+        <Alert variant="confirmation" role="status">
+          <AlertTitle>Schedule saved for {scheduledMedicine.label}.</AlertTitle>
+        </Alert>
+      )}
       <SchedulePanel
         initialNow={initialNow}
+        onScheduleSaved={scheduled}
         medicines={medicines}
         mode={scheduleMode}
         initialMedicineId={scheduleMedicineId || detailMedicineId}

@@ -4,6 +4,8 @@ Use these Linear labels when a workflow refers to the corresponding triage role.
 
 | Label           | Apply when                                                                                                   |
 | --------------- | ------------------------------------------------------------------------------------------------------------ |
+| bug             | Category: something is broken.                                                                               |
+| enhancement     | Category: new feature or improvement.                                                                        |
 | needs-triage    | Maintainer evaluation is needed.                                                                             |
 | needs-info      | Progress depends on missing reporter information.                                                            |
 | ready-for-agent | Scope and acceptance criteria are explicit, required context is linked, and blocking questions are resolved. |

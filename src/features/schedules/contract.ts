@@ -1,4 +1,5 @@
 import { ApplicationError } from '../../lib/application-error'
+import { ALL_WEEKDAYS } from './weekdays'
 
 export const SCHEDULE_TIMEZONE = 'Europe/Istanbul'
 export type DailyScheduleInput = {
@@ -83,7 +84,7 @@ export function parseSchedule(
     input.times.length > 24
   )
     throw new ApplicationError('validation', 400)
-  const weekdays = input.weekdays === undefined ? [0, 1, 2, 3, 4, 5, 6] : input.weekdays
+  const weekdays = input.weekdays === undefined ? [...ALL_WEEKDAYS] : input.weekdays
   if (
     !Array.isArray(weekdays) ||
     weekdays.length < 1 ||
@@ -143,7 +144,7 @@ export function scheduleRunsOn(
   if (date < schedule.startDate || (schedule.endDate && date > schedule.endDate)) return false
   const [year, month, day] = date.split('-').map(Number)
   const weekday = new Date(Date.UTC(year, month - 1, day, 12)).getUTCDay()
-  return (schedule.weekdays ?? [0, 1, 2, 3, 4, 5, 6]).includes(weekday)
+  return (schedule.weekdays ?? ALL_WEEKDAYS).includes(weekday)
 }
 
 export function isInstant(value: unknown): value is string {

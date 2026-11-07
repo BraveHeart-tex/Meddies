@@ -4,12 +4,11 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/co
 import type { Medicine } from '@/features/medicines/contract'
 import type { DailySchedule } from './contract'
 
-const SHORT_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+import { ALL_WEEKDAYS, weekdaySummary } from './weekdays'
 
 function routineSummary(schedule: DailySchedule) {
-  const days = schedule.weekdays ?? [0, 1, 2, 3, 4, 5, 6]
   return [
-    days.length === 7 ? 'Every day' : days.map((day) => SHORT_WEEKDAYS[day]).join(', '),
+    weekdaySummary(schedule.weekdays ?? ALL_WEEKDAYS, 'short'),
     schedule.times.map((slot) => slot.time).join(', '),
   ].join(' · ')
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { InfoIcon } from 'lucide-react'
@@ -18,6 +18,7 @@ import {
   FieldTitle,
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { useKnownOffline } from '@/lib/use-known-offline'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { parseMedicine, type Medicine } from './contract'
 import {
@@ -34,24 +35,6 @@ const UNITS = [
 
 /** Request failures shown at form level. Types drive the alert, the primary label and locking. */
 type SaveProblem = 'rejected' | 'unauthorized' | 'conflict' | 'uncertain'
-
-function subscribeOnline(notify: () => void) {
-  window.addEventListener('online', notify)
-  window.addEventListener('offline', notify)
-  return () => {
-    window.removeEventListener('online', notify)
-    window.removeEventListener('offline', notify)
-  }
-}
-
-/** Known offline (FE-650 D22): only when the browser reports no network. */
-function useKnownOffline() {
-  return useSyncExternalStore(
-    subscribeOnline,
-    () => !navigator.onLine,
-    () => false,
-  )
-}
 
 async function findSavedMedicine(id: string) {
   try {

@@ -31,8 +31,8 @@ test('pick schedule dates, dose times and intake in Istanbul time from another t
   app,
 }, testInfo) => {
   const medicineId = randomUUID()
-  const start = datePicker(page, 'Start date in Istanbul')
-  const calendar = page.getByRole('dialog', { name: 'Start date in Istanbul' })
+  const start = datePicker(page, 'Start date')
+  const calendar = page.getByRole('dialog', { name: 'Start date' })
   const save = page.getByRole('button', { name: 'Save schedule' })
   const dialog = drawer(page)
 
@@ -105,7 +105,7 @@ test('pick schedule dates, dose times and intake in Istanbul time from another t
   await test.step('require both parts of every dose time', async () => {
     await page.getByLabel(/^Quantity/).fill('1')
     await pickTime(page, 'Time 1', '23:45')
-    await page.getByRole('button', { name: 'Add time' }).click()
+    await page.getByRole('button', { name: 'Add another time' }).click()
     const second = timePicker(page, 'Time 2')
     await second.hour.click()
     await page.getByRole('option', { name: '00', exact: true }).click()
@@ -116,7 +116,7 @@ test('pick schedule dates, dose times and intake in Istanbul time from another t
       .fill('0.5')
     await save.click()
     await expect(second.minute).toBeFocused()
-    await expect(page.getByText('Schedule saved.')).toHaveCount(0)
+    await expect(page.getByText('Schedule saved for Picker Medicine.')).toHaveCount(0)
     await second.minute.click()
     await page.getByRole('option', { name: '15', exact: true }).tap()
     await expectTime(page, 'Time 2', '00:15')
@@ -140,7 +140,7 @@ test('pick schedule dates, dose times and intake in Istanbul time from another t
     await expect(timePicker(page, 'Time 1').hour).toBeDisabled()
     await expect(timePicker(page, 'Time 2').minute).toBeDisabled()
     release()
-    await expect(page.getByText('Schedule saved.')).toBeVisible()
+    await expect(page.getByText('Schedule saved for Picker Medicine.')).toBeVisible()
   })
 
   await test.step('save the picked values unchanged', async () => {

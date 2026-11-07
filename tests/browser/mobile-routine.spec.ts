@@ -44,12 +44,11 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
       .getByRole('link', { name: 'Set schedule' })
     await expect(setSchedule).toHaveAttribute('href', /^\/medications\?schedule=[\w-]+/)
     await setSchedule.press('Enter')
-    await expect(page.getByRole('heading', { name: 'Set dose schedule' })).toBeVisible()
-    await expect(page.getByText('Medicine: Routine Medicine')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Routine Medicine' })).toBeVisible()
   })
 
   await test.step('retry an uncertain schedule save without losing setup', async () => {
-    await pickDate(page, 'Start date in Istanbul', today)
+    await pickDate(page, 'Start date', today)
     await pickTime(page, 'Time 1', time)
     await page.getByLabel(/^Quantity/).fill('1')
     // The first save reaches the server, but its response is lost on the way back.
@@ -67,9 +66,9 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await expect(page.getByText('Save could not be confirmed.')).toBeVisible()
     await expectTime(page, 'Time 1', time)
     await page.getByRole('button', { name: 'Retry saving schedule' }).press('Enter')
-    await expect(page.getByText('Schedule saved.')).toBeVisible()
+    await expect(page.getByText('Schedule saved for Routine Medicine.')).toBeVisible()
     await page.reload()
-    await expect(page.getByText(`Daily at ${time}`)).toHaveCount(1)
+    await expect(page.getByText(`Every day at ${time}`)).toHaveCount(1)
   })
 
   await test.step('record the scheduled dose before it is due', async () => {

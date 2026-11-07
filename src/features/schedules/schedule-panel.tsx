@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import type { Medicine } from '@/features/medicines/contract'
 import { SchedulingClockProvider } from './scheduling-clock'
 import { useScheduleSnapshot } from './use-schedule-snapshot'
 import { TodaySchedule } from './today-schedule'
-import { ScheduleSetupForm, WEEKDAY_NAMES } from './schedule-setup-form'
+import { ScheduleSetupForm } from './schedule-setup-form'
+import { weekdaySummary } from './weekdays'
 import { MedicationRoutineGroups } from './medication-routine-groups'
 
 export function SchedulePanel({
@@ -16,6 +16,7 @@ export function SchedulePanel({
   medicinesLoading,
   medicinesError,
   retryMedicines,
+  onScheduleSaved,
   initialNow,
 }: {
   /** The server scheduling time at render, until a schedules snapshot replaces it. */
@@ -26,11 +27,12 @@ export function SchedulePanel({
   medicinesLoading: boolean
   medicinesError: boolean
   retryMedicines: () => void
+  /** Runs after the server confirms a first schedule. */
+  onScheduleSaved?: (medicine: Medicine) => void
 }) {
   const snapshot = useScheduleSnapshot(initialNow)
   const { schedules, now, loading, loadError, retry: retrySchedules } = snapshot
-  const [medicineId, setMedicineId] = useState(initialMedicineId)
-  const selectedSchedule = schedules.find((schedule) => schedule.medicineId === medicineId)
+  const selectedSchedule = schedules.find((schedule) => schedule.medicineId === initialMedicineId)
   const name = (id: string) => medicines.find((medicine) => medicine.id === id)?.label ?? 'Medicine'
   return (
     <SchedulingClockProvider serverNow={now}>
@@ -97,10 +99,7 @@ export function SchedulePanel({
             ) : selectedSchedule ? (
               <div className="space-y-2 rounded-xl border bg-card p-4">
                 <p>
-                  {(selectedSchedule.weekdays ?? [0, 1, 2, 3, 4, 5, 6]).length === 7
-                    ? 'Daily'
-                    : `On ${(selectedSchedule.weekdays ?? []).map((day) => WEEKDAY_NAMES[day]).join(', ')}`}{' '}
-                  at{' '}
+                  {weekdaySummary(selectedSchedule.weekdays, 'long')} at{' '}
                   {selectedSchedule.times
                     .map((slot) => `${slot.time} (${slot.quantity})`)
                     .join(', ')}
@@ -127,15 +126,12 @@ export function SchedulePanel({
         {mode === 'setup' && (
           <ScheduleSetupForm
             snapshot={snapshot}
-            initialNow={initialNow}
-            initialMedicineId={initialMedicineId}
-            medicineId={medicineId}
-            onMedicineChange={setMedicineId}
-            name={name}
+            medicineId={initialMedicineId}
             medicines={medicines}
             medicinesLoading={medicinesLoading}
             medicinesError={medicinesError}
             retryMedicines={retryMedicines}
+            onSaved={onScheduleSaved}
           />
         )}
       </div>
