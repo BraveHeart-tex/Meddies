@@ -51,12 +51,9 @@ the ticket that owns each nearby item.
 - Five acceptance criteria at most. More means the ticket holds two slices: split it.
 - Evidence is an assertion, not a record: "the journey asserts layout shift ≤ 0.01",
   not "measure and record a budget". The assertion's comment carries the justification.
-- Visual evidence and loading captures follow the gate-ticket rule in
-  [verification](verification.md#browser-journeys).
 - Write "Tests prove…" for logic and UI states. Name a browser journey only for
-  behaviour that needs a real browser and app: route navigation, SSR, hydration and
-  streaming, layout and viewport, or the auth and Worker path
-  ([verification](verification.md#cheapest-proof)).
+  behaviour that needs a real browser or the full stack
+  ([verification](verification.md#browser-journeys)).
 - A ticket with sub-issues is a parent. It lists the slices, an ownership list
   and the shared rules, and its only criterion is that the slices are Done.
 
@@ -92,7 +89,8 @@ ticket's description in the same change, then comments on both tickets.
 
 ## Closing
 
-Close a ticket only when every criterion is checked, `pnpm verify:local` and the
-relevant browser journeys pass, and the evidence for each is recorded in the ticket.
+Close a ticket only when every criterion is checked, `pnpm verify:local` passes, CI
+passes (including browser journeys) on the pushed commit, and the evidence comment is
+recorded in the ticket ([verification](verification.md#evidence-and-completion)).
 For any criterion that will not be finished, create a follow-up ticket with a single
 owner, link it from this ticket, and remove the item here.

@@ -20,11 +20,8 @@ injected through MSW or journey fixtures, never timers in product code.
 - **[Component tests](../tests/README.md#component-tests)** prove UI states with MSW:
   refresh keeps content, stale or out-of-order responses lose to newer state, focus and
   reconnect refresh, rejection, unconfirmed save and conflict recovery.
-- **[Browser journeys](../tests/browser/README.md)** prove what needs a real browser and app:
-  streaming order and fallbacks on direct loads and cold navigation, overlapping reads,
-  hydration reuse (zero duplicate initial requests), layout stability against the route's
-  budget, stale-on-entry, navigation during a save, session end clearing private state,
-  and rollover driven by the scheduling clock.
+- **[Browser journeys](../tests/browser/README.md)** prove only what needs a real browser
+  or the full stack ([which](#browser-journeys)).
 
 Every change to data-driven UI reviews each applicable state in
 [DESIGN.md](../DESIGN.md#loading-and-saving) against the [Next.js rules](nextjs.md). Prove
@@ -32,20 +29,24 @@ behavior rather than counting Suspense boundaries.
 
 ## Browser journeys
 
-Locally, journeys are opt-in and outside `pnpm verify:local`; CI runs all of them and a
-failure blocks Release. Once after implementation, run the journeys the ticket names plus
-the specs exercising any route or flow the change edits, in one
-`pnpm test:browser:build <names>` run, then `pnpm verify:local`.
+Journeys run outside `pnpm verify:local`. CI runs every journey except `@visual`, and a
+failure blocks Release.
 
-- **Budgets:** a route ticket records `result()` from the layout helper at the selected
-  widths, sets a layout-shift budget with a justification in the ticket, and asserts
-  against it. Request counts are asserted exactly: zero repeated initial reads per path
-  after load unless the ticket justifies otherwise.
-- **Gate ticket:** a wave of routes ends in a gate ticket (FE-639 for Today and History)
-  that owns consolidated loading captures and visual review. Route tickets register their
-  routes in `loading-capture.spec.ts` and own behavioral assertions. Route-specific visual
-  evidence is needed only for that ticket's acceptance, and the gate links it without
-  recapture.
+- **Local runs:** once after implementation, run only the journeys the ticket names plus
+  any spec you added or changed, in one `pnpm test:browser:build <names>` run. No smoke
+  set, no full suite.
+- **Unrelated CI failure:** check whether it also fails on the commit before the change
+  ([how](../tests/browser/README.md#running)). If yes, file a `bug` + `needs-triage`
+  ticket and do not fix it in scope. If no, the change caused it: fix it.
+- **When to write one:** only for behavior that needs a real browser or the full stack:
+  navigation during a save, recovery from an unconfirmed save, streaming and hydration,
+  session end, and cross-route consistency. Everything else is a unit or component test.
+- **Shape:** one scenario per test. Specs that run in CI assert behavior, never pixel
+  constants. Add a viewport variant only when behavior differs by width. Request counts
+  are asserted exactly: zero repeated initial reads per path after load unless the
+  assertion's comment justifies otherwise.
+- **Visual journeys** are tagged `@visual`, run only on request with
+  `pnpm test:browser:visual`, and are excluded from CI with no scheduled run.
 
 ## Visual verification
 
@@ -63,10 +64,10 @@ focused checks by risk:
   interaction at normal and reduced motion; stills do not prove motion. Skeletons stay
   static at every setting.
 - **Keyboard and focus:** controls, forms, dialogs, popups or navigation.
-- **Physical iPhone:** installed-PWA behavior, safe areas, the software keyboard, touch
-  gestures or VoiceOver. Synthetic Chromium does not establish these; outstanding device
-  checks stay in their owning issue (FE-616 for iPhone acceptance, FE-602 for integrated
-  accessibility review).
+- **Synthetic vs device:** the `phone` project is Chromium at 402×874 and is never iPhone
+  evidence. Device checks (installed-PWA behavior, safe areas, the software keyboard,
+  gestures, VoiceOver, resume after suspend with a pending save) are human acceptance in
+  FE-616; integrated accessibility review stays in FE-602.
 
 Pick cases that exercise each relevant risk rather than a viewport × motion × state
 matrix. Batch review after implementation, reuse current evidence for unchanged behavior,
@@ -96,12 +97,12 @@ needs a reason. Prettier rewraps after indentation changes also remain.
 
 ## Evidence and completion
 
-Record in the active Linear issue: the revision, journeys run (by file), affected states,
-checks performed, evidence links and remaining limitations. For streaming work add
-streaming order, request counts, layout shift, viewport and project, and whether evidence
-is synthetic (Playwright) or from a real iPhone. Link existing evidence rather than
-copying it between issues.
+Record one evidence comment in the active Linear issue: the commit, the Release run link,
+journeys added or changed (by file), visual and manual checks performed, limitations and
+outstanding device checks. The assertions are the evidence; do not copy measurements or
+results. Link existing evidence rather than copying it between issues.
 
-Verification is complete when required checks pass, applicable manual checks are
-recorded, and any unverified deployment behavior is named in the issue. A failed or
-blocked check keeps verification incomplete; record it explicitly.
+Verification is complete when `pnpm verify:local` passes, the change is pushed to main,
+the Release verify job (journeys included) is green on that commit and linked in the
+issue, applicable manual checks are recorded, and any unverified deployment behavior is
+named. A failed or blocked check keeps verification incomplete; record it explicitly.

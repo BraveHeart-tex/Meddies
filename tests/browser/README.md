@@ -9,12 +9,14 @@ Install the browser once with `pnpm exec playwright install chromium`, then use 
 wrapper:
 
 ```sh
-pnpm test:browser:build                 # every journey except @visual, on phone
+pnpm test:browser:build                 # every journey except @visual (CI's job)
 pnpm test:browser:build today-skipped   # one journey, matched by file name
 pnpm test:browser:visual                # only the @visual journeys, on phone
 pnpm exec playwright test --project=narrow --grep @visual cozy-visual
 ```
 
+Locally, name only the journeys the ticket names plus specs you added or changed
+([verification](../../docs/verification.md#browser-journeys)); the full run is CI's job.
 The wrapper always runs `pnpm worker:build`, runs `next build --webpack` only when the
 build is stale, then `playwright test --project=phone` with your arguments.
 `pnpm test:browser:build` and `pnpm test:browser` (what CI runs) skip journeys tagged
@@ -27,15 +29,16 @@ builds and journeys sequentially when they share `.next` or `.worker-build`.
 starts `next dev --webpack` per test with no production build. Stop any running
 `pnpm dev` or `pnpm dev:stack` first (they share the `.next/dev` lock). StrictMode double
 effects and on-demand compilation make dev mode iteration-only: confirm streaming, request
-counts and layout shift with the wrapper before recording results. `next dev` does not
+counts and layout shift with the wrapper before trusting them. `next dev` does not
 prefetch, so cold-navigation journeys need the production build.
 
-**Is it already failing on main?** Use a separate worktree instead of stashing:
+**Does it fail without the change?** Run it on the commit before the change in a separate
+worktree instead of stashing, or read that commit's Release run:
 
 ```sh
-git worktree add ../meddies-main origin/main
-cd ../meddies-main && pnpm install && pnpm test:browser:build today-skipped
-git worktree remove ../meddies-main
+git worktree add ../meddies-base <commit>^
+cd ../meddies-base && pnpm install && pnpm test:browser:build today-skipped
+git worktree remove ../meddies-base
 ```
 
 **Failures** keep a trace, screenshot, video and redacted `service.log` in ignored
@@ -117,7 +120,7 @@ a client navigation, and read it after content is visible (on a direct load, aft
 `layout-shift` from the next document, so call it before `page.goto`; call `start()` just
 before a client-navigation click. `snapshot(stage)` records shell boxes; `result()`
 returns `cumulativeLayoutShift`, `shifts`, `inputShift(s)` and the snapshots. New checks
-use 402px, adding 320px when narrow layout is affected. Limits:
+use 402px; add 320px only when behavior differs by width. Limits:
 
 - Chromium only (Layout Instability API), not WebKit or a real iPhone.
 - A plain sum since the start, not web-vitals' session window, so long loads score higher.
