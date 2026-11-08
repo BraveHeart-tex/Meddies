@@ -2,38 +2,43 @@ import { forceTodayRenderError, restoreTodayRendering, waitForClientRouter } fro
 import { expect, test } from './fixtures'
 import { selectedNavigation } from './locators'
 
-for (const { auth, title } of [
-  { auth: false, title: 'signed out' },
-  { auth: true, title: 'signed in' },
-]) {
-  test.describe(title, () => {
-    test.use({ journey: { auth, storage: auth } })
+test.describe('unknown address', () => {
+  test.use({ journey: { auth: true, storage: true } })
 
-    test('unknown address is public and offers navigation to Today', async ({ page }) => {
-      const response = await page.goto('/unknown-fe677-address')
-      expect(response?.status()).toBe(404)
-      await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
-      await expect(page.getByRole('main').getByRole('alert')).toContainText(
-        "This page isn't in Meddies.",
-      )
-      await expect(page.getByRole('main').getByRole('alert')).toContainText(
-        "The link may be old or mistyped. Your records haven't changed.",
-      )
-      await expect(selectedNavigation(page)).toHaveCount(0)
-      // Both sessions have exactly the same public content; extra private text fails.
-      await expect(page.getByRole('main')).toHaveText(
-        /^Page not found\s*This page isn't in Meddies\.\s*The link may be old or mistyped\. Your records haven't changed\.\s*Open Today$/,
-      )
-      await waitForClientRouter(page)
-      await page.getByRole('link', { name: 'Open Today' }).click()
-      await expect(page).toHaveURL('/')
-      await expect(page.getByRole('heading', { name: 'Page not found' })).toHaveCount(0)
-      await expect(
-        page.getByRole('heading', { name: auth ? /Good / : 'Sign in', exact: true }),
-      ).toBeVisible()
-    })
+  // Allowed reason: navigation from the public recovery page with real session cookies.
+  test('unknown address offers Today signed in and signed out', async ({ page, context }) => {
+    const cookies = await context.cookies()
+    for (const { title, session, heading } of [
+      { title: 'signed in', session: cookies, heading: /Good / },
+      { title: 'signed out', session: [], heading: 'Sign in' },
+    ]) {
+      await context.clearCookies()
+      await context.addCookies(session)
+
+      await test.step(title, async () => {
+        const response = await page.goto('/unknown-fe677-address')
+        expect(response?.status()).toBe(404)
+        await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
+        await expect(page.getByRole('main').getByRole('alert')).toContainText(
+          "This page isn't in Meddies.",
+        )
+        await expect(page.getByRole('main').getByRole('alert')).toContainText(
+          "The link may be old or mistyped. Your records haven't changed.",
+        )
+        await expect(selectedNavigation(page)).toHaveCount(0)
+        // Both sessions have exactly the same public content; extra private text fails.
+        await expect(page.getByRole('main')).toHaveText(
+          /^Page not found\s*This page isn't in Meddies\.\s*The link may be old or mistyped\. Your records haven't changed\.\s*Open Today$/,
+        )
+        await waitForClientRouter(page)
+        await page.getByRole('link', { name: 'Open Today' }).click()
+        await expect(page).toHaveURL('/')
+        await expect(page.getByRole('heading', { name: 'Page not found' })).toHaveCount(0)
+        await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
+      })
+    }
   })
-}
+})
 
 test.describe('render recovery', () => {
   test.use({

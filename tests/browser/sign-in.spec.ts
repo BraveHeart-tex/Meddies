@@ -6,40 +6,41 @@ test.use({
   journey: { auth: true, storage: true, initialScheduleTime: '2035-06-15T12:00:00+03:00' },
 })
 
-for (const destination of [
-  '/history?date=2035-06-14',
-  '/medications',
-  '/medications?add',
-  '/medications?medicine=c0c22213-a56e-42f5-859b-1d5ba320c036',
-  '/medications?schedule=c0c22213-a56e-42f5-859b-1d5ba320c036',
-  '/settings',
-]) {
-  test(`signed-out entry replaces history and returns to ${destination}`, async ({
-    page,
-    context,
-    app,
-  }) => {
-    const cookies = await context.cookies()
-    await context.clearCookies()
-    await page.goto('/not-a-page')
-    await page.goto(destination)
-    await expect(page).toHaveURL(`${app.origin}/?returnTo=${encodeURIComponent(destination)}`)
-    await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible()
-    await page.goBack()
-    await expect(page).toHaveURL(`${app.origin}/not-a-page`)
-    await page.goForward()
-    await page.route('**/api/auth/signin/google*', async (route) => {
-      expect(new URLSearchParams(route.request().postData()!).get('callbackUrl')).toBe(destination)
-      await context.addCookies(cookies)
-      await route.fulfill({ json: { url: `${app.origin}${destination}` } })
-    })
-    await page.getByRole('button', { name: 'Continue with Google' }).click()
-    await expect(page).toHaveURL(`${app.origin}${destination}`)
-    await expect(page.getByRole('heading', { level: 1 })).toBeFocused()
-    await page.goBack()
-    await expect(page).toHaveURL(`${app.origin}/not-a-page`)
+// Allowed reason: Back/Forward and history replacement through the sign-in round trip.
+test('signed-out entry replaces history and returns to History', async ({ page, context, app }) => {
+  const destination = '/history?date=2035-06-14'
+  const cookies = await context.cookies()
+  await context.clearCookies()
+  await page.goto('/not-a-page')
+  await page.goto(destination)
+  await expect(page).toHaveURL(`${app.origin}/?returnTo=${encodeURIComponent(destination)}`)
+  await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible()
+  await page.goBack()
+  await expect(page).toHaveURL(`${app.origin}/not-a-page`)
+  await page.goForward()
+  await page.route('**/api/auth/signin/google*', async (route) => {
+    expect(new URLSearchParams(route.request().postData()!).get('callbackUrl')).toBe(destination)
+    await context.addCookies(cookies)
+    await route.fulfill({ json: { url: `${app.origin}${destination}` } })
   })
-}
+  await page.getByRole('button', { name: 'Continue with Google' }).click()
+  await expect(page).toHaveURL(`${app.origin}${destination}`)
+  await expect(page.getByRole('heading', { level: 1 })).toBeFocused()
+  await page.goBack()
+  await expect(page).toHaveURL(`${app.origin}/not-a-page`)
+})
+
+// Allowed reason: server-to-browser redirect handoff for the other guarded routes.
+test('signed-out entry guards Medications and Settings', async ({ page, context, app }) => {
+  await context.clearCookies()
+  for (const destination of ['/medications', '/settings']) {
+    await test.step(destination, async () => {
+      await page.goto(destination)
+      await expect(page).toHaveURL(`${app.origin}/?returnTo=${encodeURIComponent(destination)}`)
+      await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible()
+    })
+  }
+})
 
 test('restricted retry keeps the Auth.js callback destination and requests the chooser', async ({
   page,

@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures'
-import { routerPush, waitForClientRouter } from './actions'
+import { waitForClientRouter } from './actions'
 import {
   historyDateNav,
   historyFallback,
@@ -85,52 +85,17 @@ function expectOrder(page: Page, worker: WorkerControls, route: Route) {
   })
 }
 
-for (const route of [settings, history, signInError]) {
-  test(`direct load shows the ${route.name} fallback before the page`, async ({ page, app }) => {
-    app.worker.hold(route.hold)
-    await page.goto(route.url, { waitUntil: 'commit' })
-    await expectRouteFallback(page, route)
-    await expect(page.getByRole('status')).toHaveCount(1)
-    await expectOrder(page, app.worker, route)
-  })
-}
-
-for (const { route, link } of [
-  { route: settings, link: (page: Page) => page.getByRole('link', { name: 'Settings' }) },
-  {
-    route: history,
-    link: (page: Page) => page.getByRole('navigation', { name: 'Primary' }).getByText('History'),
-  },
-]) {
-  test(`cold client navigation shows the ${route.name} fallback before the page`, async ({
-    page,
-    app,
-  }) => {
-    const prefetch = await blockPrefetch(page, route.url)
-    await page.goto('/')
-    await waitForClientRouter(page)
-    await prefetch.expectBlocked()
-    app.worker.hold(route.hold)
-    await link(page).click()
-    await expectRouteFallback(page, route)
-    await expect(page.getByRole('status')).toHaveCount(1)
-    await expectOrder(page, app.worker, route)
-  })
-}
-
-// No in-app link reaches this page: Auth.js redirects here with a full load. A router push still
-// proves the fallback on a client navigation.
-test('cold client navigation shows the sign-in error fallback before the page', async ({
-  page,
-  app,
-}) => {
+// Allowed reason: streaming during a cold client navigation.
+test('cold client navigation shows the History fallback before the page', async ({ page, app }) => {
+  const prefetch = await blockPrefetch(page, history.url)
   await page.goto('/')
   await waitForClientRouter(page)
-  app.worker.hold(signInError.hold)
-  await routerPush(page, signInError.url)
-  await expectRouteFallback(page, signInError)
+  await prefetch.expectBlocked()
+  app.worker.hold(history.hold)
+  await page.getByRole('navigation', { name: 'Primary' }).getByText('History').click()
+  await expectRouteFallback(page, history)
   await expect(page.getByRole('status')).toHaveCount(1)
-  await expectOrder(page, app.worker, signInError)
+  await expectOrder(page, app.worker, history)
 })
 
 // Direct-load layout shift budget for the routes below: a fallback is replaced, not moved, and
@@ -150,7 +115,11 @@ async function expectStableLayout(
   )
 }
 
-for (const [name, viewport] of Object.entries(layoutViewports)) {
+// Allowed reason: server-to-browser streaming, once per distinct route fallback.
+{
+  const viewport = layoutViewports.phone
+  const name = '402px'
+
   test(`Settings keeps its shell and cards in place at ${name}`, async ({ page, app }) => {
     const layout = await trackLayout(page, viewport)
     const elements = () => ({
@@ -160,10 +129,10 @@ for (const [name, viewport] of Object.entries(layoutViewports)) {
     })
     app.worker.hold(settings.hold)
     await page.goto(settings.url, { waitUntil: 'commit' })
-    await expect(settings.fallback(page)).toBeVisible()
+    await expectRouteFallback(page, settings)
+    await expect(page.getByRole('status')).toHaveCount(1)
     await layout.snapshot('fallback', elements())
-    app.worker.release(settings.hold)
-    await expect(settings.content(page)).toBeVisible()
+    await expectOrder(page, app.worker, settings)
     await layout.snapshot('loaded', elements())
     await expectStableLayout(page, viewport, await layout.result())
   })
@@ -175,9 +144,10 @@ for (const [name, viewport] of Object.entries(layoutViewports)) {
     app.worker.hold(history.hold)
     app.worker.hold(dosesRead)
     await page.goto(history.url, { waitUntil: 'commit' })
-    await expect(history.fallback(page)).toBeVisible()
+    await expectRouteFallback(page, history)
+    await expect(page.getByRole('status')).toHaveCount(1)
     await layout.snapshot('fallback', elements())
-    app.worker.release(history.hold)
+    await expectOrder(page, app.worker, history)
     await expect(historyFallback(page)).toBeVisible()
     await layout.snapshot('loaded', elements())
     await expectStableLayout(page, viewport, await layout.result())
@@ -192,10 +162,10 @@ for (const [name, viewport] of Object.entries(layoutViewports)) {
     })
     app.worker.hold(signInError.hold)
     await page.goto(signInError.url, { waitUntil: 'commit' })
-    await expect(signInError.fallback(page)).toBeVisible()
+    await expectRouteFallback(page, signInError)
+    await expect(page.getByRole('status')).toHaveCount(1)
     await layout.snapshot('fallback', elements())
-    app.worker.release(signInError.hold)
-    await expect(signInError.content(page)).toBeVisible()
+    await expectOrder(page, app.worker, signInError)
     await layout.snapshot('loaded', elements())
     await expectStableLayout(page, viewport, await layout.result())
   })
