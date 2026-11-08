@@ -3,27 +3,32 @@ import { act, fireEvent, render as baseRender, screen, waitFor } from '@testing-
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import type { ReactElement } from 'react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { server } from './helpers/msw-server'
 import { AuthControl } from '../src/features/auth/controls'
+import { endSession } from '../src/features/auth/session-end'
 import { doseSaves, type DoseSaveRequest } from '../src/features/schedules/dose-saves'
 import { scheduleKeys } from '../src/features/schedules/queries'
 import { endSessionQueryClient, sessionQueryClient } from '../src/lib/session-query-client'
 import { sessionSaves } from '../src/lib/session-saves'
 
 vi.mock('next-auth/react', () => ({ signOut: vi.fn(async () => ({})), signIn: vi.fn() }))
+vi.mock('../src/features/auth/session-end', () => ({ endSession: vi.fn() }))
 
 let client: QueryClient
 function render(ui: ReactElement) {
   client = sessionQueryClient('owner:2099-01-01T00:00:00.000Z')
   return baseRender(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
 }
+beforeEach(() => vi.mocked(endSession).mockClear())
 afterEach(() => endSessionQueryClient())
 
 const activeSession = () =>
   http.get('/api/session', () =>
     HttpResponse.json({ id: 'google:test', expires: '2099-01-01T00:00:00Z' }),
   )
+const endedSession = () =>
+  http.get('/api/session', () => HttpResponse.json({ error: 'unauthorized' }, { status: 401 }))
 const dueAt = '2026-11-14T11:00:00.000Z' // 14:00 in Istanbul
 const doseRequest: DoseSaveRequest = {
   dose: { id: 'd', scheduleId: 's', dueAt } as unknown as DoseSaveRequest['dose'],
@@ -67,10 +72,45 @@ test('sign-out announces pending, then distinguishes an active session from an u
   expect(screen.queryByText(/You're still signed in/)).not.toBeInTheDocument()
 })
 
-test('known offline prevents sign-out and reconnect restores the action without submitting', async () => {
+test('a sign-out the server refuses keeps the session and offers retry', async () => {
+  const { signOut } = await import('next-auth/react')
+  vi.mocked(signOut).mockClear().mockRejectedValueOnce(new Error('403'))
+  server.use(activeSession())
+  render(<AuthControl signedIn />)
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Sign out' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent("You're still signed in")
+  expect(endSession).not.toHaveBeenCalled()
+  server.use(endedSession())
+  await user.click(screen.getByRole('button', { name: 'Try signing out again' }))
+  await waitFor(() => expect(endSession).toHaveBeenCalledWith('signed-out'))
+  expect(signOut).toHaveBeenCalledTimes(2)
+})
+
+test('a lost session check stays unknown until the user retries', async () => {
+  const { signOut } = await import('next-auth/react')
+  vi.mocked(signOut).mockClear()
+  server.use(http.get('/api/session', () => HttpResponse.error()))
+  render(<AuthControl signedIn />)
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Sign out' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    "Couldn't check whether you're signed out",
+  )
+  expect(screen.queryByText(/You're still signed in|You're signed out/)).not.toBeInTheDocument()
+  expect(endSession).not.toHaveBeenCalled()
+  expect(signOut).toHaveBeenCalledTimes(1)
+  server.use(endedSession())
+  await user.click(screen.getByRole('button', { name: 'Try signing out again' }))
+  await waitFor(() => expect(endSession).toHaveBeenCalledWith('signed-out'))
+  expect(signOut).toHaveBeenCalledTimes(2)
+})
+
+test('offline sends nothing, and reconnect waits for the user to sign out', async () => {
   const { signOut } = await import('next-auth/react')
   vi.mocked(signOut).mockClear()
   const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+  server.use(endedSession())
   render(<AuthControl signedIn />)
   expect(screen.getByRole('button', { name: 'Connect to sign out' })).toBeDisabled()
   expect(screen.getByRole('alert')).toHaveTextContent("You're offline")
@@ -78,6 +118,9 @@ test('known offline prevents sign-out and reconnect restores the action without 
   fireEvent.online(window)
   expect(screen.getByRole('button', { name: 'Sign out' })).toBeEnabled()
   expect(signOut).not.toHaveBeenCalled()
+  await userEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+  await waitFor(() => expect(endSession).toHaveBeenCalledWith('signed-out'))
+  expect(signOut).toHaveBeenCalledTimes(1)
   online.mockRestore()
 })
 

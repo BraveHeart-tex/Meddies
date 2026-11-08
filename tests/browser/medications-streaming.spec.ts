@@ -227,20 +227,6 @@ test('Add never waits for the reads, and detail shows no list skeleton', async (
   await expect(page.getByText("This medication isn't in your list.")).toBeVisible()
 })
 
-test('Done for now returns to the list and focuses the saved medicine', async ({ page }) => {
-  const label = 'Handoff Medicine'
-  await page.goto('/medications?add')
-  await page.getByLabel('Medication name').fill(label)
-  await page.getByRole('button', { name: 'Tablet' }).click()
-  await page.getByRole('button', { name: 'Save medication' }).click()
-  await expect(page).toHaveURL(/\/medications\?medicine=/)
-  await expect(page.getByRole('heading', { name: label })).toBeFocused()
-  await page.getByRole('link', { name: 'Done for now' }).click()
-  await expect(page).toHaveURL(/\/medications$/)
-  await expect(row(page, label)).toBeFocused()
-  await expect(page.getByText(`${label} saved.`)).toHaveCount(0)
-})
-
 test('failed reads show one alert with Retry and Add, and Retry recovers', async ({
   page,
   app,

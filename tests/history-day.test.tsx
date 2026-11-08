@@ -128,6 +128,24 @@ test('an empty day says nothing was scheduled (648·H3)', () => {
   expect(screen.getByText('Nothing was scheduled on Sunday 1 November.')).toBeVisible()
 })
 
+test('stepping to another day focuses its heading (D11)', async () => {
+  search = new URLSearchParams('date=2026-11-06')
+  render(<HistoryDateNav today="2026-11-06" />)
+  await userEvent.click(screen.getByRole('button', { name: 'Previous day' }))
+  renderDay({ result: { status: 'loaded', doses: [occurrence('08:00')], medicines: [medicine] } })
+  expect(screen.getByRole('heading', { name: 'Thursday 5 November, 1 dose' })).toHaveFocus()
+})
+
+test('picking an empty day focuses its message (648·H3)', async () => {
+  render(<HistoryDateNav today="2026-11-06" />)
+  await userEvent.click(screen.getByRole('button', { name: /Choose a date/ }))
+  await userEvent.click(document.querySelector<HTMLElement>('button[data-day="2026-11-01"]')!)
+  renderDay({ date: '2026-11-01' })
+  expect(
+    screen.getByRole('heading', { name: /Nothing was scheduled on Sunday 1 November/ }),
+  ).toHaveFocus()
+})
+
 test('an empty today says nothing was due yet (648·H3)', () => {
   renderDay({ date: '2026-11-06' })
   expect(screen.getByText('Nothing was due before now today.')).toBeVisible()

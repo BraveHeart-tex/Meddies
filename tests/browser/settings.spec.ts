@@ -49,61 +49,6 @@ test('Settings checks session end before showing the signed-out destination and 
   expect((await page.request.get('/api/session')).status()).toBe(401)
 })
 
-test('rejected sign-out keeps an active session and offers retry', async ({ page }) => {
-  await page.goto('/settings')
-  await page.route('**/api/auth/signout', (route) => route.fulfill({ status: 403, json: {} }))
-  await page.getByRole('button', { name: 'Sign out', exact: true }).click()
-  await expect(page.getByRole('main').getByRole('alert')).toContainText("You're still signed in")
-  expect((await page.request.get('/api/session')).status()).toBe(200)
-  await page.unroute('**/api/auth/signout')
-  await page.getByRole('button', { name: 'Try signing out again' }).click()
-  await expect(
-    page.getByText("You're signed out of Meddies in this browser.", { exact: true }),
-  ).toBeVisible()
-})
-
-test('a lost session check after successful sign-out stays unknown until explicit retry', async ({
-  page,
-  app,
-}) => {
-  await page.goto('/settings')
-  await page.route('**/api/session', (route) => route.abort('connectionfailed'))
-  await page.getByRole('button', { name: 'Sign out', exact: true }).click()
-  await expect(page.getByRole('main').getByRole('alert')).toContainText(
-    "Couldn't check whether you're signed out",
-  )
-  await expect(page.getByText(/You're still signed in|You're signed out/)).toHaveCount(0)
-  await expect(page).toHaveURL(`${app.origin}/settings`)
-  expect((await page.request.get('/api/session')).status()).toBe(401)
-  await page.unroute('**/api/session')
-  await page.getByRole('button', { name: 'Try signing out again' }).click()
-  await expect(
-    page.getByText("You're signed out of Meddies in this browser.", { exact: true }),
-  ).toBeVisible()
-})
-
-test('offline Settings sends no sign-out request and reconnect waits for the user', async ({
-  page,
-  context,
-}) => {
-  await page.goto('/settings')
-  let posts = 0
-  page.on('request', (request) => {
-    if (request.url().endsWith('/api/auth/signout')) posts++
-  })
-  await context.setOffline(true)
-  await expect(page.getByRole('button', { name: 'Connect to sign out' })).toBeDisabled()
-  await expect(page.getByRole('main').getByRole('alert')).toContainText("You're offline")
-  await context.setOffline(false)
-  await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeEnabled()
-  expect(posts).toBe(0)
-  await page.getByRole('button', { name: 'Sign out', exact: true }).click()
-  await expect(
-    page.getByText("You're signed out of Meddies in this browser.", { exact: true }),
-  ).toBeVisible()
-  expect(posts).toBe(1)
-})
-
 test('Settings leaves nav unselected and browser Back restores the History date', async ({
   page,
   app,

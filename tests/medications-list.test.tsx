@@ -7,10 +7,13 @@ import {
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
+import { RouterContext } from 'next/dist/shared/lib/router-context.shared-runtime'
+import type { NextRouter } from 'next/router'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Medicine } from '../src/features/medicines/contract'
 import { MedicinePanel } from '../src/features/medicines/medicine-panel'
 import { MedicationsHeader } from '../src/features/medicines/medications-header'
+import { MedicationsScreen } from '../src/features/medicines/medications-screen'
 import { medicineKeys } from '../src/features/medicines/queries'
 import { scheduleKeys } from '../src/features/schedules/queries'
 import { MedicationsHydration } from '../src/features/schedules/medications-hydration'
@@ -378,5 +381,46 @@ describe('a medication detail', () => {
       "This schedule didn't load just now. Check your connection and try again.",
     )
     expect(screen.getByRole('button', { name: 'Try loading schedule again' })).toBeVisible()
+  })
+})
+
+describe('Done for now', () => {
+  // Outside Next's bundler, next/link is the Pages version; it ignores clicks without a router.
+  const router = { prefetch: async () => {} } as unknown as NextRouter
+  afterEach(() => window.history.replaceState(null, '', '/'))
+
+  test('returns to the list and focuses the saved medicine (647·B1)', async () => {
+    const saved = { ...medicine(1), label: 'Handoff Medicine' }
+    const api = medicinesApi([])
+    server.use(
+      http.post('/api/medicines', () => {
+        api.serve([saved])
+        return HttpResponse.json({ medicines: [saved] })
+      }),
+    )
+    window.history.replaceState(null, '', '/medications?add')
+    // A new element each time: the mocked search params only update when the screen re-renders.
+    const medicationsScreen = () => (
+      <RouterContext.Provider value={router}>
+        <QueryClientProvider client={client}>
+          <MedicationsScreen initialNow="2026-11-14T08:00:00.000Z" />
+        </QueryClientProvider>
+      </RouterContext.Provider>
+    )
+    const { rerender } = render(medicationsScreen())
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
+    await user.type(screen.getByRole('textbox', { name: 'Medication name' }), saved.label)
+    await user.click(screen.getByRole('button', { name: 'Tablet' }))
+    await user.click(screen.getByRole('button', { name: 'Save medication' }))
+    await waitFor(() => expect(window.location.search).toBe(`?medicine=${saved.id}`))
+    rerender(medicationsScreen())
+    expect(await screen.findByRole('heading', { name: saved.label })).toHaveFocus()
+    await user.click(screen.getByRole('link', { name: 'Done for now' }))
+    expect(window.location.pathname + window.location.search).toBe('/medications')
+    rerender(medicationsScreen())
+    expect(
+      await screen.findByRole('link', { name: `View details for ${saved.label}` }),
+    ).toHaveFocus()
+    expect(screen.queryByText(`${saved.label} saved.`)).not.toBeInTheDocument()
   })
 })

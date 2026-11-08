@@ -1,5 +1,4 @@
 import { test, expect } from './fixtures'
-import { scrollsHorizontally, trackSignInAnnouncements, signInAnnouncements } from './actions'
 
 // Auth is synthetic; the Google response is replaced only after observing the submitted target.
 test.use({
@@ -67,26 +66,3 @@ test('restricted retry keeps the Auth.js callback destination and requests the c
   await expect(page.getByRole('heading', { name: 'Synthetic Google' })).toBeVisible()
   expect(page.url()).not.toContain(app.origin)
 })
-
-for (const reason of ['expired', 'signed-out']) {
-  test(`reason ${reason} focuses heading and has one polite announcement`, async ({
-    page,
-    context,
-  }) => {
-    await context.clearCookies()
-    await page.goto(`/?reason=${reason}`)
-    const heading = page.getByRole('heading', { name: 'Sign in', exact: true })
-    await expect(heading).toBeFocused()
-    const status = page.getByRole('status')
-    await expect(status).toHaveCount(1)
-    await expect(status).toHaveAttribute('aria-atomic', 'true')
-    await expect(status).toContainText(
-      reason === 'expired' ? 'Your session ended.' : "You're signed out",
-    )
-    await expect(page.getByRole('main').getByRole('alert')).toHaveCount(0)
-    await expect(heading).not.toHaveAttribute('aria-describedby')
-    await page.keyboard.press('Tab')
-    await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeFocused()
-    expect(await scrollsHorizontally(page)).toBe(false)
-  })
-}

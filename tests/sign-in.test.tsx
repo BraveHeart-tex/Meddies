@@ -56,6 +56,25 @@ test.each([
   },
 )
 
+test.each([
+  ['expired', 'Your session ended.'],
+  ['signed-out', "You're signed out"],
+])(
+  'reason %s focuses the heading, announces once politely, then tabs to Google',
+  async (reason, message) => {
+    render(<SignInScreen configured reason={reason} />)
+    const status = await screen.findByRole('status')
+    expect(status).toHaveAttribute('aria-atomic', 'true')
+    expect(status).toHaveTextContent(message)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    const heading = screen.getByRole('heading', { name: 'Sign in', level: 1 })
+    expect(heading).toHaveFocus()
+    expect(heading).not.toHaveAttribute('aria-describedby')
+    await userEvent.tab()
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toHaveFocus()
+  },
+)
+
 test('pre-redirect failure replaces the reason with one retry; retry keeps the destination', async () => {
   const { signIn } = await import('next-auth/react')
   vi.mocked(signIn).mockRejectedValue(new TypeError('Network'))

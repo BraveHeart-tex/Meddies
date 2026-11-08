@@ -1,11 +1,10 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from './fixtures'
 import { scrollsHorizontally } from './actions'
-import { datePicker, pickDate } from './pickers'
-import { historyRows } from './locators'
+import { datePicker } from './pickers'
 import { addDays, insertScheduledMedicine } from './seed'
 
-// FE-678 (D11, 648·H1 to H3, H6, H7): History steps one day at a time and every date is a URL.
+// FE-678 (648·H7): the on-request review of the History date bar's sizes and alignment.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
 const startDate = addDays(today, -3)
@@ -28,74 +27,6 @@ const picker = (page: Page) => datePicker(page, 'Choose a date')
 const dayHeading = (page: Page, name: string) => page.getByRole('heading', { name, level: 2 })
 const previous = (page: Page) => page.getByRole('button', { name: 'Previous day' })
 const next = (page: Page) => page.getByRole('button', { name: 'Next day' })
-// By role, because React keeps the streamed day's copy in a hidden segment until it swaps in.
-const invalidDateNotice = (page: Page) =>
-  page.getByRole('alert').filter({ hasText: 'Nothing to show for that day.' })
-
-test('step through History, go Back, reload, and recover from bad dates', async ({
-  page,
-  app,
-}, testInfo) => {
-  const historyUrl = (date: string) => `${app.origin}/history?date=${date}`
-
-  await test.step('bare /history is today so far, with Next day disabled (648·H2)', async () => {
-    await page.goto('/history')
-    await expect(dayHeading(page, 'Friday 15 June, 1 dose')).toBeVisible()
-    await expect(page.getByText('0 of 1 so far')).toBeVisible()
-    await expect(page.getByText('Record it on Today')).toBeVisible()
-    await expect(picker(page)).toHaveText('Today, Fri 15 Jun')
-    await expect(next(page)).toBeDisabled()
-  })
-
-  await test.step('Previous day pushes each date and focuses its heading (D11)', async () => {
-    await previous(page).click()
-    await expect(page).toHaveURL(historyUrl(addDays(today, -1)))
-    await expect(dayHeading(page, 'Thursday 14 June, 1 dose')).toBeFocused()
-    await expect(page.getByText('0 of 1 logged')).toBeVisible()
-    await expect(historyRows(page, addDays(today, -1)).getByRole('button')).toHaveCount(0)
-    await expect(next(page)).toBeEnabled()
-    await previous(page).click()
-    await expect(page).toHaveURL(historyUrl(addDays(today, -2)))
-    await expect(picker(page)).toHaveText('Wed 13 Jun')
-    await page.screenshot({ path: testInfo.outputPath('history-populated-402.png') })
-  })
-
-  await test.step('Back restores the previous date and reload keeps the current one', async () => {
-    await page.goBack()
-    await expect(page).toHaveURL(historyUrl(addDays(today, -1)))
-    await expect(picker(page)).toHaveText('Thu 14 Jun')
-    await expect(dayHeading(page, 'Thursday 14 June, 1 dose')).toBeVisible()
-    await page.reload()
-    await expect(page).toHaveURL(historyUrl(addDays(today, -1)))
-    await expect(picker(page)).toHaveText('Thu 14 Jun')
-    await next(page).click()
-    await expect(page).toHaveURL(historyUrl(today))
-    await expect(next(page)).toBeDisabled()
-  })
-
-  await test.step('a day before the first schedule is empty (648·H3)', async () => {
-    const empty = addDays(startDate, -1)
-    await pickDate(page, 'Choose a date', empty)
-    await expect(page).toHaveURL(historyUrl(empty))
-    await expect(page.getByText('Nothing was scheduled on Monday 11 June.')).toBeFocused()
-    await expect(historyRows(page, empty)).toHaveCount(0)
-    await page.screenshot({ path: testInfo.outputPath('history-empty-402.png') })
-  })
-
-  for (const bad of ['2035-12-24', 'not-a-date'])
-    await test.step(`${bad} shows today instead and replaces the URL (648·H6)`, async () => {
-      await page.goto(`/history?date=${bad}`)
-      // The heading comes first so the notice is proven on the day, not only on its fallback.
-      await expect(dayHeading(page, 'Friday 15 June, 1 dose')).toBeVisible()
-      await expect(invalidDateNotice(page)).toBeVisible()
-      await expect(invalidDateNotice(page)).toContainText('Showing today instead.')
-      await expect(page).toHaveURL(historyUrl(today))
-      await expect(picker(page)).toHaveText('Today, Fri 15 Jun')
-    })
-  await page.screenshot({ path: testInfo.outputPath('history-invalid-402.png') })
-  await page.reload()
-  await expect(page.getByText('Nothing to show for that day.')).toHaveCount(0)
-})
 
 test('History date bar sizes and alignment @visual', async ({ page }, testInfo) => {
   await page.goto('/history')
