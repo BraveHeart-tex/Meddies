@@ -49,7 +49,7 @@ test('expiry with a pending save shows the notice, removes private content and r
   await expect(page).toHaveURL(
     `${app.origin}/?reason=expired&returnTo=%2Fmedications%3Fadd&notice=save-in-progress`,
   )
-  await expect(page.getByText(notice)).toBeVisible()
+  await expect(page.getByRole('status')).toContainText(notice)
   await expect(page.getByText('Your session ended.', { exact: true })).toBeVisible()
   await expect(page.getByText('Private Magnesium')).toHaveCount(0)
   await expect(page.getByText(/cancel|not saved/i)).toHaveCount(0)
