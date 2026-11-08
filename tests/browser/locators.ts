@@ -87,6 +87,21 @@ export const historyFallback = (page: Page) =>
 export const historyFallbackSection = (page: Page) =>
   page.locator('[data-slot="loading-section"]').filter({ has: historyFallback(page) })
 
+/** History's route fallback, before the page and its date bar resolve. */
+export const historyRouteFallback = (page: Page) =>
+  page.getByRole('status').filter({ hasText: 'Opening History' })
+
+/** Settings' route fallback, before the session resolves. */
+export const settingsRouteFallback = (page: Page) =>
+  page.getByRole('status').filter({ hasText: 'Opening Settings' })
+
+/** The sign-in error page's route fallback, before the error is read. */
+export const signInRouteFallback = (page: Page) =>
+  page.getByRole('status').filter({ hasText: 'Opening sign-in' })
+
+/** The sign-in card, real or placeholder; its edges show whether the alert above it held still. */
+export const signInCard = (page: Page) => page.locator('main [data-slot="card"]')
+
 /** Any selected primary destination; recovery pages outside the app have none. */
 export const selectedNavigation = (page: Page) =>
   page.getByRole('navigation', { name: 'Primary' }).locator('a[aria-current="page"]')

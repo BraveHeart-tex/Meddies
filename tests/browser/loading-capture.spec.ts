@@ -1,8 +1,18 @@
 import { resolve } from 'node:path'
 import { captureCases, captureLoading, type CaptureRoute } from './capture'
 import { expect, test } from './fixtures'
-import { historyFallback, historyList, todayFallback, todaysDoses } from './locators'
+import {
+  historyDateNav,
+  historyFallback,
+  historyList,
+  historyRouteFallback,
+  settingsRouteFallback,
+  signInRouteFallback,
+  todayFallback,
+  todaysDoses,
+} from './locators'
 import { addDays, insertScheduledMedicine } from './seed'
+import { routeRender } from './worker-proxy'
 
 // Opt-in loading evidence for design review, never a CI assertion. Run with
 // MEDDIES_VISUAL_OUT=<dir> pnpm test:browser:build loading-capture
@@ -18,6 +28,27 @@ const routes: CaptureRoute[] = [
     path: '/history',
     fallback: historyFallback,
     content: (page) => historyList(page, today),
+  },
+  {
+    name: 'history-route',
+    path: '/history',
+    hold: routeRender('history'),
+    fallback: historyRouteFallback,
+    content: historyDateNav,
+  },
+  {
+    name: 'settings',
+    path: '/settings',
+    hold: routeRender('settings'),
+    fallback: settingsRouteFallback,
+    content: (page) => page.getByText('Signed in with your approved Google account'),
+  },
+  {
+    name: 'sign-in-error',
+    path: '/sign-in/error?error=AccessDenied',
+    hold: routeRender('sign-in-error'),
+    fallback: signInRouteFallback,
+    content: (page) => page.getByRole('alert').filter({ hasText: "can't open Meddies" }),
   },
 ]
 

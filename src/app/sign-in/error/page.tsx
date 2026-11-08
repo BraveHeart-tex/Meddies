@@ -2,12 +2,14 @@ import { cookies } from 'next/headers'
 import { authConfigured } from '@/features/auth/server'
 import { SignInScreen } from '@/features/auth/sign-in-screen'
 import { callbackReturnTo } from '@/features/auth/return-to'
+import { holdRouteRender } from '@/lib/route-render-hold'
 
 export default async function SignInErrorPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string | string[] }>
 }) {
+  await holdRouteRender('sign-in-error')
   const { error } = await searchParams
   const store = await cookies()
   // Auth.js retains this callback cookie when a provider refuses or the callback fails.

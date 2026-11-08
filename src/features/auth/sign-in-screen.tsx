@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Icon } from '@/components/ui/icon'
 import { safeReturnTo } from './return-to'
+import { SignInFrame } from './sign-in-frame'
 
 export function SignInScreen({
   configured,
@@ -71,8 +72,7 @@ export function SignInScreen({
   }
 
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-lg flex-col gap-5 px-5 pt-[calc(1.75rem+env(safe-area-inset-top,0px))] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
-      <p className="text-display font-black tracking-tight">Meddies</p>
+    <SignInFrame>
       {message && (
         <Alert
           variant={!configured || info ? 'default' : 'destructive'}
@@ -125,6 +125,6 @@ export function SignInScreen({
           )}
         </CardContent>
       </Card>
-    </main>
+    </SignInFrame>
   )
 }

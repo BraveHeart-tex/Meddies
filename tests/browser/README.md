@@ -99,6 +99,10 @@ thresholds:
   before any was released.
 - `expectStreamingOrder(worker, { routes, fallback, content })`: the fallback shows while a
   read is held, then content replaces it after release.
+- `routeRender(route)` ([`worker-proxy.ts`](worker-proxy.ts)) is a rule for a page with no
+  Worker read ahead of its route fallback (Settings, sign-in error, History before its session
+  resolves): hold it to keep the page unresolved through `holdRouteRender`. The fixture alone
+  sets the variable that enables that seam, so the app never waits on it outside journeys.
 - `blockPrefetch(page, path)` aborts router prefetches for the target; `expectBlocked()`
   asserts one was aborted. Install it before the linking page loads.
 
@@ -136,7 +140,7 @@ Visual journeys are tagged `@visual` and run only through `pnpm test:browser:vis
 
 [`capture.ts`](capture.ts) produces opt-in review artifacts, never a CI baseline.
 `loading-capture.spec.ts` registers routes (name, path, fallback and content locators). The
-helper holds every Worker read, saves the fallback, releases and saves the loaded page,
+helper holds every Worker read (or the route's `hold`, for a route fallback), saves the fallback, releases and saves the loaded page,
 and writes `loading-capture.json` (case, status labels, overflow, shell boxes).
 
 ```sh

@@ -8,7 +8,12 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { test as base, type APIResponse, type BrowserContext } from '@playwright/test'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
 import { encode } from 'next-auth/jwt'
-import { startWorkerProxy, type WorkerControls, type WorkerProxy } from './worker-proxy'
+import {
+  routeRenderPath,
+  startWorkerProxy,
+  type WorkerControls,
+  type WorkerProxy,
+} from './worker-proxy'
 
 export { expect } from '@playwright/test'
 
@@ -190,6 +195,7 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
             ...env,
             NODE_ENV: dev ? 'development' : 'production',
             MEDDIES_BROWSER_CLOCK_FILE: clockFile ?? '',
+            MEDDIES_BROWSER_ROUTE_HOLD_URL: proxy ? new URL(routeRenderPath, proxy.url).href : '',
             MEDICINES_WORKER_URL: proxy?.url.toString() ?? '',
             MEDICINES_WORKER_SECRET: worker ? workerSecret : '',
             AUTH_URL: origin,

@@ -4,7 +4,7 @@ import type { Locator, Page } from '@playwright/test'
 import { scrollsHorizontally, stylesheetsLoaded } from './actions'
 import { expect } from './fixtures'
 import { boxes, layoutViewports, shellElements, type Boxes, type Viewport } from './layout'
-import type { WorkerControls } from './worker-proxy'
+import type { WorkerControls, WorkerRoute } from './worker-proxy'
 
 // Loading evidence for design review: fallback and loaded screenshots plus a JSON summary.
 // Never a CI assertion; loading-capture.spec.ts runs it only with MEDDIES_VISUAL_OUT set.
@@ -30,7 +30,9 @@ export type CaptureRoute = {
   /** File name prefix, such as `today`. */
   name: string
   path: string
-  /** Visible while the Worker reads are held. */
+  /** What to hold instead of every Worker read, for a route fallback ahead of those reads. */
+  hold?: WorkerRoute
+  /** Visible while the reads or `hold` are held. */
   fallback: (page: Page) => Locator
   /** Visible once the reads are released. */
   content: (page: Page) => Locator
@@ -66,7 +68,7 @@ async function measure(page: Page) {
 }
 
 /**
- * For each selected route and explicit case: hold every Worker read, load the route,
+ * For each selected route and explicit case: hold its `hold` or every Worker read, load the route,
  * wait for stylesheets and fonts, then screenshot and measure the fallback; release, and do the
  * same for the loaded page. Writes `<name>-<stage>-<case>.png` and
  * `loading-capture.json` to `out`, and returns the summary.
@@ -101,7 +103,7 @@ export async function captureLoading(
           ...(await measure(page)),
         })
       }
-      worker.hold(holdAll)
+      worker.hold(route.hold ?? holdAll)
       await page.goto(route.path, { waitUntil: 'commit' })
       await expect(route.fallback(page)).toBeVisible()
       await shoot('fallback')

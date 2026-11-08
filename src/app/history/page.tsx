@@ -12,6 +12,7 @@ import { HistoryResults } from '@/features/schedules/history-results'
 import { SchedulingClockProvider } from '@/features/schedules/scheduling-clock'
 import { AppShell } from '@/components/layout/app-shell'
 import { AppHeader } from '@/components/layout/app-header'
+import { holdRouteRender } from '@/lib/route-render-hold'
 
 /**
  * One History date's results: its doses and the medicines that name them are read together and
@@ -39,6 +40,7 @@ export default async function HistoryPage({
 }: {
   searchParams: Promise<{ date?: string | string[] }>
 }) {
+  await holdRouteRender('history')
   const query = await searchParams
   const now = schedulingNow()
   const today = istanbulDate(now)

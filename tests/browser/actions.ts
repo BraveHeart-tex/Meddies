@@ -14,6 +14,17 @@ export async function waitForClientRouter(page: Page) {
 }
 
 /**
+ * A client navigation to a page no `<Link>` reaches. Reads Next.js's router handle, since no
+ * user-facing control exists for this route.
+ */
+export async function routerPush(page: Page, url: string) {
+  await page.evaluate((href) => {
+    const { next } = window as unknown as { next: { router: { push(href: string): void } } }
+    next.router.push(href)
+  }, url)
+}
+
+/**
  * Today, the session boundary and stale Query reads refresh on window focus. A headless
  * page never gains or loses OS focus, so dispatch the event the app listens for. A FocusEvent,
  * like the browser's, carries the `relatedTarget` the Toast viewport reads.

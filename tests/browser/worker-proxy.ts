@@ -3,6 +3,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import type { AddressInfo } from 'node:net'
 import { performance } from 'node:perf_hooks'
 import { setTimeout as delay } from 'node:timers/promises'
+import type { HeldRoute } from '../../src/lib/route-render-hold'
 
 /** One Worker request from Next.js, as the journey fixture saw it. Times are monotonic ms. */
 export type WorkerRequest = {
@@ -52,6 +53,18 @@ type Rule = {
   route: WorkerRoute
   action: { kind: 'hold' } | { kind: 'fail'; status: number } | { kind: 'delay'; ms: number }
 }
+
+/** The prefix of `holdRouteRender` requests, which never reach the Worker. */
+export const routeRenderPath = '/journey-route-render/'
+
+/**
+ * The route-render seam of a page with no Worker read to hold: hold it to keep the page
+ * unresolved. GET, so holding every POST Worker read leaves it alone.
+ */
+export const routeRender = (route: HeldRoute): WorkerRoute => ({
+  method: 'GET',
+  path: `${routeRenderPath}${route}`,
+})
 
 /** Overlapping reads: every one started before any finished (held reads have not finished). */
 export function overlapped(requests: Pick<WorkerRequest, 'start' | 'end'>[]) {
@@ -135,11 +148,13 @@ export async function startWorkerProxy(
     })
     const first = ruleFor(entry)?.action
     if (first?.kind === 'fail') return failWith(response, (entry.status = first.status))
-    const upstream = await fetch(new URL(entry.path, target), {
-      method: entry.method,
-      headers: forwardable(request.headers),
-      body: body.length ? body : undefined,
-    })
+    const upstream = entry.path.startsWith(routeRenderPath)
+      ? new Response(null, { status: 204 })
+      : await fetch(new URL(entry.path, target), {
+          method: entry.method,
+          headers: forwardable(request.headers),
+          body: body.length ? body : undefined,
+        })
     const payload = Buffer.from(await upstream.arrayBuffer())
     // Rules can change while the Worker runs or the response is held, so read them again.
     const action = ruleFor(entry)?.action
