@@ -1,10 +1,9 @@
 import { randomBytes } from 'node:crypto'
-import { spawn, type ChildProcess } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { once } from 'node:events'
 import { readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import { createServer, type AddressInfo } from 'node:net'
 import { resolve } from 'node:path'
-import { setTimeout as delay } from 'node:timers/promises'
 import { test as base, type APIResponse, type BrowserContext } from '@playwright/test'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
 import { encode } from 'next-auth/jwt'
@@ -14,6 +13,8 @@ import {
   type WorkerControls,
   type WorkerProxy,
 } from './worker-proxy'
+
+import { cleanupJourney, JourneyService } from './journey-server'
 
 export { expect } from '@playwright/test'
 
@@ -89,16 +90,6 @@ async function freePort() {
   return port
 }
 
-async function stop(child: ChildProcess) {
-  const alive = () => child.exitCode === null && child.signalCode === null
-  if (!alive()) return
-  child.kill('SIGTERM')
-  await Promise.race([once(child, 'exit'), delay(3000)])
-  if (!alive()) return
-  child.kill('SIGKILL')
-  await Promise.race([once(child, 'exit'), delay(1000)])
-}
-
 function startWorker(clockFile: string | undefined, workerSecret: string) {
   const workerRoot = resolve('.worker-build')
   const workerScript = resolve(workerRoot, 'index.js')
@@ -154,8 +145,10 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
     }
     let worker: Miniflare | undefined
     let proxy: WorkerProxy | undefined
-    let child: ChildProcess | undefined
-    let logs = ''
+    const secrets = [secret, workerSecret, 'synthetic-secret']
+    const service = new JourneyService(secrets)
+    let setupFailed = true
+    let failure: unknown
     try {
       if (clockFile) await setScheduleTime(journey.initialScheduleTime!)
       if (journey.seed && !journey.storage) throw new Error('Journey seed requires storage')
@@ -170,7 +163,7 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
       // Next.js reaches the Worker through a proxy, so journeys can control server reads.
       if (worker)
         proxy = await startWorkerProxy(await worker.ready, {
-          onError: (line) => (logs = `${logs}${line}\n`.slice(-8000)),
+          onError: (line) => service.addLog(`${line}\n`),
         })
       const port = await freePort()
       const origin = `http://localhost:${port}`
@@ -178,6 +171,7 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
       const token = journey.auth
         ? { secret, value: await sessionToken(secret, expires), expires }
         : undefined
+      if (token) secrets.push(token.value)
       const env = Object.fromEntries(
         Object.entries(process.env).filter(
           ([key]) =>
@@ -188,54 +182,40 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
       // Dev mode writes to .next/dev, leaving the production build in .next usable.
       const { isBrowserDevMode } = await import('../helpers/journey-build.mjs')
       const dev = isBrowserDevMode(process.env)
-      const next = spawn(
-        process.execPath,
-        [
-          'node_modules/next/dist/bin/next',
-          ...(dev ? ['dev', '--webpack'] : ['start']),
-          ...['-H', '127.0.0.1', '-p', String(port)],
-        ],
-        {
-          env: {
-            ...env,
-            NODE_ENV: dev ? 'development' : 'production',
-            MEDDIES_BROWSER_CLOCK_FILE: clockFile ?? '',
-            MEDDIES_BROWSER_ROUTE_HOLD_URL: proxy ? new URL(routeRenderPath, proxy.url).href : '',
-            MEDICINES_WORKER_URL: proxy?.url.toString() ?? '',
-            MEDICINES_WORKER_SECRET: worker ? workerSecret : '',
-            AUTH_URL: origin,
-            AUTH_SECRET: token ? secret : '',
-            AUTH_GOOGLE_ID: token ? 'synthetic-client' : '',
-            AUTH_GOOGLE_SECRET: token ? 'synthetic-secret' : '',
-            AUTH_ALLOWED_EMAIL: token ? email : '',
-            AUTH_SESSION_VERSION: token ? '1' : '',
+      service.start(() =>
+        spawn(
+          process.execPath,
+          [
+            'node_modules/next/dist/bin/next',
+            ...(dev ? ['dev', '--webpack'] : ['start']),
+            ...['-H', '127.0.0.1', '-p', String(port)],
+          ],
+          {
+            env: {
+              ...env,
+              NODE_ENV: dev ? 'development' : 'production',
+              MEDDIES_BROWSER_CLOCK_FILE: clockFile ?? '',
+              MEDDIES_BROWSER_ROUTE_HOLD_URL: proxy ? new URL(routeRenderPath, proxy.url).href : '',
+              MEDICINES_WORKER_URL: proxy?.url.toString() ?? '',
+              MEDICINES_WORKER_SECRET: worker ? workerSecret : '',
+              AUTH_URL: origin,
+              AUTH_SECRET: token ? secret : '',
+              AUTH_GOOGLE_ID: token ? 'synthetic-client' : '',
+              AUTH_GOOGLE_SECRET: token ? 'synthetic-secret' : '',
+              AUTH_ALLOWED_EMAIL: token ? email : '',
+              AUTH_SESSION_VERSION: token ? '1' : '',
+            },
+            stdio: ['ignore', 'pipe', 'pipe'],
           },
-          stdio: ['ignore', 'pipe', 'pipe'],
-        },
+        ),
       )
-      child = next
-      const addLogs = (buffer: Buffer) => {
-        logs = (logs + buffer.toString()).slice(-8000)
-      }
-      next.stdout.on('data', addLogs)
-      next.stderr.on('data', addLogs)
-
-      // Dev mode compiles /api/session on the first request.
-      const readyBy = Date.now() + (dev ? 60_000 : 10_000)
-      let ready = false
-      while (!ready && Date.now() < readyBy) {
-        if (next.exitCode !== null) throw new Error('Next.js exited during startup')
-        try {
-          const response = await fetch(`${origin}/api/session`, {
-            headers: token ? { cookie: `${cookieName}=${token.value}` } : {},
-          })
-          ready = token
-            ? response.ok && (await response.json()).id === ownerId
-            : response.status === 401
-        } catch {}
-        if (!ready) await delay(100)
-      }
-      if (!ready) throw new Error('Next.js /api/session readiness check failed')
+      // Dev mode compiles /api/session on the first request. The budget includes body reads.
+      await service.waitUntilReady(
+        origin,
+        token ? { cookie: `${cookieName}=${token.value}`, ownerId } : undefined,
+        dev ? 60_000 : 10_000,
+      )
+      setupFailed = false
 
       // Journeys get the controls only, not the proxy's lifecycle.
       const { url: _url, close: _close, ...controls } = proxy ?? {}
@@ -246,16 +226,35 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
         setScheduleTime,
         worker: proxy && (controls as WorkerControls),
       })
+    } catch (error) {
+      failure = error
+      throw error
     } finally {
-      if (logs && testInfo.status !== testInfo.expectedStatus)
-        await testInfo.attach('service.log', {
-          body: logs.replaceAll(secret, '[redacted]').replaceAll(workerSecret, '[redacted]'),
-          contentType: 'text/plain',
-        })
-      if (child) await stop(child)
-      await proxy?.close()
-      await worker?.dispose()
-      if (clockFile) await unlink(clockFile).catch(() => {})
+      await cleanupJourney([
+        () => service.stop(),
+        async () => {
+          if (setupFailed || testInfo.status !== testInfo.expectedStatus)
+            await testInfo.attach('service.log', {
+              body: service.log() || '(no output)',
+              contentType: 'text/plain',
+            })
+        },
+        async () => proxy?.close(),
+        async () => worker?.dispose(),
+        async () => {
+          if (clockFile) {
+            await unlink(clockFile).catch((error) => {
+              if (error.code !== 'ENOENT') throw error
+            })
+            await unlink(`${clockFile}.next`).catch((error) => {
+              if (error.code !== 'ENOENT') throw error
+            })
+          }
+        },
+      ]).catch((error) => {
+        if (!failure) throw error
+        // Preserve the inline startup failure if evidence collection also failed.
+      })
     }
   },
 
