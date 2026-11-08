@@ -23,6 +23,9 @@ export const doseTrigger = (scope: Page | Locator, label?: string) =>
     name: new RegExp(`^(Record|Review) dose for ${label ? escapeRegExp(label) : ''}`),
   })
 
+/** The focused element inside a row: focus returned to it after its drawer closed. */
+export const focusInside = (row: Locator) => row.locator(':focus')
+
 /** A rendered instant, for example a recorded intake time inside a row. */
 export const instant = (scope: Page | Locator, iso: string) =>
   scope.locator(`time[datetime="${iso}"]`)

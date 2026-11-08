@@ -33,6 +33,7 @@ export type Journey = {
 type Server = {
   origin: string
   token?: { secret: string; value: string; expires: number }
+  workerSecret: string
   setScheduleTime(instant: string): Promise<void>
   worker?: WorkerControls
 }
@@ -45,6 +46,8 @@ export type App = {
   expireSession(): Promise<void>
   /** Put back the original session cookie, standing in for signing in again. */
   restoreSession(): Promise<void>
+  /** This run's private values, to assert they never reach the browser. Requires `auth`. */
+  credentials(): { sessionToken: string; authSecret: string; workerSecret: string }
   /** Call the app API as the signed-in user; fails unless the response is 200. */
   api(method: string, path: string, data: object): Promise<APIResponse>
   /**
@@ -236,7 +239,13 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
 
       // Journeys get the controls only, not the proxy's lifecycle.
       const { url: _url, close: _close, ...controls } = proxy ?? {}
-      await use({ origin, token, setScheduleTime, worker: proxy && (controls as WorkerControls) })
+      await use({
+        origin,
+        token,
+        workerSecret,
+        setScheduleTime,
+        worker: proxy && (controls as WorkerControls),
+      })
     } finally {
       if (logs && testInfo.status !== testInfo.expectedStatus)
         await testInfo.attach('service.log', {
@@ -270,6 +279,14 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
       get worker() {
         if (!server.worker) throw new Error('Journey must declare storage to control the Worker')
         return server.worker
+      },
+      credentials: () => {
+        if (!server.token) throw new Error('Journey must declare auth to read its credentials')
+        return {
+          sessionToken: server.token.value,
+          authSecret: server.token.secret,
+          workerSecret: server.workerSecret,
+        }
       },
       api: async (method, path, data) => {
         // context.request shares the browser's session cookie.
