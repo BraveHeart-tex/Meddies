@@ -1,12 +1,14 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { signOut } from 'next-auth/react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { useQueryClient } from '@tanstack/react-query'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import { Icon } from '@/components/ui/icon'
 import { Button } from '@/components/ui/button'
-import { endSessionQueryClient } from '@/lib/session-query-client'
+import { sessionSaves, type OutstandingSave } from '@/lib/session-saves'
+import { endSession } from './session-end'
 import { SignInScreen } from './sign-in-screen'
 
 export function AuthControl({
@@ -19,12 +21,56 @@ export function AuthControl({
   return signedIn ? <SignOutControl /> : <SignInScreen configured returnTo={returnTo} />
 }
 
+const savedNames = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' })
+const saveNouns = { medicine: 'medication', schedule: 'schedule', dose: 'dose' } as const
+
+/** D18: names the affected saves. Never claims a save was cancelled or lost. */
+function SaveWarning({ saves }: { saves: OutstandingSave[] }) {
+  const names = saves.map((save) =>
+    save.kind === 'schedule' ? `the schedule for ${save.label}` : save.label,
+  )
+  return (
+    <Alert>
+      <Icon name="warning" size={16} />
+      <AlertTitle>
+        {saves.length === 1
+          ? `A ${saveNouns[saves[0].kind]} save hasn't finished yet.`
+          : "Some saves haven't finished yet."}
+      </AlertTitle>
+      <AlertDescription>
+        If you sign out now, Meddies can&apos;t show whether {savedNames.format(names)}{' '}
+        {saves.length === 1 ? 'was' : 'were'} recorded until you sign in again.
+      </AlertDescription>
+    </Alert>
+  )
+}
+
 function SignOutControl() {
   const submitting = useRef(false)
   const [pending, setPending] = useState(false)
   const [failed, setFailed] = useState(false)
   const [result, setResult] = useState<'active' | 'unknown' | null>(null)
   const offline = useKnownOffline()
+  const store = sessionSaves(useQueryClient())
+  useSyncExternalStore(store.subscribe, store.snapshot, store.snapshot)
+  const outstanding = store.outstanding()
+  const [warned, setWarned] = useState(false)
+  const warning = warned && outstanding.length > 0
+  const stayButton = useRef<HTMLButtonElement>(null)
+  const signOutButton = useRef<HTMLButtonElement>(null)
+  const wasWarning = useRef(false)
+  // The warning's buttons replace Sign out, so focus moves with them both ways.
+  useEffect(() => {
+    if (warning) stayButton.current?.focus()
+    else if (wasWarning.current) signOutButton.current?.focus()
+    wasWarning.current = warning
+  }, [warning])
+
+  function requestSignOut() {
+    // A retry follows an earlier Sign out anyway, so the warning has already been answered.
+    if (outstanding.length > 0 && !result) setWarned(true)
+    else void submit()
+  }
 
   async function submit() {
     if (submitting.current || !navigator.onLine) return
@@ -42,8 +88,7 @@ function SignOutControl() {
       try {
         const response = await fetch('/api/session', { cache: 'no-store' })
         if (response.status === 401) {
-          endSessionQueryClient()
-          window.location.replace('/?reason=signed-out')
+          endSession('signed-out')
           return
         }
         const session = response.ok ? await response.json() : null
@@ -81,22 +126,50 @@ function SignOutControl() {
           </AlertDescription>
         </Alert>
       )}
-      <Button
-        type="button"
-        onClick={submit}
-        disabled={pending || offline}
-        variant="outline"
-        size="lg"
-        className="w-full"
-      >
-        {pending
-          ? 'Signing out…'
-          : offline
-            ? 'Connect to sign out'
-            : result
-              ? 'Try signing out again'
-              : 'Sign out'}
-      </Button>
+      {warning ? (
+        <>
+          <SaveWarning saves={outstanding} />
+          <Button
+            ref={stayButton}
+            type="button"
+            size="lg"
+            className="w-full"
+            onClick={() => setWarned(false)}
+          >
+            Stay signed in
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            className="w-full"
+            onClick={() => {
+              setWarned(false)
+              void submit()
+            }}
+          >
+            Sign out anyway
+          </Button>
+        </>
+      ) : (
+        <Button
+          type="button"
+          ref={signOutButton}
+          onClick={requestSignOut}
+          disabled={pending || offline}
+          variant="outline"
+          size="lg"
+          className="w-full"
+        >
+          {pending
+            ? 'Signing out…'
+            : offline
+              ? 'Connect to sign out'
+              : result
+                ? 'Try signing out again'
+                : 'Sign out'}
+        </Button>
+      )}
       <p role="status" className="text-sm" aria-live="polite">
         {failed
           ? 'Something went wrong. Check your connection and try again.'

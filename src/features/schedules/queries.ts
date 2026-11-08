@@ -1,3 +1,4 @@
+import { PrivateReadError } from '@/lib/session-check'
 import { useCallback } from 'react'
 import { queryOptions, replaceEqualDeep, useQuery, type QueryClient } from '@tanstack/react-query'
 import {
@@ -27,13 +28,6 @@ export const scheduleKeys = {
   history: (date: string) => [...scheduleKeys.all, 'history', date] as const,
 }
 
-/** A failed browser read; `status` lets a screen tell an ended session (401) from an outage. */
-export class ScheduleReadError extends Error {
-  constructor(readonly status: number) {
-    super('schedules_read_failed')
-  }
-}
-
 /** Browser read of one History date's doses through the authenticated API route. */
 export async function fetchHistoryDay(
   date: string,
@@ -44,7 +38,7 @@ export async function fetchHistoryDay(
     cache: 'no-store',
     signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
   })
-  if (!response.ok) throw new ScheduleReadError(response.status)
+  if (!response.ok) throw new PrivateReadError(response.status)
   const data: { doses: DoseOccurrence[] } = await response.json()
   return data.doses
 }
@@ -69,7 +63,7 @@ export async function fetchScheduleSnapshot(signal?: AbortSignal): Promise<Sched
     cache: 'no-store',
     signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
   })
-  if (!response.ok) throw new Error('schedules_read_failed')
+  if (!response.ok) throw new PrivateReadError(response.status)
   return toScheduleSnapshot(await response.json())
 }
 

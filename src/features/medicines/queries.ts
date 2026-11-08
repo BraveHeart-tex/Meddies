@@ -1,4 +1,5 @@
 import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query'
+import { PrivateReadError } from '@/lib/session-check'
 import { parseMedicine, type Medicine } from './contract'
 
 /** Shared medicine query keys. Mutations update and reconcile these exact keys. */
@@ -14,7 +15,7 @@ export async function fetchMedicines(signal?: AbortSignal): Promise<Medicine[]> 
     cache: 'no-store',
     signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
   })
-  if (!response.ok) throw new Error('medicines_read_failed')
+  if (!response.ok) throw new PrivateReadError(response.status)
   const data: { medicines: unknown[] } = await response.json()
   return data.medicines.map(parseMedicine)
 }

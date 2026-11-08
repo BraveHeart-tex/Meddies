@@ -54,12 +54,8 @@ export function DoseSaveProblem({
   if (!problem) return null
   return (
     <Alert id={id} variant="destructive">
-      <AlertTitle>
-        {problem.kind === 'rejected' ? saveMessages.notSaved : saveMessages.sessionEnded}
-      </AlertTitle>
-      <AlertDescription>
-        {problem.kind === 'rejected' ? rejected[outcome] : saveMessages.signInToRecordDose}
-      </AlertDescription>
+      <AlertTitle>{saveMessages.notSaved}</AlertTitle>
+      <AlertDescription>{rejected[outcome]}</AlertDescription>
     </Alert>
   )
 }

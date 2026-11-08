@@ -57,8 +57,20 @@ store scoped to the session Query client, keyed by form and medicine ID.
 
 ## Session end
 
-Sign-out and expiry clear the session Query client, session drafts, and pending and
-unconfirmed saves, and stop in-flight responses from repopulating them. The app hides
-authenticated content at expiry and checks the session when focus returns. Losing the
-network is not session end; server operations always check independently
-([authentication](authentication.md#sessions-and-revocation)).
+Every session end goes through `endSession` (`src/features/auth/session-end.ts`). It clears
+the session Query client, session drafts, pending and unconfirmed saves and private Toasts,
+replaces authenticated content with sign-in, and passes the validated current location as
+`returnTo`. In-flight responses, retained client references and mounted forms cannot restore
+any of it, and a new session starts empty.
+
+- **What establishes it.** The absolute deadline, with no request. Otherwise only a 401 from
+  a no-store `/api/session` check, run when focus returns and after a 401 from a private read
+  or save. Sign-out keeps its own confirmation so it can report a still-active or unknown
+  result. Losing the network, an unavailable check or an active session is not session end;
+  server operations always check independently
+  ([authentication](authentication.md#sessions-and-revocation)).
+- **A save's 401** stays pending through the check, then continues as an unconfirmed save if
+  the session is not over.
+- **Pending and unconfirmed saves.** Before clearing, only whether one existed survives, as
+  a generic sign-in notice with no medication details. Sign-out with one outstanding warns by
+  name first and offers to stay signed in.

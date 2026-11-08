@@ -27,7 +27,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { saveMessages } from '@/lib/save-messages'
 import { requestSave, type SaveProblem } from '@/lib/session-saves'
 import { useSessionSave } from '@/lib/use-session-save'
-import { discardSessionFormDraft } from '@/lib/use-session-form-draft'
+import { discardSessionFormDraft } from '@/lib/session-drafts'
 import { applySchedule } from './queries'
 import {
   newTimeRow,
@@ -305,10 +305,6 @@ function SaveProblemAlert({ problem, label }: { problem: SaveProblem; label: str
     rejected: {
       title: "Schedule wasn't saved.",
       body: `${label} is saved without a schedule. Check the days, times and quantities, then save again.`,
-    },
-    unauthorized: {
-      title: saveMessages.sessionEnded,
-      body: `${label} is saved without a schedule. Sign in again to save it.`,
     },
     conflict: { title: 'A schedule is already saved.', body: 'Open Medications to review it.' },
   }[problem]

@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
+import { confirmSessionEnd } from './session-check'
 
-export type SaveProblem = 'rejected' | 'unconfirmed' | 'conflict' | 'unauthorized'
+export type SaveProblem = 'rejected' | 'unconfirmed' | 'conflict'
 export type SaveResult<T> = { saved: T; problem?: never } | { saved?: never; problem: SaveProblem }
 export type SaveAttempt = {
   id: string
@@ -13,6 +14,8 @@ export type SaveAttempt = {
   result?: SaveResult<unknown>
   openHref?: string
 }
+/** A pending or unconfirmed save, named for the sign-out warning (D18). */
+export type OutstandingSave = { kind: 'medicine' | 'schedule' | 'dose'; label: string }
 
 /** Shared HTTP outcome classification. Connectivity loss never implies a rejected write. */
 export async function requestSave<T>(
@@ -28,7 +31,10 @@ export async function requestSave<T>(
       signal: AbortSignal.timeout(12000),
     })
     if (response.ok) return { saved: decode(await response.json()) }
-    const problem = { 400: 'rejected', 401: 'unauthorized', 409: 'conflict' } as const
+    // Stays pending through the check. If the session is not over, a 401 says nothing about the
+    // write, so the attempt stays retryable; if it is, session end drops this result.
+    if (response.status === 401) await confirmSessionEnd()
+    const problem = { 400: 'rejected', 409: 'conflict' } as const
     return { problem: problem[response.status as keyof typeof problem] ?? 'unconfirmed' }
   } catch {
     return { problem: 'unconfirmed' }
@@ -41,6 +47,7 @@ class SessionSaves {
   observers = new Map<string, number>()
   listeners = new Set<() => void>()
   endListeners = new Set<() => void>()
+  outstandingSources = new Set<() => OutstandingSave[]>()
   version = 0
   // Toast identity survives route host remounts. Session end removes every private Toast.
   toasts = new Map<string, string>()
@@ -59,6 +66,18 @@ class SessionSaves {
   /** Other session-owned stores (dose saves) end with this one. */
   onEnd(listener: () => void) {
     this.endListeners.add(listener)
+  }
+  /** Other session-owned stores (dose saves) report their outstanding saves here too. */
+  addOutstanding(source: () => OutstandingSave[]) {
+    this.outstandingSources.add(source)
+  }
+  outstanding(): OutstandingSave[] {
+    const own = [...this.entries.values()].flatMap((attempt) =>
+      attempt.status === 'pending' || attempt.result?.problem === 'unconfirmed'
+        ? [{ kind: attempt.kind, label: attempt.label }]
+        : [],
+    )
+    return [...own, ...[...this.outstandingSources].flatMap((source) => source())]
   }
   emit() {
     this.version++
@@ -112,6 +131,7 @@ class SessionSaves {
     this.listeners.clear()
     this.endListeners.forEach((listener) => listener())
     this.endListeners.clear()
+    this.outstandingSources.clear()
   }
 }
 

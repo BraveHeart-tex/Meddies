@@ -2,7 +2,8 @@ import { hashKey, type QueryClient } from '@tanstack/react-query'
 import { toast } from '@/components/ui/toast'
 import { dateLabel } from '@/lib/calendar-date'
 import type { DoseUnit } from '@/lib/dose-quantity'
-import { sessionSaves } from '@/lib/session-saves'
+import { confirmSessionEnd } from '@/lib/session-check'
+import { sessionSaves, type OutstandingSave } from '@/lib/session-saves'
 import { saveMessages } from '@/lib/save-messages'
 import { parseDoseOutcomeRecord, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
 import { reconciledConfirmation } from './dose-confirmation'
@@ -25,8 +26,7 @@ type Outcome = DoseOutcomeRecord['outcome']
 export type PinnedCorrection = { outcome: Outcome; revision: number }
 /** A fresh cache-backed check found a record, no record, or failed. */
 export type RecordCheck = { record: DoseOutcomeRecord } | 'missing' | 'unknown'
-export type SaveProblem =
-  { kind: 'rejected' | 'unauthorized' } | { kind: 'uncertain'; checked: boolean }
+export type SaveProblem = { kind: 'rejected' } | { kind: 'uncertain'; checked: boolean }
 /** What a dose row shows while its save is pending or unconfirmed (FE-650 D21). */
 export type PendingDose = { id: string; outcome: Outcome; unconfirmed?: boolean }
 /** Raw Taken form values at submit and the Now minute they used, to reopen the attempt. */
@@ -183,6 +183,20 @@ class DoseSaves {
       : { outcome }
   }
 
+  /** Saves whose result the user could not see after signing out (D18). */
+  outstanding(): OutstandingSave[] {
+    return [...this.entries.values()].flatMap((save) =>
+      save.attempt && (save.pending || save.problem?.kind === 'uncertain')
+        ? [
+            {
+              kind: 'dose' as const,
+              label: `${save.medicine.label} ${doseClock(save.attempt.payload.dueAt)}`,
+            },
+          ]
+        : [],
+    )
+  }
+
   /** Pending and unconfirmed badges by occurrence key. */
   pendingDose(key: string): PendingDose | undefined {
     const save = this.entries.get(key)
@@ -261,10 +275,11 @@ class DoseSaves {
               : saveMessages.cannotSkip,
         })
       } else if (response.status === 401) {
-        settle({
-          problem: { kind: 'unauthorized' },
-          error: `${saveMessages.sessionEnded} ${saveMessages.signInToRecordDose}`,
-        })
+        // Stays pending through the check. If the session is not over, the 401 says nothing about
+        // the write, so it continues as an unconfirmed save; if it is, this store has ended.
+        await confirmSessionEnd()
+        if (!this.active) return
+        throw new Error('uncertain')
       } else if (response.status === 409) {
         await effects()
           ?.refresh()
@@ -281,6 +296,7 @@ class DoseSaves {
         this.finish(key)
       } else if (response.ok) {
         const body = await response.json()
+        if (!this.active) return
         const record = parseDoseOutcomeRecord(body.record)
         if (!matchesDoseReceipt(record, sent)) throw new Error('acknowledgment')
         confirm(record)
@@ -407,8 +423,11 @@ export function doseSaves(client: QueryClient) {
     const session = sessionSaves(client)
     const created = new DoseSaves(client)
     stores.set(client, created)
-    if (session.active) session.onEnd(() => created.end())
-    else created.end()
+    if (session.active) {
+      session.onEnd(() => created.end())
+      session.addOutstanding(() => created.outstanding())
+      created.subscribe(() => session.emit())
+    } else created.end()
     store = created
   }
   return store

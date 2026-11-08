@@ -128,8 +128,11 @@ test('a confirmed schedule save removes the draft before the form is opened agai
   client.clear()
 })
 
-test('the add form names its details and a session end with medication', async () => {
+test('the add form keeps a save 401 retryable until the session check confirms an end', async () => {
   server.use(
+    http.get('/api/session', () =>
+      HttpResponse.json({ id: 'owner', expires: '2099-01-01T00:00:00Z' }),
+    ),
     http.get('/api/medicines', () => HttpResponse.json({ medicines: [] })),
     http.post('/api/medicines', () =>
       HttpResponse.json({ error: 'unauthorized' }, { status: 401 }),
@@ -146,7 +149,6 @@ test('the add form names its details and a session end with medication', async (
   await user.type(screen.getByLabelText(/^Strength/), '5 mg')
   await user.click(screen.getByRole('button', { name: 'Tablet' }))
   await user.click(screen.getByRole('button', { name: 'Save medication' }))
-  expect(
-    await screen.findByText("Magnesium wasn't saved. Sign in again to save your medication."),
-  ).toBeVisible()
+  expect(await screen.findByText(/Trying again saves Magnesium only once/)).toBeVisible()
+  expect(screen.queryByText('Your session ended.')).not.toBeInTheDocument()
 })

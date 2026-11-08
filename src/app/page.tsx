@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { TodayHydration } from '@/features/schedules/today-hydration'
 import { auth, authConfigured } from '@/features/auth/server'
 import { SignInScreen } from '@/features/auth/sign-in-screen'
-import { safeReturnTo } from '@/features/auth/return-to'
+import { safeReturnTo, saveInProgressNotice } from '@/features/auth/return-to'
 import { redirect } from 'next/navigation'
 import { SessionBoundary } from '@/features/auth/session-boundary'
 import { AppShell } from '@/components/layout/app-shell'
@@ -31,11 +31,12 @@ export default async function HomePage({
     error?: string | string[]
     reason?: string | string[]
     returnTo?: string | string[]
+    notice?: string | string[]
   }>
 }) {
   const configured = authConfigured()
   const session = configured ? await auth() : null
-  const { error, reason, returnTo } = await searchParams
+  const { error, reason, returnTo, notice } = await searchParams
   const destination = safeReturnTo(returnTo)
   if (session?.user?.id) {
     if (destination !== '/') redirect(destination)
@@ -60,6 +61,7 @@ export default async function HomePage({
       error={typeof error === 'string' ? error : undefined}
       reason={typeof reason === 'string' ? reason : undefined}
       returnTo={destination}
+      saveInProgress={notice === saveInProgressNotice}
     />
   )
 }

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { endSessionQueryClient, sessionQueryClient } from '../src/lib/session-query-client.ts'
 import { historyDayQuery, scheduleKeys } from '../src/features/schedules/queries.ts'
+import { readSessionDraft, writeSessionDraft } from '../src/lib/session-drafts.ts'
 
 const key = ['medicines', 'list']
 
@@ -74,5 +75,25 @@ test('stale data refreshes on entry, focus and reconnect, without polling or sil
   assert.equal(queries?.refetchOnReconnect, true)
   assert.equal(queries?.refetchInterval, false)
   assert.equal(queries?.retry, false)
+  endSessionQueryClient()
+})
+
+test('a retained reference to an ended client cannot restore private data', () => {
+  const client = sessionQueryClient('owner-a:2026-11-14T00:00:00.000Z')
+  endSessionQueryClient()
+  client.setQueryData(key, ['Aspirin'])
+  assert.equal(client.getQueryData(key), undefined)
+  assert.deepEqual(client.getQueryCache().getAll(), [])
+})
+
+test('session end clears session drafts and a retained reference cannot write them back', () => {
+  const client = sessionQueryClient('owner-a:2026-11-14T00:00:00.000Z')
+  writeSessionDraft(client, 'medicine:add', { label: 'Aspirin' })
+  endSessionQueryClient()
+  assert.equal(readSessionDraft(client, 'medicine:add'), undefined)
+  writeSessionDraft(client, 'medicine:add', { label: 'Aspirin' })
+  assert.equal(readSessionDraft(client, 'medicine:add'), undefined)
+  const next = sessionQueryClient('owner-a:2026-11-14T00:00:00.000Z')
+  assert.equal(readSessionDraft(next, 'medicine:add'), undefined)
   endSessionQueryClient()
 })

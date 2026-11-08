@@ -43,6 +43,8 @@ export type App = {
   setScheduleTime(instant: string): Promise<void>
   /** Replace the browser session cookie with an expired one. */
   expireSession(): Promise<void>
+  /** Put back the original session cookie, standing in for signing in again. */
+  restoreSession(): Promise<void>
   /** Call the app API as the signed-in user; fails unless the response is 200. */
   api(method: string, path: string, data: object): Promise<APIResponse>
   /**
@@ -261,6 +263,10 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
       origin: server.origin,
       setScheduleTime: server.setScheduleTime,
       expireSession: () => expireSession(context, server),
+      restoreSession: async () => {
+        if (!server.token) throw new Error('Journey must declare auth to restore a session')
+        await context.addCookies([sessionCookie(server.token.value, server.token.expires)])
+      },
       get worker() {
         if (!server.worker) throw new Error('Journey must declare storage to control the Worker')
         return server.worker

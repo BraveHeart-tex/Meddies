@@ -1,3 +1,6 @@
+/** Carried to sign-in in place of any save detail. */
+export const saveInProgressNotice = 'save-in-progress'
+
 /** The complete set of private destinations supported by sign-in. */
 export function safeReturnTo(value: unknown): string {
   if (typeof value !== 'string') return '/'

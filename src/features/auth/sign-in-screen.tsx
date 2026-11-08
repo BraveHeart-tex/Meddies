@@ -15,11 +15,13 @@ export function SignInScreen({
   error,
   reason,
   returnTo = '/',
+  saveInProgress = false,
 }: {
   configured: boolean
   error?: string
   reason?: string
   returnTo?: string
+  saveInProgress?: boolean
 }) {
   const heading = useRef<HTMLHeadingElement>(null)
   const submitting = useRef(false)
@@ -53,6 +55,11 @@ export function SignInScreen({
                 ]
               : null
 
+  const detail =
+    info && saveInProgress && message
+      ? `${message[1]} A save was still in progress. After signing in, check whether it was recorded.`
+      : message?.[1]
+
   async function submit() {
     if (submitting.current) return
     submitting.current = true
@@ -81,8 +88,8 @@ export function SignInScreen({
         >
           {info ? <Info size={16} aria-hidden="true" /> : <Icon name="warning" size={16} />}
           <AlertTitle aria-hidden={info || undefined}>{message[0]}</AlertTitle>
-          <AlertDescription aria-hidden={info || undefined}>{message[1]}</AlertDescription>
-          {info && <span className="sr-only">{announce ? `${message[0]} ${message[1]}` : ''}</span>}
+          <AlertDescription aria-hidden={info || undefined}>{detail}</AlertDescription>
+          {info && <span className="sr-only">{announce ? `${message[0]} ${detail}` : ''}</span>}
         </Alert>
       )}
       <Card>

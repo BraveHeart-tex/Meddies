@@ -84,3 +84,16 @@ test('known offline offers retry without dispatching; returning online permits r
   expect(signIn).toHaveBeenCalledOnce()
   online.mockRestore()
 })
+
+const saveNotice = 'A save was still in progress. After signing in, check whether it was recorded.'
+
+test.each(['expired', 'signed-out'])('reason %s adds the generic save notice', (reason) => {
+  render(<SignInScreen configured reason={reason} saveInProgress />)
+  expect(screen.getByText(new RegExp(saveNotice))).toBeVisible()
+})
+
+test('the save notice needs a session-end reason and never claims cancellation', () => {
+  render(<SignInScreen configured saveInProgress />)
+  expect(screen.queryByText(new RegExp(saveNotice))).not.toBeInTheDocument()
+  expect(saveNotice).not.toMatch(/cancel|not saved/i)
+})

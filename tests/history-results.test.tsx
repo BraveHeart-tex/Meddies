@@ -164,11 +164,13 @@ test('Retry refetches a failed date without reloading', async () => {
   expect(screen.getByRole('heading', { name: 'Wednesday 4 November, 1 dose' })).toHaveFocus()
 })
 
-test('a 401 from the browser read shows that the session ended', async () => {
+test('a 401 the session check does not confirm stays a retryable read, not a session end', async () => {
   search = new URLSearchParams('date=2026-11-04')
+  server.use(http.get('/api/session', () => HttpResponse.json({ id: 'owner', expires: 'later' })))
   serveHistory(() => HttpResponse.json({ error: 'unauthorized' }, { status: 401 }))
   renderResults(seeded({}))
-  expect(await screen.findByRole('alert')).toHaveTextContent('Your session ended.')
+  expect(await screen.findByRole('alert')).toHaveTextContent("didn't load just now")
+  expect(screen.queryByText('Your session ended.')).not.toBeInTheDocument()
 })
 
 test('a past-date History correction reconciles its own date, not Today or other dates', async () => {

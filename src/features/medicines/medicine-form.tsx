@@ -26,7 +26,7 @@ import { medicinesQuery, confirmMedicine } from './queries'
 import { saveMessages } from '@/lib/save-messages'
 import { requestSave, type SaveProblem } from '@/lib/session-saves'
 import { useSessionSave } from '@/lib/use-session-save'
-import { discardSessionFormDraft } from '@/lib/use-session-form-draft'
+import { discardSessionFormDraft } from '@/lib/session-drafts'
 import {
   medicineFormDefaults,
   medicineFormSchema,
@@ -264,10 +264,6 @@ function SaveProblemAlert({ problem, label }: { problem: SaveProblem; label: str
     rejected: {
       title: `${label} wasn't saved.`,
       body: "Meddies couldn't accept these details. Check the name and strength, then save again.",
-    },
-    unauthorized: {
-      title: saveMessages.sessionEnded,
-      body: `${label} wasn't saved. Sign in again to save your medication.`,
     },
     conflict: {
       title: 'A different version of this medication is already saved.',

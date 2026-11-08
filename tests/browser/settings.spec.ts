@@ -40,7 +40,7 @@ test('Settings checks session end before showing the signed-out destination and 
   await expect(page.getByRole('button', { name: 'Signing out…' })).toBeDisabled()
   await expect(page).toHaveURL(`${app.origin}/settings`)
   release()
-  await expect(page).toHaveURL(`${app.origin}/?reason=signed-out`)
+  await expect(page).toHaveURL(`${app.origin}/?reason=signed-out&returnTo=%2Fsettings`)
   await expect(
     page.getByText("You're signed out of Meddies in this browser.", { exact: true }),
   ).toBeVisible()

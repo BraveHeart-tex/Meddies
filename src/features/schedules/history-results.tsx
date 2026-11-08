@@ -6,7 +6,7 @@ import { useMedicines } from '@/features/medicines/queries'
 import { HistoryDay } from './history-day'
 import { requestDayFocus, useHistoryDate } from './history-date-nav'
 import { HistoryDayLoading } from './history-skeleton'
-import { historyDayQuery, ScheduleReadError } from './queries'
+import { historyDayQuery } from './queries'
 
 /**
  * The selected History date's results, owned by Query after hydration. The date comes from the
@@ -26,15 +26,6 @@ export function HistoryResults({ today, notice }: { today: string; notice?: 'inv
   const shownNotice = left ? undefined : notice
 
   const dayError = day.data === undefined && day.isError && !day.isFetching
-  if (dayError && day.error instanceof ScheduleReadError && day.error.status === 401)
-    return (
-      <HistoryDay
-        key={`${date}:unauthorized`}
-        date={date}
-        today={today}
-        result={{ status: 'unauthorized' }}
-      />
-    )
   if (dayError || medicines.loadError) {
     const retry = () => {
       // The alert and its button give way to the loading state, so focus follows to the day.

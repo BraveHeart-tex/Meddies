@@ -2,11 +2,7 @@
 
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import {
-  discardSessionFormDraft,
-  readSessionDraft,
-  writeSessionDraft,
-} from '@/lib/use-session-form-draft'
+import { discardSessionFormDraft, readSessionDraft, writeSessionDraft } from '@/lib/session-drafts'
 import type { DoseOutcomeRecord } from './contract'
 
 type Outcome = DoseOutcomeRecord['outcome']

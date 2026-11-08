@@ -62,12 +62,6 @@ test.each([
   expect(problemText({ outcome, problem: { kind: 'rejected' } })).toHaveTextContent(text)
 })
 
-test('session end during a save', () => {
-  expect(problemText({ problem: { kind: 'unauthorized' } })).toHaveTextContent(
-    'Your session ended.Sign in again to record this dose.',
-  )
-})
-
 const base = {
   id: 'dose',
   scheduleId: 'schedule',

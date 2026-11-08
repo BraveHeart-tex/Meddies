@@ -24,7 +24,6 @@ import { useDoseSaves } from './use-dose-outcome-mutation'
 export type HistoryDayResult =
   | { status: 'loaded'; doses: DoseOccurrence[]; medicines: Medicine[] }
   | { status: 'unavailable'; retry: () => void }
-  | { status: 'unauthorized' }
 
 const recorded = (dose: DoseOccurrence) => dose.status === 'Taken' || dose.status === 'Skipped'
 
@@ -56,19 +55,7 @@ export function HistoryDay({
     <>
       {notice === 'invalid' && <HistoryInvalidDateNotice />}
       <section aria-labelledby={dayHeadingId} className="flex flex-col gap-3.5">
-        {result.status === 'unauthorized' ? (
-          <Alert role="alert" variant="destructive">
-            <AlertTitle id={dayHeadingId} ref={focusTarget} tabIndex={-1}>
-              Your session ended.
-            </AlertTitle>
-            <AlertDescription>
-              <Link className="underline" href="/">
-                Sign in again
-              </Link>{' '}
-              to view history.
-            </AlertDescription>
-          </Alert>
-        ) : result.status === 'unavailable' ? (
+        {result.status === 'unavailable' ? (
           <Alert role="alert" variant="destructive">
             <AlertTitle id={dayHeadingId} ref={focusTarget} tabIndex={-1}>
               History for {dateLabel(date, today)} didn&apos;t load just now.
