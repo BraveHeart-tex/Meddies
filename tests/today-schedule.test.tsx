@@ -234,11 +234,15 @@ describe('with a cached snapshot', () => {
     cache(initialNow)
     const user = renderToday()
     focus()
-    expect(await screen.findByText(/Today could not be refreshed/)).toBeVisible()
+    expect(
+      await screen.findByText("Today didn't update just now. Check your connection and try again."),
+    ).toBeVisible()
     expect(await doses()).toHaveTextContent('Morning Tablet')
-    await user.click(screen.getByRole('button', { name: 'Retry Today' }))
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
     await waitFor(() =>
-      expect(screen.queryByText(/Today could not be refreshed/)).not.toBeInTheDocument(),
+      expect(
+        screen.queryByText("Today didn't update just now. Check your connection and try again."),
+      ).not.toBeInTheDocument(),
     )
     expect(await doses()).toHaveTextContent('Morning Tablet')
     expect(api.reads()).toBe(2)
@@ -838,10 +842,50 @@ describe('with no cache', () => {
     const api = schedulesApi(initialNow)
     api.failNext()
     const user = renderToday()
-    expect(await screen.findByText(/Today could not be refreshed/)).toBeVisible()
+    expect(
+      await screen.findByText("Today didn't update just now. Check your connection and try again."),
+    ).toBeVisible()
     expect(screen.queryByRole('list', { name: "Today's doses" })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Retry Today' }))
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await doses()).toHaveTextContent('Scheduled')
     expect(api.reads()).toBe(2)
+  })
+})
+
+describe('wording', () => {
+  const failMedicines = () =>
+    server.use(http.get('/api/medicines', () => HttpResponse.json({}, { status: 503 })))
+
+  test('an empty day and the time zone hint read as approved', async () => {
+    schedulesApi(initialNow, [])
+    renderToday()
+    expect(await screen.findByText("Nothing to take today. You're all set.")).toBeVisible()
+    expect(
+      screen.getByText('All dates and times are Istanbul time, wherever you are.'),
+    ).toBeVisible()
+  })
+
+  test('medications that never loaded say Today cannot show doses', async () => {
+    schedulesApi(initialNow)
+    failMedicines()
+    client.removeQueries({ queryKey: medicineKeys.list() })
+    renderToday()
+    expect(
+      await screen.findByText(
+        "Your medications didn't load just now, so Today can't show your doses. Check your connection and try again.",
+      ),
+    ).toBeVisible()
+  })
+
+  test('a failed medication refresh says the last list is showing', async () => {
+    schedulesApi(initialNow)
+    failMedicines()
+    client.setQueryData(medicineKeys.list(), [medicine], { updatedAt: 0 })
+    renderToday()
+    expect(
+      await screen.findByText(
+        "Medication details didn't update just now. Showing the last list that loaded.",
+      ),
+    ).toBeVisible()
   })
 })

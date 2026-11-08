@@ -160,13 +160,13 @@ test('failed Today reads show recoverable errors in the shell', async ({ page, a
   for (const route of todayReads) app.worker.fail(route, 503)
   await page.goto('/')
   await expect(greeting(page)).toBeVisible()
-  await expect(page.getByText(/Your medicines could not be loaded/)).toBeVisible()
+  await expect(page.getByText(/Your medications didn't load just now/)).toBeVisible()
   await expect(
-    page.getByText('Today could not be refreshed. Connect to the internet and retry.'),
+    page.getByText("Today didn't update just now. Check your connection and try again."),
   ).toBeVisible()
   app.worker.clear()
   await page.getByRole('button', { name: 'Try loading medications again' }).click()
-  await page.getByRole('button', { name: 'Retry Today' }).click()
+  await page.getByRole('button', { name: 'Try again' }).click()
   await expect(todaysDoses(page)).toContainText('Streaming Fixture Medicine')
 })
 
@@ -176,7 +176,7 @@ test.describe('with no medicines', () => {
   test('streams the empty state', async ({ page, app }) => {
     const api = countApiRequests(page, app.origin)
     await page.goto('/')
-    await expect(page.getByText('No doses scheduled for today.')).toBeVisible()
+    await expect(page.getByText("Nothing to take today. You're all set.")).toBeVisible()
     await page.waitForLoadState('load')
     expectNoRepeatedReads(api)
   })

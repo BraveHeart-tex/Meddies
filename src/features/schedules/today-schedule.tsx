@@ -123,8 +123,8 @@ export function TodaySchedule({
           <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
             <p>
               {medicines.length === 0
-                ? 'Your medicines could not be loaded. Today is unavailable until they can be refreshed.'
-                : 'Medicine details could not be refreshed. Showing the last successful list.'}
+                ? "Your medications didn't load just now, so Today can't show your doses. Check your connection and try again."
+                : "Medication details didn't update just now. Showing the last list that loaded."}
             </p>
             <Button variant="outline" onClick={retryMedicines}>
               Try loading medications again
@@ -135,9 +135,9 @@ export function TodaySchedule({
       {(loadError || refreshFailed) && (
         <Alert>
           <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
-            <p>Today could not be refreshed. Connect to the internet and retry.</p>
+            <p>Today didn&apos;t update just now. Check your connection and try again.</p>
             <Button variant="outline" disabled={refreshing} onClick={retry}>
-              {refreshing ? 'Retrying…' : 'Retry Today'}
+              {refreshing ? 'Retrying…' : 'Try again'}
             </Button>
           </AlertDescription>
         </Alert>
@@ -272,14 +272,14 @@ export function TodaySchedule({
             ) : (
               <Card variant="dashed">
                 <CardContent>
-                  <p>No doses scheduled for today.</p>
+                  <p>Nothing to take today. You&apos;re all set.</p>
                 </CardContent>
               </Card>
             )}
           </>
         )}
       <p className="px-6 text-center text-body-sm text-muted-foreground">
-        All dates and times use Europe/Istanbul, wherever your device is.
+        All dates and times are Istanbul time, wherever you are.
       </p>
       {!loadError && !refreshFailed && (
         <Button variant="ghost" className="self-center" disabled={refreshing} onClick={retry}>
