@@ -8,6 +8,7 @@ import { toast } from '@/components/ui/toast'
 import { dateLabel } from '@/lib/calendar-date'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Medicine } from '@/features/medicines/contract'
+import { saveMessages } from '@/lib/save-messages'
 import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
 import { SkippedForm } from './skipped-form'
 import { doseClock, TakenForm } from './taken-form'
@@ -83,7 +84,7 @@ export function DoseActions({
       // Confirmed by the server: a Toast without Undo (FE-648 F2, C5).
       toast.add({
         title: superseded
-          ? 'Earlier save confirmed. This dose has since changed'
+          ? 'Your earlier save went through. This dose has changed since then.'
           : outcomeConfirmation({
               label: medicine.label,
               unit: medicine.unit,
@@ -221,7 +222,7 @@ export function DoseActions({
                     else dismissReview()
                   }}
                 >
-                  Review current outcome
+                  {saveMessages.checkWhatsSaved}
                 </Button>
               )}
             </AlertDescription>
@@ -255,7 +256,7 @@ export function DoseActions({
             <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
               <p>{error}</p>
               <Button type="button" variant="outline" onClick={reviewCurrent}>
-                Review current outcome
+                {saveMessages.checkWhatsSaved}
               </Button>
             </AlertDescription>
           </Alert>

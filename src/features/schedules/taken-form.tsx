@@ -22,6 +22,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import { useSessionFormDraft } from '@/lib/use-session-form-draft'
 import type { Medicine } from '@/features/medicines/contract'
+import { saveMessages } from '@/lib/save-messages'
 import type { DoseOccurrence } from './contract'
 import { DoseSaveProblem } from './dose-save-problem'
 import { useCurrentMinute } from './use-current-minute'
@@ -59,9 +60,9 @@ const screenOrder = ['when', 'date', 'time', 'quantity'] as const
 type Mode = 'record' | 'edit' | 'correct'
 
 const primaryLabels: Record<Mode, { save: string; retry: string }> = {
-  record: { save: 'Save as taken', retry: 'Retry saving as taken' },
-  edit: { save: 'Save intake changes', retry: 'Retry saving intake changes' },
-  correct: { save: 'Save correction', retry: 'Retry saving correction' },
+  record: { save: 'Save as taken', retry: 'Try saving as taken again' },
+  edit: { save: 'Save intake changes', retry: 'Try saving changes again' },
+  correct: { save: 'Save correction', retry: 'Try saving your change again' },
 }
 
 /**
@@ -201,7 +202,7 @@ export function TakenForm({
           <FieldLegend className="sr-only">Actual intake for {medicine.label}</FieldLegend>
           {/* Closing the drawer is this form's Clear form: dismissal discards the draft. */}
           {draft.restored && (
-            <p className="text-body-sm text-muted-foreground">Unsaved details from earlier.</p>
+            <p className="text-body-sm text-muted-foreground">{saveMessages.draftRestored}</p>
           )}
           {mode !== 'edit' && !scheduledHasPassed && (
             <Alert>
@@ -370,7 +371,7 @@ export function TakenForm({
               {saving
                 ? 'Saving...'
                 : offline
-                  ? 'Connect to save'
+                  ? saveMessages.connectToSave
                   : uncertain && !changedSinceSave
                     ? labels.retry
                     : labels.save}

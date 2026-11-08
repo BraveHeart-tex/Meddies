@@ -95,7 +95,10 @@ test('review, edit and correct past doses in History', async ({ page, request },
     await dialog.getByRole('button', { name: 'Save intake changes' }).click()
     await expect(first).toContainText('took 1½ tablets')
     await expect(
-      toastMessage(page, /^History Fixture Medicine \d\d:\d\d · intake changed to .*, 1½ tablets$/),
+      toastMessage(
+        page,
+        /^History Fixture Medicine \d\d:\d\d · updated to taken at .*, 1½ tablets$/,
+      ),
     ).toBeVisible()
     await expect(intakeTime(first)).toHaveAttribute('datetime', originalTakenAt!)
   })

@@ -54,10 +54,14 @@ test('a stale correction gets explicit recovery', async ({ page, app }, testInfo
 
   await test.step('save the stale correction and get explicit recovery', async () => {
     await dialog.getByRole('button', { name: 'Save as skipped' }).click()
-    await expect(page.getByText('This dose changed elsewhere.')).toBeVisible()
+    await expect(
+      page.getByText(
+        "This dose changed somewhere else, so your change didn't save. Check what's saved now before changing it again.",
+      ),
+    ).toBeVisible()
     await expect(dialog, 'Conflict should close the correction drawer').toHaveCount(0)
-    await expect(row).toContainText('Your correction was not saved')
-    await expect(row.getByRole('button', { name: 'Review current outcome' })).toBeVisible()
+    await expect(row).toContainText("so your change didn't save")
+    await expect(row.getByRole('button', { name: "Check what's saved" })).toBeVisible()
     await expect(doseStatus(row)).toHaveAccessibleDescription(/Taken/)
     await expect(row).toContainText('took 2 tablets')
     await expect(row).not.toContainText('Skipped')
@@ -66,7 +70,7 @@ test('a stale correction gets explicit recovery', async ({ page, app }, testInfo
   })
 
   await test.step('review the current outcome and correct it again', async () => {
-    await row.getByRole('button', { name: 'Review current outcome' }).click()
+    await row.getByRole('button', { name: "Check what's saved" }).click()
     await trigger.press('Enter')
     await expect(dialog).toContainText('Taken 2 tablets')
     await dialog.getByRole('button', { name: /^Correct outcome/ }).click()

@@ -1,11 +1,12 @@
 import { InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { saveMessages } from '@/lib/save-messages'
 import type { DoseOutcomeRecord } from './contract'
 import type { SaveProblem } from './dose-saves'
 
 const rejected: Record<DoseOutcomeRecord['outcome'], string> = {
-  Taken: 'Taken time must be a time that has already passed. Change the time and save again.',
-  Skipped: 'This scheduled dose can no longer be skipped. Refresh Today to check its status.',
+  Taken: saveMessages.takenTimeInPast,
+  Skipped: saveMessages.cannotSkip,
 }
 
 /**
@@ -29,13 +30,13 @@ export function DoseSaveProblem({
   if (problem?.kind === 'uncertain')
     return (
       <Alert id={id} variant="destructive">
-        <AlertTitle>Save could not be confirmed.</AlertTitle>
+        <AlertTitle>{saveMessages.mightNotHaveSaved}</AlertTitle>
         <AlertDescription>
           {outcome === 'Taken' && 'Your details are still here. '}
-          {problem.checked && 'Meddies checked and found no record yet. '}
+          {problem.checked && "Meddies checked and can't find it yet. "}
           {changed
             ? 'Changing details starts a new save.'
-            : 'Connect and retry; it will not be saved twice.'}
+            : "Check your connection and try again. It won't save twice."}
         </AlertDescription>
       </Alert>
     )
@@ -44,17 +45,20 @@ export function DoseSaveProblem({
       <Alert id={id}>
         <InfoIcon aria-hidden="true" />
         <AlertDescription>
-          You&apos;re offline.{' '}
-          {outcome === 'Taken' ? 'Your details stay here.' : 'Nothing is saved.'}
+          {saveMessages.offline}{' '}
+          {outcome === 'Taken' ? 'Your details stay here.' : 'Nothing is saved yet.'} Save once
+          you&apos;re back online.
         </AlertDescription>
       </Alert>
     )
   if (!problem) return null
   return (
     <Alert id={id} variant="destructive">
-      <AlertTitle>{problem.kind === 'rejected' ? 'Not saved.' : 'Your session ended.'}</AlertTitle>
+      <AlertTitle>
+        {problem.kind === 'rejected' ? saveMessages.notSaved : saveMessages.sessionEnded}
+      </AlertTitle>
       <AlertDescription>
-        {problem.kind === 'rejected' ? rejected[outcome] : 'Sign in again to record this dose.'}
+        {problem.kind === 'rejected' ? rejected[outcome] : saveMessages.signInToRecordDose}
       </AlertDescription>
     </Alert>
   )

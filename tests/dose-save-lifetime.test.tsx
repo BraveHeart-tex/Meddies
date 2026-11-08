@@ -154,18 +154,20 @@ test('F6: a closed unconfirmed save keeps its badge across navigation and retrie
   await app.user.clear(amount)
   await app.user.type(amount, '2')
   await app.user.click(screen.getByRole('button', { name: 'Save as taken' }))
-  expect(await screen.findByText('Save could not be confirmed.')).toBeVisible()
+  expect(await screen.findByText('That might not have saved.')).toBeVisible()
   await app.user.click(screen.getByRole('button', { name: 'Close dose details' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  expect(await row()).toHaveTextContent('Not confirmed')
-  expect(await row()).toHaveTextContent('Taken at 09:05, 2 tablets · open to retry')
+  expect(await row()).toHaveTextContent('Might not have saved')
+  expect(await row()).toHaveTextContent(
+    'Taken at 09:05, 2 tablets · might not have saved · open to try again',
+  )
   app.leave()
   await vi.advanceTimersByTimeAsync(2 * 60_000)
   app.back()
-  expect(await row()).toHaveTextContent('Not confirmed')
+  expect(await row()).toHaveTextContent('Might not have saved')
   await app.user.click(screen.getByRole('button', { name: /^Record dose for Morning Tablet/ }))
   expect(await screen.findByLabelText(/^Amount/)).toHaveValue('2')
-  await app.user.click(screen.getByRole('button', { name: 'Retry saving as taken' }))
+  await app.user.click(screen.getByRole('button', { name: 'Try saving as taken again' }))
   expect(await screen.findByText(/Morning Tablet 09:00 · taken at 09:05/)).toBeVisible()
   expect(state.puts).toHaveLength(2)
   expect(state.puts[1]).toEqual(state.puts[0])
@@ -176,14 +178,14 @@ test('F5: focus and reconnect recheck an unconfirmed save; a found record confir
   const app = session()
   await recordTaken(app.user)
   await app.user.click(screen.getByRole('button', { name: 'Save as taken' }))
-  expect(await screen.findByText('Save could not be confirmed.')).toBeVisible()
+  expect(await screen.findByText('That might not have saved.')).toBeVisible()
   await app.user.click(screen.getByRole('button', { name: 'Close dose details' }))
   app.leave()
   const reads = state.reads
   fireEvent(window, new FocusEvent('focus'))
   await waitFor(() => expect(state.reads).toBe(reads + 1))
   app.back()
-  expect(await row()).toHaveTextContent('Not confirmed')
+  expect(await row()).toHaveTextContent('Might not have saved')
   state.records = [taken(state.puts[0] as Record<string, unknown>)]
   app.leave()
   fireEvent(window, new Event('offline'))
@@ -200,7 +202,7 @@ test('F5: focus and reconnect recheck an unconfirmed save; a found record confir
   expect(screen.getAllByText(/already saved as taken/)).toHaveLength(1)
   app.back()
   expect(await row()).toHaveTextContent('Taken')
-  expect(await row()).not.toHaveTextContent('Not confirmed')
+  expect(await row()).not.toHaveTextContent('Might not have saved')
   expect(state.puts).toHaveLength(1)
 })
 
@@ -217,7 +219,7 @@ test('F8: a record made elsewhere while the drawer is open keeps the draft and s
   fireEvent(window, new FocusEvent('focus'))
   expect(
     await screen.findByText(
-      'This dose was recorded as taken at 09:00 while your form was open. Your draft is still here. Review the outcome before saving.',
+      "This dose was saved as taken at 09:00 while your form was open. Your details are still here. Check what's saved before you save again.",
     ),
   ).toBeVisible()
   expect(amount).toHaveValue('2')
@@ -254,16 +256,16 @@ test('a different record for a closed unconfirmed save replaces its badge with e
   const app = session()
   await recordTaken(app.user)
   await app.user.click(screen.getByRole('button', { name: 'Save as taken' }))
-  expect(await screen.findByText('Save could not be confirmed.')).toBeVisible()
+  expect(await screen.findByText('That might not have saved.')).toBeVisible()
   await app.user.click(screen.getByRole('button', { name: 'Close dose details' }))
-  expect(await row()).toHaveTextContent('Not confirmed')
+  expect(await row()).toHaveTextContent('Might not have saved')
   state.records = [
     { scheduleId: schedule.id, dueAt, outcome: 'Skipped', recordedAt: now, revision: 0 },
   ]
   fireEvent(window, new FocusEvent('focus'))
-  await waitFor(async () => expect(await row()).not.toHaveTextContent('Not confirmed'))
+  await waitFor(async () => expect(await row()).not.toHaveTextContent('Might not have saved'))
   expect(await row()).toHaveTextContent('Skipped')
-  await app.user.click(within(await row()).getByRole('button', { name: 'Review current outcome' }))
-  expect(await row()).not.toHaveTextContent('Review current outcome')
+  await app.user.click(within(await row()).getByRole('button', { name: "Check what's saved" }))
+  expect(await row()).not.toHaveTextContent("Check what's saved")
   expect(state.puts).toHaveLength(1)
 })

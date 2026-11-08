@@ -84,15 +84,15 @@ test('record and edit intakes: validation, uncertain saves, double submit and co
       },
     )
     await saveAsTaken.click()
-    await expect(dialog.getByText('Save could not be confirmed.')).toBeVisible()
-    await expect(dialog.getByText(/Meddies checked and found no record yet/)).toBeVisible()
-    await expect(dialog.getByText('Not confirmed')).toBeVisible()
+    await expect(dialog.getByText('That might not have saved.')).toBeVisible()
+    await expect(dialog.getByText(/Meddies checked and can't find it yet/)).toBeVisible()
+    await expect(dialog.getByText('Might not have saved', { exact: true })).toBeVisible()
     await expect(amount).toHaveValue('1½')
     await amount.fill('2')
     await expect(dialog.getByText(/Changing details starts a new save/)).toBeVisible()
     await expect(saveAsTaken).toBeVisible()
     await amount.fill('1.5')
-    await dialog.getByRole('button', { name: 'Retry saving as taken' }).click()
+    await dialog.getByRole('button', { name: 'Try saving as taken again' }).click()
     await expect(
       toastMessage(page, 'Intake Medicine 08:00 · taken at 11:30, 1½ tablets'),
     ).toBeVisible()
@@ -151,7 +151,11 @@ test('record and edit intakes: validation, uncertain saves, double submit and co
       dueAt: mid,
     })
     await dialog.getByRole('button', { name: 'Save intake changes' }).click()
-    await expect(page.getByText('This dose changed elsewhere.')).toBeVisible()
+    await expect(
+      page.getByText(
+        "This dose changed somewhere else, so your change didn't save. Check what's saved now before changing it again.",
+      ),
+    ).toBeVisible()
     await expect(dialog).toHaveCount(0)
     await expect(row).toContainText('took 3 tablets')
   })
@@ -165,7 +169,7 @@ test('record and edit intakes: validation, uncertain saves, double submit and co
     await dialog.getByRole('button', { name: 'Save intake changes' }).click()
     await expect(dialog).toHaveCount(0)
     await expect(
-      toastMessage(page, 'Intake Medicine 10:00 · intake changed to 10:05, 2 tablets'),
+      toastMessage(page, 'Intake Medicine 10:00 · updated to taken at 10:05, 2 tablets'),
     ).toBeVisible()
     await expect(row).toContainText('took 2 tablets')
     await expect(instant(row, preciseTakenAt)).toBeVisible()

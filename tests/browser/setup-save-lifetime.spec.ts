@@ -63,7 +63,7 @@ for (const viewport of [
           },
           unconfirmed: async () => {
             await expect(
-              page.getByText('Magnesium was not confirmed', { exact: true }),
+              page.getByText('Magnesium might not have saved', { exact: true }),
             ).toBeVisible()
             await page.getByRole('button', { name: 'Return to form', exact: true }).click()
             await expect(page.getByLabel('Medicine name')).toHaveValue('Magnesium')

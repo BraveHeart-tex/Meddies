@@ -3,6 +3,7 @@ import { toast } from '@/components/ui/toast'
 import { dateLabel } from '@/lib/calendar-date'
 import type { DoseUnit } from '@/lib/dose-quantity'
 import { sessionSaves } from '@/lib/session-saves'
+import { saveMessages } from '@/lib/save-messages'
 import { parseDoseOutcomeRecord, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
 import { reconciledConfirmation } from './dose-confirmation'
 import { matchesDoseReceipt, type DoseAttempt } from './dose-receipt'
@@ -256,13 +257,13 @@ class DoseSaves {
           problem: { kind: 'rejected' },
           error:
             outcome === 'Taken'
-              ? 'Not saved. Taken time must be a time that has already passed. Change the time and save again.'
-              : 'This scheduled dose can no longer be skipped. Refresh Today to check its status.',
+              ? `${saveMessages.notSaved} ${saveMessages.takenTimeInPast}`
+              : saveMessages.cannotSkip,
         })
       } else if (response.status === 401) {
         settle({
           problem: { kind: 'unauthorized' },
-          error: 'Your session ended. Sign in again to record this dose.',
+          error: `${saveMessages.sessionEnded} ${saveMessages.signInToRecordDose}`,
         })
       } else if (response.status === 409) {
         await effects()
@@ -273,8 +274,8 @@ class DoseSaves {
           correction: null,
           form: undefined,
           error: correction
-            ? 'This dose changed elsewhere. Your correction was not saved. Review its current outcome before correcting it again.'
-            : 'An outcome already exists for this dose. Review its current outcome.',
+            ? "This dose changed somewhere else, so your change didn't save. Check what's saved now before changing it again."
+            : "This dose is already logged. Check what's saved.",
           needsReview: true,
         })
         this.finish(key)
@@ -301,13 +302,13 @@ class DoseSaves {
         // Current outcome is known; receipt of this attempt is still unknown. Keep its details.
         settle({
           problem: { kind: 'uncertain', checked: false },
-          error: 'This dose has changed. Review its current outcome',
+          error: saveMessages.doseChanged,
           needsReview: true,
         })
       } else {
         settle({
           problem: { kind: 'uncertain', checked: check === 'missing' },
-          error: 'Save could not be confirmed. Connect and retry with the same details.',
+          error: `${saveMessages.mightNotHaveSaved} Check your connection and try again with the same details.`,
         })
       }
     }
@@ -324,9 +325,9 @@ class DoseSaves {
     const open = date === today ? 'Open Today' : `Open History for ${dateLabel(date, today)}`
     toast.add({
       title: isUnconfirmed(save)
-        ? `${head} save not confirmed. ${open} to retry`
+        ? `${head} might not have saved. ${open} to try again`
         : save.needsReview
-          ? `${head} not saved. ${open} to review its current outcome`
+          ? `${head} not saved. ${open} to check what's saved`
           : `${head} not saved. ${open} to try again`,
       type: 'warning',
       timeout: 0,
@@ -356,7 +357,7 @@ class DoseSaves {
   /**
    * A record matching an unconfirmed attempt confirms it once, with "already saved" wording.
    * A different current outcome leaves a closed row explicit review instead of a lasting
-   * "Not confirmed"; an open drawer keeps offering Retry (FE-673).
+   * "Might not have saved"; an open drawer keeps offering Retry (FE-673).
    */
   private reconcile(records: DoseOutcomeRecord[]) {
     if (!this.active) return
@@ -370,7 +371,7 @@ class DoseSaves {
         if (changed && !this.openDrawers.has(key))
           this.update(key, {
             problem: { kind: 'uncertain', checked: false },
-            error: 'This dose has changed. Review its current outcome',
+            error: saveMessages.doseChanged,
             needsReview: true,
           })
         continue

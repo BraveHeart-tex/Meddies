@@ -42,7 +42,7 @@ export function DoseStatusBadge({
         className={className}
       >
         <Icon name={pending.unconfirmed ? 'warning' : 'clock'} size={13} />
-        {pending.unconfirmed ? 'Not confirmed' : `Saving · ${pending.outcome}`}
+        {pending.unconfirmed ? 'Might not have saved' : `Saving · ${pending.outcome}`}
       </Badge>
     )
   const { icon, label, variant, stroke } = appearances[status]

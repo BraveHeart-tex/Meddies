@@ -66,7 +66,7 @@ test('skip a dose from the keyboard and correct it back to Taken', async ({
   })
 
   await test.step('confirm skipped outcome', async () => {
-    await expect(toastMessage(page, `${label} 09:01 · skipped, no intake recorded`)).toBeVisible()
+    await expect(toastMessage(page, `${label} 09:01 · saved as skipped`)).toBeVisible()
     expect(
       await scrollsHorizontally(page),
       'the confirmation must fit the viewport with a 120-character unbroken name',

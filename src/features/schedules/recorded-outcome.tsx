@@ -28,9 +28,9 @@ export function RecordedElsewhere({ dose }: { dose: Recorded }) {
     <Alert role="status">
       <InfoIcon aria-hidden="true" />
       <AlertDescription className="text-foreground">
-        This dose was recorded as {dose.status.toLowerCase()}
+        This dose was saved as {dose.status.toLowerCase()}
         {dose.status === 'Taken' && ` at ${doseClock(dose.record.takenAt)}`} while your form was
-        open. Your draft is still here. Review the outcome before saving.
+        open. Your details are still here. Check what&apos;s saved before you save again.
       </AlertDescription>
     </Alert>
   )

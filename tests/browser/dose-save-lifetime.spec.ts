@@ -81,19 +81,21 @@ test('F6: an unconfirmed save stays on its row across navigation and retries the
   await startTaken(page, '2')
   await app.worker.fail(takenWrite, 503)
   await drawer(page).getByRole('button', { name: 'Save as taken' }).click()
-  await expect(drawer(page).getByText('Save could not be confirmed.')).toBeVisible()
+  await expect(drawer(page).getByText('That might not have saved.')).toBeVisible()
   await drawer(page).getByRole('button', { name: 'Close dose details' }).click()
   await expect(drawer(page)).toHaveCount(0)
   const row = doseRow(page, dueAt)
-  await expect(doseStatus(row)).toHaveAccessibleDescription('Not confirmed')
-  await expect(row).toContainText('Taken at 12:00, 2 tablets · open to retry')
+  await expect(doseStatus(row)).toHaveAccessibleDescription('Might not have saved')
+  await expect(row).toContainText(
+    'Taken at 12:00, 2 tablets · might not have saved · open to try again',
+  )
   await leaveForMedications(page)
   await returnToToday(page)
-  await expect(doseStatus(row)).toHaveAccessibleDescription('Not confirmed')
+  await expect(doseStatus(row)).toHaveAccessibleDescription('Might not have saved')
   await app.worker.clear()
   await doseTrigger(page, label).click()
   await expect(drawer(page).getByLabel(/^Amount/)).toHaveValue('2')
-  await drawer(page).getByRole('button', { name: 'Retry saving as taken' }).click()
+  await drawer(page).getByRole('button', { name: 'Try saving as taken again' }).click()
   await expect(toastMessage(page, `${label} 08:00 · taken at 12:00, 2 tablets`)).toBeVisible()
   await expect(doseStatus(row)).toHaveAccessibleDescription(/Taken/)
   expect(puts).toHaveLength(2)
@@ -124,9 +126,9 @@ test('F5: focus and reconnect recheck an unconfirmed save; it confirms once away
   })
   await startTaken(page, '1')
   await drawer(page).getByRole('button', { name: 'Save as taken' }).click()
-  await expect(drawer(page).getByText('Save could not be confirmed.')).toBeVisible()
+  await expect(drawer(page).getByText('That might not have saved.')).toBeVisible()
   await drawer(page).getByRole('button', { name: 'Close dose details' }).click()
-  await expect(doseStatus(doseRow(page, dueAt))).toHaveAccessibleDescription('Not confirmed')
+  await expect(doseStatus(doseRow(page, dueAt))).toHaveAccessibleDescription('Might not have saved')
   await leaveForMedications(page)
   await focusWindow(page)
   await expect.poll(() => lostReads).toBe(2)
@@ -166,7 +168,9 @@ test('F8 and drafts: details survive navigation, a record elsewhere keeps them, 
     .getByLabel(/^Amount/)
     .filter({ visible: true })
   await expect(amount).toHaveValue('3')
-  await expect(drawer(page).getByText('Unsaved details from earlier.')).toBeVisible()
+  await expect(
+    drawer(page).getByText('Pick up where you left off. Your details are still here.'),
+  ).toBeVisible()
 
   await app.api('PUT', '/api/schedules', {
     outcome: 'Taken',
@@ -178,7 +182,7 @@ test('F8 and drafts: details survive navigation, a record elsewhere keeps them, 
   await focusWindow(page)
   await expect(
     drawer(page).getByText(
-      'This dose was recorded as taken at 11:55 while your form was open. Your draft is still here. Review the outcome before saving.',
+      "This dose was saved as taken at 11:55 while your form was open. Your details are still here. Check what's saved before you save again.",
     ),
   ).toBeVisible()
   await expect(amount).toHaveValue('3')

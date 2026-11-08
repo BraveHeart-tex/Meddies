@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import type { Medicine } from '@/features/medicines/contract'
+import { saveMessages } from '@/lib/save-messages'
 import type { DoseOccurrence } from './contract'
 import { DoseSaveProblem } from './dose-save-problem'
 import { doseClock } from './taken-form-schema'
@@ -90,9 +91,9 @@ export function SkippedForm({
             {saving
               ? 'Saving...'
               : offline
-                ? 'Connect to save'
+                ? saveMessages.connectToSave
                 : problem?.kind === 'uncertain'
-                  ? 'Retry saving as skipped'
+                  ? 'Try saving as skipped again'
                   : 'Save as skipped'}
           </Button>
           <Button

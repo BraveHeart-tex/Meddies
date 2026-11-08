@@ -16,7 +16,7 @@ test('a skip says no intake was recorded', () => {
       previous: 'Upcoming',
       record: skipped,
     }),
-    'Iron bisglycinate 22:30 · skipped, no intake recorded',
+    'Iron bisglycinate 22:30 · saved as skipped',
   )
 })
 
@@ -40,7 +40,7 @@ test('an edited intake after midnight names the actual day (C3, C5)', () => {
       previous: 'Taken',
       record: taken('2026-11-05T20:00:00.000Z', 0.5),
     }),
-    'Melatonin 22:30 · intake changed to 23:00, ½ tablet',
+    'Melatonin 22:30 · updated to taken at 23:00, ½ tablet',
   )
   assert.equal(
     outcomeConfirmation({
@@ -49,7 +49,7 @@ test('an edited intake after midnight names the actual day (C3, C5)', () => {
       previous: 'Taken',
       record: taken('2026-11-05T21:15:00.000Z', 2),
     }),
-    'Melatonin 22:30 · intake changed to 00:15 on Fri 6 Nov, 2 capsules',
+    'Melatonin 22:30 · updated to taken at 00:15 on Fri 6 Nov, 2 capsules',
   )
 })
 
@@ -65,6 +65,6 @@ test('a corrected outcome says what it changed to', () => {
   )
   assert.equal(
     outcomeConfirmation({ label: 'Melatonin', unit: 'tablet', previous: 'Taken', record: skipped }),
-    'Melatonin 22:30 · changed to skipped, no intake recorded',
+    'Melatonin 22:30 · changed to skipped',
   )
 })

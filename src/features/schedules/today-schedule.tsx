@@ -63,8 +63,8 @@ export function TodaySchedule({
     if (!attempt) return ''
     const unit = medicines.find((item) => item.id === dose.medicineId)?.unit ?? 'tablet'
     return attempt.takenAt
-      ? `Taken at ${clock(attempt.takenAt)}, ${quantityLabel(attempt.quantity, unit)} · open to retry`
-      : 'Skipped · open to retry'
+      ? `Taken at ${clock(attempt.takenAt)}, ${quantityLabel(attempt.quantity, unit)} · might not have saved · open to try again`
+      : 'Skipped · might not have saved · open to try again'
   }
   const [intakeMessage, setIntakeMessage] = useState('')
   const doseText = (dose: DoseOccurrence, quantity = dose.quantity) => {

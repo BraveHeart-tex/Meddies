@@ -327,11 +327,9 @@ describe('recording a dose', () => {
     )
     await user.click(await screen.findByRole('button', { name: 'Save as taken' }))
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    expect(
-      await screen.findByText('This dose has changed. Review its current outcome'),
-    ).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Review current outcome' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Retry saving as taken' })).toBeDisabled()
+    expect(await screen.findByText("This dose has changed. Check what's saved now.")).toBeVisible()
+    expect(screen.getByRole('button', { name: "Check what's saved" })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Try saving as taken again' })).toBeDisabled()
   })
 
   test('an unconfirmed Now retry keeps the exact time and amount and makes one fresh check', async () => {
@@ -350,12 +348,12 @@ describe('recording a dose', () => {
     await user.click(screen.getByRole('button', { name: /^Record dose for Morning Tablet/ }))
     await user.click(await screen.findByRole('button', { name: 'I took it' }))
     await user.click(await screen.findByRole('button', { name: 'Save as taken' }))
-    expect(await screen.findByText(/Meddies checked and found no record yet/)).toBeVisible()
+    expect(await screen.findByText(/Meddies checked and can't find it yet/)).toBeVisible()
     expect(api.reads()).toBe(2)
-    expect(list).toHaveTextContent('Not confirmed')
+    expect(list).toHaveTextContent('Might not have saved')
     await advance(2 * 60_000)
     expect(api.reads()).toBe(2)
-    await user.click(screen.getByRole('button', { name: 'Retry saving as taken' }))
+    await user.click(screen.getByRole('button', { name: 'Try saving as taken again' }))
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: 'Morning Tablet' })).not.toBeInTheDocument(),
     )
@@ -430,7 +428,9 @@ describe('recording a dose', () => {
       expect(row).toHaveTextContent('took 2 tablets')
       if (status === 200) {
         expect(
-          await screen.findByText('Earlier save confirmed. This dose has since changed'),
+          await screen.findByText(
+            'Your earlier save went through. This dose has changed since then.',
+          ),
         ).toBeVisible()
       } else {
         expect(screen.getByRole('dialog', { name: 'Morning Tablet' })).toBeVisible()
@@ -486,6 +486,11 @@ describe('recording a dose', () => {
     expect(rows[0]).toHaveTextContent('Scheduled')
     expect(rows[1]).toHaveTextContent('Skipped')
     expect(screen.getByText('1 of 2 logged')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Close dose details' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(rows[0]).toHaveTextContent(
+      'Not saved. The time taken has to be in the past. Change the time and save again.',
+    )
   })
 
   test.each(['Taken', 'Skipped'] as const)(
@@ -572,8 +577,8 @@ describe('recording a dose', () => {
     await user.click(screen.getByRole('button', { name: /^Correct outcome/ }))
     await user.click(screen.getByRole('button', { name: 'I skipped it' }))
     await user.click(screen.getByRole('button', { name: 'Save as skipped' }))
-    await screen.findByRole('button', { name: 'Retry saving as skipped' })
-    expect(screen.queryByText(/found no record yet/)).not.toBeInTheDocument()
+    await screen.findByRole('button', { name: 'Try saving as skipped again' })
+    expect(screen.queryByText(/can't find it yet/)).not.toBeInTheDocument()
     record = {
       ...record,
       quantity: 2,
@@ -582,9 +587,9 @@ describe('recording a dose', () => {
     }
     fireEvent(window, new Event('focus'))
     await waitFor(() => expect(list).toHaveTextContent('took 2 tablets'))
-    await user.click(screen.getByRole('button', { name: 'Retry saving as skipped' }))
+    await user.click(screen.getByRole('button', { name: 'Try saving as skipped again' }))
     expect(
-      await screen.findByText('Earlier save confirmed. This dose has since changed'),
+      await screen.findByText('Your earlier save went through. This dose has changed since then.'),
     ).toBeVisible()
     expect(payloads).toHaveLength(2)
     expect(payloads[1]).toEqual(payloads[0])
@@ -634,12 +639,14 @@ describe('recording a dose', () => {
     await user.click(screen.getByRole('button', { name: 'Save as skipped' }))
     const dialog = screen.getByRole('dialog', { name: 'Morning Tablet' })
     expect(
-      await within(dialog).findByText('This dose has changed. Review its current outcome'),
+      await within(dialog).findByText("This dose has changed. Check what's saved now."),
     ).toBeVisible()
     expect(dialog).toHaveTextContent('Taken 2 tablets at 08:55')
     expect(within(dialog).getByRole('button', { name: /^Edit intake/ })).toBeDisabled()
-    expect(within(dialog).getByRole('button', { name: 'Retry saving as skipped' })).toBeDisabled()
-    await user.click(within(dialog).getByRole('button', { name: 'Review current outcome' }))
+    expect(
+      within(dialog).getByRole('button', { name: 'Try saving as skipped again' }),
+    ).toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: "Check what's saved" }))
     await waitFor(() => expect(dialog).not.toBeInTheDocument())
     expect(await doses()).toHaveTextContent('took 2 tablets')
   })
@@ -674,7 +681,8 @@ describe('recording a dose', () => {
     )
     expect(list).toHaveTextContent('Skipped')
     expect(list).not.toHaveTextContent('Taken')
-    expect(within(list).getByRole('button', { name: 'Review current outcome' })).toBeVisible()
+    expect(list).toHaveTextContent("This dose is already logged. Check what's saved.")
+    expect(within(list).getByRole('button', { name: "Check what's saved" })).toBeVisible()
   })
 
   test('a read started before the save cannot overwrite the confirmed outcome', async () => {

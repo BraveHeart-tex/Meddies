@@ -269,9 +269,11 @@ test('a pending then unconfirmed save shows its badge on both Today and History 
   expect(await todayRow()).toHaveTextContent('Saving · Taken')
   app.open('history')
   await act(async () => held.release())
-  await waitFor(async () => expect(await historyRow(today)).toHaveTextContent('Not confirmed'))
+  await waitFor(async () =>
+    expect(await historyRow(today)).toHaveTextContent('Might not have saved'),
+  )
   app.open('today')
-  expect(await todayRow()).toHaveTextContent('Not confirmed')
+  expect(await todayRow()).toHaveTextContent('Might not have saved')
 })
 
 test('a lost History correction response checks that date and confirms without a duplicate', async () => {
@@ -288,7 +290,7 @@ test('a lost History correction response checks that date and confirms without a
   await correctToSkipped(app.user)
   expect(await screen.findByText(/Morning Tablet 09:00 · changed to skipped/)).toBeVisible()
   expect(await historyRow(yesterday)).toHaveTextContent('Skipped')
-  expect(await historyRow(yesterday)).not.toHaveTextContent('Not confirmed')
+  expect(await historyRow(yesterday)).not.toHaveTextContent('Might not have saved')
   expect(new Set(state.reads.history)).toEqual(new Set([yesterday]))
   expect(state.writes).toHaveLength(1)
 })
@@ -306,9 +308,9 @@ test('any later read of a past History date confirms its unconfirmed correction 
     history: { [yesterday]: [dose(yesterday)] },
   })
   await correctToSkipped(app.user)
-  expect(await screen.findByText('Save could not be confirmed.')).toBeVisible()
+  expect(await screen.findByText('That might not have saved.')).toBeVisible()
   await app.user.click(screen.getByRole('button', { name: 'Close dose details' }))
-  expect(await historyRow(yesterday)).toHaveTextContent('Not confirmed')
+  expect(await historyRow(yesterday)).toHaveTextContent('Might not have saved')
   // The first attempt did reach the server after all.
   state.records = [
     {
@@ -323,13 +325,11 @@ test('any later read of a past History date confirms its unconfirmed correction 
   app.open('medications')
   fireEvent(window, new Event('offline'))
   fireEvent(window, new Event('online'))
-  expect(
-    await screen.findByText('Morning Tablet 09:00 · already saved as skipped, no intake recorded'),
-  ).toBeVisible()
+  expect(await screen.findByText('Morning Tablet 09:00 · already saved as skipped')).toBeVisible()
   expect(state.reads.history.filter((date) => date === yesterday).length).toBeGreaterThan(1)
   app.open('history', yesterday)
   expect(await historyRow(yesterday)).toHaveTextContent('Skipped')
-  expect(await historyRow(yesterday)).not.toHaveTextContent('Not confirmed')
+  expect(await historyRow(yesterday)).not.toHaveTextContent('Might not have saved')
   expect(screen.getAllByText(/already saved as skipped/)).toHaveLength(1)
   expect(state.writes).toHaveLength(1)
 })
@@ -352,13 +352,13 @@ test('a result with no drawer watching names Today for a dose due today', async 
   app.open('medications')
   await act(async () => held.release())
   expect(
-    await screen.findByText('Morning Tablet 09:00 · save not confirmed. Open Today to retry'),
+    await screen.findByText('Morning Tablet 09:00 · might not have saved. Open Today to try again'),
   ).toBeVisible()
 })
 
 test.each([
-  [503, 'save not confirmed. Open History for Thu 5 Nov to retry'],
-  [409, 'not saved. Open History for Thu 5 Nov to review its current outcome'],
+  [503, 'might not have saved. Open History for Thu 5 Nov to try again'],
+  [409, "not saved. Open History for Thu 5 Nov to check what's saved"],
 ])(
   'a %i with no drawer watching names the History date of a past dose',
   async (status, message) => {
@@ -405,9 +405,9 @@ test('a definite rejection clears only that save and writes no cache', async () 
   await app.user.click(screen.getByRole('button', { name: 'Save as taken' }))
   app.open('history', yesterday)
   await correctToSkipped(app.user)
-  expect(await screen.findByText(/can no longer be skipped/)).toBeVisible()
+  expect(await screen.findByText(/can't be skipped any more/)).toBeVisible()
   expect(await historyRow(yesterday)).toHaveTextContent('Taken')
-  expect(await historyRow(yesterday)).not.toHaveTextContent(/Saving|Not confirmed|Skipped/)
+  expect(await historyRow(yesterday)).not.toHaveTextContent(/Saving|Might not have saved|Skipped/)
   expect(client.getQueryData(scheduleKeys.history(yesterday))).toEqual(history[yesterday])
   // Today's own save is still pending, untouched by the rejection.
   app.open('history', today)
@@ -430,9 +430,9 @@ test('a server-streamed History date confirms a matching unconfirmed correction'
     history: { [yesterday]: [dose(yesterday)] },
   })
   await correctToSkipped(app.user)
-  expect(await screen.findByText('Save could not be confirmed.')).toBeVisible()
+  expect(await screen.findByText('That might not have saved.')).toBeVisible()
   await app.user.click(screen.getByRole('button', { name: 'Close dose details' }))
-  expect(await historyRow(yesterday)).toHaveTextContent('Not confirmed')
+  expect(await historyRow(yesterday)).toHaveTextContent('Might not have saved')
   // The History page streams this date again from the server, now with the first attempt's record.
   state.records = [
     {
@@ -449,10 +449,8 @@ test('a server-streamed History date confirms a matching unconfirmed correction'
     updatedAt: Date.now() + 1_000,
   })
   act(() => hydrate(client, dehydrate(streamed)))
-  expect(
-    await screen.findByText('Morning Tablet 09:00 · already saved as skipped, no intake recorded'),
-  ).toBeVisible()
-  expect(await historyRow(yesterday)).not.toHaveTextContent('Not confirmed')
+  expect(await screen.findByText('Morning Tablet 09:00 · already saved as skipped')).toBeVisible()
+  expect(await historyRow(yesterday)).not.toHaveTextContent('Might not have saved')
   expect(state.writes).toHaveLength(1)
   streamed.clear()
 })

@@ -30,7 +30,7 @@ export function SessionSaveFeedback() {
           ? schedule
             ? `Schedule saved for ${attempt.label}`
             : `${attempt.label} saved`
-          : `${attempt.label}${schedule ? ' schedule' : ''} was not confirmed`
+          : `${attempt.label}${schedule ? ' schedule' : ''} might not have saved`
       const href = saved
         ? (attempt.openHref ?? `/medications?medicine=${encodeURIComponent(saved.id)}`)
         : attempt.href
