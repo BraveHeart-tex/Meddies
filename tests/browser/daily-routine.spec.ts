@@ -234,10 +234,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
   })
 })
 
-// Open FE-639 failures. Each stays an expected failure until its correction lands, then goes red
-// so the correction removes `test.fail` and the gate re-verifies the frame.
 test('W2: the scheduled choice stays hidden during the scheduled minute', async ({ page }) => {
-  test.fail()
   await page.goto('/')
   await page.getByRole('button', { name: `Record ${omega} at 14:00 as taken` }).click()
   await expect(drawer(page).getByLabel(/^Amount/)).toHaveValue('2')

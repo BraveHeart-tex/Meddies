@@ -139,7 +139,9 @@ export function TakenForm({
   const changedSinceSave =
     uncertain && submitted !== JSON.stringify(schema.safeParse(values).data ?? null)
 
-  const scheduledHasPassed = scheduled <= now
+  // The scheduled minute itself is neither early nor passed (648·W2, R6).
+  const beforeScheduled = now < scheduled
+  const scheduledHasPassed = scheduled < now
   const takenAt = takenAtLocal(values, now, scheduled)
   const today = now.slice(0, 10)
   const yesterday = previousDate(today)
@@ -207,7 +209,7 @@ export function TakenForm({
           {draft.restored && (
             <p className="text-body-sm text-muted-foreground">{saveMessages.draftRestored}</p>
           )}
-          {mode !== 'edit' && !scheduledHasPassed && (
+          {mode !== 'edit' && beforeScheduled && (
             <Alert>
               <InfoIcon aria-hidden="true" />
               <AlertDescription>
