@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { signIn } from 'next-auth/react'
+import { Info } from 'lucide-react'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
@@ -78,7 +79,7 @@ export function SignInScreen({
           role={info ? 'status' : 'alert'}
           aria-atomic="true"
         >
-          <Icon name="warning" size={16} />
+          {info ? <Info size={16} aria-hidden="true" /> : <Icon name="warning" size={16} />}
           <AlertTitle aria-hidden={info || undefined}>{message[0]}</AlertTitle>
           <AlertDescription aria-hidden={info || undefined}>{message[1]}</AlertDescription>
           {info && <span className="sr-only">{announce ? `${message[0]} ${message[1]}` : ''}</span>}
