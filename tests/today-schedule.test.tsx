@@ -937,6 +937,28 @@ describe('wording', () => {
   })
 })
 
+describe('focus when the drawer opens', () => {
+  test('Taken on Up next focuses the Now choice', async () => {
+    schedulesApi(initialNow)
+    const user = renderToday()
+    await doses()
+    await user.click(
+      screen.getByRole('button', { name: 'Record Morning Tablet at 09:00 as taken' }),
+    )
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Now · / })).toHaveFocus())
+  })
+
+  test('a row with nothing preselected focuses the title', async () => {
+    schedulesApi(initialNow)
+    const user = renderToday()
+    const list = await doses()
+    await user.click(within(list).getByRole('button', { name: /^Record dose for Morning Tablet/ }))
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Morning Tablet' })).toHaveFocus(),
+    )
+  })
+})
+
 describe('next actions', () => {
   test('groups saved statuses in time order, with status and time in the hero eyebrow', async () => {
     const now = '2026-11-14T06:00:00.000Z'

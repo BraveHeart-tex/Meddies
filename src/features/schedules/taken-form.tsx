@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useState, type KeyboardEvent } from 'react'
+import { useId, useState, type KeyboardEvent, type RefObject } from 'react'
 import { Controller, useForm, useWatch, type FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { QuantityStepper } from '@/components/quantity-stepper'
@@ -83,6 +83,7 @@ export function TakenForm({
   mode = 'record',
   restore,
   draftKey = null,
+  nowRef,
 }: {
   dose: DoseOccurrence
   medicine: Medicine
@@ -98,6 +99,8 @@ export function TakenForm({
   restore?: AttemptForm
   /** Keeps unsaved values for the session across navigation (FE-667 store). */
   draftKey?: string | null
+  /** The Now choice, the form's first control, for the drawer's open focus. */
+  nowRef?: RefObject<HTMLButtonElement | null>
 }) {
   const id = useId()
   // A pending or unconfirmed Now save keeps its minute, so a retry has the same details (D12, F4).
@@ -243,7 +246,10 @@ export function TakenForm({
                   >
                     {/* RHF focuses the chosen item when the choice is invalid. */}
                     <ToggleGroupItem
-                      ref={field.value === 'now' ? field.ref : undefined}
+                      ref={(node) => {
+                        if (nowRef) nowRef.current = node
+                        if (field.value === 'now') field.ref(node)
+                      }}
                       value="now"
                       className="flex-1"
                     >

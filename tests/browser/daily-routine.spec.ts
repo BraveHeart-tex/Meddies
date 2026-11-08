@@ -93,6 +93,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
       'aria-pressed',
       'true',
     )
+    await expect(dialog.getByRole('button', { name: /^Now · / })).toBeFocused()
     await expect(dialog.getByLabel(/^Amount/)).toHaveValue('2')
     await expect(doseStatus(omegaRow)).toHaveAccessibleDescription(/Due now/)
   })

@@ -3,16 +3,15 @@
 import { useImperativeHandle, useRef, useState, type Ref } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Icon } from '@/components/ui/icon'
 import { toast } from '@/components/ui/toast'
 import { dateLabel } from '@/lib/calendar-date'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Medicine } from '@/features/medicines/contract'
 import { saveMessages } from '@/lib/save-messages'
 import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
 import { SkippedForm } from './skipped-form'
 import { doseClock, TakenForm } from './taken-form'
 import { DoseDrawer } from './dose-drawer'
+import { OutcomeChoice } from './outcome-choice'
 import { outcomeConfirmation } from './dose-confirmation'
 import { ScheduledChip } from './scheduled-chip'
 import { RecordedElsewhere, RecordedOutcome } from './recorded-outcome'
@@ -55,6 +54,8 @@ export function DoseActions({
   const [drawerOpen, setDrawerOpen] = useState(draft.initial !== undefined)
   const rowTrigger = useRef<HTMLButtonElement>(null)
   const returnFocus = useRef<HTMLElement | null>(null)
+  const nowChoice = useRef<HTMLButtonElement>(null)
+  const focusNowOnOpen = useRef(false)
   const [openedWithoutOutcome, setOpenedWithoutOutcome] = useState(!!draft.initial?.editor)
   const [savingOutcome, setSavingOutcome] = useState<Outcome>('Taken')
   const {
@@ -146,6 +147,7 @@ export function DoseActions({
   const unconfirmed = problem?.kind === 'uncertain' && attempt !== null && !needsReview
   function openDrawer() {
     returnFocus.current = rowTrigger.current
+    focusNowOnOpen.current = false
     clearFeedback()
     setDrawerOpen(true)
     if (!recorded && unconfirmed && attempt) choose(attempt.outcome)
@@ -155,6 +157,8 @@ export function DoseActions({
     open(outcome: Outcome) {
       returnFocus.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null
+      // Taken on Up next starts at its form's first control (FE-648 Open rule).
+      focusNowOnOpen.current = outcome === 'Taken'
       clearFeedback()
       setDrawerOpen(true)
       choose(outcome)
@@ -232,6 +236,7 @@ export function DoseActions({
         medicineId={medicine.id}
         title={medicine.label}
         description={[medicine.strength, medicine.unit].filter(Boolean).join(' · ')}
+        initialFocus={() => (focusNowOnOpen.current ? nowChoice.current : null)}
         finalFocus={returnFocus}
         onClose={() => {
           draft.discard()
@@ -316,56 +321,18 @@ export function DoseActions({
           </>
         )}
         {choosing && (
-          <div className="flex flex-col gap-2.5">
-            <span id={`outcome-${dose.id}`} className="font-extrabold">
-              What happened?
-            </span>
-            <ToggleGroup
-              data-base-ui-swipe-ignore="y"
-              aria-labelledby={`outcome-${dose.id}`}
-              variant="choice"
-              size="lg"
-              spacing={2.5}
-              className="grid w-full grid-cols-2"
-              value={editor ? [editor] : []}
-              onValueChange={(value) => {
-                const next = value[0] as Outcome | undefined
-                if (next) choose(next)
-              }}
-            >
-              {(['Taken', 'Skipped'] as const).map((outcome) => (
-                <ToggleGroupItem
-                  key={outcome}
-                  value={outcome}
-                  disabled={outcomeBlocked(outcome)}
-                  className="w-full"
-                >
-                  {editor === outcome ? (
-                    <span className="grid size-6 place-items-center rounded-full bg-primary text-primary-foreground">
-                      <Icon
-                        name={outcome === 'Taken' ? 'check' : 'skipped'}
-                        size={14}
-                        strokeWidth={2.4}
-                      />
-                    </span>
-                  ) : (
-                    <Icon
-                      name={outcome === 'Taken' ? 'check' : 'skipped'}
-                      size={24}
-                      strokeWidth={1.4}
-                      className="text-muted-foreground"
-                    />
-                  )}
-                  {outcome === 'Taken' ? 'I took it' : 'I skipped it'}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          </div>
+          <OutcomeChoice
+            doseId={dose.id}
+            value={editor}
+            disabled={outcomeBlocked}
+            onChoose={choose}
+          />
         )}
         {(!recorded || correcting || editor === 'Taken') && (
           <TakenForm
             dose={dose}
             medicine={medicine}
+            nowRef={nowChoice}
             open={editor === 'Taken'}
             saving={saving}
             reviewRequired={needsReview}

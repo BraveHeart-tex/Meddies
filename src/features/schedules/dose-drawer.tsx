@@ -22,6 +22,7 @@ export function DoseDrawer({
   medicineId,
   title,
   description,
+  initialFocus,
   finalFocus,
   onClose,
   children,
@@ -32,6 +33,8 @@ export function DoseDrawer({
   medicineId: string
   title: string
   description: string
+  /** Replaces the title as the open target when it returns an element. */
+  initialFocus?: () => HTMLElement | null
   finalFocus?: RefObject<HTMLElement | null>
   onClose: () => void
   children: ReactNode
@@ -52,7 +55,10 @@ export function DoseDrawer({
         onClose()
       }}
     >
-      <DrawerContent initialFocus={titleRef} finalFocus={finalFocus}>
+      <DrawerContent
+        initialFocus={() => initialFocus?.() ?? titleRef.current}
+        finalFocus={finalFocus}
+      >
         <DrawerHeader className="flex-row items-center gap-3.5">
           <MedicationTile medicineId={medicineId} size="lg" />
           <div className="flex min-w-0 flex-1 flex-col gap-0.75 wrap-break-word">
