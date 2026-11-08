@@ -29,6 +29,8 @@ This reference kit captures **1a Cozy Care**, the direction chosen in the origin
 ---
 
 ## CONTENT FUNDAMENTALS
+The rules for UI wording are in `docs/copy.md`, which wins where this section differs.
+
 - **Voice:** a calm friend who keeps your pill box tidy. Warm and brief, never clinical, never cutesy.
 - **Person:** address her as **you** and by first name in the greeting ("Good afternoon, Mia"). Meddies never says "I". Choices she makes in the sheet use first person: "I took it" / "I skipped it".
 - **Casing:** sentence case everywhere ("Today's doses", "Add schedule"). Uppercase is only for small eyebrows ("UP NEXT", "ON A SCHEDULE").

@@ -40,10 +40,8 @@ A reminder is never confused with confirmed intake. Every dose outcome is explic
 ## Brand Commitments
 
 - Name: Meddies. There is no logo, so write the name as a wordmark instead of drawing a mark.
-- Personality: cozy, cheerful, dependable. The voice is a calm friend who keeps your pill box tidy: warm and brief, never clinical, never cutesy.
-- Address her as "you", and by first name in greetings. Meddies never says "I". Her own choices use first person ("I took it").
-- Fixed status words: Scheduled, Due now, Not logged, Taken, Skipped. Never "Missed" or "Overdue".
-- No guilt, pressure or motivational mechanics: no streaks, no exclamation marks, no emoji. Reassure through facts. Confirmations state exactly what was saved.
+- Personality: cozy, cheerful, dependable. [docs/copy.md](docs/copy.md) holds the voice and the wording rules.
+- No guilt, pressure or motivational mechanics such as streaks.
 - No medical advice. Meddies never infers intake automatically.
 
 ## Evidence on Hand

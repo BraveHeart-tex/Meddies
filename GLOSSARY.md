@@ -3,6 +3,12 @@
 A personal medication reminder and tracker. These terms describe how loading, saves, drafts
 and the signed-in session behave from the user's side.
 
+## Medicines
+
+**Medicine**:
+Something the user takes and tracks in Meddies, with a label, quantity unit and strength.
+_Avoid_: medication, in UI copy
+
 ## Doses
 
 **History date**:

@@ -19,3 +19,4 @@ happen. After a design changes there, refresh the copy here.
 - **Precedence:** FE-650 overrides the earlier designs where they conflict. Mocks show layout,
   not chrome: build with the production AppShell, components and tokens, and take geometry
   from [DESIGN.md](../../DESIGN.md).
+- **Wording:** [docs/copy.md](../copy.md) overrides the wording in these snapshots.
