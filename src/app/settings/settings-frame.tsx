@@ -11,7 +11,7 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
   return (
     <AppShell>
       <section className="space-y-5">
-        <AppHeader title="Settings" />
+        <AppHeader title="Settings" align="center" />
         <Card>
           <CardHeader>
             <CardTitle>

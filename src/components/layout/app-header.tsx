@@ -12,14 +12,20 @@ export function AppHeader({
   eyebrow,
   subtitle,
   action,
+  align = 'start',
 }: {
   title: ReactNode
   eyebrow?: ReactNode
   subtitle?: ReactNode
   action?: ReactNode
+  /**
+   * `center` lines a title-only page up with Settings. It is set per page, never derived from
+   * `subtitle`, so a title does not move when a subtitle arrives.
+   */
+  align?: 'start' | 'center'
 }) {
   return (
-    <HeaderFrame action={action} headingClassName="[overflow-wrap:anywhere]">
+    <HeaderFrame action={action} align={align} headingClassName="[overflow-wrap:anywhere]">
       {eyebrow && <p className="text-body-sm font-bold text-muted-foreground">{eyebrow}</p>}
       <h1 className="text-display font-extrabold outline-none">{title}</h1>
       {subtitle && <p className="text-caption font-bold text-muted-foreground">{subtitle}</p>}
@@ -51,15 +57,22 @@ export function AppHeaderSkeleton() {
 function HeaderFrame({
   children,
   action,
+  align = 'start',
   headingClassName,
 }: {
   children: ReactNode
   action?: ReactNode
+  align?: 'start' | 'center'
   headingClassName: string
 }) {
   const pathname = usePathname()
   return (
-    <header className="flex flex-wrap items-start justify-between gap-3">
+    <header
+      className={cn(
+        'flex flex-wrap justify-between gap-3',
+        align === 'center' ? 'items-center' : 'items-start',
+      )}
+    >
       <div className={cn('flex min-w-[min(100%,11rem)] flex-1 flex-col gap-1', headingClassName)}>
         {children}
       </div>
