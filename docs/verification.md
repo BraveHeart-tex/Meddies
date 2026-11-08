@@ -11,6 +11,9 @@ Webpack sidesteps the Turbopack CSS worker's local port requirement in restricte
 environments; CI and releases use Turbopack. Locally the build is skipped when no build
 input changed. Test commands: [tests/README.md](../tests/README.md).
 
+The Verify workflow sets `CI_SKIP_BUILD_TYPECHECK=1`, so its build skips the Next.js type
+check that `pnpm typecheck` has just run. Vercel and local builds keep the check.
+
 ## Cheapest proof
 
 Prove each behavior at the cheapest level that can prove it, with delays and failures

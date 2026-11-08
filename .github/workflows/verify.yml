@@ -27,6 +27,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Lint, format, types, build, full suite
+        env:
+          CI_SKIP_BUILD_TYPECHECK: '1'
         run: bash scripts/verify.sh
       # Journeys reuse the .next and .worker-build outputs from scripts/verify.sh.
       - name: Playwright version
