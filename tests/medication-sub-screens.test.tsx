@@ -12,6 +12,7 @@ import { MedicationsScreen } from '../src/features/medicines/medications-screen'
 import { MedicinePanel } from '../src/features/medicines/medicine-panel'
 import { medicineKeys } from '../src/features/medicines/queries'
 import type { DailySchedule } from '../src/features/schedules/contract'
+import { SchedulePanel } from '../src/features/schedules/schedule-panel'
 import { scheduleToday } from '../src/features/schedules/occurrences'
 import { scheduleKeys } from '../src/features/schedules/queries'
 import { createQueryClient } from '../src/lib/session-query-client'
@@ -133,6 +134,62 @@ function seedCache(medicines: Medicine[], age = 0) {
   )
 }
 
+test.each([
+  { startDate: '2035-06-15', weekdays: [5], expected: 'First dose: today at 20:00.' },
+  { startDate: '2035-06-18', weekdays: [1], expected: 'First dose: Mon 18 Jun at 08:00.' },
+])(
+  'the saved confirmation uses the first eligible dose: $expected',
+  async ({ startDate, weekdays, expected }) => {
+    api({
+      schedules: [
+        {
+          ...schedule,
+          startDate,
+          weekdays,
+          times: [
+            { time: '08:00', quantity: 1 },
+            { time: '20:00', quantity: 0.5 },
+          ],
+        },
+      ],
+    })
+    render(
+      <QueryClientProvider client={client}>
+        <SchedulePanel
+          mode="detail"
+          initialMedicineId={magnesium.id}
+          initialNow={initialNow}
+          justScheduled
+        />
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByText(expected)).toBeVisible()
+    expect(screen.getByRole('status', { name: 'Saved schedule' })).toHaveTextContent(
+      'Schedule saved for Magnesium.',
+    )
+  },
+)
+
+test('the schedule card separates product strength from each time and dose quantity', async () => {
+  api({
+    schedules: [
+      {
+        ...schedule,
+        times: [
+          { time: '08:00', quantity: 1 },
+          { time: '20:00', quantity: 0.5 },
+        ],
+      },
+    ],
+  })
+  renderDetail()
+  const card = await screen.findByRole('region', { name: 'Schedule' })
+  expect(within(card).getByText('08:00').parentElement).toHaveTextContent('1 tablet')
+  expect(within(card).getByText('20:00').parentElement).toHaveTextContent('½ tablet')
+  expect(card).not.toHaveTextContent('200 mg')
+  expect(card).toHaveTextContent('Started Fri 15 Jun')
+})
+
 describe('the medication page', () => {
   test('names the medication in its identity header below a Back row to Medications', async () => {
     api()
@@ -142,7 +199,7 @@ describe('the medication page', () => {
     expect(backRow('Medications')).toHaveAttribute('href', '/medications')
     expect(screen.getByRole('link', { name: 'Settings' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Medications' })).not.toBeInTheDocument()
-    expect(await screen.findByText('No schedule yet.')).toBeVisible()
+    expect(await screen.findByText('No schedule yet')).toBeVisible()
     expect(setSchedule()).toBeVisible()
   })
 
@@ -180,7 +237,7 @@ describe('the medication page', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Loading schedule')
     expect(setSchedule()).not.toBeInTheDocument()
     held.release()
-    expect(await screen.findByText('No schedule yet.')).toBeVisible()
+    expect(await screen.findByText('No schedule yet')).toBeVisible()
   })
 
   test('647·D2 not found offers Open Medications and no Set schedule', async () => {
@@ -212,7 +269,7 @@ describe('the medication page', () => {
     expect(alert).toHaveTextContent(unchecked)
     await identity('Magnesium')
     expect(setSchedule()).not.toBeInTheDocument()
-    expect(screen.queryByText('No schedule yet.')).not.toBeInTheDocument()
+    expect(screen.queryByText('No schedule yet')).not.toBeInTheDocument()
 
     await user.click(within(alert).getByRole('button', { name: 'Retry' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(unchecked)
@@ -220,7 +277,7 @@ describe('the medication page', () => {
 
     reads.failSchedules = false
     await user.click(screen.getByRole('button', { name: 'Retry' }))
-    expect(await screen.findByText('No schedule yet.')).toBeVisible()
+    expect(await screen.findByText('No schedule yet')).toBeVisible()
     expect(setSchedule()).toBeVisible()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
@@ -232,7 +289,7 @@ describe('the medication page', () => {
     await user.click(await screen.findByRole('button', { name: 'Retry' }))
     reads.failSchedules = false
     await user.click(await screen.findByRole('button', { name: 'Retry' }))
-    expect(await screen.findByText(/Starts /)).toBeVisible()
+    expect(await screen.findByText(/Started /)).toBeVisible()
     expect(setSchedule()).not.toBeInTheDocument()
   })
 
@@ -345,7 +402,7 @@ describe('refreshes', () => {
     seedCache([magnesium], stale)
     renderDetail()
     await identity('Magnesium')
-    expect(screen.getByText('No schedule yet.')).toBeVisible()
+    expect(screen.getByText('No schedule yet')).toBeVisible()
     await waitFor(() => expect(reads.medicineReads).toBe(1))
     expect(placeholders()).toHaveLength(0)
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
@@ -407,7 +464,7 @@ describe('the mounted screen', () => {
     await user.click(backRow('Magnesium'))
     expect(window.location.search).toBe(`?medicine=${magnesium.id}`)
     rerender(screenAt())
-    expect(await screen.findByText('No schedule yet.')).toBeVisible()
+    expect(await screen.findByText('No schedule yet')).toBeVisible()
 
     await user.click(screen.getByRole('link', { name: 'Set schedule' }))
     expect(window.location.search).toBe(`?schedule=${magnesium.id}`)

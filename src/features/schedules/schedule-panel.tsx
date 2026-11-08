@@ -19,7 +19,9 @@ export function SchedulePanel({
   serverEntry = false,
   focusMedicineId,
   onMedicineFocused,
-  detailNotices,
+  detailActions,
+  justSaved,
+  justScheduled,
   detailHeadingRef,
 }: {
   /** The server scheduling time at render, until a newer schedules snapshot replaces it. */
@@ -32,7 +34,9 @@ export function SchedulePanel({
   serverEntry?: boolean
   focusMedicineId?: string | null
   onMedicineFocused?: () => void
-  detailNotices?: ReactNode
+  justSaved?: boolean
+  justScheduled?: boolean
+  detailActions?: ReactNode
   detailHeadingRef?: Ref<HTMLHeadingElement>
 }) {
   const schedulesRead = useScheduleSnapshot({ serverEntry: serverEntry || mode === 'today' })
@@ -59,7 +63,9 @@ export function SchedulePanel({
             medicinesRead={medicinesRead}
             schedulesRead={schedulesRead}
             now={now}
-            notices={detailNotices}
+            actions={detailActions}
+            justSaved={justSaved}
+            justScheduled={justScheduled}
             headingRef={detailHeadingRef}
           />
         )}

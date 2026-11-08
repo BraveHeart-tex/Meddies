@@ -1,8 +1,11 @@
 'use client'
 
 import type { ReactNode, Ref } from 'react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { quantityLabel } from '@/lib/dose-quantity'
+import { scheduleToday } from './occurrences'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { LoadingSection } from '@/components/ui/skeleton'
 import {
   MedicationBackRow,
@@ -20,7 +23,7 @@ import {
 import { MedicationsLink } from '@/features/medicines/medications-nav'
 import type { MedicinesRead } from '@/features/medicines/queries'
 import { medicationSetupHref } from '@/features/medicines/routes'
-import { formatShortDay } from '@/lib/calendar-date'
+import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { istanbulDate } from './contract'
 import type { SchedulesRead } from './queries'
 import { weekdaySummary } from './weekdays'
@@ -31,15 +34,19 @@ export function MedicationDetail({
   medicinesRead,
   schedulesRead,
   now,
-  notices,
+  actions,
+  justSaved = false,
+  justScheduled = false,
   headingRef,
 }: {
   medicineId: string
   medicinesRead: MedicinesRead
   schedulesRead: SchedulesRead
   now: string
-  /** Confirmations from the save that led here, between the header and the schedule. */
-  notices?: ReactNode
+  /** Extra actions for the transient medication-save handoff. */
+  actions?: ReactNode
+  justSaved?: boolean
+  justScheduled?: boolean
   headingRef?: Ref<HTMLHeadingElement>
 }) {
   const { medicines, loading: medicinesLoading, loadError: medicinesError } = medicinesRead
@@ -66,8 +73,14 @@ export function MedicationDetail({
     )
 
   const schedule = schedules.find((item) => item.medicineId === medicineId)
+  const today = istanbulDate(new Date(now))
+  // Anchor to the server's save instant, so earlier times today never become the first dose.
+  const first =
+    schedule && justScheduled
+      ? scheduleToday([schedule], new Date(schedule.confirmedAt), []).next
+      : null
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 [overflow-wrap:anywhere]">
       <MedicationBackRow href={medicationsListHref}>Medications</MedicationBackRow>
       <MedicationIdentity medicine={medicine} headingRef={headingRef} />
       <MedicinesRefreshAlert medicinesRead={medicinesRead} />
@@ -81,8 +94,30 @@ export function MedicationDetail({
           </AlertDescription>
         </Alert>
       )}
-      {notices}
-      <section aria-labelledby="routine-heading" className="space-y-3 [overflow-wrap:anywhere]">
+      {(justSaved || justScheduled) && (
+        <Alert
+          variant="confirmation"
+          role="status"
+          aria-label={justSaved ? 'Saved medication' : 'Saved schedule'}
+        >
+          <AlertTitle>
+            {justSaved ? `${medicine.label} saved.` : `Schedule saved for ${medicine.label}.`}
+          </AlertTitle>
+          {first && (
+            <AlertDescription>
+              First dose:{' '}
+              {istanbulDate(new Date(first.dueAt)) === today
+                ? 'today'
+                : formatShortDay(first.dueAt, today)}{' '}
+              at {formatTime(first.dueAt)}.
+            </AlertDescription>
+          )}
+        </Alert>
+      )}
+      <section
+        aria-labelledby="routine-heading"
+        className="flex flex-col gap-3 [overflow-wrap:anywhere]"
+      >
         <h2 id="routine-heading" className="sr-only">
           Schedule
         </h2>
@@ -93,24 +128,49 @@ export function MedicationDetail({
         ) : loadError ? (
           <ScheduleUnchecked name={medicine.label} onRetry={retry} />
         ) : schedule ? (
-          <div className="space-y-2 rounded-xl border bg-card p-4">
-            <p>
-              {weekdaySummary(schedule.weekdays, 'long')} at{' '}
-              {schedule.times.map((slot) => `${slot.time} (${slot.quantity})`).join(', ')}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Starts {formatShortDay(schedule.startDate, istanbulDate(new Date(now)))}.
-            </p>
-          </div>
+          <Card>
+            <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2">
+              <CardTitle>Schedule</CardTitle>
+              <CardDescription>{weekdaySummary(schedule.weekdays, 'long')}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <ul className="divide-y">
+                {schedule.times.map((slot) => (
+                  <li key={slot.time} className="flex flex-wrap justify-between gap-2 py-3">
+                    <span className="text-heading font-extrabold">{slot.time}</span>
+                    <span className="text-body-sm">
+                      {quantityLabel(slot.quantity, medicine.unit)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-body-sm text-muted-foreground">
+                {schedule.startDate > today ? 'Starts' : 'Started'}{' '}
+                {formatShortDay(schedule.startDate, today)}
+              </p>
+            </CardContent>
+          </Card>
         ) : (
-          <div className="space-y-2">
-            <p>No schedule yet.</p>
-            <MedicationsLink
-              className="inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-primary-foreground"
-              href={medicationSetupHref(medicineId)}
-            >
-              Set schedule
-            </MedicationsLink>
+          <div className="flex flex-col gap-5">
+            <Card variant="dashed">
+              <CardHeader>
+                <CardTitle>No schedule yet</CardTitle>
+                <CardDescription>
+                  {justSaved &&
+                    'Set the days and times you take it, or do it later from this page. '}
+                  Today won&apos;t list {medicine.label} until it has a schedule.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            <div className="flex flex-col gap-2.5">
+              <MedicationsLink
+                className={buttonVariants({ size: 'lg' })}
+                href={medicationSetupHref(medicineId)}
+              >
+                Set schedule
+              </MedicationsLink>
+              {actions}
+            </div>
           </div>
         )}
       </section>

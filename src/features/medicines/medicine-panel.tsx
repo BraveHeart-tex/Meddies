@@ -3,11 +3,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { SchedulePanel } from '@/features/schedules/schedule-panel'
 import { buttonVariants } from '@/components/ui/button'
-import { Alert, AlertTitle } from '@/components/ui/alert'
 import { MedicineForm } from './medicine-form'
 import type { Medicine } from './contract'
 import { MedicationsLink, showMedicationsView } from './medications-nav'
-import { medicationSetupHref, medicationsHref } from './routes'
+import { medicationsHref } from './routes'
 
 export function MedicinePanel({
   scheduleMode = 'list',
@@ -88,39 +87,18 @@ export function MedicinePanel({
       focusMedicineId={focusMedicineId}
       onMedicineFocused={() => setFocusMedicineId(null)}
       detailHeadingRef={detailHeading}
-      detailNotices={
-        <>
-          {justSavedHere && (
-            <section
-              aria-label="Saved medication"
-              className="flex flex-col gap-3 [overflow-wrap:anywhere]"
-            >
-              <Alert variant="confirmation" role="status">
-                <AlertTitle>{savedMedicine.label} saved.</AlertTitle>
-              </Alert>
-              <div className="flex flex-col gap-2.5">
-                <MedicationsLink
-                  href={medicationSetupHref(savedMedicine.id)}
-                  className={buttonVariants({ size: 'lg' })}
-                >
-                  Set schedule
-                </MedicationsLink>
-                <MedicationsLink
-                  href={medicationsHref({ mode: 'list' })}
-                  onShow={() => setFocusMedicineId(savedMedicine.id)}
-                  className={buttonVariants({ size: 'lg', variant: 'outline' })}
-                >
-                  Done for now
-                </MedicationsLink>
-              </div>
-            </section>
-          )}
-          {justScheduledHere && (
-            <Alert variant="confirmation" role="status">
-              <AlertTitle>Schedule saved for {scheduledMedicine.label}.</AlertTitle>
-            </Alert>
-          )}
-        </>
+      justSaved={justSavedHere}
+      justScheduled={justScheduledHere}
+      detailActions={
+        justSavedHere ? (
+          <MedicationsLink
+            href={medicationsHref({ mode: 'list' })}
+            onShow={() => setFocusMedicineId(savedMedicine.id)}
+            className={buttonVariants({ size: 'lg', variant: 'outline' })}
+          >
+            Done for now
+          </MedicationsLink>
+        ) : null
       }
     />
   )

@@ -12,7 +12,12 @@ const takenAt = new Date(initialScheduleTime).toISOString()
 
 test.use({ journey: { auth: true, storage: true, initialScheduleTime } })
 
+// Allowed reasons: Back, Forward and reload behavior; data consistency across routes.
 test('set up, record, correct and recover a routine on a phone', async ({ page, app }) => {
+  let pageRequests = 0
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/medications') pageRequests++
+  })
   const nav = page.getByRole('navigation', { name: 'Primary' })
   const dialog = drawer(page)
   const historyUrl = `/history?date=${today}`
@@ -34,21 +39,44 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await expect(nav).toBeVisible()
     await nav.getByRole('link', { name: 'Medications' }).click()
     await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible()
+    // Wait for the streamed list: Add from a pending route intentionally uses router navigation.
+    await expect(page.getByRole('heading', { name: 'No medications here yet.' })).toBeVisible()
+    pageRequests = 0
     await page.getByRole('link', { name: 'Add a medication' }).click()
     await page.getByLabel('Medication name').fill('Routine Medicine')
     await page.getByLabel(/^Strength/).fill('5 mg')
     await page.getByRole('button', { name: 'Tablet' }).click()
     await page.getByRole('button', { name: 'Save medication' }).press('Enter')
     await expect(page.getByText('Routine Medicine saved.')).toBeVisible()
-    const setSchedule = page
-      .getByRole('region', { name: 'Saved medication' })
-      .getByRole('link', { name: 'Set schedule' })
+    expect(pageRequests, 'D7 makes no document or RSC request').toBe(0)
+    await expect(page.getByRole('heading', { name: 'Routine Medicine' })).toBeFocused()
+    await expect(page.getByRole('link', { name: 'Set schedule', exact: true })).toHaveCount(1)
+    await page.getByRole('link', { name: 'Done for now' }).click()
+    await expect(
+      page.getByRole('link', { name: 'View details for Routine Medicine' }),
+    ).toBeFocused()
+    await page.goBack()
+    // D7 replaces Add: Back returns to the list, never the submitted form.
+    await page.goBack()
+    await expect(page).toHaveURL(app.origin + '/medications')
+    await page.goForward()
+    await expect(page.getByRole('button', { name: 'Save medication' })).toHaveCount(0)
+    // Reopen a just-saved detail so reload proves the transient handoff is gone.
+    await page.reload()
+    await expect(page.getByText('Routine Medicine saved.')).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'Done for now' })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'Set schedule', exact: true })).toBeVisible()
+    // FE-650 steps 2 to 7: finish later, then return from the list for first setup.
+    await page.getByRole('link', { name: 'Medications', exact: true }).first().click()
+    await page.getByRole('link', { name: 'View details for Routine Medicine' }).click()
+    const setSchedule = page.getByRole('link', { name: 'Set schedule', exact: true })
     await expect(setSchedule).toHaveAttribute('href', /^\/medications\?schedule=[\w-]+/)
     await setSchedule.press('Enter')
     await expect(page.getByRole('heading', { name: 'Routine Medicine' })).toBeVisible()
   })
 
   await test.step('retry an uncertain schedule save without losing setup', async () => {
+    pageRequests = 0
     await pickDate(page, 'Start date', today)
     await pickTime(page, 'Time 1', time)
     await page.getByLabel(/^Quantity/).fill('1')
@@ -68,10 +96,20 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await expectTime(page, 'Time 1', time)
     await page.getByRole('button', { name: 'Try saving schedule again' }).press('Enter')
     await expect(page.getByText('Schedule saved for Routine Medicine.')).toBeVisible()
+    expect(pageRequests, 'D4 makes no document or RSC request').toBe(0)
     // The saved message shows before the replace to ?medicine=ID; reloading earlier reopens setup.
     await expect(page).toHaveURL(/[?&]medicine=/)
+    await expect(page.getByRole('heading', { name: 'Routine Medicine' })).toBeFocused()
+    await expect(page.getByText('First dose: today at 09:05.')).toBeVisible()
+    await page.goBack()
+    await expect(page).toHaveURL(/[?&]medicine=/)
+    await expect(page.getByRole('button', { name: 'Save schedule' })).toHaveCount(0)
+    await page.goForward()
     await page.reload()
-    await expect(page.getByText(`Every day at ${time}`)).toHaveCount(1)
+    const scheduleCard = page.getByRole('region', { name: 'Schedule', exact: true })
+    await expect(scheduleCard.getByText(time, { exact: true })).toBeVisible()
+    await expect(scheduleCard.getByText('1 tablet', { exact: true })).toBeVisible()
+    await expect(scheduleCard).not.toContainText('5 mg')
   })
 
   await test.step('record the scheduled dose before it is due', async () => {
@@ -116,13 +154,16 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await page.getByRole('button', { name: 'Capsule' }).click()
     await page.getByRole('button', { name: 'Save medication' }).press('Enter')
     await expect(page.getByText('Evening Vitamin saved.')).toBeVisible()
-    await page.getByRole('link', { name: 'Done for now' }).click()
-    await expect(page).toHaveURL(/\/medications$/)
     await page.reload()
+    await expect(page.getByText('Evening Vitamin saved.')).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'Done for now' })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'Set schedule', exact: true })).toBeVisible()
+    await page.getByRole('link', { name: 'Medications', exact: true }).first().click()
+    await expect(page).toHaveURL(/\/medications$/)
     await page.getByRole('link', { name: 'View details for Evening Vitamin' }).click()
     await expect(page.getByRole('heading', { name: 'Evening Vitamin' })).toBeVisible()
     await expect(page.getByRole('region', { name: 'Schedule', exact: true })).toContainText(
-      'No schedule yet.',
+      'No schedule yet',
     )
   })
 

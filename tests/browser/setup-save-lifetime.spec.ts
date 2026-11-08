@@ -80,7 +80,7 @@ for (const viewport of [
             await expect(page.getByLabel('Medication name')).toHaveValue('Magnesium')
             await expect(page.getByLabel(/^Strength/)).toHaveValue(' 200 mg ')
             await page.getByRole('button', { name: 'Try saving medication again' }).click()
-            await expect(page.getByRole('region', { name: 'Saved medication' })).toBeVisible()
+            await expect(page.getByRole('status', { name: 'Saved medication' })).toBeVisible()
             expect(posts).toHaveLength(2)
             expect(posts[1]).toBe(posts[0])
           },
@@ -118,7 +118,11 @@ for (const viewport of [
       await expect(page.getByText('Schedule saved for Magnesium', { exact: true })).toBeVisible()
       await page.getByRole('button', { name: 'Open', exact: true }).click()
       await expect(page.getByRole('heading', { name: 'Magnesium', exact: true })).toBeVisible()
-      await expect(page.getByText('Every day at 12:00 (1)', { exact: true })).toBeVisible()
+      await expect(
+        page
+          .getByRole('region', { name: 'Schedule', exact: true })
+          .getByText('12:00', { exact: true }),
+      ).toBeVisible()
     })
   })
 }

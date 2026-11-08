@@ -353,7 +353,7 @@ describe('a medication detail', () => {
     medicinesApi(listOf(1))
     cache(listOf(1))
     renderDetail(medicine(1).id)
-    expect(await screen.findByText('No schedule yet.')).toBeVisible()
+    expect(await screen.findByText('No schedule yet')).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Schedule', level: 2 })).toBeVisible()
     expect(screen.getByText('tablet')).toBeVisible()
     expect(screen.getByText("Details and schedules can't be changed here yet.")).toBeVisible()
