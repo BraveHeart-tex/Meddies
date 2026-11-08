@@ -117,3 +117,8 @@ export async function todayReflow(list: Locator, width: number) {
 export async function enlargeText(page: Page) {
   await page.addStyleTag({ content: 'html { font-size: 200% !important; }' })
 }
+
+/** Browser Back scroll restoration has no accessible locator API. */
+export async function scrollPosition(page: Page) {
+  return page.evaluate(() => window.scrollY)
+}

@@ -131,7 +131,7 @@ test('private deep links offer sign-in while retaining the requested destination
 })
 
 test('session reads preserve provider identity and absolute expiry without disclosing email', async () => {
-  const claims = valid()
+  const claims = { ...valid(), deadline: Date.parse('2099-11-13T11:02:00Z') / 1000 }
   const headers = { cookie: await cookie(claims) }
   for (const path of ['/api/session', '/api/session?ownerId=google:someone-else']) {
     const response = await request(path, { headers })
@@ -155,7 +155,14 @@ test('session reads preserve provider identity and absolute expiry without discl
   assert.match(html, /href="\/settings"/)
   const settings = await request('/settings', { headers })
   assert.equal(settings.status, 200)
-  assert.match(await settings.text(), /Sign out/)
+  const settingsHtml = await settings.text()
+  assert.match(settingsHtml, /Signed in with your approved Google account/)
+  assert.match(settingsHtml, /Sign out/)
+  assert.match(settingsHtml, /Fri 13 Nov/)
+  assert.match(settingsHtml, /14:02/)
+  assert(settingsHtml.includes(new Date(claims.deadline * 1000).toISOString()))
+  assert(!settingsHtml.includes('approved@example.test'))
+  assert(!settingsHtml.includes('Back to Today'))
   assert(!html.includes('approved@example.test'))
 })
 
