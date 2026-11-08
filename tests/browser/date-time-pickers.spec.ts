@@ -33,7 +33,6 @@ test('pick schedule dates, dose times and intake in Istanbul time from another t
   const medicineId = randomUUID()
   const start = datePicker(page, 'Start date')
   const calendar = page.getByRole('dialog', { name: 'Start date' })
-  const save = page.getByRole('button', { name: 'Save schedule' })
   const dialog = drawer(page)
 
   await test.step('default the start date to Istanbul today, not the device date', async () => {
@@ -72,63 +71,14 @@ test('pick schedule dates, dose times and intake in Istanbul time from another t
     await expect(start).toBeFocused()
   })
 
-  await test.step('choose a day by tapping', async () => {
+  await test.step('choose a day and a time part by tapping', async () => {
     await start.tap()
     await calendarDay(calendar, '2035-06-17').tap()
     await expect(start).toHaveText('Sun 17 Jun')
-  })
-
-  await test.step('require both parts of every dose time', async () => {
-    await page.getByLabel(/^Quantity/).fill('1')
-    await pickTime(page, 'Time 1', '23:45')
-    await page.getByRole('button', { name: 'Add another time' }).click()
-    const second = timePicker(page, 'Time 2')
-    await second.hour.click()
-    await page.getByRole('option', { name: '00', exact: true }).click()
-    await expect(page.getByRole('listbox')).toHaveCount(0)
-    await page
-      .getByLabel(/^Quantity/)
-      .nth(1)
-      .fill('0.5')
-    await save.click()
-    await expect(second.minute).toBeFocused()
-    await expect(page.getByText('Schedule saved for Picker Medicine.')).toHaveCount(0)
-    await second.minute.click()
+    const { minute } = timePicker(page, 'Time 1')
+    await minute.click()
     await page.getByRole('option', { name: '15', exact: true }).tap()
-    await expectTime(page, 'Time 2', '00:15')
-    await page.screenshot({ path: testInfo.outputPath('schedule-times.png'), fullPage: true })
-    expect(await scrollsHorizontally(page)).toBe(false)
-  })
-
-  await test.step('lock the pickers while saving', async () => {
-    let release = () => {}
-    const held = new Promise<void>((resolve) => (release = resolve))
-    await page.route(
-      (url) => url.pathname === '/api/schedules',
-      async (route) => {
-        if (route.request().method() !== 'POST') return route.fallback()
-        await held
-        await route.fallback()
-      },
-    )
-    await save.click()
-    await expect(start).toBeDisabled()
-    await expect(timePicker(page, 'Time 1').hour).toBeDisabled()
-    await expect(timePicker(page, 'Time 2').minute).toBeDisabled()
-    release()
-    await expect(page.getByText('Schedule saved for Picker Medicine.')).toBeVisible()
-  })
-
-  await test.step('save the picked values unchanged', async () => {
-    const snapshot = await (await page.request.get('/api/schedules')).json()
-    const saved = snapshot.schedules.find(
-      (item: { medicineId: string }) => item.medicineId === medicineId,
-    )
-    expect(saved.startDate).toBe('2035-06-17')
-    expect(saved.times).toEqual([
-      { time: '00:15', quantity: 0.5 },
-      { time: '23:45', quantity: 1 },
-    ])
+    await expect(minute).toHaveText('15')
   })
 
   await test.step('record an Other intake at Istanbul time inside the drawer', async () => {

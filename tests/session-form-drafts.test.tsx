@@ -66,6 +66,8 @@ test('schedule drafts keep partial rows per medicine across refresh and day roll
   expect(
     screen.queryByText('Pick up where you left off. Your details are still here.'),
   ).not.toBeInTheDocument()
+  await user.click(screen.getByRole('combobox', { name: 'Time 1 hour' }))
+  await user.click(await screen.findByRole('option', { name: '10' }))
   first.rerender(view('first', '2035-06-16'))
   expect(screen.getByText('Pick up where you left off. Your details are still here.')).toBeVisible()
   expect(screen.getByRole('combobox', { name: 'Time 1 hour' })).toHaveTextContent('08')
@@ -76,6 +78,10 @@ test('schedule drafts keep partial rows per medicine across refresh and day roll
   expect(screen.queryByLabelText('Quantity for time 2')).not.toBeInTheDocument()
   expect(screen.getByRole('combobox', { name: 'Time 1 hour' })).toHaveTextContent('HH')
   expect(screen.getByRole('button', { name: /^Start date,/ })).toHaveAccessibleName(/Today/)
+  // Clearing one medicine's draft leaves another's.
+  first.rerender(view('second', '2035-06-16'))
+  expect(screen.getByText('Pick up where you left off. Your details are still here.')).toBeVisible()
+  expect(screen.getByRole('combobox', { name: 'Time 1 hour' })).toHaveTextContent('10')
   first.unmount()
   client.clear()
 })
