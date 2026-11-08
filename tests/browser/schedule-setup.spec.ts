@@ -170,7 +170,7 @@ test('schedule drafts belong to each medicine and clear on discard or confirmed 
   ])
     await app.api('POST', '/api/medicines', { id, label, strength: null, unit: 'tablet' })
   await page.goto(`/medications?schedule=${first}`)
-  const note = page.getByText('Unsaved details from earlier.')
+  const note = page.getByText('Pick up where you left off. Your details are still here.')
   const open = async (label: string) => {
     await page.getByRole('link', { name: 'Medications', exact: true }).first().click()
     await page.getByRole('link', { name: `View details for ${label}` }).click()

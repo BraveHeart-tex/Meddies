@@ -46,13 +46,13 @@ export function ScheduleSetupForm({
   }
 
   let body
-  if (loading || medicinesLoading) body = <p role="status">Loading schedule setup...</p>
+  if (loading || medicinesLoading) body = <p role="status">Loading schedule…</p>
   else if ((medicinesError && !medicine) || loadError)
     body = (
       <Alert variant="destructive">
-        <AlertTitle>{name} couldn&apos;t be loaded.</AlertTitle>
+        <AlertTitle>{name} didn&apos;t load just now.</AlertTitle>
         <AlertDescription>
-          Meddies needs to check its current schedule first. Connect and retry.
+          Meddies needs to check its schedule first. Check your connection and try again.
         </AlertDescription>
         <Button
           variant="outline"
@@ -62,7 +62,7 @@ export function ScheduleSetupForm({
             if (loadError) retrySchedules()
           }}
         >
-          Retry
+          Try again
         </Button>
       </Alert>
     )
@@ -129,8 +129,8 @@ export function ScheduleSetupForm({
       </header>
       {medicine && !schedule && !conflict && (
         <p className="text-body-sm text-muted-foreground">
-          Times are Istanbul time. Doses start from the next time after you save; earlier times
-          today are not added.
+          Times are Istanbul time. Doses start from the next time after you save. Earlier times
+          today aren&apos;t added.
         </p>
       )}
       {body}

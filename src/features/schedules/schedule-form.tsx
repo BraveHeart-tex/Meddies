@@ -24,6 +24,7 @@ import { useSessionFormDraft } from '@/lib/use-session-form-draft'
 import type { Medicine } from '@/features/medicines/contract'
 import type { DailySchedule } from './contract'
 import { useQueryClient } from '@tanstack/react-query'
+import { saveMessages } from '@/lib/save-messages'
 import { requestSave, type SaveProblem } from '@/lib/session-saves'
 import { useSessionSave } from '@/lib/use-session-save'
 import { discardSessionFormDraft } from '@/lib/use-session-form-draft'
@@ -147,7 +148,7 @@ export function ScheduleForm({
     >
       {draft.restored && (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-body-sm text-muted-foreground">Unsaved details from earlier.</p>
+          <p className="text-body-sm text-muted-foreground">{saveMessages.draftRestored}</p>
           <Button
             type="button"
             variant="ghost"
@@ -235,7 +236,7 @@ export function ScheduleForm({
             )}
           />
           <FieldDescription id="quantity-help">
-            Quantity is how much you take each time, not the product strength.
+            Quantity is how much you take each time, not the strength on the pack.
           </FieldDescription>
           {rows.fields.map((row, index) => (
             <ScheduleTimeRow
@@ -270,8 +271,8 @@ export function ScheduleForm({
       {offline && !isSubmitting ? (
         <Alert id="schedule-save-problem">
           <InfoIcon aria-hidden="true" />
-          <AlertTitle>You&apos;re offline.</AlertTitle>
-          <AlertDescription>Your details stay here for this session.</AlertDescription>
+          <AlertTitle>{saveMessages.offline}</AlertTitle>
+          <AlertDescription>{saveMessages.offlineFormDetails}</AlertDescription>
         </Alert>
       ) : problem ? (
         <SaveProblemAlert problem={problem} label={medicine.label} />
@@ -286,9 +287,9 @@ export function ScheduleForm({
         {isSubmitting
           ? 'Saving schedule...'
           : offline
-            ? 'Connect to save'
+            ? saveMessages.connectToSave
             : problem === 'unconfirmed'
-              ? 'Retry saving schedule'
+              ? 'Try saving schedule again'
               : 'Save schedule'}
       </Button>
     </form>
@@ -298,18 +299,18 @@ export function ScheduleForm({
 function SaveProblemAlert({ problem, label }: { problem: SaveProblem; label: string }) {
   const copy = {
     unconfirmed: {
-      title: 'Save could not be confirmed.',
-      body: `${label} is saved. Its schedule details are still here; retry saves them once.`,
+      title: saveMessages.mightNotHaveSaved,
+      body: `${label} is saved. Its schedule details are still here, and trying again saves them only once.`,
     },
     rejected: {
       title: "Schedule wasn't saved.",
       body: `${label} is saved without a schedule. Check the days, times and quantities, then save again.`,
     },
     unauthorized: {
-      title: 'Your session ended.',
+      title: saveMessages.sessionEnded,
       body: `${label} is saved without a schedule. Sign in again to save it.`,
     },
-    conflict: { title: 'A schedule is already recorded.', body: 'Open Medications to review it.' },
+    conflict: { title: 'A schedule is already saved.', body: 'Open Medications to review it.' },
   }[problem]
   return (
     <Alert id="schedule-save-problem" variant="destructive">

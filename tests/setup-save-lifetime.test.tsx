@@ -132,7 +132,7 @@ test('a schedule retry after remount and midnight keeps the submitted request', 
   first.unmount()
   await act(async () => held.release())
   open('2035-06-16')
-  await user.click(await screen.findByRole('button', { name: 'Retry saving schedule' }))
+  await user.click(await screen.findByRole('button', { name: 'Try saving schedule again' }))
   await waitFor(() => expect(posts).toHaveLength(2))
   expect(posts[1]).toEqual(posts[0])
   client.clear()

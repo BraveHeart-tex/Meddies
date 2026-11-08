@@ -64,9 +64,9 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
       },
     )
     await page.getByRole('button', { name: 'Save schedule' }).press('Enter')
-    await expect(page.getByText('Save could not be confirmed.')).toBeVisible()
+    await expect(page.getByText('That might not have saved.')).toBeVisible()
     await expectTime(page, 'Time 1', time)
-    await page.getByRole('button', { name: 'Retry saving schedule' }).press('Enter')
+    await page.getByRole('button', { name: 'Try saving schedule again' }).press('Enter')
     await expect(page.getByText('Schedule saved for Routine Medicine.')).toBeVisible()
     // The saved message shows before the replace to ?medicine=ID; reloading earlier reopens setup.
     await expect(page).toHaveURL(/[?&]medicine=/)

@@ -63,9 +63,11 @@ test('schedule drafts keep partial rows per medicine across refresh and day roll
   expect(screen.getByRole('combobox', { name: 'Time 1 hour' })).toHaveTextContent('08')
   first.rerender(view('second', '2035-06-16'))
   expect(screen.getByRole('combobox', { name: 'Time 1 hour' })).toHaveTextContent('HH')
-  expect(screen.queryByText('Unsaved details from earlier.')).not.toBeInTheDocument()
+  expect(
+    screen.queryByText('Pick up where you left off. Your details are still here.'),
+  ).not.toBeInTheDocument()
   first.rerender(view('first', '2035-06-16'))
-  expect(screen.getByText('Unsaved details from earlier.')).toBeVisible()
+  expect(screen.getByText('Pick up where you left off. Your details are still here.')).toBeVisible()
   expect(screen.getByRole('combobox', { name: 'Time 1 hour' })).toHaveTextContent('08')
   expect(screen.getByRole('combobox', { name: 'Time 1 minute' })).toHaveTextContent('MM')
   expect(screen.getByLabelText('Quantity for time 2')).toHaveValue('')
@@ -114,12 +116,14 @@ test('a confirmed schedule save removes the draft before the form is opened agai
   }
   first.unmount()
   const second = open()
-  expect(screen.getByText('Unsaved details from earlier.')).toBeVisible()
+  expect(screen.getByText('Pick up where you left off. Your details are still here.')).toBeVisible()
   await user.click(screen.getByRole('button', { name: 'Save schedule' }))
   await waitFor(() => expect(saved).toBe(true))
   second.unmount()
   open()
   expect(screen.getByRole('combobox', { name: 'Time 1 hour' })).toHaveTextContent('HH')
-  expect(screen.queryByText('Unsaved details from earlier.')).not.toBeInTheDocument()
+  expect(
+    screen.queryByText('Pick up where you left off. Your details are still here.'),
+  ).not.toBeInTheDocument()
   client.clear()
 })
