@@ -44,6 +44,20 @@ in JSX text or in an `aria-label`, `label` or `title` prop in `src`. Review cove
 "routine", which stays fine in sentences like the sign-in tagline, "medicine", and plain string
 constants.
 
+## Dates and times
+
+Every date and time comes from `src/lib/calendar-date.ts`, in Istanbul time whatever the device
+timezone. Lint rejects `Intl.DateTimeFormat` and `toLocale*String` anywhere else in `src`.
+
+| Format             | Example                                                                | Used for                                        |
+| ------------------ | ---------------------------------------------------------------------- | ----------------------------------------------- |
+| Short day          | `Tue 10 Nov`, or `Tue 1 Jan 2036` outside the current Istanbul year    | Dates inside a sentence or status line          |
+| Long day           | `Tuesday, 10 November`, or `Tuesday, 1 January 2036` outside that year | Day headings and screen-reader day names        |
+| Today-relative day | `Today, Sun 8 Nov`                                                     | Date picker value and History's load error only |
+| Time               | `14:05`, 24-hour, midnight `00:00`                                     | Every time of day                               |
+
+Never show or announce an ISO date. A dose due today shows no date.
+
 ## Errors
 
 Say what happened, what is safe, and what to do next.

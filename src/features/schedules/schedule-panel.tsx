@@ -8,6 +8,7 @@ import { SchedulingClockProvider } from './scheduling-clock'
 import { useScheduleSnapshot } from './queries'
 import { TodaySchedule } from './today-schedule'
 import { ScheduleSetupForm } from './schedule-setup-form'
+import { formatShortDay } from '@/lib/calendar-date'
 import { istanbulDate } from './contract'
 import { weekdaySummary } from './weekdays'
 import { MedicationsLink } from '@/features/medicines/medications-nav'
@@ -114,7 +115,7 @@ export function SchedulePanel({
                     .join(', ')}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Starts {selectedSchedule.startDate}.
+                  Starts {formatShortDay(selectedSchedule.startDate, istanbulDate(new Date(now)))}.
                 </p>
               </div>
             ) : medicines.some((item) => item.id === initialMedicineId) ? (

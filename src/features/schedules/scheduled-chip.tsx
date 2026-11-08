@@ -3,11 +3,10 @@
 import { Badge } from '@/components/ui/badge'
 import { Icon } from '@/components/ui/icon'
 import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item'
-import { dateLabel } from '@/lib/calendar-date'
+import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
 import { DoseStatusBadge } from './dose-status-badge'
 import { useSchedulingClock } from './scheduling-clock'
-import { doseClock } from './taken-form-schema'
 
 /**
  * The drawer's scheduled time with live status (FE-648 R1, R6): "Scheduled 08:00 today" or
@@ -41,8 +40,8 @@ export function ScheduledChip({
           <span>
             Scheduled{' '}
             <time dateTime={dose.dueAt} className="font-extrabold text-foreground">
-              {doseClock(dose.dueAt)}{' '}
-              {date === reference ? 'today' : `on ${dateLabel(date, reference)}`}
+              {formatTime(dose.dueAt)}{' '}
+              {date === reference ? 'today' : `on ${formatShortDay(date, reference)}`}
             </time>
           </span>
         </ItemTitle>

@@ -138,7 +138,7 @@ test('inline errors focus the first invalid control, keep values and accept half
   await user.clear(amount)
   await user.click(screen.getByRole('button', { name: 'Other' }))
   await user.click(screen.getByRole('button', { name: /^Taken date in Istanbul,/ }))
-  await user.click(screen.getByRole('button', { name: /Saturday, November 14/ }))
+  await user.click(screen.getByRole('button', { name: /Saturday, 14 November/ }))
   await pickTime(user, '10:00')
   await user.click(screen.getByRole('button', { name: 'Save as taken' }))
   expect(await screen.findByText('Choose a time that has passed.')).toBeVisible()

@@ -985,7 +985,7 @@ describe('next actions', () => {
         .map((item) => item.textContent?.slice(0, 5)),
     ).toEqual(['08:00', '09:00', '10:00'])
     expect(screen.queryByRole('heading', { name: /^Logged/ })).not.toBeInTheDocument()
-    expect(screen.getByText('Due now ·', { exact: false })).toHaveTextContent('Due now · 09:00')
+    expect(screen.getByText('Due now ·', { exact: false })).toHaveTextContent(/^Due now · 09:00$/)
   })
 
   test('all logged keeps only Logged and a dated future hero without actions', async () => {
@@ -1009,7 +1009,7 @@ describe('next actions', () => {
     renderToday()
     expect(await screen.findByRole('heading', { name: 'Logged · 1' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: /^(To log|Later today)/ })).not.toBeInTheDocument()
-    expect(screen.getByText(/Scheduled ·/)).toHaveTextContent('Scheduled · 09:00 on 2026-11-15')
+    expect(screen.getByText(/Scheduled ·/)).toHaveTextContent('Scheduled · 09:00 on Sun 15 Nov')
     expect(screen.queryByRole('button', { name: /^Record .* as taken$/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Record .* as skipped$/ })).not.toBeInTheDocument()
   })

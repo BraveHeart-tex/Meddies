@@ -4,12 +4,12 @@ import { useEffect, useId, useRef, type KeyboardEvent } from 'react'
 import { InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { formatTime } from '@/lib/calendar-date'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import type { Medicine } from '@/features/medicines/contract'
 import { saveMessages } from '@/lib/save-messages'
 import type { DoseOccurrence } from './contract'
 import { DoseSaveProblem } from './dose-save-problem'
-import { doseClock } from './taken-form-schema'
 import type { SaveProblem } from './dose-saves'
 
 // Explicit skip confirmation (FE-648 R4). A skip records no intake time or quantity.
@@ -63,7 +63,7 @@ export function SkippedForm({
         <Alert className="[overflow-wrap:anywhere]">
           <InfoIcon aria-hidden="true" />
           <AlertDescription>
-            Skip {medicine.label}, scheduled for {doseClock(dose.dueAt)}? No time or amount is
+            Skip {medicine.label}, scheduled for {formatTime(dose.dueAt)}? No time or amount is
             saved.
           </AlertDescription>
         </Alert>

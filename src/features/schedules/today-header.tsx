@@ -2,7 +2,8 @@
 
 import { AppHeader } from '@/components/layout/app-header'
 import { useCachedQueryData } from '@/lib/use-cached-query-data'
-import { formatDayLabel, greeting } from './next-dose'
+import { formatLongDay } from '@/lib/calendar-date'
+import { greeting } from './next-dose'
 import { scheduleKeys, type ScheduleSnapshot } from './queries'
 import { SchedulingClockProvider } from './scheduling-clock'
 import { useScheduleNow } from './use-schedule-now'
@@ -28,5 +29,5 @@ export function TodayHeader({ initialNow }: { initialNow: string }) {
 
 function TodayHeading({ serverNow }: { serverNow: string }) {
   const now = useScheduleNow(serverNow)
-  return <AppHeader eyebrow={formatDayLabel(now)} title={greeting(now)} />
+  return <AppHeader eyebrow={now ? formatLongDay(now, now) : undefined} title={greeting(now)} />
 }

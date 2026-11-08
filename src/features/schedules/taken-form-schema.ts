@@ -1,24 +1,17 @@
 import { z } from 'zod'
+import { formatTime } from '@/lib/calendar-date'
 import { isTimeOfDay } from '@/lib/time-of-day'
 import { formatQuantity, parseQuantity, quantityProblem, type DoseUnit } from '@/lib/dose-quantity'
-import { isScheduleDate, istanbulDate, SCHEDULE_TIMEZONE } from './contract'
+import { isScheduleDate, istanbulDate } from './contract'
 
 // Client-side Taken intake rules for inline feedback. parseTakenDose and parseDoseCorrection stay
 // authoritative on the server. Times are Istanbul local minutes, 'YYYY-MM-DDTHH:MM'.
 
 export type TakenAtChoice = 'now' | 'scheduled' | 'other'
 
-/** 'HH:MM' of an instant in Istanbul. */
-export const doseClock = (instant: string) =>
-  new Intl.DateTimeFormat('en-GB', {
-    timeZone: SCHEDULE_TIMEZONE,
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(instant))
-
 /** The Istanbul local minute of an instant. */
 export const localMinute = (instant: string) =>
-  `${istanbulDate(new Date(instant))}T${doseClock(instant)}`
+  `${istanbulDate(new Date(instant))}T${formatTime(instant)}`
 
 /** The instant of an Istanbul local minute (Istanbul keeps UTC+3 all year). */
 export const instantOf = (local: string) => new Date(`${local}+03:00`)

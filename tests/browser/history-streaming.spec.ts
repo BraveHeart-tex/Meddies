@@ -196,7 +196,7 @@ test('invalid entry keeps its notice and day in place', async ({ page, app }, te
   await expect(page).toHaveURL(`/history?date=${today}`)
   await expect(notice).toHaveCount(1)
   await expect(page.getByRole('status')).toHaveCount(0)
-  const dayAfter = await page.getByRole('region', { name: 'Friday 15 June, 1 dose' }).boundingBox()
+  const dayAfter = await page.getByRole('region', { name: 'Friday, 15 June, 1 dose' }).boundingBox()
   expect(await notice.boundingBox(), 'notice retains its final geometry').toEqual(noticeBefore)
   expect(dayAfter!.y, 'the day starts at the same position after streaming').toBe(dayBefore!.y)
   await page.screenshot({ path: testInfo.outputPath('invalid-loaded.png') })

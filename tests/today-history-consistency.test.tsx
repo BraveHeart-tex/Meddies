@@ -19,6 +19,7 @@ import { SchedulingClockProvider } from '../src/features/schedules/scheduling-cl
 import { TodayHeader } from '../src/features/schedules/today-header'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
+import { formatLongDay } from '../src/lib/calendar-date'
 
 let search = new URLSearchParams()
 vi.mock('next/navigation', () => ({
@@ -207,10 +208,12 @@ const todayRow = async () =>
     { hidden: true },
   )
 const historyRow = async (date: string) =>
-  within(await screen.findByRole('list', { name: `Doses for ${date}`, hidden: true })).getByRole(
-    'listitem',
-    { hidden: true },
-  )
+  within(
+    await screen.findByRole('list', {
+      name: `Doses for ${formatLongDay(date, today)}`,
+      hidden: true,
+    }),
+  ).getByRole('listitem', { hidden: true })
 
 async function correctToSkipped(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('button', { name: /^Review dose for Morning Tablet/ }))

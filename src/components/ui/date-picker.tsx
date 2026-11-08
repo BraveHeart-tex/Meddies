@@ -5,7 +5,7 @@ import { Calendar } from '@/components/ui/calendar'
 import { Icon } from '@/components/ui/icon'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useCompositeBlur } from '@/components/ui/use-composite-blur'
-import { calendarDay, dateLabel, dateValue } from '@/lib/calendar-date'
+import { calendarDay, dateValue, formatTodayRelativeDay } from '@/lib/calendar-date'
 import { cn } from '@/lib/utils'
 
 export const pickerTriggerClassName =
@@ -60,7 +60,7 @@ export function DatePicker({
   const { track, onPartBlur } = useCompositeBlur(onBlur)
   React.useImperativeHandle(ref, () => ({ focus: () => trigger.current?.focus() }), [])
   const selected = value ? calendarDay(value) : undefined
-  const display = value ? dateLabel(value, today) : ''
+  const display = value ? formatTodayRelativeDay(value, today) : ''
   const bounds = [
     ...(min ? [{ before: calendarDay(min) }] : []),
     ...(max ? [{ after: calendarDay(max) }] : []),

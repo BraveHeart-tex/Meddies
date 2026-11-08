@@ -1,6 +1,6 @@
 import { hashKey, type QueryClient } from '@tanstack/react-query'
 import { toast } from '@/components/ui/toast'
-import { dateLabel } from '@/lib/calendar-date'
+import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import type { DoseUnit } from '@/lib/dose-quantity'
 import { confirmSessionEnd } from '@/lib/session-check'
 import { sessionSaves, type OutstandingSave } from '@/lib/session-saves'
@@ -20,7 +20,6 @@ import {
   writeRecord,
   type ScheduleSnapshot,
 } from './queries'
-import { doseClock } from './taken-form-schema'
 
 type Outcome = DoseOutcomeRecord['outcome']
 export type PinnedCorrection = { outcome: Outcome; revision: number }
@@ -190,7 +189,7 @@ class DoseSaves {
         ? [
             {
               kind: 'dose' as const,
-              label: `${save.medicine.label} ${doseClock(save.attempt.payload.dueAt)}`,
+              label: `${save.medicine.label} ${formatTime(save.attempt.payload.dueAt)}`,
             },
           ]
         : [],
@@ -334,11 +333,11 @@ class DoseSaves {
   private notifyAway(key: string, dose: DoseOccurrence) {
     const save = this.entries.get(key)
     if (!save || this.observers.get(key)) return
-    const head = `${save.medicine.label} ${doseClock(dose.dueAt)} ·`
+    const head = `${save.medicine.label} ${formatTime(dose.dueAt)} ·`
     const date = historyDate(dose.dueAt)
     const today = save.today()
     // Today shows only doses due today; History shows every dose on its History date.
-    const open = date === today ? 'Open Today' : `Open History for ${dateLabel(date, today)}`
+    const open = date === today ? 'Open Today' : `Open History for ${formatShortDay(date, today)}`
     toast.add({
       title: isUnconfirmed(save)
         ? `${head} might not have saved. ${open} to try again`
@@ -397,7 +396,7 @@ class DoseSaves {
       // The read covered one view; the other view's cache shows the record too.
       writeRecord(this.client, found)
       toast.add({
-        title: reconciledConfirmation({ ...save.medicine, record: found }),
+        title: reconciledConfirmation({ ...save.medicine, record: found, today: save.today() }),
         type: found.outcome === 'Taken' ? 'success' : 'skipped',
       })
     }

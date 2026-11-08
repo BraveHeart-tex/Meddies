@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/field'
 import { TimePicker } from '@/components/ui/time-picker'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { formatTime } from '@/lib/calendar-date'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import { useSessionFormDraft } from '@/lib/use-session-form-draft'
 import type { Medicine } from '@/features/medicines/contract'
@@ -28,7 +29,6 @@ import { DoseSaveProblem } from './dose-save-problem'
 import { useCurrentMinute } from './use-current-minute'
 import type { AttemptForm, SaveProblem } from './dose-saves'
 import {
-  doseClock,
   instantOf,
   localMinute,
   previousDate,
@@ -39,8 +39,6 @@ import {
   type TakenFormOutput,
   type TakenFormValues,
 } from './taken-form-schema'
-
-export { doseClock }
 
 // A swipe that starts on a control never closes the drawer (FE-648 D14).
 const swipeIgnore = { 'data-base-ui-swipe-ignore': 'y' }
@@ -173,7 +171,7 @@ export function TakenForm({
           variant="outline"
           aria-expanded={open}
           aria-controls={id}
-          aria-label={`Edit dose for ${medicine.label} at ${doseClock(dose.dueAt)}`}
+          aria-label={`Edit dose for ${medicine.label} at ${formatTime(dose.dueAt)}`}
           disabled={saving}
           onClick={() => {
             if (!open && dose.status === 'Taken') {
@@ -213,7 +211,7 @@ export function TakenForm({
             <Alert>
               <InfoIcon aria-hidden="true" />
               <AlertDescription>
-                This dose is scheduled for {doseClock(dose.dueAt)}. Saving now records it early.
+                This dose is scheduled for {formatTime(dose.dueAt)}. Saving now records it early.
               </AlertDescription>
             </Alert>
           )}
@@ -264,7 +262,7 @@ export function TakenForm({
                         className="flex-1"
                         aria-invalid={fieldState.invalid || undefined}
                       >
-                        At {doseClock(dose.dueAt)}
+                        At {formatTime(dose.dueAt)}
                       </ToggleGroupItem>
                     )}
                     <ToggleGroupItem

@@ -7,7 +7,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
-import { dateLabel, longDateLabel } from '@/lib/calendar-date'
+import {
+  formatLongDay,
+  formatShortDay,
+  formatTime,
+  formatTodayRelativeDay,
+} from '@/lib/calendar-date'
 import { quantityLabel } from '@/lib/dose-quantity'
 import { cn } from '@/lib/utils'
 import type { Medicine } from '@/features/medicines/contract'
@@ -18,7 +23,6 @@ import { doseSaveKey, type RecordCheck } from './dose-saves'
 import { DoseStatusBadge } from './dose-status-badge'
 import { dayHeadingId, historyHref, useHistoryDayFocus } from './history-date-nav'
 import { applyRecord, currentRecord, readFreshHistoryDay, sameDose } from './queries'
-import { doseClock as clock } from './taken-form'
 import { useDoseSaves } from './use-dose-outcome-mutation'
 
 export type HistoryDayResult =
@@ -47,7 +51,7 @@ export function HistoryDay({
   useEffect(() => {
     if (notice === 'invalid') window.history.replaceState(null, '', historyHref(today))
   }, [notice, today])
-  const heading = longDateLabel(date, today)
+  const heading = formatLongDay(date, today)
 
   // The notice is its own page section, 20px above the day (FE-690), so this renders two
   // siblings of History's section column.
@@ -58,7 +62,7 @@ export function HistoryDay({
         {result.status === 'unavailable' ? (
           <Alert role="alert" variant="destructive">
             <AlertTitle id={dayHeadingId} ref={focusTarget} tabIndex={-1} className="outline-none">
-              History for {dateLabel(date, today)} didn&apos;t load just now.
+              History for {formatTodayRelativeDay(date, today)} didn&apos;t load just now.
             </AlertTitle>
             <AlertDescription className="flex flex-col items-start gap-2">
               <p>Check your connection and try again. Your records haven&apos;t changed.</p>
@@ -120,7 +124,7 @@ function LoadedDay({
           id={dayHeadingId}
           ref={focusTarget}
           tabIndex={-1}
-          // Announced on a date change: 'Thursday 5 November, 7 doses' (FE-648 a11y).
+          // Announced on a date change: 'Thursday, 5 November, 7 doses' (FE-648 a11y).
           aria-label={`${heading}, ${doses.length} ${doses.length === 1 ? 'dose' : 'doses'}`}
           className="text-heading font-extrabold outline-none"
         >
@@ -130,7 +134,7 @@ function LoadedDay({
           {logged} of {doses.length} {date === today ? 'so far' : 'logged'}
         </p>
       </div>
-      <ol aria-label={`Doses for ${date}`} className="flex flex-col gap-2.5">
+      <ol aria-label={`Doses for ${heading}`} className="flex flex-col gap-2.5">
         {doses.map((dose) => (
           <HistoryDoseRow
             key={dose.id}
@@ -180,12 +184,12 @@ function HistoryDoseRow({
         aria-hidden="true"
         className={cn('w-11.5 shrink-0 font-extrabold', done && 'text-muted-foreground')}
       >
-        <time dateTime={dose.dueAt}>{clock(dose.dueAt)}</time>
+        <time dateTime={dose.dueAt}>{formatTime(dose.dueAt)}</time>
       </span>
       <ItemContent className="gap-0.75">
         <ItemTitle>
           <h3 id={`dose-${dose.id}`} tabIndex={-1}>
-            <span className="sr-only">{clock(dose.dueAt)} · </span>
+            <span className="sr-only">{formatTime(dose.dueAt)} · </span>
             {medicine?.label ?? 'Medication'}
           </h3>
         </ItemTitle>
@@ -196,7 +200,7 @@ function HistoryDoseRow({
             ` · took ${quantityLabel(dose.record.quantity, unit)}`}
           {takenDate && takenDate !== date && (
             <span className="block font-bold text-foreground">
-              Taken on {dateLabel(takenDate, today).replace(/^Today, /, '')}
+              Taken on {formatShortDay(takenDate, today)}
             </span>
           )}
           {!done && date === today && (
@@ -211,7 +215,7 @@ function HistoryDoseRow({
         time={
           takenAt ? (
             <time data-dose-intake-time dateTime={takenAt}>
-              {clock(takenAt)}
+              {formatTime(takenAt)}
             </time>
           ) : undefined
         }

@@ -3,19 +3,13 @@
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Item } from '@/components/ui/item'
+import { formatTime } from '@/lib/calendar-date'
 import { MedicationsLink } from '@/features/medicines/medications-nav'
 import { MedicationsListSkeleton } from '@/features/medicines/medications-skeleton'
 import type { MedicinesRead } from '@/features/medicines/queries'
 import { medicationsHref } from '@/features/medicines/routes'
 import { MedicationRoutineGroups } from './medication-routine-groups'
 import type { SchedulesRead } from './queries'
-
-const istanbulTime = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Europe/Istanbul',
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-})
 
 /**
  * The list's loading, content, empty and recovery states. Failure of either read is one alert with
@@ -69,7 +63,7 @@ export function MedicationsList({
         <>
           {refreshFailed &&
             recovery(
-              `Your medications didn't update just now. Showing what loaded at ${istanbulTime.format(loadedAt)}.`,
+              `Your medications didn't update just now. Showing what loaded at ${formatTime(loadedAt)}.`,
             )}
           {medicinesRead.medicines.length === 0 ? (
             <Item variant="dashed" className="flex-col items-start gap-3 p-5">

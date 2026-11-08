@@ -2,29 +2,14 @@ import { MedicationTile } from '@/features/medicines/medication-tile'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Icon } from '@/components/ui/icon'
+import { formatShortDay, formatTime, istanbulHour } from '@/lib/calendar-date'
 import type { Medicine } from '@/features/medicines/contract'
 import { istanbulDate, type DoseOccurrence } from './contract'
-import { doseClock as clock } from './taken-form'
 import type { PendingDose } from './dose-saves'
-
-export function formatDayLabel(instant: string) {
-  if (!instant) return undefined
-  const part = (options: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Istanbul', ...options }).format(
-      new Date(instant),
-    )
-  return `${part({ weekday: 'long' })}, ${part({ day: 'numeric', month: 'long' })}`
-}
 
 export function greeting(instant: string) {
   if (!instant) return 'Today'
-  const hour = Number(
-    new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Europe/Istanbul',
-      hour: '2-digit',
-      hourCycle: 'h23',
-    }).format(new Date(instant)),
-  )
+  const hour = istanbulHour(instant)
   return hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 }
 
@@ -62,8 +47,8 @@ export function NextDose({
               : dose.status === 'Upcoming'
                 ? 'Scheduled'
                 : dose.status}{' '}
-            · <time dateTime={dose.dueAt}>{clock(dose.dueAt)}</time>
-            {dueDate !== date ? ` on ${dueDate}` : ''}
+            · <time dateTime={dose.dueAt}>{formatTime(dose.dueAt)}</time>
+            {dueDate !== date ? ` on ${formatShortDay(dueDate, date)}` : ''}
           </span>
         </p>
       </CardHeader>
@@ -81,7 +66,7 @@ export function NextDose({
           <Button
             size="lg"
             className="min-w-[min(100%,7rem)] flex-1"
-            aria-label={`Record ${name} at ${clock(dose.dueAt)} as taken`}
+            aria-label={`Record ${name} at ${formatTime(dose.dueAt)} as taken`}
             onClick={() => onRecord('Taken')}
           >
             <Icon name="check" data-icon="inline-start" />
@@ -91,7 +76,7 @@ export function NextDose({
             size="lg"
             variant="outline"
             className="w-28 max-w-full border-transparent"
-            aria-label={`Record ${name} at ${clock(dose.dueAt)} as skipped`}
+            aria-label={`Record ${name} at ${formatTime(dose.dueAt)} as skipped`}
             onClick={() => onRecord('Skipped')}
           >
             Skip

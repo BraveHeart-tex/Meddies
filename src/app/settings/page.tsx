@@ -3,6 +3,8 @@ import { connection } from 'next/server'
 import { AuthControl } from '@/features/auth/controls'
 import { auth, authConfigured } from '@/features/auth/server'
 import { SessionBoundary } from '@/features/auth/session-boundary'
+import { schedulingNow } from '@/features/schedules/server'
+import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { holdRouteRender } from '@/lib/route-render-hold'
 import { SettingsFrame } from './settings-frame'
 
@@ -13,21 +15,7 @@ export default async function SettingsPage() {
   const configured = authConfigured()
   const session = configured ? await auth() : null
   if (!session?.user?.id) redirect(`/?returnTo=${encodeURIComponent('/settings')}`)
-  const deadline = new Date(session.expires)
-  const day = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Istanbul',
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  })
-    .format(deadline)
-    .replace(',', '')
-  const time = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Istanbul',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(deadline)
+  const today = schedulingNow().toISOString()
   return (
     <SessionBoundary ownerId={session.user.id} expires={session.expires}>
       <SettingsFrame>
@@ -37,7 +25,7 @@ export default async function SettingsPage() {
         <p className="text-body-sm">
           Session ends{' '}
           <time dateTime={session.expires}>
-            {day} at {time}
+            {formatShortDay(session.expires, today)} at {formatTime(session.expires)}
           </time>
         </p>
         <AuthControl signedIn />

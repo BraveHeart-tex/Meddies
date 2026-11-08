@@ -3,11 +3,16 @@ import nextVitals from 'eslint-config-next/core-web-vitals'
 import prettier from 'eslint-config-prettier/flat'
 import playwright from 'eslint-plugin-playwright'
 import bannedUiWords from './eslint-rules/banned-ui-words.mjs'
+import noRawDateFormat from './eslint-rules/no-raw-date-format.mjs'
 import noWidthLoopTests from './eslint-rules/no-width-loop-tests.mjs'
 
 const browserJourneys = 'tests/browser/**'
 const meddies = {
-  rules: { 'banned-ui-words': bannedUiWords, 'no-width-loop-tests': noWidthLoopTests },
+  rules: {
+    'banned-ui-words': bannedUiWords,
+    'no-raw-date-format': noRawDateFormat,
+    'no-width-loop-tests': noWidthLoopTests,
+  },
 }
 const browserRestrictedImports = [
   'server-only',
@@ -80,6 +85,13 @@ const eslintConfig = defineConfig([
     files: ['src/**/*.tsx'],
     plugins: { meddies },
     rules: { 'meddies/banned-ui-words': 'error' },
+  },
+  // Every UI date and time comes from the central date module (docs/copy.md).
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/lib/calendar-date.ts'],
+    plugins: { meddies },
+    rules: { 'meddies/no-raw-date-format': 'error' },
   },
   // Browser code reads through authenticated API routes, never server wiring or storage transport.
   {

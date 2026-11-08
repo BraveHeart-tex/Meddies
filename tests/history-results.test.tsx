@@ -12,6 +12,7 @@ import { scheduleKeys } from '../src/features/schedules/queries'
 import { SchedulingClockProvider } from '../src/features/schedules/scheduling-clock'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
+import { formatLongDay } from '../src/lib/calendar-date'
 
 let search = new URLSearchParams()
 vi.mock('next/navigation', () => ({
@@ -80,7 +81,8 @@ function renderResults(client: QueryClient, notice?: 'invalid') {
   )
 }
 
-const doseList = (date: string) => screen.findByRole('list', { name: `Doses for ${date}` })
+const doseList = (date: string) =>
+  screen.findByRole('list', { name: `Doses for ${formatLongDay(date, today)}` })
 
 beforeEach(() => {
   search = new URLSearchParams()
@@ -115,12 +117,16 @@ test('a cached date renders at once and refreshes quietly', async () => {
     </QueryClientProvider>,
   )
   // Cached doses show at once while the stale date refreshes; no skeleton replaces them.
-  expect(screen.getByRole('list', { name: 'Doses for 2026-11-04' })).toHaveTextContent('Not logged')
+  expect(screen.getByRole('list', { name: 'Doses for Wednesday, 4 November' })).toHaveTextContent(
+    'Not logged',
+  )
   expect(screen.queryByRole('status')).toBeNull()
   await waitFor(() => expect(reads).toEqual(['2026-11-04']))
   release()
   await waitFor(() =>
-    expect(screen.getByRole('list', { name: 'Doses for 2026-11-04' })).toHaveTextContent('Skipped'),
+    expect(screen.getByRole('list', { name: 'Doses for Wednesday, 4 November' })).toHaveTextContent(
+      'Skipped',
+    ),
   )
 })
 
@@ -161,7 +167,7 @@ test('Retry refetches a failed date without reloading', async () => {
   retry.click()
   expect(await doseList('2026-11-04')).toHaveTextContent('Melatonin')
   expect(reads).toEqual(['2026-11-04', '2026-11-04'])
-  expect(screen.getByRole('heading', { name: 'Wednesday 4 November, 1 dose' })).toHaveFocus()
+  expect(screen.getByRole('heading', { name: 'Wednesday, 4 November, 1 dose' })).toHaveFocus()
 })
 
 test('a 401 the session check does not confirm stays a retryable read, not a session end', async () => {

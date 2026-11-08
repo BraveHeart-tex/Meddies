@@ -4,12 +4,12 @@ import { useImperativeHandle, useRef, useState, type Ref } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
-import { dateLabel } from '@/lib/calendar-date'
+import { formatTime } from '@/lib/calendar-date'
 import type { Medicine } from '@/features/medicines/contract'
 import { saveMessages } from '@/lib/save-messages'
 import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
 import { SkippedForm } from './skipped-form'
-import { doseClock, TakenForm } from './taken-form'
+import { TakenForm } from './taken-form'
 import { DoseDrawer } from './dose-drawer'
 import { OutcomeChoice } from './outcome-choice'
 import { outcomeConfirmation } from './dose-confirmation'
@@ -91,6 +91,7 @@ export function DoseActions({
               unit: medicine.unit,
               previous: dose.status,
               record,
+              today: istanbulDate(clock.now()),
             }),
         type: record.outcome === 'Taken' ? 'success' : 'skipped',
       })
@@ -169,7 +170,7 @@ export function DoseActions({
   const attemptMatches = (outcome: Outcome) =>
     problem?.kind !== 'uncertain' || !attempt || attempt.outcome === outcome
   const verb = recorded ? 'Review' : 'Record'
-  const triggerLabel = `${verb} dose for ${medicine.label} scheduled at ${doseClock(dose.dueAt)}`
+  const triggerLabel = `${verb} dose for ${medicine.label} scheduled at ${formatTime(dose.dueAt)}`
   const choosing = !recorded || correcting || (openedWithoutOutcome && editor !== null)
 
   return (
@@ -266,7 +267,7 @@ export function DoseActions({
         {openedWithoutOutcome && recorded && editor !== null && <RecordedElsewhere dose={dose} />}
         {recorded && (!correcting || needsReview) && (
           <>
-            <RecordedOutcome dose={dose} unit={medicine.unit} />
+            <RecordedOutcome dose={dose} unit={medicine.unit} today={istanbulDate(clock.now())} />
             <fieldset
               disabled={needsReview}
               data-base-ui-swipe-ignore="y"
@@ -305,7 +306,7 @@ export function DoseActions({
                 <Button
                   type="button"
                   variant="outline"
-                  aria-label={`Change dose for ${medicine.label} at ${doseClock(dose.dueAt)}`}
+                  aria-label={`Change dose for ${medicine.label} at ${formatTime(dose.dueAt)}`}
                   onClick={() => {
                     pinCorrection({
                       outcome: dose.status,

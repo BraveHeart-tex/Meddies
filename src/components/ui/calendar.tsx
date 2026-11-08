@@ -4,6 +4,14 @@ import * as React from 'react'
 import { DayPicker, getDefaultClassNames, type DayButton } from 'react-day-picker'
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
+import {
+  dateValue,
+  formatLongDay,
+  formatMonthName,
+  formatMonthYear,
+  formatShortWeekday,
+  formatWeekdayName,
+} from '@/lib/calendar-date'
 import { cn } from '@/lib/utils'
 
 // Cozy Care calendar: 44px day targets that shrink only to fit a 320px phone, blush today,
@@ -15,15 +23,21 @@ function Calendar({
   captionLayout = 'label',
   buttonVariant = 'ghost',
   formatters,
+  labels,
   components,
+  today,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>['variant']
+  /** Istanbul today, as a calendar day: it marks the day and decides when a year shows. */
+  today: Date
 }) {
   const defaultClassNames = getDefaultClassNames()
+  const todayValue = dateValue(today)
 
   return (
     <DayPicker
+      today={today}
       showOutsideDays={showOutsideDays}
       className={cn(
         'group/calendar bg-card p-2 [--cell-radius:var(--radius-sm)] [--cell-size:min(2.75rem,calc((100vw_-_3.125rem)/7))] in-data-[slot=popover-content]:bg-transparent',
@@ -31,8 +45,23 @@ function Calendar({
       )}
       captionLayout={captionLayout}
       formatters={{
-        formatMonthDropdown: (date) => date.toLocaleString('en-GB', { month: 'short' }),
+        formatCaption: (month) => formatMonthYear(dateValue(month)),
+        formatMonthDropdown: (month) => formatMonthName(dateValue(month)),
+        formatWeekdayName: (weekday) => formatShortWeekday(dateValue(weekday)),
         ...formatters,
+      }}
+      labels={{
+        labelDayButton: (day, modifiers) =>
+          [
+            formatLongDay(dateValue(day), todayValue),
+            modifiers.today && 'today',
+            modifiers.selected && 'selected',
+          ]
+            .filter(Boolean)
+            .join(', '),
+        labelGrid: (month) => formatMonthYear(dateValue(month)),
+        labelWeekday: (weekday) => formatWeekdayName(dateValue(weekday)),
+        ...labels,
       }}
       classNames={{
         root: cn('w-fit', defaultClassNames.root),

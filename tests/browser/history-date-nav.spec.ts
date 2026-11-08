@@ -40,7 +40,7 @@ test('History date bar sizes and alignment @visual', async ({ page }, testInfo) 
   await test.step('at 320px the date bar keeps its three parts on one row (648·H7)', async () => {
     await page.setViewportSize({ width: 320, height: 740 })
     await page.goto(`/history?date=${addDays(today, -1)}`)
-    await expect(dayHeading(page, 'Thursday 14 June, 1 dose')).toBeVisible()
+    await expect(dayHeading(page, 'Thursday, 14 June, 1 dose')).toBeVisible()
     const [left, middle, right] = await Promise.all(
       [previous(page), picker(page), next(page)].map((part) => part.boundingBox()),
     )

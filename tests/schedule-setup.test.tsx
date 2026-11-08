@@ -311,7 +311,7 @@ test('no chosen weekday blocks the save, and a saved weekday shows its day and s
 
   rerender(panel(tablets.id, 'detail', onSaved))
   expect(await screen.findByText('Monday at 23:59 (1)')).toBeVisible()
-  expect(screen.getByText('Starts 2035-06-16.')).toBeVisible()
+  expect(screen.getByText('Starts Sat 16 Jun.')).toBeVisible()
 })
 
 test('every dose time needs both parts, pickers lock while saving and values save unchanged', async () => {

@@ -1,7 +1,6 @@
-import { dateLabel } from '@/lib/calendar-date'
+import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { quantityLabel, type DoseUnit } from '@/lib/dose-quantity'
 import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
-import { doseClock } from './taken-form-schema'
 
 /**
  * The confirmation toast after a server-confirmed save (FE-648 F2, C5), for example
@@ -13,23 +12,26 @@ export function outcomeConfirmation({
   unit,
   previous,
   record,
+  today,
 }: {
   label: string
   unit: DoseUnit
   /** The dose's status before this save. */
   previous: DoseOccurrence['status']
   record: DoseOutcomeRecord
+  /** Istanbul today, for the year rule. */
+  today: string
 }) {
-  const head = `${label} ${doseClock(record.dueAt)} ·`
+  const head = `${label} ${formatTime(record.dueAt)} ·`
   const corrected = previous === 'Taken' || previous === 'Skipped'
   if (record.outcome === 'Skipped')
     return `${head} ${corrected ? 'changed to skipped' : 'saved as skipped'}`
   const dueDate = istanbulDate(new Date(record.dueAt))
   const takenDate = istanbulDate(new Date(record.takenAt))
-  const day = takenDate === dueDate ? '' : ` on ${dateLabel(takenDate, dueDate)}`
+  const day = takenDate === dueDate ? '' : ` on ${formatShortDay(takenDate, today)}`
   const action =
     previous === 'Taken' ? 'updated to taken at' : corrected ? 'changed to taken at' : 'taken at'
-  return `${head} ${action} ${doseClock(record.takenAt)}${day}, ${quantityLabel(record.quantity, unit)}`
+  return `${head} ${action} ${formatTime(record.takenAt)}${day}, ${quantityLabel(record.quantity, unit)}`
 }
 
 /**
@@ -40,15 +42,18 @@ export function reconciledConfirmation({
   label,
   unit,
   record,
+  today,
 }: {
   label: string
   unit: DoseUnit
   record: DoseOutcomeRecord
+  /** Istanbul today, for the year rule. */
+  today: string
 }) {
-  const head = `${label} ${doseClock(record.dueAt)} · already saved as`
+  const head = `${label} ${formatTime(record.dueAt)} · already saved as`
   if (record.outcome === 'Skipped') return `${head} skipped`
   const dueDate = istanbulDate(new Date(record.dueAt))
   const takenDate = istanbulDate(new Date(record.takenAt))
-  const day = takenDate === dueDate ? '' : ` on ${dateLabel(takenDate, dueDate)}`
-  return `${head} taken at ${doseClock(record.takenAt)}${day}, ${quantityLabel(record.quantity, unit)}`
+  const day = takenDate === dueDate ? '' : ` on ${formatShortDay(takenDate, today)}`
+  return `${head} taken at ${formatTime(record.takenAt)}${day}, ${quantityLabel(record.quantity, unit)}`
 }

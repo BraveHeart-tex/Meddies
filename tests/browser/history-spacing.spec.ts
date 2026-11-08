@@ -88,7 +88,7 @@ for (const { width, height } of viewports)
       await test.step('loaded day (648·H1, H2)', async () => {
         const yesterday = addDays(today, -1)
         await page.goto(`/history?date=${yesterday}`)
-        const loaded = historyDay(page, 'Thursday 14 June, 1 dose')
+        const loaded = historyDay(page, 'Thursday, 14 June, 1 dose')
         await expectSectionGaps(appHeader(page), dateNav(page), loaded)
         // Inside the day, the heading stays 14px above its rows.
         const heading = loaded.getByRole('heading', { level: 2 })
@@ -101,7 +101,7 @@ for (const { width, height } of viewports)
         await expectSectionGaps(
           appHeader(page),
           dateNav(page),
-          historyDay(page, 'Nothing was scheduled on Monday 11 June.'),
+          historyDay(page, 'Nothing was scheduled on Monday, 11 June.'),
         )
       })
 
@@ -111,7 +111,7 @@ for (const { width, height } of viewports)
           appHeader(page),
           dateNav(page),
           page.getByRole('alert').filter({ hasText: 'Nothing to show for that day.' }),
-          historyDay(page, 'Friday 15 June, 1 dose'),
+          historyDay(page, 'Friday, 15 June, 1 dose'),
         )
         await page.screenshot({ path: testInfo.outputPath(`history-invalid-${width}.png`) })
       })

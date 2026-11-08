@@ -1,7 +1,8 @@
 import { ApplicationError } from '../../lib/application-error'
 import { ALL_WEEKDAYS } from './weekdays'
 
-export const SCHEDULE_TIMEZONE = 'Europe/Istanbul'
+export { istanbulDate } from '../../lib/calendar-date'
+
 export type DailyScheduleInput = {
   id: string
   medicineId: string
@@ -118,15 +119,6 @@ export function parseSchedule(
     weekdays: [...weekdays].sort((a, b) => a - b),
     endDate,
   }
-}
-
-export function istanbulDate(now: Date): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: SCHEDULE_TIMEZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now)
 }
 
 export function isScheduleDate(value: unknown): value is string {

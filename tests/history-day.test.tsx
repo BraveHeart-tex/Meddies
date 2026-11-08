@@ -46,6 +46,19 @@ test('picking a date pushes it', async () => {
   expect(pushed()).toBe('/history?date=2026-11-03')
 })
 
+test('the calendar names its month, columns and days in the central formats', async () => {
+  render(<HistoryDateNav today="2026-11-06" />)
+  await userEvent.click(screen.getByRole('button', { name: /Choose a date/ }))
+  expect(screen.getByRole('grid', { name: 'November 2026' })).toBeVisible()
+  expect(screen.getByText('November 2026')).toBeVisible()
+  // The library hides the header row from the accessibility tree.
+  expect(screen.getByRole('columnheader', { name: 'Monday', hidden: true })).toHaveTextContent(
+    'Mon',
+  )
+  expect(screen.getByRole('button', { name: 'Friday, 6 November, today, selected' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Tuesday, 3 November' })).toBeVisible()
+})
+
 const medicine: Medicine = {
   id: '00000000-0000-4000-8000-000000000001',
   label: 'Melatonin',
@@ -94,10 +107,10 @@ test('a populated day lists doses in time order; Not logged rows are not buttons
   renderDay({
     result: { status: 'loaded', doses: [occurrence('08:00'), late], medicines: [medicine] },
   })
-  expect(screen.getByRole('heading', { name: 'Thursday 5 November, 2 doses' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Thursday, 5 November, 2 doses' })).toBeVisible()
   expect(screen.getByText('1 of 2 logged')).toBeVisible()
   const [unlogged, taken] = within(
-    screen.getByRole('list', { name: 'Doses for 2026-11-05' }),
+    screen.getByRole('list', { name: 'Doses for Thursday, 5 November' }),
   ).getAllByRole('listitem')
   expect(within(unlogged).queryByRole('button')).toBeNull()
   expect(unlogged).toHaveTextContent('Not logged')
@@ -125,7 +138,7 @@ test('today so far points Not logged rows to Today (648·H2)', () => {
 
 test('an empty day says nothing was scheduled (648·H3)', () => {
   renderDay({ date: '2026-11-01' })
-  expect(screen.getByText('Nothing was scheduled on Sunday 1 November.')).toBeVisible()
+  expect(screen.getByText('Nothing was scheduled on Sunday, 1 November.')).toBeVisible()
 })
 
 test('stepping to another day focuses its heading (D11)', async () => {
@@ -133,7 +146,7 @@ test('stepping to another day focuses its heading (D11)', async () => {
   render(<HistoryDateNav today="2026-11-06" />)
   await userEvent.click(screen.getByRole('button', { name: 'Previous day' }))
   renderDay({ result: { status: 'loaded', doses: [occurrence('08:00')], medicines: [medicine] } })
-  expect(screen.getByRole('heading', { name: 'Thursday 5 November, 1 dose' })).toHaveFocus()
+  expect(screen.getByRole('heading', { name: 'Thursday, 5 November, 1 dose' })).toHaveFocus()
 })
 
 test('picking an empty day focuses its message (648·H3)', async () => {
@@ -142,7 +155,7 @@ test('picking an empty day focuses its message (648·H3)', async () => {
   await userEvent.click(document.querySelector<HTMLElement>('button[data-day="2026-11-01"]')!)
   renderDay({ date: '2026-11-01' })
   expect(
-    screen.getByRole('heading', { name: /Nothing was scheduled on Sunday 1 November/ }),
+    screen.getByRole('heading', { name: /Nothing was scheduled on Sunday, 1 November/ }),
   ).toHaveFocus()
 })
 

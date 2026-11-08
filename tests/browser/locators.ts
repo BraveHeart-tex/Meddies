@@ -1,4 +1,5 @@
 import type { Locator, Page } from '@playwright/test'
+import { formatLongDay } from '../../src/lib/calendar-date'
 
 // Shared domain locators. Prefer role, then label, then text; fall back to a domain data-*
 // id only when no accessible handle exists. Raw CSS selectors are allowed only in this file.
@@ -30,9 +31,9 @@ export const focusInside = (row: Locator) => row.locator(':focus')
 export const instant = (scope: Page | Locator, iso: string) =>
   scope.locator(`time[datetime="${iso}"]`)
 
-/** The History list for a date. */
+/** The History list for a date. Journey dates share the frozen clock's year, so none shows. */
 export const historyList = (page: Page, date: string) =>
-  page.getByRole('list', { name: `Doses for ${date}` })
+  page.getByRole('list', { name: `Doses for ${formatLongDay(date, date)}` })
 
 /** History's date bar: Previous day, the DatePicker and Next day. */
 export const historyDateNav = (page: Page) => page.getByRole('navigation', { name: 'History date' })

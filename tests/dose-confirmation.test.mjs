@@ -7,10 +7,11 @@ const key = { scheduleId: '6e0b55ee-2e10-4e00-80f2-a736c2f50f95' }
 const dueAt = '2026-11-05T19:30:00.000Z'
 const taken = (takenAt, quantity) => ({ ...key, dueAt, outcome: 'Taken', takenAt, quantity })
 const skipped = { ...key, dueAt, outcome: 'Skipped', recordedAt: dueAt }
+const confirm = (args) => outcomeConfirmation({ today: '2026-11-06', ...args })
 
 test('a skip says no intake was recorded', () => {
   assert.equal(
-    outcomeConfirmation({
+    confirm({
       label: 'Iron bisglycinate',
       unit: 'tablet',
       previous: 'Upcoming',
@@ -22,7 +23,7 @@ test('a skip says no intake was recorded', () => {
 
 test('a new intake names its time and amount', () => {
   assert.equal(
-    outcomeConfirmation({
+    confirm({
       label: 'Melatonin',
       unit: 'tablet',
       previous: 'Due now',
@@ -34,7 +35,7 @@ test('a new intake names its time and amount', () => {
 
 test('an edited intake after midnight names the actual day (C3, C5)', () => {
   assert.equal(
-    outcomeConfirmation({
+    confirm({
       label: 'Melatonin',
       unit: 'tablet',
       previous: 'Taken',
@@ -43,7 +44,7 @@ test('an edited intake after midnight names the actual day (C3, C5)', () => {
     'Melatonin 22:30 · updated to taken at 23:00, ½ tablet',
   )
   assert.equal(
-    outcomeConfirmation({
+    confirm({
       label: 'Melatonin',
       unit: 'capsule',
       previous: 'Taken',
@@ -55,7 +56,7 @@ test('an edited intake after midnight names the actual day (C3, C5)', () => {
 
 test('a corrected outcome says what it changed to', () => {
   assert.equal(
-    outcomeConfirmation({
+    confirm({
       label: 'Melatonin',
       unit: 'tablet',
       previous: 'Skipped',
@@ -64,7 +65,27 @@ test('a corrected outcome says what it changed to', () => {
     'Melatonin 22:30 · changed to taken at 22:30, 1½ tablets',
   )
   assert.equal(
-    outcomeConfirmation({ label: 'Melatonin', unit: 'tablet', previous: 'Taken', record: skipped }),
+    confirm({ label: 'Melatonin', unit: 'tablet', previous: 'Taken', record: skipped }),
     'Melatonin 22:30 · changed to skipped',
+  )
+})
+
+test('the year of an intake on another day follows the current Istanbul year', () => {
+  const record = {
+    ...key,
+    outcome: 'Taken',
+    // 23:00 on 31 Dec 2035, taken 00:15 on 1 Jan 2036 in Istanbul.
+    dueAt: '2035-12-31T20:00:00.000Z',
+    takenAt: '2035-12-31T21:15:00.000Z',
+    quantity: 1,
+  }
+  const args = { label: 'Melatonin', unit: 'tablet', previous: 'Due now', record }
+  assert.equal(
+    confirm({ ...args, today: '2036-01-01' }),
+    'Melatonin 23:00 · taken at 00:15 on Tue 1 Jan, 1 tablet',
+  )
+  assert.equal(
+    confirm({ ...args, today: '2035-12-31' }),
+    'Melatonin 23:00 · taken at 00:15 on Tue 1 Jan 2036, 1 tablet',
   )
 })

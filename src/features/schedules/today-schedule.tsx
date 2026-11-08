@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { quantityLabel } from '@/lib/dose-quantity'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
@@ -12,7 +13,6 @@ import { Icon } from '@/components/ui/icon'
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
 import { useMedicines } from '@/features/medicines/queries'
 import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
-import { doseClock as clock } from './taken-form'
 import { DoseStatusBadge } from './dose-status-badge'
 import { DoseActions, type DoseDrawerOpener } from './dose-actions'
 import { NextDose } from './next-dose'
@@ -65,7 +65,7 @@ export function TodaySchedule({
     if (!attempt) return ''
     const unit = medicines.find((item) => item.id === dose.medicineId)?.unit ?? 'tablet'
     return attempt.takenAt
-      ? `Taken at ${clock(attempt.takenAt)}, ${quantityLabel(attempt.quantity, unit)} · might not have saved · open to try again`
+      ? `Taken at ${formatTime(attempt.takenAt)}, ${quantityLabel(attempt.quantity, unit)} · might not have saved · open to try again`
       : 'Skipped · might not have saved · open to try again'
   }
   const [intakeMessage, setIntakeMessage] = useState('')
@@ -79,7 +79,7 @@ export function TodaySchedule({
     if (active === document.body || heading?.parentElement?.contains(active)) heading?.focus()
     // A confirmed save announces itself with a Toast from DoseActions (FE-648 F2).
     if (!reconciled) return setIntakeMessage('')
-    const description = `${name(dose.medicineId)} scheduled for ${clock(dose.dueAt)}`
+    const description = `${name(dose.medicineId)} scheduled for ${formatTime(dose.dueAt)}`
     setIntakeMessage(`${description} was already recorded as ${record.outcome.toLowerCase()}.`)
   }
 
@@ -223,7 +223,7 @@ export function TodaySchedule({
                                     done && 'text-muted-foreground',
                                   )}
                                 >
-                                  <time dateTime={dose.dueAt}>{clock(dose.dueAt)}</time>
+                                  <time dateTime={dose.dueAt}>{formatTime(dose.dueAt)}</time>
                                 </span>
                                 <ItemContent className="min-w-0 gap-0.75">
                                   <ItemTitle>
@@ -232,7 +232,7 @@ export function TodaySchedule({
                                       tabIndex={-1}
                                       className="outline-none"
                                     >
-                                      <span className="sr-only">{clock(dose.dueAt)} · </span>
+                                      <span className="sr-only">{formatTime(dose.dueAt)} · </span>
                                       {name(dose.medicineId)}
                                     </h4>
                                   </ItemTitle>
@@ -245,7 +245,7 @@ export function TodaySchedule({
                                       ` · took ${doseText(dose, dose.record.quantity)}`}
                                     {recordedAt &&
                                       istanbulDate(new Date(recordedAt)) !== today.date &&
-                                      ` · ${dose.status === 'Taken' ? 'taken' : 'skipped'} on ${istanbulDate(new Date(recordedAt))}`}
+                                      ` · ${dose.status === 'Taken' ? 'taken' : 'skipped'} on ${formatShortDay(recordedAt, today.date)}`}
                                     {retryNote(dose) && (
                                       <span className="block font-bold text-foreground">
                                         {retryNote(dose)}
@@ -260,7 +260,7 @@ export function TodaySchedule({
                                   status={dose.status}
                                   time={
                                     recordedAt ? (
-                                      <time dateTime={recordedAt}>{clock(recordedAt)}</time>
+                                      <time dateTime={recordedAt}>{formatTime(recordedAt)}</time>
                                     ) : undefined
                                   }
                                 />
