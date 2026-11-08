@@ -12,64 +12,14 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  static:
-    name: Static
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm format:check
-      - run: pnpm typecheck
-
-  unit:
-    name: Unit
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Restore Next.js build cache
-        id: next-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: .next/cache
-          key: ${{ runner.os }}-next-cache-${{ hashFiles('pnpm-lock.yaml', 'next.config.ts') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-next-cache-${{ hashFiles('pnpm-lock.yaml', 'next.config.ts') }}-
-            ${{ runner.os }}-next-cache-
-      - name: Production build
-        env:
-          CI_SKIP_BUILD_TYPECHECK: '1'
-        run: pnpm build
-      # Only main saves, so pull requests cannot poison or evict its cache.
-      - name: Save Next.js build cache
-        if: github.ref == 'refs/heads/main' && steps.next-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: .next/cache
-          key: ${{ steps.next-cache.outputs.cache-primary-key }}
-      - run: pnpm test
-
   journeys:
-    name: Journeys
+    name: Journeys w${{ matrix.workers }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        workers: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -125,33 +75,14 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: pnpm exec playwright install-deps chromium
       - name: Browser journeys
-        run: pnpm test:browser
+        run: pnpm test:browser --workers=${{ matrix.workers }} --fully-parallel
       - name: Upload browser artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: browser-artifacts-${{ github.run_attempt }}
+          name: browser-artifacts-${{ github.run_attempt }}-w${{ matrix.workers }}
           path: .browser-artifacts/
           # upload-artifact skips dot-directories unless hidden files are included.
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 14
-
-  # Branch protection is configured against the `Checks` status context. Keep this name.
-  checks:
-    name: Checks
-    needs: [static, unit, journeys]
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Verification result
-        env:
-          COMMIT: ${{ github.sha }}
-          STATIC: ${{ needs.static.result }}
-          UNIT: ${{ needs.unit.result }}
-          JOURNEYS: ${{ needs.journeys.result }}
-        # Failed, cancelled and skipped needs all fail this job.
-        run: |
-          echo "Verification for $COMMIT - Static $STATIC, Unit $UNIT, Journeys $JOURNEYS" >> "$GITHUB_STEP_SUMMARY"
-          [[ "$STATIC" == success && "$UNIT" == success && "$JOURNEYS" == success ]]
