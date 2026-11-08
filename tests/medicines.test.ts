@@ -1,6 +1,7 @@
+import type { MedicineCommand } from '../src/features/medicines/contract'
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { createMedicineOperations } from '../src/features/medicines/operations.ts'
+import { createMedicineOperations } from '../src/features/medicines/operations'
 
 test('medicine operations reject invalid labels and units before persistence', async () => {
   const operations = createMedicineOperations({
@@ -23,7 +24,7 @@ test('medicine operations reject invalid labels and units before persistence', a
 })
 
 test('operations derive ownership from the session and never accept a supplied owner', async () => {
-  const commands = []
+  const commands: MedicineCommand[] = []
   const operations = createMedicineOperations({
     requireUser: async () => ({ id: 'google:alice' }),
     send: async (command) => {

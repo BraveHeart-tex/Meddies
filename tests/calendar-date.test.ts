@@ -12,11 +12,11 @@ import {
   formatTodayRelativeDay,
   formatWeekdayName,
   istanbulHour,
-} from '../src/lib/calendar-date.ts'
+} from '../src/lib/calendar-date'
 
 const zones = ['Pacific/Kiritimati', 'America/Los_Angeles', 'Pacific/Pago_Pago', 'Europe/Istanbul']
 
-function inZone(zone, run) {
+function inZone(zone: string, run: () => void) {
   const previous = process.env.TZ
   process.env.TZ = zone
   try {

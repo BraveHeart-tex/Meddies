@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { isTimeOfDay, joinTime, timeParts } from '../src/lib/time-of-day.ts'
+import { isTimeOfDay, joinTime, timeParts } from '../src/lib/time-of-day'
 
 test('a half-chosen time keeps the chosen half and stays distinguishable from empty', () => {
   assert.equal(joinTime({ hour: '', minute: '' }), '')

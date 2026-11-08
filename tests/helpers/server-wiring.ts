@@ -1,9 +1,9 @@
 // Synthetic authentication wiring for gateway tests; no real sessions or credentials.
 let authenticated = true
-exports.setAuthenticated = (value) => {
+export const setAuthenticated = (value: boolean) => {
   authenticated = value
 }
-exports.requireUser = async () => {
+export const requireUser = async () => {
   if (!authenticated) throw new Error('synthetic unauthenticated session')
   return { id: 'google:test' }
 }

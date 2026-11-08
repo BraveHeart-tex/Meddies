@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { WEEK_ORDER, weekdaySummary } from '../src/features/schedules/weekdays.ts'
+import { WEEK_ORDER, weekdaySummary } from '../src/features/schedules/weekdays'
 
 test('the week reads Monday to Sunday', () => {
   assert.deepEqual(WEEK_ORDER, [1, 2, 3, 4, 5, 6, 0])

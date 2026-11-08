@@ -1,3 +1,4 @@
+import type { TestContext } from 'vitest'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { mkdtemp, readFile, rm, writeFile, mkdir, chmod, access } from 'node:fs/promises'
@@ -18,28 +19,35 @@ const budget = ({ starts = 0, commands = 0 }) => ({
   timeout: starts * startDeadline + commands * commandDeadline + 5_000,
 })
 
-function run(args, cwd, extraEnv = {}, timeout = commandDeadline) {
-  return new Promise((resolve) => {
-    const child = spawn(process.execPath, [script, ...args], {
-      cwd,
-      env: { ...process.env, ...extraEnv },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-    let output = ''
-    const collect = (data) => {
-      output += data
-    }
-    child.stdout.on('data', collect)
-    child.stderr.on('data', collect)
-    const timer = setTimeout(() => child.kill('SIGKILL'), timeout)
-    child.on('close', (code, signal) => {
-      clearTimeout(timer)
-      resolve({ code, signal, output })
-    })
-  })
+function run(
+  args: string[],
+  cwd: string,
+  extraEnv: Record<string, string> = {},
+  timeout = commandDeadline,
+) {
+  return new Promise<{ code: number | null; signal: NodeJS.Signals | null; output: string }>(
+    (resolve) => {
+      const child = spawn(process.execPath, [script, ...args], {
+        cwd,
+        env: { ...process.env, ...extraEnv },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+      let output = ''
+      const collect = (data: Buffer) => {
+        output += data
+      }
+      child.stdout.on('data', collect)
+      child.stderr.on('data', collect)
+      const timer = setTimeout(() => child.kill('SIGKILL'), timeout)
+      child.on('close', (code, signal) => {
+        clearTimeout(timer)
+        resolve({ code, signal, output })
+      })
+    },
+  )
 }
 
-async function fixture(t, extra = {}) {
+async function fixture(t: TestContext, extra: Record<string, string> = {}) {
   const cwd = await mkdtemp(path.join(os.tmpdir(), 'meddies-stack-'))
   const bin = path.join(cwd, 'bin')
   await mkdir(bin)
@@ -80,7 +88,7 @@ if (args[0] === 'exec' || args[0] === 'dev') {
   return { cwd, env }
 }
 
-async function canBind(port) {
+async function canBind(port: number) {
   return new Promise((resolve) => {
     const server = net.createServer()
     server.once('error', () => resolve(false))
@@ -184,7 +192,7 @@ test(
   async (t) => {
     const server = net.createServer()
     try {
-      await new Promise((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         server.once('error', reject)
         server.listen(3000, '127.0.0.1', resolve)
       })
@@ -192,7 +200,7 @@ test(
       t.skip('sandbox does not permit binding the fixed local development port')
       return
     }
-    t.onTestFinished(() => new Promise((resolve) => server.close(resolve)))
+    t.onTestFinished(() => new Promise<void>((resolve) => server.close(() => resolve())))
     const { cwd, env } = await fixture(t)
     const result = await run(['start'], cwd, env)
     assert.notEqual(result.code, 0)

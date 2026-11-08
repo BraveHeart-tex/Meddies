@@ -1,20 +1,27 @@
+import type { TakenFormOptions, TakenFormValues } from '../src/features/schedules/taken-form-schema'
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { parseTakenDose } from '../src/features/schedules/contract.ts'
-import { takenFormDefaults, takenFormSchema } from '../src/features/schedules/taken-form-schema.ts'
+import { parseTakenDose } from '../src/features/schedules/contract'
+import { takenFormDefaults, takenFormSchema } from '../src/features/schedules/taken-form-schema'
 
 // Istanbul is UTC+3: 14:00 local is 11:00Z.
 const now = '2035-06-15T14:00'
 const scheduled = '2035-06-15T08:00'
-const options = { unit: 'tablet', now, scheduled }
+const options: TakenFormOptions = { unit: 'tablet', now, scheduled }
 
-const errorsOf = (values, opts = options) => {
+const errorsOf = (values: unknown, opts = options) => {
   const result = takenFormSchema(opts).safeParse(values)
   return result.success
     ? {}
     : Object.fromEntries(result.error.issues.map((issue) => [issue.path.join('.'), issue.message]))
 }
-const values = (overrides) => ({ when: 'now', date: '', time: '', quantity: '1', ...overrides })
+const values = (overrides?: Partial<TakenFormValues>): TakenFormValues => ({
+  when: 'now',
+  date: '',
+  time: '',
+  quantity: '1',
+  ...overrides,
+})
 
 test('Now saves the minute shown as an Istanbul instant', () => {
   assert.deepEqual(takenFormSchema(options).parse(values()), {
@@ -45,7 +52,7 @@ test('At scheduled saves the scheduled minute, only once it has passed', () => {
 })
 
 test('Other takes a passed time today or yesterday', () => {
-  const other = (date, time) => values({ when: 'other', date, time })
+  const other = (date: string, time: string) => values({ when: 'other', date, time })
   assert.equal(
     takenFormSchema(options).parse(other('2035-06-14', '23:30')).takenAt,
     '2035-06-14T20:30:00.000Z',

@@ -1,8 +1,19 @@
+import type {
+  DailyScheduleInput,
+  DailySchedule,
+  DoseRecord,
+  SkippedDoseRecord,
+  ScheduleCommand,
+  SendSchedule,
+  DoseOccurrence,
+} from '../src/features/schedules/contract'
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { createScheduleOperations } from '../src/features/schedules/operations.ts'
+import { createScheduleOperations } from '../src/features/schedules/operations'
 
-const input = {
+// Legacy snapshots below intentionally omit weekdays to exercise the default.
+// Each send mock answers only the command exercised by its test.
+const input: DailyScheduleInput = {
   id: 'c8850347-dda8-4ecb-9d4a-c1821dbe182d',
   medicineId: '6e0b55ee-2e10-4e00-80f2-a736c2f50f95',
   startDate: '2026-11-04',
@@ -43,7 +54,7 @@ test('daily setup requires authentication and rejects malformed times, dates and
 })
 
 test('selected weekdays find the next dose across the week and retain the inclusive end day', async () => {
-  const schedule = {
+  const schedule: Omit<DailySchedule, 'weekdays'> & { weekdays?: number[] } = {
     ...input,
     startDate: '2026-11-08',
     weekdays: [1],
@@ -53,16 +64,16 @@ test('selected weekdays find the next dose across the week and retain the inclus
   }
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: 'google:alice' }),
-    send: async () => ({ schedules: [schedule], records: [] }),
+    send: (async () => ({ schedules: [schedule], records: [] })) as SendSchedule,
     now: () => new Date('2026-11-08T12:00:00.000Z'),
   })
   const today = (await operations.snapshot()).today
   assert.deepEqual(today.doses, [])
-  assert.equal(today.next.dueAt, '2026-11-09T06:00:00.000Z')
-  assert.equal(today.next.id, `${schedule.id}:2026-11-09T06:00:00.000Z`)
+  assert.equal(today.next!.dueAt, '2026-11-09T06:00:00.000Z')
+  assert.equal(today.next!.id, `${schedule.id}:2026-11-09T06:00:00.000Z`)
   const later = createScheduleOperations({
     requireUser: async () => ({ id: 'google:alice' }),
-    send: async () => ({ schedules: [schedule], records: [] }),
+    send: (async () => ({ schedules: [schedule], records: [] })) as SendSchedule,
     now: () => new Date('2026-11-10T12:00:00.000Z'),
   })
   assert.equal((await later.history('2026-11-09'))[0].dueAt, '2026-11-09T06:00:00.000Z')
@@ -71,17 +82,17 @@ test('selected weekdays find the next dose across the week and retain the inclus
   const noEnd = { ...schedule, endDate: null }
   const afterMonday = createScheduleOperations({
     requireUser: async () => ({ id: 'google:alice' }),
-    send: async () => ({ schedules: [noEnd], records: [] }),
+    send: (async () => ({ schedules: [noEnd], records: [] })) as SendSchedule,
     now: () => new Date('2026-11-09T07:00:00.000Z'),
   })
   const nextWeek = (await afterMonday.snapshot()).today.next
-  assert.equal(nextWeek.dueAt, '2026-11-16T06:00:00.000Z')
-  assert.equal(nextWeek.id, `${schedule.id}:2026-11-16T06:00:00.000Z`)
+  assert.equal(nextWeek!.dueAt, '2026-11-16T06:00:00.000Z')
+  assert.equal(nextWeek!.id, `${schedule.id}:2026-11-16T06:00:00.000Z`)
 })
 
 test('history reads an earlier Istanbul day with elapsed explicit and unlogged outcomes only', async () => {
   const now = new Date('2026-11-05T07:00:00.000Z')
-  const schedule = {
+  const schedule: Omit<DailySchedule, 'weekdays'> & { weekdays?: number[] } = {
     ...input,
     startDate: '2026-11-04',
     times: [
@@ -92,26 +103,26 @@ test('history reads an earlier Istanbul day with elapsed explicit and unlogged o
     ],
     confirmedAt: '2026-11-03T21:00:00.000Z',
   }
-  const taken = {
+  const taken: DoseRecord = {
     outcome: 'Taken',
     scheduleId: schedule.id,
     dueAt: '2026-11-04T05:00:00.000Z',
     takenAt: '2026-11-04T06:15:00.000Z',
     quantity: 1.5,
   }
-  const skipped = {
+  const skipped: SkippedDoseRecord = {
     outcome: 'Skipped',
     scheduleId: schedule.id,
     dueAt: '2026-11-04T06:00:00.000Z',
     recordedAt: '2026-11-04T06:30:00.000Z',
   }
-  let command
+  let command: ScheduleCommand | undefined
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: 'google:alice' }),
-    send: async (value) => {
+    send: (async (value: ScheduleCommand) => {
       command = value
       return { schedules: [schedule], records: [taken, skipped] }
-    },
+    }) as SendSchedule,
     now: () => now,
   })
   const day = await operations.history('2026-11-04')
@@ -128,15 +139,18 @@ test('history reads an earlier Istanbul day with elapsed explicit and unlogged o
       { dueAt: '2026-11-04T07:00:00.000Z', status: 'Not logged' },
     ],
   )
-  assert.equal(day[0].record.takenAt, taken.takenAt)
-  assert.equal(day[0].record.quantity, 1.5)
+  assert.equal(
+    (day[0] as Extract<DoseOccurrence, { status: 'Taken' }>).record.takenAt,
+    taken.takenAt,
+  )
+  assert.equal((day[0] as Extract<DoseOccurrence, { status: 'Taken' }>).record.quantity, 1.5)
   await assert.rejects(() => operations.history('2026-11-06'), /validation/)
   await assert.rejects(() => operations.history('2026-02-30'), /validation/)
 })
 
 test('history for today includes only occurrences strictly before captured now', async () => {
   const now = new Date('2026-11-05T07:00:00.000Z')
-  const schedule = {
+  const schedule: Omit<DailySchedule, 'weekdays'> & { weekdays?: number[] } = {
     ...input,
     startDate: '2026-11-05',
     times: [
@@ -148,7 +162,7 @@ test('history for today includes only occurrences strictly before captured now',
   }
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: 'google:alice' }),
-    send: async () => ({ schedules: [schedule], records: [] }),
+    send: (async () => ({ schedules: [schedule], records: [] })) as SendSchedule,
     now: () => now,
   })
   assert.deepEqual(
@@ -159,7 +173,7 @@ test('history for today includes only occurrences strictly before captured now',
 
 test('Today keeps stable Istanbul doses across reload, date rollover and device timezone changes', async () => {
   let now = new Date('2026-11-03T20:59:59Z')
-  const schedule = {
+  const schedule: Omit<DailySchedule, 'weekdays'> & { weekdays?: number[] } = {
     ...input,
     startDate: '2026-11-03',
     times: [
@@ -170,7 +184,7 @@ test('Today keeps stable Istanbul doses across reload, date rollover and device 
   }
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: 'google:alice' }),
-    send: async () => ({ schedules: [schedule], records: [] }),
+    send: (async () => ({ schedules: [schedule], records: [] })) as SendSchedule,
     now: () => now,
   })
   const today = (await operations.snapshot()).today
@@ -179,7 +193,7 @@ test('Today keeps stable Istanbul doses across reload, date rollover and device 
     today.doses.map(({ dueAt, quantity, status }) => ({ dueAt, quantity, status })),
     [{ dueAt: '2026-11-03T20:59:00.000Z', quantity: 1, status: 'Not logged' }],
   )
-  assert.equal(today.next.dueAt, '2026-11-03T21:00:00.000Z')
+  assert.equal(today.next!.dueAt, '2026-11-03T21:00:00.000Z')
   const previousTz = process.env.TZ
   try {
     process.env.TZ = 'America/Los_Angeles'
@@ -192,13 +206,13 @@ test('Today keeps stable Istanbul doses across reload, date rollover and device 
   const midnight = (await operations.snapshot()).today
   assert.equal(midnight.date, '2026-11-04')
   assert.equal(midnight.doses[0].status, 'Due now')
-  assert.equal(midnight.doses[0].id, today.next.id)
-  assert.equal(midnight.next.id, today.next.id)
+  assert.equal(midnight.doses[0].id, today.next!.id)
+  assert.equal(midnight.next!.id, today.next!.id)
 })
 
 test('initial confirmation excludes earlier and exactly equal times; future start dates have no Today backlog', async () => {
   let now = new Date('2026-11-03T06:00:00Z')
-  let schedule = {
+  let schedule: Omit<DailySchedule, 'weekdays'> = {
     ...input,
     startDate: '2026-11-03',
     times: [
@@ -210,7 +224,7 @@ test('initial confirmation excludes earlier and exactly equal times; future star
   }
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: 'google:alice' }),
-    send: async () => ({ schedules: [schedule], records: [] }),
+    send: (async () => ({ schedules: [schedule], records: [] })) as SendSchedule,
     now: () => now,
   })
   assert.deepEqual(
@@ -221,15 +235,15 @@ test('initial confirmation excludes earlier and exactly equal times; future star
   schedule = { ...schedule, startDate: '2026-12-31' }
   const result = (await operations.snapshot()).today
   assert.deepEqual(result.doses, [])
-  assert.equal(result.next.dueAt, '2026-12-31T05:00:00.000Z')
+  assert.equal(result.next!.dueAt, '2026-12-31T05:00:00.000Z')
   now = new Date('2026-12-31T21:00:00Z')
   assert.equal((await operations.snapshot()).today.date, '2027-01-01')
-  assert.equal((await operations.snapshot()).today.next.dueAt, '2027-01-01T05:00:00.000Z')
+  assert.equal((await operations.snapshot()).today.next!.dueAt, '2027-01-01T05:00:00.000Z')
 })
 
 test('Today projects both persisted outcomes, leaves elapsed doses Not logged and advances next', async () => {
   const now = new Date('2026-11-05T07:00:00.000Z')
-  const schedule = {
+  const schedule: Omit<DailySchedule, 'weekdays'> & { weekdays?: number[] } = {
     ...input,
     startDate: '2026-11-05',
     times: [
@@ -239,49 +253,49 @@ test('Today projects both persisted outcomes, leaves elapsed doses Not logged an
     ],
     confirmedAt: '2026-11-04T20:00:00.000Z',
   }
-  const skipped = {
+  const skipped: SkippedDoseRecord = {
     outcome: 'Skipped',
     scheduleId: schedule.id,
     dueAt: '2026-11-05T06:00:00.000Z',
     recordedAt: '2026-11-05T06:30:00.000Z',
   }
-  const taken = {
+  const taken: DoseRecord = {
     outcome: 'Taken',
     scheduleId: schedule.id,
     dueAt: '2026-11-05T06:30:00.000Z',
     takenAt: '2026-11-05T06:20:00.000Z',
     quantity: 0.5,
   }
-  let command
+  let command: ScheduleCommand | undefined
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: 'google:alice' }),
-    send: async (value) => {
+    send: (async (value: ScheduleCommand) => {
       command = value
       return { schedules: [schedule], records: [skipped, taken] }
-    },
+    }) as SendSchedule,
     now: () => now,
   })
   const today = (await operations.snapshot()).today
-  assert.equal(command.operation, 'listOutcomes')
+  assert.equal(command!.operation, 'listOutcomes')
   assert.deepEqual(
     today.doses.map((dose) => dose.status),
     ['Not logged', 'Skipped', 'Taken'],
   )
-  assert.equal(today.next.dueAt, '2026-11-06T05:00:00.000Z')
+  assert.equal(today.next!.dueAt, '2026-11-06T05:00:00.000Z')
 })
 
 test('recordSkipped authenticates and validates before dispatch, deriving owner from session', async () => {
-  const sent = []
+  const sent: ScheduleCommand[] = []
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: 'google:alice' }),
-    send: async (command) => {
+    send: (async (command: Extract<ScheduleCommand, { operation: 'recordSkipped' }>) => {
       sent.push(command)
       return {
         records: [
           { ...command.record, outcome: 'Skipped', recordedAt: '2026-11-05T06:30:00.000Z' },
         ],
       }
-    },
+    }) as SendSchedule,
   })
   const input = {
     outcome: 'Skipped',
@@ -307,10 +321,10 @@ test('recordSkipped authenticates and validates before dispatch, deriving owner 
 
 test('correctOutcome dispatches a stable action id with the expected prior revision', async () => {
   const actionId = '83c390c1-bab7-48b7-84c5-08d3e99b414d'
-  let command
+  let command: ScheduleCommand | undefined
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: 'google:alice' }),
-    send: async (value) => {
+    send: (async (value: ScheduleCommand) => {
       command = value
       return {
         records: [
@@ -324,7 +338,7 @@ test('correctOutcome dispatches a stable action id with the expected prior revis
           },
         ],
       }
-    },
+    }) as SendSchedule,
   })
   const saved = await operations.correctOutcome({
     actionId,
@@ -334,7 +348,7 @@ test('correctOutcome dispatches a stable action id with the expected prior revis
     expectedOutcome: 'Taken',
     outcome: 'Skipped',
   })
-  assert.equal(command.operation, 'correctOutcome')
-  assert.equal(command.ownerId, 'google:alice')
+  assert.equal(command!.operation, 'correctOutcome')
+  assert.equal(command!.ownerId, 'google:alice')
   assert.equal(saved.revision, 1)
 })

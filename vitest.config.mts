@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
 // Tests that load the Worker bundle (`.worker-build`, from `pnpm worker:build`).
-const integration = ['tests/auth.test.mjs', 'tests/medicine-storage.test.mjs']
+const integration = ['tests/auth.test.ts', 'tests/medicine-storage.test.ts']
 
 export default defineConfig({
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
@@ -13,7 +13,7 @@ export default defineConfig({
         test: {
           name: 'unit',
           environment: 'node',
-          include: ['tests/**/*.test.{mjs,ts}'],
+          include: ['tests/**/*.test.ts'],
           exclude: integration,
           testTimeout: 5_000,
           hookTimeout: 5_000,

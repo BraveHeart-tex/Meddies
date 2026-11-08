@@ -4,7 +4,7 @@ import { ESLint } from 'eslint'
 
 const eslint = new ESLint()
 
-async function widthErrors(code, filePath = 'tests/browser/x.spec.ts') {
+async function widthErrors(code: string, filePath = 'tests/browser/x.spec.ts') {
   const [result] = await eslint.lintText(code, { filePath })
   return result.messages.filter((message) => message.ruleId === 'meddies/no-width-loop-tests')
     .length

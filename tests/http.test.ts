@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { json, mutationGuard, failure } from '../src/lib/http.ts'
-import { readJsonRequest } from '../src/lib/json-request.ts'
-import { ApplicationError } from '../src/lib/application-error.ts'
+import { json, mutationGuard, failure } from '../src/lib/http'
+import { readJsonRequest } from '../src/lib/json-request'
+import { ApplicationError } from '../src/lib/application-error'
 
-const request = (headers, body = '{}') =>
+const request = (headers: HeadersInit, body = '{}') =>
   new Request('https://meddies.test/api/schedules', {
     method: 'POST',
     headers,
@@ -16,11 +16,11 @@ test('HTTP mutations preserve exact origin, content type and guard precedence', 
     [{ origin: 'https://other.test', 'content-type': 'text/plain' }, 403],
     [{ origin: 'https://meddies.test' }, 415],
     [{ origin: 'https://meddies.test', 'content-type': 'Application/JSON' }, 415],
-  ]) {
+  ] as const) {
     const response = mutationGuard(request(headers))
-    assert.equal(response.status, status)
-    assert.equal(response.headers.get('cache-control'), 'no-store')
-    assert.deepEqual(await response.json(), { error: status === 403 ? 'forbidden' : 'validation' })
+    assert.equal(response!.status, status)
+    assert.equal(response!.headers.get('cache-control'), 'no-store')
+    assert.deepEqual(await response!.json(), { error: status === 403 ? 'forbidden' : 'validation' })
   }
   assert.equal(
     mutationGuard(
@@ -33,14 +33,14 @@ test('HTTP mutations preserve exact origin, content type and guard precedence', 
   )
 })
 test('bounded JSON handles missing, malformed, split UTF-8 and exact byte limits', async () => {
-  for (const body of [undefined, '', '{']) {
+  for (const body of [undefined, '', '{'] as const) {
     await assert.rejects(
       () => readJsonRequest(new Request('https://meddies.test', { method: 'POST', body })),
       { code: 'validation', status: 400 },
     )
   }
   const exact = JSON.stringify('x'.repeat(4094))
-  assert.equal((await readJsonRequest(request({}, exact))).length, 4094)
+  assert.equal(((await readJsonRequest(request({}, exact))) as string).length, 4094)
   await assert.rejects(() => readJsonRequest(request({}, JSON.stringify('é'.repeat(2048)))), {
     status: 413,
   })
@@ -53,7 +53,11 @@ test('bounded JSON handles missing, malformed, split UTF-8 and exact byte limits
   })
   assert.equal(
     await readJsonRequest(
-      new Request('https://meddies.test', { method: 'POST', body: stream, duplex: 'half' }),
+      new Request('https://meddies.test', {
+        method: 'POST',
+        body: stream,
+        duplex: 'half',
+      } as RequestInit & { duplex: 'half' }),
     ),
     'é',
   )
@@ -65,10 +69,10 @@ test('HTTP responses preserve domain errors, unavailable fallback and no-store',
     ['conflict', 409],
     ['unauthorized', 401],
     ['unavailable', 503],
-  ]) {
+  ] as const) {
     const response = failure(new ApplicationError(code, status), 'test_failure')
-    assert.equal(response.status, status)
-    assert.deepEqual(await response.json(), { error: code })
+    assert.equal(response!.status, status)
+    assert.deepEqual(await response!.json(), { error: code })
   }
   assert.equal(failure(new Error('private details'), 'test_failure').status, 503)
 })
@@ -92,7 +96,7 @@ test('chunked oversized JSON cancels reading regardless of Content-Length', asyn
           headers: { 'content-length': '2' },
           body: stream,
           duplex: 'half',
-        }),
+        } as RequestInit & { duplex: 'half' }),
       ),
     { code: 'validation', status: 413 },
   )

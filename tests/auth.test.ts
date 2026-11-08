@@ -1,3 +1,13 @@
+import type { ChildProcess } from 'node:child_process'
+import type { AddressInfo } from 'node:net'
+import type { JWT } from 'next-auth/jwt'
+import type { Medicine } from '../src/features/medicines/contract'
+import type {
+  DailyScheduleInput,
+  DailySchedule,
+  DoseCorrectionInput,
+  DoseOccurrence,
+} from '../src/features/schedules/contract'
 import assert from 'node:assert/strict'
 import { randomBytes } from 'node:crypto'
 import { spawn } from 'node:child_process'
@@ -6,27 +16,28 @@ import { createServer } from 'node:net'
 import { setTimeout as delay } from 'node:timers/promises'
 import { afterAll, beforeAll, test } from 'vitest'
 import { encode } from 'next-auth/jwt'
-import { createWorker } from '../worker/index.ts'
-import { istanbulDate } from '../src/features/schedules/contract.ts'
+import { createWorker } from '../worker/index'
+import { istanbulDate } from '../src/features/schedules/contract'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
 import { applyD1Migrations } from './helpers/d1-migrations.mjs'
 
 // Synthetic signed cookies prove session authorization, never Google identity verification.
 const secret = randomBytes(32).toString('base64url')
 const salt = 'authjs.session-token'
-let child
-let worker
+let child: ChildProcess
+let worker: Miniflare
 const workerSecret = randomBytes(32).toString('base64url')
-let base
+let base: string
 const valid = () => ({
   sub: 'google:synthetic-subject',
   email: 'approved@example.test',
   version: '1',
   deadline: Math.floor(Date.now() / 1000) + 60,
 })
-const cookie = async (claims, maxAge = 120) =>
+const cookie = async (claims: JWT, maxAge = 120) =>
   `${salt}=${await encode({ secret, salt, token: claims, maxAge })}`
-const request = (path, options = {}) => fetch(`${base}${path}`, { redirect: 'manual', ...options })
+const request = (path: string, options: RequestInit = {}) =>
+  fetch(`${base}${path}`, { redirect: 'manual', ...options })
 
 async function csrfSession() {
   const response = await request('/api/auth/csrf')
@@ -53,13 +64,13 @@ beforeAll(async () => {
   const listener = createServer()
   listener.listen(0, '127.0.0.1')
   await once(listener, 'listening')
-  const port = listener.address().port
+  const port = (listener.address() as AddressInfo).port
   await new Promise((resolve) => listener.close(resolve))
   base = `http://localhost:${port}`
   // Do not inherit any real auth configuration from the invoking environment.
   const env = Object.fromEntries(
     Object.entries(process.env).filter(([key]) => !key.startsWith('AUTH_')),
-  )
+  ) as NodeJS.ProcessEnv
   child = spawn(
     process.execPath,
     ['node_modules/next/dist/bin/next', 'start', '-p', String(port)],
@@ -101,7 +112,7 @@ afterAll(async () => {
 test('anonymous requests cannot read the account; entry offers private Google sign-in', async () => {
   const response = await request('/api/session')
   assert.equal(response.status, 401)
-  assert.match(response.headers.get('cache-control'), /no-store/)
+  assert.match(response.headers.get('cache-control')!, /no-store/)
   const page = await request('/')
   assert.equal(page.status, 200)
   assert.match(await page.text(), /Continue with Google/)
@@ -123,7 +134,7 @@ test('private deep links offer sign-in while retaining the requested destination
   for (const path of ['/medications', '/history?date=2026-10-30', '/settings']) {
     const page = await request(path)
     const html = await page.text()
-    const location = page.headers.get('location')
+    const location = page.headers.get('location')!
     const signInTarget = location || html
     assert.ok(signInTarget.includes(`returnTo=${encodeURIComponent(path)}`), path)
     assert.ok(location || html.includes('http-equiv="refresh"'), 'must redirect, not link')
@@ -137,7 +148,7 @@ test('session reads preserve provider identity and absolute expiry without discl
   for (const path of ['/api/session', '/api/session?ownerId=google:someone-else']) {
     const response = await request(path, { headers })
     assert.equal(response.status, 200)
-    assert.match(response.headers.get('cache-control'), /no-store/)
+    assert.match(response.headers.get('cache-control')!, /no-store/)
     assert.deepEqual(await response.json(), {
       id: 'google:synthetic-subject',
       expires: new Date(claims.deadline * 1000).toISOString(),
@@ -218,7 +229,7 @@ test('Google initiation uses state and PKCE; invalid callbacks do not create ses
     body: new URLSearchParams({ csrfToken, callbackUrl: base }),
   })
   assert.equal(response.status, 302)
-  const target = new URL(response.headers.get('location'))
+  const target = new URL(response.headers.get('location')!)
   assert.equal(target.origin, 'https://accounts.google.com')
   assert.equal(target.searchParams.get('redirect_uri'), `${base}/api/auth/callback/google`)
   assert.equal(target.searchParams.get('code_challenge_method'), 'S256')
@@ -226,7 +237,7 @@ test('Google initiation uses state and PKCE; invalid callbacks do not create ses
   assert(target.searchParams.get('code_challenge'))
   const invalid = await request('/api/auth/callback/google?code=invalid&state=invalid')
   assert.equal(invalid.status, 302)
-  assert.match(invalid.headers.get('location'), /error=/)
+  assert.match(invalid.headers.get('location')!, /error=/)
   assert(
     !invalid.headers
       .getSetCookie()
@@ -243,7 +254,7 @@ test('Auth.js failures retain the initiated destination through the real error r
       body: new URLSearchParams({ csrfToken, callbackUrl: `${base}${destination}` }),
     })
     assert.equal(
-      new URL(start.headers.get('location')).searchParams.get('prompt'),
+      new URL(start.headers.get('location')!).searchParams.get('prompt'),
       'select_account',
     )
     const continuation = start.headers
@@ -256,7 +267,7 @@ test('Auth.js failures retain the initiated destination through the real error r
       '/api/auth/callback/google?code=invalid&state=invalid',
     ]) {
       const failure = await request(path, { headers: { cookie: continuation } })
-      const location = new URL(failure.headers.get('location'), base)
+      const location = new URL(failure.headers.get('location')!, base)
       assert.equal(location.pathname, '/sign-in/error')
       const page = await request(`${location.pathname}${location.search}`, {
         headers: { cookie: continuation },
@@ -304,13 +315,13 @@ test('sign-out requires CSRF, clears the browser session and prevents subsequent
 test('medicine HTTP boundary confirms saves, rejects cross-user access and unsafe requests', async () => {
   const alice = { cookie: await cookie(valid()) }
   const bob = { cookie: await cookie({ ...valid(), sub: 'google:bob' }) }
-  const medicine = {
+  const medicine: Medicine = {
     id: '4ce08b21-58da-4e81-adb1-c156356a2c1a',
     label: 'Vitamin D3',
     strength: '1000 IU',
     unit: 'tablet',
   }
-  const save = (input, headers = alice) =>
+  const save = (input: unknown, headers: Record<string, string> = alice) =>
     request('/api/medicines', {
       method: 'POST',
       headers: { ...headers, origin: base, 'content-type': 'application/json' },
@@ -331,18 +342,18 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
   assert.equal((await save(medicine)).status, 200)
   assert.equal((await save({ ...medicine, strength: '5 mg' })).status, 409)
   const reload = await request('/api/medicines', { headers: alice })
-  assert.match(reload.headers.get('cache-control'), /no-store/)
+  assert.match(reload.headers.get('cache-control')!, /no-store/)
   assert.deepEqual(await reload.json(), { medicines: [medicine] })
   assert.deepEqual(await (await request('/api/medicines', { headers: bob })).json(), {
     medicines: [],
   })
-  const schedule = {
+  const schedule: DailyScheduleInput = {
     id: 'ad29d745-7ef1-4b26-91c2-ae9926d6b659',
     medicineId: medicine.id,
     startDate: '2099-12-31',
     times: [{ time: '09:00', quantity: 0.5 }],
   }
-  const scheduleSave = (headers, origin = base) =>
+  const scheduleSave = (headers: Record<string, string>, origin = base) =>
     request('/api/schedules', {
       method: 'POST',
       headers: { ...headers, origin, 'content-type': 'application/json' },
@@ -357,12 +368,12 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
   const scheduled = await confirmed.json()
   assert.deepEqual(await (await scheduleSave(alice)).json(), scheduled)
   const routine = await request('/api/schedules', { headers: alice })
-  assert.match(routine.headers.get('cache-control'), /no-store/)
+  assert.match(routine.headers.get('cache-control')!, /no-store/)
   const routineBody = await routine.json()
   assert.deepEqual(routineBody.schedules, scheduled.schedules)
   assert.equal(routineBody.today.next.dueAt, '2099-12-31T06:00:00.000Z')
   assert.deepEqual((await (await request('/api/schedules', { headers: bob })).json()).schedules, [])
-  const intakeMedicine = {
+  const intakeMedicine: Medicine = {
     ...medicine,
     id: '3b57b05e-6d43-4c7a-9da8-16d9f1d36c11',
     label: 'Intake fixture',
@@ -370,7 +381,7 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
   }
   assert.equal((await save(intakeMedicine)).status, 200)
   const todayDate = istanbulDate(new Date())
-  const intakeSchedule = {
+  const intakeSchedule: DailyScheduleInput = {
     ...schedule,
     id: '6cc12abe-66bc-486b-8ed5-7264979c926f',
     medicineId: intakeMedicine.id,
@@ -398,7 +409,7 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
     quantity: 1,
     ownerId: valid().sub,
   }
-  const markTaken = (headers, origin = base, body = intake) =>
+  const markTaken = (headers: Record<string, string>, origin = base, body: unknown = intake) =>
     request('/api/schedules', {
       method: 'PUT',
       headers: { ...headers, origin, 'content-type': 'application/json' },
@@ -409,10 +420,10 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
   assert.equal((await markTaken(bob)).status, 400)
   const taken = await markTaken(alice)
   assert.equal(taken.status, 200)
-  assert.match(taken.headers.get('cache-control'), /no-store/)
+  assert.match(taken.headers.get('cache-control')!, /no-store/)
   const recorded = await taken.json()
   assert.deepEqual(await (await markTaken(alice)).json(), recorded)
-  const correction = {
+  const correction: DoseCorrectionInput = {
     actionId: 'cb7169e8-6e81-4f61-b981-ff7448ae01aa',
     scheduleId: intake.scheduleId,
     dueAt: intake.dueAt,
@@ -420,7 +431,7 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
     expectedOutcome: 'Taken',
     outcome: 'Skipped',
   }
-  const correct = (headers, origin = base, body = correction) =>
+  const correct = (headers: Record<string, string>, origin = base, body: unknown = correction) =>
     request('/api/schedules', {
       method: 'PATCH',
       headers: { ...headers, origin, 'content-type': 'application/json' },
@@ -428,7 +439,7 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
     })
   assert.equal((await correct({})).status, 401)
   assert.equal((await correct(alice, 'https://other.example')).status, 403)
-  const amendment = {
+  const amendment: DoseCorrectionInput = {
     ...correction,
     actionId: 'f8f3755e-4e37-492f-80e9-9c6e036da98b',
     takenAt: new Date(Date.parse(dueAt) - 15 * 60_000).toISOString(),
@@ -479,7 +490,8 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
   )
   const unchangedSchedule = await (await request('/api/schedules', { headers: alice })).json()
   assert.equal(
-    unchangedSchedule.schedules.find((entry) => entry.id === intakeSchedule.id).times[0].quantity,
+    unchangedSchedule.schedules.find((entry: DailySchedule) => entry.id === intakeSchedule.id)
+      .times[0].quantity,
     1,
   )
   const flipToSkipped = { ...correction, expectedRevision: 1 }
@@ -524,7 +536,7 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
     dueAt: skipDueAt,
     ownerId: 'google:bob',
   }
-  const markSkipped = (headers, body = skipInput, origin = base) =>
+  const markSkipped = (headers: Record<string, string>, body: unknown = skipInput, origin = base) =>
     request('/api/schedules', {
       method: 'PUT',
       headers: { ...headers, origin, 'content-type': 'application/json' },
@@ -564,11 +576,16 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
   })
   assert.equal(takenOnSkip.status, 409)
   const current = await (await request('/api/schedules', { headers: alice })).json()
-  const currentIntake = current.today.doses.find((dose) => dose.scheduleId === intake.scheduleId)
+  const currentIntake = current.today.doses.find(
+    (dose: DoseOccurrence) => dose.scheduleId === intake.scheduleId,
+  )
   assert.equal(currentIntake?.status, 'Skipped')
-  assert.equal(currentIntake?.record.revision, 2)
   assert.equal(
-    current.today.doses.find((dose) => dose.scheduleId === skipSchedule.id)?.status,
+    (currentIntake as Extract<DoseOccurrence, { status: 'Skipped' }> | undefined)?.record.revision,
+    2,
+  )
+  assert.equal(
+    current.today.doses.find((dose: DoseOccurrence) => dose.scheduleId === skipSchedule.id)?.status,
     'Skipped',
   )
   const oversized = await save({ ...medicine, label: 'x'.repeat(5000) })
@@ -587,7 +604,7 @@ test('missing private configuration disables sign-in and preserves accessible re
   await once(child, 'exit')
   const env = Object.fromEntries(
     Object.entries(process.env).filter(([key]) => !key.startsWith('AUTH_')),
-  )
+  ) as NodeJS.ProcessEnv
   child = spawn(
     process.execPath,
     ['node_modules/next/dist/bin/next', 'start', '-p', new URL(base).port],
@@ -620,7 +637,7 @@ test('missing private configuration disables sign-in and preserves accessible re
   for (const method of ['GET', 'POST']) {
     const response = await request('/api/auth/signin/google', { method })
     assert.equal(response.status, 503)
-    assert.match(response.headers.get('cache-control'), /no-store/)
+    assert.match(response.headers.get('cache-control')!, /no-store/)
   }
   assert.equal(
     (await request('/api/session', { headers: { cookie: await cookie(valid()) } })).status,

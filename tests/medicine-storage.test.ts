@@ -1,14 +1,33 @@
+import type {
+  SkippedDoseRecord,
+  DoseRecord,
+  DoseOccurrence,
+} from '../src/features/schedules/contract'
+import type { Medicine } from '../src/features/medicines/contract'
+import type {
+  DailyScheduleInput,
+  DoseCorrectionInput,
+  ScheduleCommand,
+  ScheduleResponse,
+  SendSchedule,
+  DoseOutcomeRecord,
+} from '../src/features/schedules/contract'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, test } from 'vitest'
-import { createWorker } from '../worker/index.ts'
-import { createScheduleOperations } from '../src/features/schedules/operations.ts'
+import { createWorker } from '../worker/index'
+import { createScheduleOperations } from '../src/features/schedules/operations'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
 import { applyD1Migrations } from './helpers/d1-migrations.mjs'
 
-let runtime
+let runtime: Miniflare
 const secret = 'synthetic-worker-secret-at-least-32-characters'
-const medicine = { id: randomUUID(), label: 'Vitamin D3', strength: '1000 IU', unit: 'tablet' }
+const medicine: Medicine = {
+  id: randomUUID(),
+  label: 'Vitamin D3',
+  strength: '1000 IU',
+  unit: 'tablet',
+}
 const legacy = {
   ownerId: 'google:legacy-migration',
   medicineId: '10000000-0000-4000-8000-000000000001',
@@ -18,7 +37,7 @@ const legacy = {
   quantity: 0.5,
   takenAt: '2026-11-05T05:50:00.000Z',
 }
-const call = (command, authorization = `Bearer ${secret}`) =>
+const call = (command: unknown, authorization = `Bearer ${secret}`) =>
   runtime.dispatchFetch('http://worker/medicines', {
     method: 'POST',
     headers: { authorization, 'content-type': 'application/json' },
@@ -95,23 +114,23 @@ test('real D1 save survives reload; concurrent retries have one effect and remai
 })
 
 test('daily schedules persist in D1 with owner checks, capsule quantities and safe concurrent retries', async () => {
-  const capsule = { ...medicine, id: randomUUID(), unit: 'capsule' }
+  const capsule: Medicine = { ...medicine, id: randomUUID(), unit: 'capsule' }
   await call({ operation: 'save', ownerId: 'google:scheduler', medicine: capsule })
-  const send = async (command) => {
+  const send: SendSchedule = async <C extends ScheduleCommand>(command: C) => {
     const response = await runtime.dispatchFetch('http://worker/schedules', {
       method: 'POST',
       headers: { authorization: `Bearer ${secret}` },
       body: JSON.stringify(command),
     })
     const body = await response.json()
-    if (!response.ok) throw new Error(body.error)
-    return body
+    if (!response.ok) throw new Error((body as { error: string }).error)
+    return body as ScheduleResponse<C>
   }
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: 'google:scheduler' }),
     send,
   })
-  const input = {
+  const input: DailyScheduleInput = {
     id: randomUUID(),
     medicineId: capsule.id,
     startDate: '2099-12-31',
@@ -148,7 +167,7 @@ test('real D1 save confirmation enforces Istanbul start boundaries and survives 
   const ownerId = 'google:controlled-clock'
   const tablet = { ...medicine, id: randomUUID() }
   await call({ operation: 'save', ownerId, medicine: tablet })
-  const send = async (command) => {
+  const send: SendSchedule = async <C extends ScheduleCommand>(command: C) => {
     const response = await handler.fetch(
       new Request('http://worker/schedules', {
         method: 'POST',
@@ -158,15 +177,15 @@ test('real D1 save confirmation enforces Istanbul start boundaries and survives 
       { DB: db, MEDICINES_WORKER_SECRET: secret },
     )
     const body = await response.json()
-    if (!response.ok) throw new Error(body.error)
-    return body
+    if (!response.ok) throw new Error((body as { error: string }).error)
+    return body as ScheduleResponse<C>
   }
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: ownerId }),
     send,
     now: () => now,
   })
-  const input = {
+  const input: DailyScheduleInput = {
     id: randomUUID(),
     medicineId: tablet.id,
     startDate: '2026-11-03',
@@ -180,11 +199,11 @@ test('real D1 save confirmation enforces Istanbul start boundaries and survives 
   assert.equal(saved[0].confirmedAt, '2026-11-03T20:59:00.000Z')
   const before = await operations.snapshot()
   assert.deepEqual(before.today.doses, [])
-  assert.equal(before.today.next.dueAt, '2026-11-03T21:00:00.000Z')
+  assert.equal(before.today.next!.dueAt, '2026-11-03T21:00:00.000Z')
   now = new Date('2026-11-03T21:00:00.000Z')
   assert.deepEqual(await operations.save(input), saved)
   const midnight = await operations.snapshot()
-  assert.equal(midnight.today.doses[0].id, before.today.next.id)
+  assert.equal(midnight.today.doses[0].id, before.today.next!.id)
   const other = { ...medicine, id: randomUUID() }
   await call({ operation: 'save', ownerId, medicine: other })
   await assert.rejects(
@@ -211,7 +230,7 @@ test('real D1 weekday schedules normalize retries, preserve confirmation and rej
   const ownerId = 'google:weekday-schedule'
   const tablet = { ...medicine, id: randomUUID() }
   await call({ operation: 'save', ownerId, medicine: tablet })
-  const send = async (command) => {
+  const send: SendSchedule = async <C extends ScheduleCommand>(command: C) => {
     const response = await handler.fetch(
       new Request('http://worker/schedules', {
         method: 'POST',
@@ -221,15 +240,15 @@ test('real D1 weekday schedules normalize retries, preserve confirmation and rej
       { DB: db, MEDICINES_WORKER_SECRET: secret },
     )
     const body = await response.json()
-    if (!response.ok) throw new Error(body.error)
-    return body
+    if (!response.ok) throw new Error((body as { error: string }).error)
+    return body as ScheduleResponse<C>
   }
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: ownerId }),
     send,
     now: () => now,
   })
-  const input = {
+  const input: DailyScheduleInput = {
     id: randomUUID(),
     medicineId: tablet.id,
     startDate: '2026-11-08',
@@ -286,7 +305,7 @@ test('late half-tablet intake persists once without moving the next dose', async
   const ownerId = 'google:intake'
   const tablet = { ...medicine, id: randomUUID() }
   await call({ operation: 'save', ownerId, medicine: tablet })
-  const send = async (command) => {
+  const send: SendSchedule = async <C extends ScheduleCommand>(command: C) => {
     const response = await handler.fetch(
       new Request('http://worker/schedules', {
         method: 'POST',
@@ -296,8 +315,8 @@ test('late half-tablet intake persists once without moving the next dose', async
       { DB: db, MEDICINES_WORKER_SECRET: secret },
     )
     const body = await response.json()
-    if (!response.ok) throw new Error(body.error)
-    return body
+    if (!response.ok) throw new Error((body as { error: string }).error)
+    return body as ScheduleResponse<C>
   }
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: ownerId }),
@@ -337,7 +356,11 @@ test('late half-tablet intake persists once without moving the next dose', async
     () => operations.recordTaken({ ...input, dueAt: '2026-11-04T06:01:00.000Z' }),
     /validation/,
   )
-  await assert.rejects(() => send({ operation: 'delivered', ownerId, record: input }), /validation/)
+  // Invalid wire command deliberately bypasses the typed sender.
+  await assert.rejects(
+    () => send({ operation: 'delivered', ownerId, record: input } as unknown as ScheduleCommand),
+    /validation/,
+  )
   assert.equal((await operations.snapshot()).today.doses[0].status, 'Not logged')
   const [first, retry] = await Promise.all([
     operations.recordTaken(input),
@@ -357,7 +380,7 @@ test('late half-tablet intake persists once without moving the next dose', async
   assert.equal(today.doses[0].record.quantity, 0.5)
   assert.deepEqual(today.next, before.next)
 
-  const capsule = { ...medicine, id: randomUUID(), unit: 'capsule' }
+  const capsule: Medicine = { ...medicine, id: randomUUID(), unit: 'capsule' }
   await call({ operation: 'save', ownerId, medicine: capsule })
   const [capsuleSchedule] = await operations.save({
     id: randomUUID(),
@@ -387,10 +410,10 @@ test('0004 preserves pre-existing Taken rows, legacy list shape and identical Ta
     }),
   })
   assert.equal(response.status, 200)
-  const body = await response.json()
+  const body = (await response.json()) as ScheduleResponse<{ operation: 'list'; ownerId: string }>
   assert.deepEqual(Object.keys(body).sort(), ['records', 'schedules'])
-  assert.equal(body.records[0].outcome, 'Taken')
-  assert.equal(body.records[0].quantity, legacy.quantity)
+  assert.equal(body.records![0].outcome, 'Taken')
+  assert.equal(body.records![0].quantity, legacy.quantity)
   const handler = createWorker(() => new Date('2026-11-05T08:00:00.000Z'))
   const db = await runtime.getD1Database('DB')
   const retry = await handler.fetch(
@@ -430,7 +453,7 @@ test('Skipped D1 records are idempotent across midnight and triggers arbitrate c
   const ownerId = 'google:skip-d1'
   const tablet = { ...medicine, id: randomUUID() }
   await call({ operation: 'save', ownerId, medicine: tablet })
-  const send = async (command) => {
+  const send: SendSchedule = async <C extends ScheduleCommand>(command: C) => {
     const response = await handler.fetch(
       new Request('http://worker/schedules', {
         method: 'POST',
@@ -440,8 +463,8 @@ test('Skipped D1 records are idempotent across midnight and triggers arbitrate c
       { DB: db, MEDICINES_WORKER_SECRET: secret },
     )
     const body = await response.json()
-    if (!response.ok) throw new Error(body.error)
-    return body
+    if (!response.ok) throw new Error((body as { error: string }).error)
+    return body as ScheduleResponse<C>
   }
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: ownerId }),
@@ -508,9 +531,18 @@ test('Skipped D1 records are idempotent across midnight and triggers arbitrate c
   assert.equal(outcomes.filter((item) => item.status === 'fulfilled').length, 1)
   assert.equal(outcomes.filter((item) => item.status === 'rejected').length, 1)
   const listed = await send({ operation: 'listOutcomes', ownerId, date: '2026-11-05' })
-  assert.equal(listed.records.filter((record) => record.dueAt === dueAt).length, 1)
-  assert.equal(listed.records.find((record) => record.dueAt === dueAt).recordedAt, first.recordedAt)
-  assert.equal(listed.records.filter((record) => record.dueAt === raceInput.dueAt).length, 1)
+  assert.equal(
+    listed.records.filter((record: DoseOutcomeRecord) => record.dueAt === dueAt).length,
+    1,
+  )
+  assert.equal(
+    (listed.records.find((record) => record.dueAt === dueAt) as SkippedDoseRecord).recordedAt,
+    first.recordedAt,
+  )
+  assert.equal(
+    listed.records.filter((record: DoseOutcomeRecord) => record.dueAt === raceInput.dueAt).length,
+    1,
+  )
 })
 
 test('real D1 history reload preserves a past Taken outcome and actual intake details', async () => {
@@ -520,7 +552,7 @@ test('real D1 history reload preserves a past Taken outcome and actual intake de
   const ownerId = 'google:history-d1'
   const tablet = { ...medicine, id: randomUUID() }
   await call({ operation: 'save', ownerId, medicine: tablet })
-  const send = async (command) => {
+  const send: SendSchedule = async <C extends ScheduleCommand>(command: C) => {
     const response = await handler.fetch(
       new Request('http://worker/schedules', {
         method: 'POST',
@@ -530,8 +562,8 @@ test('real D1 history reload preserves a past Taken outcome and actual intake de
       { DB: db, MEDICINES_WORKER_SECRET: secret },
     )
     const body = await response.json()
-    if (!response.ok) throw new Error(body.error)
-    return body
+    if (!response.ok) throw new Error((body as { error: string }).error)
+    return body as ScheduleResponse<C>
   }
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: ownerId }),
@@ -563,8 +595,8 @@ test('real D1 history reload preserves a past Taken outcome and actual intake de
   assert.deepEqual(
     history.map((dose) => [
       dose.status,
-      dose.record?.takenAt ?? undefined,
-      dose.record?.quantity ?? undefined,
+      (dose as DoseOccurrence & { record?: Partial<DoseRecord> }).record?.takenAt ?? undefined,
+      (dose as DoseOccurrence & { record?: Partial<DoseRecord> }).record?.quantity ?? undefined,
     ]),
     [
       ['Taken', '2026-11-05T06:30:00.000Z', 0.5],
@@ -587,7 +619,7 @@ test('D1 correction ledger flips outcomes, replays exact actions and rejects sta
   const ownerId = 'google:correction-ledger'
   const tablet = { ...medicine, id: randomUUID() }
   await call({ operation: 'save', ownerId, medicine: tablet })
-  const send = async (command) => {
+  const send: SendSchedule = async <C extends ScheduleCommand>(command: C) => {
     const response = await handler.fetch(
       new Request('http://worker/schedules', {
         method: 'POST',
@@ -597,8 +629,8 @@ test('D1 correction ledger flips outcomes, replays exact actions and rejects sta
       { DB: db, MEDICINES_WORKER_SECRET: secret },
     )
     const body = await response.json()
-    if (!response.ok) throw new Error(body.error)
-    return body
+    if (!response.ok) throw new Error((body as { error: string }).error)
+    return body as ScheduleResponse<C>
   }
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: ownerId }),
@@ -617,7 +649,7 @@ test('D1 correction ledger flips outcomes, replays exact actions and rejects sta
   now = new Date('2026-11-05T07:00:00.000Z')
   const occurrence = { scheduleId: schedule.id, dueAt: '2026-11-04T06:00:00.000Z' }
   await operations.recordTaken({ ...occurrence, takenAt: '2026-11-04T06:10:00.000Z', quantity: 1 })
-  const first = {
+  const first: DoseCorrectionInput = {
     ...occurrence,
     actionId: randomUUID(),
     expectedRevision: 0,
@@ -637,7 +669,7 @@ test('D1 correction ledger flips outcomes, replays exact actions and rejects sta
     () => operations.correctOutcome({ ...first, actionId: randomUUID() }),
     /conflict/,
   )
-  const second = {
+  const second: DoseCorrectionInput = {
     ...occurrence,
     actionId: randomUUID(),
     expectedRevision: 1,
@@ -655,8 +687,12 @@ test('D1 correction ledger flips outcomes, replays exact actions and rejects sta
   assert.equal(competingResults.filter((result) => result.status === 'rejected').length, 1)
   const winner = competingResults[0].status === 'fulfilled' ? second : competing
   assert.equal((await operations.correctOutcome(winner)).revision, 2)
-  assert.equal((await operations.history('2026-11-04'))[0].record.takenAt, winner.takenAt)
-  const amended = {
+  assert.equal(
+    ((await operations.history('2026-11-04'))[0] as Extract<DoseOccurrence, { status: 'Taken' }>)
+      .record.takenAt,
+    winner.takenAt,
+  )
+  const amended: DoseCorrectionInput = {
     ...occurrence,
     actionId: randomUUID(),
     expectedRevision: 2,
@@ -673,7 +709,11 @@ test('D1 correction ledger flips outcomes, replays exact actions and rejects sta
     amendedResults.map((record) => record.revision),
     [3, 3],
   )
-  assert.equal((await operations.history('2026-11-04'))[0].record.quantity, 1.5)
+  assert.equal(
+    ((await operations.history('2026-11-04'))[0] as Extract<DoseOccurrence, { status: 'Taken' }>)
+      .record.quantity,
+    1.5,
+  )
   assert.equal((await operations.snapshot()).schedules[0].times[0].quantity, 1)
   assert.deepEqual(await operations.correctOutcome(first), firstResults[0])
   const legacyRead = await send({ operation: 'list', ownerId, date: '2026-11-04' })

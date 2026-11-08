@@ -1,13 +1,22 @@
+import type { DoseRecord, SkippedDoseRecord } from '../src/features/schedules/contract'
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { outcomeConfirmation } from '../src/features/schedules/dose-confirmation.ts'
+import { outcomeConfirmation } from '../src/features/schedules/dose-confirmation'
 
 const key = { scheduleId: '6e0b55ee-2e10-4e00-80f2-a736c2f50f95' }
 // 22:30 Istanbul on Thu 5 Nov 2026 is 19:30Z.
 const dueAt = '2026-11-05T19:30:00.000Z'
-const taken = (takenAt, quantity) => ({ ...key, dueAt, outcome: 'Taken', takenAt, quantity })
-const skipped = { ...key, dueAt, outcome: 'Skipped', recordedAt: dueAt }
-const confirm = (args) => outcomeConfirmation({ today: '2026-11-06', ...args })
+const taken = (takenAt: string, quantity: number): DoseRecord => ({
+  ...key,
+  dueAt,
+  outcome: 'Taken',
+  takenAt,
+  quantity,
+})
+const skipped: SkippedDoseRecord = { ...key, dueAt, outcome: 'Skipped', recordedAt: dueAt }
+const confirm = (
+  args: Omit<Parameters<typeof outcomeConfirmation>[0], 'today'> & { today?: string },
+) => outcomeConfirmation({ today: '2026-11-06', ...args })
 
 test('a skip says no intake was recorded', () => {
   assert.equal(
@@ -71,7 +80,7 @@ test('a corrected outcome says what it changed to', () => {
 })
 
 test('the year of an intake on another day follows the current Istanbul year', () => {
-  const record = {
+  const record: DoseRecord = {
     ...key,
     outcome: 'Taken',
     // 23:00 on 31 Dec 2035, taken 00:15 on 1 Jan 2036 in Istanbul.
@@ -79,7 +88,12 @@ test('the year of an intake on another day follows the current Istanbul year', (
     takenAt: '2035-12-31T21:15:00.000Z',
     quantity: 1,
   }
-  const args = { label: 'Melatonin', unit: 'tablet', previous: 'Due now', record }
+  const args: Omit<Parameters<typeof outcomeConfirmation>[0], 'today'> = {
+    label: 'Melatonin',
+    unit: 'tablet',
+    previous: 'Due now',
+    record,
+  }
   assert.equal(
     confirm({ ...args, today: '2036-01-01' }),
     'Melatonin 23:00 · taken at 00:15 on Tue 1 Jan, 1 tablet',

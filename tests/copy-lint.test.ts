@@ -4,7 +4,7 @@ import { ESLint } from 'eslint'
 
 const eslint = new ESLint()
 
-async function copyErrors(code, filePath = 'src/features/x.tsx') {
+async function copyErrors(code: string, filePath = 'src/features/x.tsx') {
   const [result] = await eslint.lintText(code, { filePath })
   return result.messages.filter((message) => message.ruleId === 'meddies/banned-ui-words').length
 }

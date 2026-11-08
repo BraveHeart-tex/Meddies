@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { parseMedicine } from '../src/features/medicines/contract.ts'
+import { parseMedicine } from '../src/features/medicines/contract'
 import {
   medicineFormDefaults,
   medicineFormSchema,
-} from '../src/features/medicines/medicine-form-schema.ts'
+} from '../src/features/medicines/medicine-form-schema'
 
 const id = '6e0b55ee-2e10-4e00-80f2-a736c2f50f95'
 
-const errorsOf = (values) => {
+const errorsOf = (values: unknown) => {
   const result = medicineFormSchema.safeParse(values)
   return result.success
     ? {}

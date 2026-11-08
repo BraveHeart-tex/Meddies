@@ -1,3 +1,4 @@
+import type { TestContext } from 'vitest'
 import assert from 'node:assert/strict'
 import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -6,7 +7,7 @@ import { spawnSync } from 'node:child_process'
 import { test } from 'vitest'
 
 const sha = spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim()
-async function fixture(t) {
+async function fixture(t: TestContext) {
   const dir = await mkdtemp(join(tmpdir(), 'meddies-release-'))
   t.onTestFinished(() => rm(dir, { recursive: true, force: true }))
   const log = join(dir, 'commands')
@@ -116,7 +117,7 @@ for (const [stage, commandCount] of [
   ['worker', 2],
   ['app', 3],
   ['smoke', 4],
-]) {
+] as const) {
   test(`${stage} failure stops later stages and identifies commit and recovery`, async (t) => {
     const f = await fixture(t)
     const result = f.run(stage)
@@ -165,7 +166,7 @@ for (const [failure, count] of [
   ['wrong-project', 4],
   ['wrong-commit', 4],
   ['http', 5],
-]) {
+] as const) {
   test(`${failure} fails smoke instead of accepting an unverified production release`, async (t) => {
     const f = await fixture(t)
     const result = f.run(failure)

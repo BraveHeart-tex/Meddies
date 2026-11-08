@@ -1,23 +1,27 @@
+import type {
+  ScheduleFormOptions,
+  ScheduleFormValues,
+} from '../src/features/schedules/schedule-form-schema'
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { parseSchedule } from '../src/features/schedules/contract.ts'
+import { parseSchedule } from '../src/features/schedules/contract'
 import {
   scheduleFormDefaults,
   scheduleFormSchema,
-} from '../src/features/schedules/schedule-form-schema.ts'
+} from '../src/features/schedules/schedule-form-schema'
 
 const today = '2035-06-15'
 const id = '6e0b55ee-2e10-4e00-80f2-a736c2f50f95'
 const medicineId = '0b7c6a52-8b1e-4d9e-9e0f-2f51a0c3d111'
 
-const errorsOf = (values, options = { unit: 'tablet', today }) => {
+const errorsOf = (values: unknown, options: ScheduleFormOptions = { unit: 'tablet', today }) => {
   const result = scheduleFormSchema(options).safeParse(values)
   return result.success
     ? {}
     : Object.fromEntries(result.error.issues.map((issue) => [issue.path.join('.'), issue.message]))
 }
-const row = (time, quantity = '1') => ({ time, quantity })
-const values = (overrides) => ({
+const row = (time: string, quantity = '1') => ({ time, quantity })
+const values = (overrides: Partial<ScheduleFormValues>): ScheduleFormValues => ({
   startDate: today,
   weekdays: [0, 1, 2, 3, 4, 5, 6],
   times: [row('08:00')],
@@ -113,7 +117,7 @@ test('one to 24 times', () => {
 })
 
 test('client-valid values are accepted by the server parser, and rejected ones are not', () => {
-  const cases = [
+  const cases: { unit: ScheduleFormOptions['unit']; values: ScheduleFormValues }[] = [
     { unit: 'tablet', values: values({ times: [row('08:00', '½'), row('21:30', '2')] }) },
     { unit: 'capsule', values: values({ weekdays: [0], times: [row('23:59', '3')] }) },
     { unit: 'tablet', values: values({ times: [row('08:00'), row('08:00')] }) },

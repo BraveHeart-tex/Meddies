@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { anchoredClock } from '../src/features/schedules/anchored-clock.ts'
+import { anchoredClock } from '../src/features/schedules/anchored-clock'
 
 function fakeMonotonic(start = 1000) {
   let value = start
-  return { read: () => value, advance: (ms) => (value += ms) }
+  return { read: () => value, advance: (ms: number) => (value += ms) }
 }
 
 test('reads the server now unchanged until time elapses', () => {

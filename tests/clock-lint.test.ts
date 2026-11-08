@@ -5,7 +5,7 @@ import { wallClockOwners } from '../eslint.config.mjs'
 
 const eslint = new ESLint()
 
-async function clockErrors(code, filePath) {
+async function clockErrors(code: string, filePath: string) {
   const [result] = await eslint.lintText(code, { filePath })
   return result.messages.filter((message) => /clock/i.test(message.message)).length
 }

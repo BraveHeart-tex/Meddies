@@ -1,14 +1,16 @@
+import type { MedicineCommand } from '../src/features/medicines/contract'
+import type { DoseRecord } from '../src/features/schedules/contract'
 import assert from 'node:assert/strict'
 import { afterAll, test, vi } from 'vitest'
-import { send as medicineSend } from '../src/features/medicines/server.ts'
-import { send as scheduleSend } from '../src/features/schedules/server.ts'
-import { PUT } from '../src/app/api/schedules/route.ts'
+import { send as medicineSend } from '../src/features/medicines/server'
+import { send as scheduleSend } from '../src/features/schedules/server'
+import { PUT } from '../src/app/api/schedules/route'
 // Mocked below; the synthetic wiring lets tests toggle the session.
-import { setAuthenticated } from '@/features/auth/server'
+import { setAuthenticated } from './helpers/server-wiring'
 
 // Replace server-only wiring, leaving the feature gateways and transport intact.
 vi.mock('server-only', () => ({}))
-vi.mock('@/features/auth/server', () => import('./helpers/server-wiring.cjs'))
+vi.mock('@/features/auth/server', () => import('./helpers/server-wiring'))
 const originalFetch = globalThis.fetch
 const originalUrl = process.env.MEDICINES_WORKER_URL
 const originalSecret = process.env.MEDICINES_WORKER_SECRET
@@ -19,26 +21,29 @@ afterAll(() => {
   for (const [key, value] of [
     ['MEDICINES_WORKER_URL', originalUrl],
     ['MEDICINES_WORKER_SECRET', originalSecret],
-  ]) {
+  ] as const) {
     if (value === undefined) delete process.env[key]
     else process.env[key] = value
   }
 })
-const list = { operation: 'list', ownerId: 'google:test' }
+const list: Extract<MedicineCommand, { operation: 'list' }> = {
+  operation: 'list',
+  ownerId: 'google:test',
+}
 test('gateway preserves Worker status mapping and hides network, redirect and JSON failures', async () => {
   for (const [upstream, status, code] of [
     [400, 400, 'validation'],
     [409, 409, 'conflict'],
     [401, 503, 'unavailable'],
     [500, 503, 'unavailable'],
-  ]) {
+  ] as const) {
     globalThis.fetch = async () => new Response('{}', { status: upstream })
     await assert.rejects(() => medicineSend(list), { status, code })
   }
   for (const error of [
     new DOMException('timeout', 'TimeoutError'),
     new TypeError('redirect rejected'),
-  ]) {
+  ] as const) {
     globalThis.fetch = async () => {
       throw error
     }
@@ -49,28 +54,33 @@ test('gateway preserves Worker status mapping and hides network, redirect and JS
 })
 test('gateway applies private capability, no-store, timeout and redirect rejection', async () => {
   globalThis.fetch = async (url, options) => {
-    assert.equal(url.href, 'https://worker.test/medicines')
-    assert.equal(options.method, 'POST')
-    assert.equal(options.headers.Authorization, 'Bearer synthetic-capability')
-    assert.equal(options.cache, 'no-store')
-    assert.equal(options.redirect, 'error')
-    assert.ok(options.signal instanceof AbortSignal)
-    assert.deepEqual(JSON.parse(options.body), list)
+    assert.equal((url as URL).href, 'https://worker.test/medicines')
+    assert.equal(options!.method, 'POST')
+    assert.equal(
+      (options!.headers as Record<string, string>).Authorization,
+      'Bearer synthetic-capability',
+    )
+    assert.equal(options!.cache, 'no-store')
+    assert.equal(options!.redirect, 'error')
+    assert.ok(options!.signal instanceof AbortSignal)
+    assert.deepEqual(JSON.parse(options!.body as string), list)
     return Response.json({ medicines: [] })
   }
   assert.deepEqual(await medicineSend(list), [])
 })
 test('feature decoders preserve malformed envelope and invalid field mappings', async () => {
-  for (const payload of [null, [], {}, { medicines: null }, { medicines: [{}] }]) {
+  for (const payload of [null, [], {}, { medicines: null }, { medicines: [{}] }] as const) {
     globalThis.fetch = async () => Response.json(payload)
-    await assert.rejects(() => medicineSend(list), { status: payload?.medicines?.[0] ? 400 : 503 })
+    await assert.rejects(() => medicineSend(list), {
+      status: (payload as { medicines?: unknown[] } | null)?.medicines?.[0] ? 400 : 503,
+    })
   }
   for (const payload of [
     null,
     {},
     { schedules: [{}], records: [] },
     { schedules: [], records: [{}] },
-  ]) {
+  ] as const) {
     globalThis.fetch = async () => Response.json(payload)
     await assert.rejects(
       () => scheduleSend({ ...list, operation: 'listOutcomes', date: '2026-11-06' }),
@@ -83,7 +93,7 @@ test('schedules HTTP dispatch retains omitted Taken, strict Skipped and session 
   const scheduleId = '10000000-0000-4000-8000-000000000001'
   const dueAt = '2026-11-06T06:00:00.000Z'
   const takenAt = '2026-11-06T06:05:00.000Z'
-  const put = (input) =>
+  const put = (input: unknown) =>
     PUT(
       new Request('https://meddies.test/api/schedules', {
         method: 'PUT',
@@ -92,7 +102,7 @@ test('schedules HTTP dispatch retains omitted Taken, strict Skipped and session 
       }),
     )
   globalThis.fetch = async (_, options) => {
-    const command = JSON.parse(options.body)
+    const command = JSON.parse(options!.body as string)
     assert.equal(command.ownerId, 'google:test')
     assert.equal(command.record.ownerId, undefined)
     return Response.json({
@@ -128,7 +138,7 @@ test('schedules HTTP dispatch retains omitted Taken, strict Skipped and session 
 })
 
 test('Taken-only decoding drops metadata while outcome decoding preserves it', async () => {
-  const record = {
+  const record: DoseRecord = {
     scheduleId: '10000000-0000-4000-8000-000000000001',
     dueAt: '2026-11-06T06:00:00.000Z',
     takenAt: '2026-11-06T06:05:00.000Z',

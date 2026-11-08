@@ -7,7 +7,7 @@ Worker bundle (`.worker-build`) in local workerd/D1; its auth suite also starts
 
 ```sh
 pnpm test:unit                           # unit and component projects, no Worker build
-pnpm test:unit tests/http.test.mjs       # one file
+pnpm test:unit tests/http.test.ts       # one file
 pnpm test:unit medications-list          # files matching a name
 pnpm test:integration                    # builds the Worker, then integration
 ```

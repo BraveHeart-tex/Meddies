@@ -4,7 +4,7 @@ import { ESLint } from 'eslint'
 
 const eslint = new ESLint()
 
-async function dateFormatErrors(code, filePath) {
+async function dateFormatErrors(code: string, filePath: string) {
   const [result] = await eslint.lintText(code, { filePath })
   return result.messages.filter((message) => /calendar-date/.test(message.message)).length
 }

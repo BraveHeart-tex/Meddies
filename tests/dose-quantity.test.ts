@@ -1,11 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import {
-  parseQuantity,
-  quantityLabel,
-  quantityRule,
-  stepQuantity,
-} from '../src/lib/dose-quantity.ts'
+import { parseQuantity, quantityLabel, quantityRule, stepQuantity } from '../src/lib/dose-quantity'
 
 test('quantity text parses decimals and halves, and keeps blank apart from zero', () => {
   assert.equal(parseQuantity(''), null)

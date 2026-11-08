@@ -1,19 +1,26 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { createWorker } from '../worker/index.ts'
+import { createWorker } from '../worker/index'
 
 const secret = 'synthetic-worker-secret-at-least-32-characters'
 const worker = createWorker()
-const request = (body, options = {}) =>
+const request = (body: BodyInit | undefined, options: RequestInit & { duplex?: 'half' } = {}) =>
   new Request('http://worker/medicines', {
     method: 'POST',
     headers: { authorization: `Bearer ${secret}` },
     body,
     ...options,
   })
-const env = { DB: {}, MEDICINES_WORKER_SECRET: secret }
-async function failure(req, status, error, bindings = env) {
-  const response = await worker.fetch(req, bindings)
+// No database operation is reached in these validation cases.
+const env = { DB: {} as unknown as D1Database, MEDICINES_WORKER_SECRET: secret }
+async function failure(
+  req: Request,
+  status: number,
+  error: string,
+  bindings: { DB: D1Database; MEDICINES_WORKER_SECRET?: string } = env,
+) {
+  // Missing capability is deliberately passed to the runtime guard.
+  const response = await worker.fetch(req, bindings as Parameters<typeof worker.fetch>[1])
   assert.equal(response.status, status)
   assert.equal(response.headers.get('cache-control'), 'no-store')
   assert.deepEqual(await response.json(), { error })
@@ -100,7 +107,7 @@ test('Worker bounds streamed UTF-8 input at 4096 bytes regardless of content len
 
 test('Worker hides unexpected persistence errors behind unavailable and no-store', async () => {
   const originalError = console.error
-  const logged = []
+  const logged: unknown[][] = []
   console.error = (...args) => logged.push(args)
   try {
     await failure(
@@ -109,11 +116,12 @@ test('Worker hides unexpected persistence errors behind unavailable and no-store
       'unavailable',
       {
         ...env,
+        // This stub must throw before a statement can be used.
         DB: {
           prepare() {
             throw new Error('private database detail')
           },
-        },
+        } as unknown as D1Database,
       },
     )
     assert.deepEqual(logged, [['medicine_storage_failure']])

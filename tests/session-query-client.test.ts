@@ -1,8 +1,9 @@
+import type { DoseOccurrence } from '../src/features/schedules/contract'
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { endSessionQueryClient, sessionQueryClient } from '../src/lib/session-query-client.ts'
-import { historyDayQuery, scheduleKeys } from '../src/features/schedules/queries.ts'
-import { readSessionDraft, writeSessionDraft } from '../src/lib/session-drafts.ts'
+import { endSessionQueryClient, sessionQueryClient } from '../src/lib/session-query-client'
+import { historyDayQuery, scheduleKeys } from '../src/features/schedules/queries'
+import { readSessionDraft, writeSessionDraft } from '../src/lib/session-drafts'
 
 const key = ['medicines', 'list']
 
@@ -26,7 +27,7 @@ test('a new session gets a fresh client and the previous cache is cleared', () =
 
 test('a response that settles after the session changes cannot repopulate the new cache', async () => {
   const previous = sessionQueryClient('owner-a:2026-11-14T00:00:00.000Z')
-  let settle
+  let settle!: (value: string[]) => void
   const read = previous
     .fetchQuery({ queryKey: key, queryFn: () => new Promise((resolve) => (settle = resolve)) })
     .catch(() => 'cancelled')
@@ -41,11 +42,11 @@ test('a response that settles after the session changes cannot repopulate the ne
 test('session end clears cached History dates and a late History response cannot refill them', async () => {
   const client = sessionQueryClient('owner-a:2026-11-14T00:00:00.000Z')
   client.setQueryData(scheduleKeys.history('2026-11-05'), [])
-  let settle
+  let settle!: (value: DoseOccurrence[]) => void
   const late = client
     .fetchQuery({
       ...historyDayQuery('2026-11-04'),
-      queryFn: () => new Promise((resolve) => (settle = resolve)),
+      queryFn: () => new Promise<DoseOccurrence[]>((resolve) => (settle = resolve)),
     })
     .catch(() => 'cancelled')
   endSessionQueryClient()
