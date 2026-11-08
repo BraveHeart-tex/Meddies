@@ -29,7 +29,7 @@ for (const { auth, title } of [
       await expect(page).toHaveURL('/')
       await expect(page.getByRole('heading', { name: 'Page not found' })).toHaveCount(0)
       await expect(
-        page.getByRole('heading', { name: auth ? /Good / : 'Meddies', exact: true }),
+        page.getByRole('heading', { name: auth ? /Good / : 'Sign in', exact: true }),
       ).toBeVisible()
     })
   })

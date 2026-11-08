@@ -176,7 +176,13 @@ test.describe('with no medicines', () => {
   test('streams the empty state', async ({ page, app }) => {
     const api = countApiRequests(page, app.origin)
     await page.goto('/')
-    await expect(page.getByText("Nothing to take today. You're all set.")).toBeVisible()
+    await expect(
+      page.getByText("No medications here yet. Add your first one whenever you're ready."),
+    ).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Go to Medications' })).toHaveAttribute(
+      'href',
+      '/medications',
+    )
     await page.waitForLoadState('load')
     expectNoRepeatedReads(api)
   })

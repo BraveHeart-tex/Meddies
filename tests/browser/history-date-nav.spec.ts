@@ -28,6 +28,9 @@ const picker = (page: Page) => datePicker(page, 'Choose a date')
 const dayHeading = (page: Page, name: string) => page.getByRole('heading', { name, level: 2 })
 const previous = (page: Page) => page.getByRole('button', { name: 'Previous day' })
 const next = (page: Page) => page.getByRole('button', { name: 'Next day' })
+// By role, because React keeps the streamed day's copy in a hidden segment until it swaps in.
+const invalidDateNotice = (page: Page) =>
+  page.getByRole('alert').filter({ hasText: 'Nothing to show for that day.' })
 
 test('step through History, go Back, reload, and recover from bad dates', async ({
   page,
@@ -87,9 +90,10 @@ test('step through History, go Back, reload, and recover from bad dates', async 
   for (const bad of ['2035-12-24', 'not-a-date'])
     await test.step(`${bad} shows today instead and replaces the URL (648·H6)`, async () => {
       await page.goto(`/history?date=${bad}`)
-      await expect(page.getByText('Nothing to show for that day.')).toBeVisible()
-      await expect(page.getByText('Showing today instead.', { exact: false })).toBeVisible()
+      // The heading comes first so the notice is proven on the day, not only on its fallback.
       await expect(dayHeading(page, 'Friday 15 June, 1 dose')).toBeVisible()
+      await expect(invalidDateNotice(page)).toBeVisible()
+      await expect(invalidDateNotice(page)).toContainText('Showing today instead.')
       await expect(page).toHaveURL(historyUrl(today))
       await expect(picker(page)).toHaveText('Today, Fri 15 Jun')
     })
