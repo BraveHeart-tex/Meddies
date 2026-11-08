@@ -6,6 +6,7 @@ import { beforeEach, expect, test, vi } from 'vitest'
 import type { Medicine } from '../src/features/medicines/contract'
 import { medicineKeys } from '../src/features/medicines/queries'
 import type { DoseOccurrence } from '../src/features/schedules/contract'
+import { HistoryDayFallback } from '../src/features/schedules/history-day-fallback'
 import { HistoryResults } from '../src/features/schedules/history-results'
 import { scheduleKeys } from '../src/features/schedules/queries'
 import { SchedulingClockProvider } from '../src/features/schedules/scheduling-clock'
@@ -69,11 +70,11 @@ function seeded(entries: Record<string, DoseOccurrence[]>) {
   return client
 }
 
-function renderResults(client: QueryClient) {
+function renderResults(client: QueryClient, notice?: 'invalid') {
   return render(
     <QueryClientProvider client={client}>
       <SchedulingClockProvider serverNow={`${today}T09:00:00.000Z`}>
-        <HistoryResults today={today} />
+        <HistoryResults today={today} notice={notice} />
       </SchedulingClockProvider>
     </QueryClientProvider>,
   )
@@ -218,4 +219,52 @@ test('a past-date History correction reconciles its own date, not Today or other
   await waitFor(() => expect(reads).toEqual(['2026-11-05']))
   expect(client.getQueryState(scheduleKeys.history('2026-11-04'))?.isInvalidated).toBe(false)
   expect(client.getQueryState(scheduleKeys.snapshot())?.isInvalidated).toBe(false)
+})
+
+test.each(['invalid', undefined] as const)(
+  'the cold stream fallback preserves notice %s above the loading section and cached day',
+  async (notice) => {
+    const client = seeded({})
+    const view = render(
+      <QueryClientProvider client={client}>
+        <HistoryDayFallback date={today} today={today} notice={notice} />
+      </QueryClientProvider>,
+    )
+    expect(screen.getAllByRole('status')).toHaveLength(1)
+    expect(screen.queryAllByText('Nothing to show for that day.')).toHaveLength(notice ? 1 : 0)
+    if (notice)
+      expect(screen.getByRole('alert').nextElementSibling).toContainElement(
+        screen.getByRole('status'),
+      )
+    client.setQueryData(scheduleKeys.history(today), [dose(today)])
+    view.rerender(
+      <QueryClientProvider client={client}>
+        <HistoryDayFallback date={today} today={today} notice={notice} />
+      </QueryClientProvider>,
+    )
+    await doseList(today)
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.queryAllByText('Nothing to show for that day.')).toHaveLength(notice ? 1 : 0)
+    if (notice)
+      expect(screen.getByRole('alert').nextElementSibling).toBe(screen.getByRole('region'))
+  },
+)
+
+test('an invalid entry keeps the notice while browser results load and normalize to today', async () => {
+  search = new URLSearchParams('date=not-a-date')
+  let release!: () => void
+  const held = new Promise<void>((resolve) => (release = resolve))
+  const reads = serveHistory(async (date) => {
+    await held
+    return HttpResponse.json({ doses: [dose(date)] })
+  })
+  renderResults(seeded({}), 'invalid')
+  expect(screen.getByRole('alert')).toHaveTextContent('Nothing to show for that day.')
+  expect(screen.getAllByRole('status')).toHaveLength(1)
+  release()
+  await doseList(today)
+  expect(screen.queryByRole('status')).toBeNull()
+  expect(screen.getAllByText('Nothing to show for that day.')).toHaveLength(1)
+  expect(window.location.search).toBe(`?date=${today}`)
+  expect(reads).toEqual([today])
 })

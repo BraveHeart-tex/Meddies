@@ -6,13 +6,13 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Icon } from '@/components/ui/icon'
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
 import { dateLabel, longDateLabel } from '@/lib/calendar-date'
 import { quantityLabel } from '@/lib/dose-quantity'
 import { cn } from '@/lib/utils'
 import type { Medicine } from '@/features/medicines/contract'
 import { istanbulDate, type DoseOccurrence } from './contract'
+import { HistoryInvalidDateNotice } from './history-invalid-date-notice'
 import { DoseActions } from './dose-actions'
 import { doseSaveKey, type RecordCheck } from './dose-saves'
 import { DoseStatusBadge } from './dose-status-badge'
@@ -54,15 +54,7 @@ export function HistoryDay({
   // siblings of History's section column.
   return (
     <>
-      {notice === 'invalid' && (
-        <Alert>
-          <Icon name="warning" size={16} />
-          <AlertTitle>Nothing to show for that day.</AlertTitle>
-          <AlertDescription>
-            History shows dates up to today. Showing today instead.
-          </AlertDescription>
-        </Alert>
-      )}
+      {notice === 'invalid' && <HistoryInvalidDateNotice />}
       <section aria-labelledby={dayHeadingId} className="flex flex-col gap-3.5">
         {result.status === 'unauthorized' ? (
           <Alert role="alert" variant="destructive">

@@ -32,6 +32,6 @@ export function HistoryDayFallback({
       notice={notice}
     />
   ) : (
-    <HistoryDayLoading />
+    <HistoryDayLoading notice={notice} />
   )
 }

@@ -5,6 +5,7 @@ import {
   historyDateNav as dateNav,
   historyFallback as fallback,
   historyList,
+  historyFallbackSection,
   placeholders,
   rootFallback,
 } from './locators'
@@ -77,6 +78,7 @@ test('direct load shows the shell and results fallback while History reads are h
   await page.goto('/history', { waitUntil: 'commit' })
   await expectReadsOverlap(app.worker, historyReads)
   await expectShellWithFallback(page)
+  await expect(page.getByText('Nothing to show for that day.')).toHaveCount(0)
   await expectStreamingOrder(app.worker, {
     routes: historyReads,
     fallback: fallback(page),
@@ -207,3 +209,32 @@ test.describe('with no medicines', () => {
     expectNoRepeatedReads(api)
   })
 })
+
+for (const width of [402, 320])
+  for (const invalidDate of ['not-a-date', '2035-12-24'])
+    test(`invalid entry ${invalidDate} keeps its notice and day in place at ${width}px`, async ({
+      page,
+      app,
+    }, testInfo) => {
+      await page.setViewportSize({ width, height: 874 })
+      for (const route of historyReads) app.worker.hold(route)
+      await page.goto(`/history?date=${invalidDate}`, { waitUntil: 'commit' })
+      await expectReadsOverlap(app.worker, historyReads)
+      await expectShellWithFallback(page)
+      const notice = page.getByRole('alert').filter({ hasText: 'Nothing to show for that day.' })
+      await expect(notice).toBeVisible()
+      const noticeBefore = await notice.boundingBox()
+      const dayBefore = await historyFallbackSection(page).boundingBox()
+      await page.screenshot({ path: testInfo.outputPath('invalid-loading.png') })
+      for (const route of historyReads) app.worker.release(route)
+      await expect(doses(page)).toContainText('Streaming Fixture Medicine')
+      await expect(page).toHaveURL(`/history?date=${today}`)
+      await expect(notice).toHaveCount(1)
+      await expect(page.getByRole('status')).toHaveCount(0)
+      const dayAfter = await page
+        .getByRole('region', { name: 'Friday 15 June, 1 dose' })
+        .boundingBox()
+      expect(await notice.boundingBox(), 'notice retains its final geometry').toEqual(noticeBefore)
+      expect(dayAfter!.y, 'the day starts at the same position after streaming').toBe(dayBefore!.y)
+      await page.screenshot({ path: testInfo.outputPath('invalid-loaded.png') })
+    })

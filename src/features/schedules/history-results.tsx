@@ -53,7 +53,7 @@ export function HistoryResults({ today, notice }: { today: string; notice?: 'inv
       />
     )
   }
-  if (day.data === undefined || medicines.loading) return <HistoryDayLoading />
+  if (day.data === undefined || medicines.loading) return <HistoryDayLoading notice={shownNotice} />
   return (
     <HistoryDay
       key={date}
