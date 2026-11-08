@@ -86,3 +86,7 @@ export const historyFallback = (page: Page) =>
 /** The box History's results fallback (648·H4) occupies; its status is a visually hidden line. */
 export const historyFallbackSection = (page: Page) =>
   page.locator('[data-slot="loading-section"]').filter({ has: historyFallback(page) })
+
+/** Any selected primary destination; recovery pages outside the app have none. */
+export const selectedNavigation = (page: Page) =>
+  page.getByRole('navigation', { name: 'Primary' }).locator('a[aria-current="page"]')

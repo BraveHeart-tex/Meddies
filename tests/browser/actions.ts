@@ -122,3 +122,37 @@ export async function enlargeText(page: Page) {
 export async function scrollPosition(page: Page) {
   return page.evaluate(() => window.scrollY)
 }
+
+/**
+ * Force a real client render error without a product hook. Today's heading formats an
+ * Istanbul weekday during rendering; only that platform call throws until restored.
+ */
+export async function forceTodayRenderError(page: Page) {
+  await page.addInitScript(() => {
+    const original = Intl.DateTimeFormat
+    Object.defineProperty(window, '__restoreDateFormatter', {
+      value: () => {
+        Intl.DateTimeFormat = original
+      },
+      configurable: true,
+    })
+    Intl.DateTimeFormat = new Proxy(original, {
+      construct(target, args) {
+        const options = args[1] as Intl.DateTimeFormatOptions | undefined
+        if (options?.timeZone === 'Europe/Istanbul' && options.weekday === 'long') {
+          throw new Error('Synthetic render failure')
+        }
+        return Reflect.construct(target, args)
+      },
+    })
+  })
+}
+
+/** Restore the browser fixture before retrying the failed boundary. */
+export async function restoreTodayRendering(page: Page) {
+  await page.evaluate(() => {
+    const fixtureWindow = window as Window & { __restoreDateFormatter?: () => void }
+    fixtureWindow.__restoreDateFormatter?.()
+    delete fixtureWindow.__restoreDateFormatter
+  })
+}

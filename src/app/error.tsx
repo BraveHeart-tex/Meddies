@@ -1,15 +1,32 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
+import Link from 'next/link'
+import { AppHeader } from '@/components/layout/app-header'
+import { AppShell } from '@/components/layout/app-shell'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { Icon } from '@/components/ui/icon'
+import { cn } from '@/lib/utils'
 
 export default function ErrorPage({ retry }: { retry: () => void }) {
   return (
-    <main className="mx-auto max-w-lg space-y-6 px-6 py-12">
-      <h1 className="text-2xl font-semibold">Meddies couldn’t open</h1>
-      <p role="alert">Please check your connection and try again.</p>
-      <Button onClick={retry} className="min-h-11">
-        Try again
-      </Button>
-    </main>
+    <AppShell>
+      <div className="flex flex-col gap-5">
+        <AppHeader title="Meddies" />
+        <Alert variant="destructive">
+          <Icon name="warning" />
+          <AlertTitle>This page couldn&apos;t open.</AlertTitle>
+          <AlertDescription>Your records haven&apos;t changed.</AlertDescription>
+        </Alert>
+        <div className="flex flex-wrap gap-3">
+          <Button variant="outline" onClick={retry}>
+            Try again
+          </Button>
+          <Link href="/" className={cn(buttonVariants({ variant: 'ghost' }))}>
+            Open Today
+          </Link>
+        </div>
+      </div>
+    </AppShell>
   )
 }
