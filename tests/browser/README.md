@@ -1,7 +1,8 @@
 # Browser journeys
 
-Playwright Test specs in `tests/browser/*.spec.ts`. When to write and run them:
-[verification](../../docs/verification.md#browser-journeys).
+Playwright Test specs in `tests/browser/*.spec.ts`. Whether behavior earns one:
+[when a journey is allowed](../../docs/verification.md#when-a-journey-is-allowed). How to
+write and run them: [verification](../../docs/verification.md#browser-journeys).
 
 ## Running
 
@@ -124,7 +125,7 @@ a client navigation, and read it after content is visible (on a direct load, aft
 `layout-shift` from the next document, so call it before `page.goto`; call `start()` just
 before a client-navigation click. `snapshot(stage)` records shell boxes; `result()`
 returns `cumulativeLayoutShift`, `shifts`, `inputShift(s)` and the snapshots. New checks
-use 402px; add 320px only when behavior differs by width. Limits:
+follow the [viewport rule](../../docs/verification.md#writing-a-journey). Limits:
 
 - Chromium only (Layout Instability API), not WebKit or a real iPhone.
 - A plain sum since the start, not web-vitals' session window, so long loads score higher.

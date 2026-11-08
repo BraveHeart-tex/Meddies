@@ -51,9 +51,9 @@ the ticket that owns each nearby item.
 - Five acceptance criteria at most. More means the ticket holds two slices: split it.
 - Evidence is an assertion, not a record: "the journey asserts layout shift ≤ 0.01",
   not "measure and record a budget". The assertion's comment carries the justification.
-- Write "Tests prove…" for logic and UI states. Name a browser journey only for
-  behaviour that needs a real browser or the full stack
-  ([verification](verification.md#browser-journeys)).
+- A ticket may ask for a browser journey only by naming an
+  [allowed reason](verification.md#when-a-journey-is-allowed). Otherwise it says
+  "Tests prove…".
 - A ticket with sub-issues is a parent. It lists the slices, an ownership list
   and the shared rules, and its only criterion is that the slices are Done.
 

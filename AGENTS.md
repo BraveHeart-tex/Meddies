@@ -26,6 +26,7 @@ Read the matching doc before starting the work.
 | Layers: routes, operations, contracts, Worker, D1 | [architecture](docs/architecture.md)                                                       |
 | Sign-in, sessions, authorization                  | [authentication](docs/authentication.md)                                                   |
 | Tests, browser journeys, evidence                 | [verification](docs/verification.md)                                                       |
+| Asking for or adding a browser journey            | [when a journey is allowed](docs/verification.md#when-a-journey-is-allowed)                |
 | Running the app with local Worker/D1              | [local stack](docs/local-stack.md)                                                         |
 | Releases, deployment, recovery                    | [deployment](docs/deployment.md)                                                           |
 

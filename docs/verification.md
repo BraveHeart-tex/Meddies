@@ -42,8 +42,11 @@ injected through MSW or journey fixtures, never timers in product code.
 - **[Component tests](../tests/README.md#component-tests)** prove UI states with MSW:
   refresh keeps content, stale or out-of-order responses lose to newer state, focus and
   reconnect refresh, rejection, unconfirmed save and conflict recovery.
-- **[Browser journeys](../tests/browser/README.md)** prove only what needs a real browser
-  or the full stack ([which](#browser-journeys)).
+- **[Browser journeys](../tests/browser/README.md)** prove only the
+  [allowed reasons](#when-a-journey-is-allowed).
+
+A bug's regression test goes at the lowest level that fails without the fix. A purely
+visual fix gets a [visual check](#visual-verification) with no CI test.
 
 Every change to data-driven UI reviews each applicable state in
 [DESIGN.md](../DESIGN.md#loading-and-saving) against the [Next.js rules](nextjs.md). Prove
@@ -54,19 +57,40 @@ behavior rather than counting Suspense boundaries.
 Journeys run outside `pnpm verify:local`. CI runs every journey except `@visual`, and a
 failure blocks Release.
 
+### When a journey is allowed
+
+A journey is allowed only when it proves one of these reasons:
+
+- navigation during a save
+- Back, Forward or reload behavior
+- streaming or the handoff from server to browser
+- session end with real cookies
+- real pointer gestures
+- data consistency across routes
+
+These never earn a journey: alignment, spacing, form validation, copy, tap-target size and
+width variants. Everything else is proven at a [cheaper level](#cheapest-proof). This rule
+covers every journey that runs in CI; on-request `@visual` journeys sit outside it.
+
+### Writing a journey
+
+- **Reuse:** add a step to a journey with the same setup before creating a new test.
+- **Reason:** each new journey has a one-line comment naming its allowed reason.
+- **Shape:** one scenario per test. One page load may carry all its checks, and one test
+  may step through several routes for the same behavior.
+- **Viewport:** CI runs at 402px unless the allowed behavior itself differs by width.
+- **Assertions:** specs that run in CI assert behavior; fixed pixel values belong in
+  `@visual`. Request counts are asserted exactly: zero repeated initial reads per path
+  after load unless the assertion's comment justifies otherwise.
+
+### Running journeys
+
 - **Local runs:** once after implementation, run only the journeys the ticket names plus
   any spec you added or changed, in one `pnpm test:browser:build <names>` run. No smoke
   set, no full suite.
 - **Unrelated CI failure:** check whether it also fails on the commit before the change
   ([how](../tests/browser/README.md#running)). If yes, file a `bug` + `needs-triage`
   ticket and do not fix it in scope. If no, the change caused it: fix it.
-- **When to write one:** only for behavior that needs a real browser or the full stack:
-  navigation during a save, recovery from an unconfirmed save, streaming and hydration,
-  session end, and cross-route consistency. Everything else is a unit or component test.
-- **Shape:** one scenario per test. Specs that run in CI assert behavior, never pixel
-  constants. Add a viewport variant only when behavior differs by width. Request counts
-  are asserted exactly: zero repeated initial reads per path after load unless the
-  assertion's comment justifies otherwise.
 - **Visual journeys** are tagged `@visual`, run only on request with
   `pnpm test:browser:visual`, and are excluded from CI with no scheduled run.
 
