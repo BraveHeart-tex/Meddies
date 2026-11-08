@@ -39,6 +39,11 @@ These are banned in UI copy and stay fine in code, docs and tickets, including t
 Say "medication", never "medicine", and call the tab "Medications". The `/medications` URL and code
 names stay.
 
+`pnpm lint` fails when outcome, intake, confirmed, unconfirmed or correct appears as a whole word
+in JSX text or in an `aria-label`, `label` or `title` prop in `src`. Review covers the rest:
+"routine", which stays fine in sentences like the sign-in tagline, "medicine", and plain string
+constants.
+
 ## Errors
 
 Say what happened, what is safe, and what to do next.

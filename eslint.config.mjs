@@ -2,6 +2,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 import nextVitals from 'eslint-config-next/core-web-vitals'
 import prettier from 'eslint-config-prettier/flat'
 import playwright from 'eslint-plugin-playwright'
+import bannedUiWords from './eslint-rules/banned-ui-words.mjs'
 
 const browserJourneys = 'tests/browser/**'
 const browserRestrictedImports = [
@@ -69,6 +70,12 @@ const eslintConfig = defineConfig([
   {
     files: wallClockOwners,
     rules: { 'no-restricted-syntax': ['error', routeLinkSyntax] },
+  },
+  // Internal words stay out of visible copy (docs/copy.md).
+  {
+    files: ['src/**/*.tsx'],
+    plugins: { meddies: { rules: { 'banned-ui-words': bannedUiWords } } },
+    rules: { 'meddies/banned-ui-words': 'error' },
   },
   // Browser code reads through authenticated API routes, never server wiring or storage transport.
   {
