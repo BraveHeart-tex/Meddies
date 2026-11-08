@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
+import { EntryFocus } from './entry-focus'
 import { SessionSaveFeedback } from './session-save-feedback'
 import { isServer, QueryClientProvider } from '@tanstack/react-query'
 import {
@@ -73,6 +74,7 @@ export function SessionBoundary({
     <p role="status">{saveMessages.sessionEnded} Please sign in again.</p>
   ) : (
     <QueryClientProvider client={client}>
+      <EntryFocus />
       <SessionSaveFeedback />
       {children}
     </QueryClientProvider>

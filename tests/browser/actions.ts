@@ -156,3 +156,31 @@ export async function restoreTodayRendering(page: Page) {
     delete fixtureWindow.__restoreDateFormatter
   })
 }
+
+/** Observe live-region text changes; browser APIs cannot report spoken screen-reader output. */
+export async function trackSignInAnnouncements(page: Page) {
+  await page.addInitScript(() => {
+    const announcements: string[] = []
+    Object.assign(window, { signInAnnouncements: announcements })
+    let previous = ''
+    new MutationObserver(() => {
+      const status = document.querySelector('main [role="status"]')
+      const text = status
+        ? Array.from(status.children)
+            .filter((child) => child.getAttribute('aria-hidden') !== 'true')
+            .map((child) => child.textContent)
+            .join(' ')
+            .trim()
+        : ''
+      if (text && text !== previous) announcements.push(text)
+      previous = text
+    }).observe(document, { childList: true, subtree: true, characterData: true })
+  })
+}
+
+/** Read the live-region observer above, without claiming real assistive-technology output. */
+export async function signInAnnouncements(page: Page) {
+  return page.evaluate(
+    () => (window as unknown as { signInAnnouncements: string[] }).signInAnnouncements,
+  )
+}

@@ -41,7 +41,9 @@ test('Settings checks session end before showing the signed-out destination and 
   await expect(page).toHaveURL(`${app.origin}/settings`)
   release()
   await expect(page).toHaveURL(`${app.origin}/?reason=signed-out`)
-  await expect(page.getByText('You’re signed out.', { exact: true })).toBeVisible()
+  await expect(
+    page.getByText("You're signed out of Meddies in this browser.", { exact: true }),
+  ).toBeVisible()
   await page.goBack()
   await expect(page.getByText('Private draft', { exact: true })).toHaveCount(0)
   expect((await page.request.get('/api/session')).status()).toBe(401)
@@ -55,7 +57,9 @@ test('rejected sign-out keeps an active session and offers retry', async ({ page
   expect((await page.request.get('/api/session')).status()).toBe(200)
   await page.unroute('**/api/auth/signout')
   await page.getByRole('button', { name: 'Try signing out again' }).click()
-  await expect(page.getByText('You’re signed out.', { exact: true })).toBeVisible()
+  await expect(
+    page.getByText("You're signed out of Meddies in this browser.", { exact: true }),
+  ).toBeVisible()
 })
 
 test('a lost session check after successful sign-out stays unknown until explicit retry', async ({
@@ -73,7 +77,9 @@ test('a lost session check after successful sign-out stays unknown until explici
   expect((await page.request.get('/api/session')).status()).toBe(401)
   await page.unroute('**/api/session')
   await page.getByRole('button', { name: 'Try signing out again' }).click()
-  await expect(page.getByText('You’re signed out.', { exact: true })).toBeVisible()
+  await expect(
+    page.getByText("You're signed out of Meddies in this browser.", { exact: true }),
+  ).toBeVisible()
 })
 
 test('offline Settings sends no sign-out request and reconnect waits for the user', async ({
@@ -92,7 +98,9 @@ test('offline Settings sends no sign-out request and reconnect waits for the use
   await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeEnabled()
   expect(posts).toBe(0)
   await page.getByRole('button', { name: 'Sign out', exact: true }).click()
-  await expect(page.getByText('You’re signed out.', { exact: true })).toBeVisible()
+  await expect(
+    page.getByText("You're signed out of Meddies in this browser.", { exact: true }),
+  ).toBeVisible()
   expect(posts).toBe(1)
 })
 

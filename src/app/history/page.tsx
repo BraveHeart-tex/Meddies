@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { HistoryHydration } from '@/features/schedules/history-hydration'
 import { auth, authConfigured } from '@/features/auth/server'
 import { SessionBoundary } from '@/features/auth/session-boundary'
@@ -49,21 +49,10 @@ export default async function HistoryPage({
   const returnDate = typeof query.date === 'string' && validDate ? query.date : ''
   const configured = authConfigured()
   const session = configured ? await auth() : null
-  if (!configured || !session?.user?.id) {
-    return (
-      <main className="mx-auto max-w-lg space-y-4 px-6 py-12">
-        <p>
-          {configured ? 'Sign in to view dose history.' : 'Sign-in is temporarily unavailable.'}
-        </p>
-        <Link
-          className="underline"
-          href={`/?returnTo=${encodeURIComponent(returnDate ? `/history?date=${returnDate}` : '/history')}`}
-        >
-          Sign in
-        </Link>
-      </main>
+  if (!session?.user?.id)
+    redirect(
+      `/?returnTo=${encodeURIComponent(`/history${returnDate ? `?date=${returnDate}` : ''}`)}`,
     )
-  }
 
   // A future or malformed date shows today instead (648·H6).
   const notice = validDate ? undefined : ('invalid' as const)

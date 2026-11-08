@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { connection } from 'next/server'
 import { AppShell } from '@/components/layout/app-shell'
 import { AppHeader } from '@/components/layout/app-header'
@@ -12,16 +12,7 @@ export default async function SettingsPage() {
   await connection()
   const configured = authConfigured()
   const session = configured ? await auth() : null
-  if (!session?.user?.id)
-    return (
-      <main className="mx-auto max-w-lg space-y-4 px-6 py-12">
-        <h1 className="text-2xl font-semibold">Settings</h1>
-        <p>Sign in to view account settings.</p>
-        <Link className="underline" href="/?returnTo=%2Fsettings">
-          Sign in
-        </Link>
-      </main>
-    )
+  if (!session?.user?.id) redirect(`/?returnTo=${encodeURIComponent('/settings')}`)
   const deadline = new Date(session.expires)
   const day = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Istanbul',

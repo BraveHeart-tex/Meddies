@@ -109,9 +109,9 @@ test('anonymous requests cannot read the account; entry offers private Google si
 
 test('sign-in explains why the account is back on the entry screen', async () => {
   const messages = [
-    ['/?error=AccessDenied', "This account can't open Meddies. Try your approved Google account."],
-    ['/?error=OAuthCallbackError', "Sign-in didn't finish. Please try again."],
-    ['/?reason=expired', 'Your session ended. Please sign in again.'],
+    ['/?error=AccessDenied', "This Google account can't open Meddies."],
+    ['/?error=OAuthCallbackError', "Sign-in with Google didn't finish."],
+    ['/?reason=expired', 'Your session ended.'],
   ]
   for (const [path, message] of messages) {
     const html = await (await request(path)).text()
@@ -126,6 +126,7 @@ test('private deep links offer sign-in while retaining the requested destination
     const location = page.headers.get('location')
     const signInTarget = location || html
     assert.ok(signInTarget.includes(`returnTo=${encodeURIComponent(path)}`), path)
+    assert.ok(location || html.includes('http-equiv="refresh"'), 'must redirect, not link')
     assert.doesNotMatch(html, /Save medication|Change this dose|Sign out/)
   }
 })
@@ -231,6 +232,43 @@ test('Google initiation uses state and PKCE; invalid callbacks do not create ses
       .getSetCookie()
       .some((value) => value.startsWith(`${salt}=`) && !value.startsWith(`${salt}=;`)),
   )
+})
+
+test('Auth.js failures retain the initiated destination through the real error route', async () => {
+  for (const destination of ['/history?date=2026-10-30', '/medications?add']) {
+    const { csrfToken, cookies } = await csrfSession()
+    const start = await request('/api/auth/signin/google', {
+      method: 'POST',
+      headers: { cookie: cookies, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ csrfToken, callbackUrl: `${base}${destination}` }),
+    })
+    assert.equal(
+      new URL(start.headers.get('location')).searchParams.get('prompt'),
+      'select_account',
+    )
+    const continuation = start.headers
+      .getSetCookie()
+      .map((value) => value.split(';')[0])
+      .join('; ')
+    assert.match(continuation, /authjs.callback-url=/)
+    for (const path of [
+      '/api/auth/error?error=AccessDenied',
+      '/api/auth/callback/google?code=invalid&state=invalid',
+    ]) {
+      const failure = await request(path, { headers: { cookie: continuation } })
+      const location = new URL(failure.headers.get('location'), base)
+      assert.equal(location.pathname, '/sign-in/error')
+      const page = await request(`${location.pathname}${location.search}`, {
+        headers: { cookie: continuation },
+      })
+      const html = await page.text()
+      assert.ok(html.includes(destination), 'error screen retains the callback destination')
+      assert.match(
+        html,
+        path.includes('AccessDenied') ? /Choose another Google account/ : /Try again/,
+      )
+    }
+  }
 })
 
 test('sign-out requires CSRF, clears the browser session and prevents subsequent account reads', async () => {
@@ -590,6 +628,6 @@ test('missing private configuration disables sign-in and preserves accessible re
   )
   const page = await request('/')
   const html = await page.text()
-  assert.match(html, /Sign-in is temporarily unavailable/)
+  assert.match(html, /Sign-in is unavailable right now/)
   assert(!html.includes('Continue with Google'))
 })

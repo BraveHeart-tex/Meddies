@@ -2,6 +2,7 @@ import 'server-only'
 
 import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
+import { callbackReturnTo } from './return-to'
 
 const lifetimeSeconds = 7 * 24 * 60 * 60
 const allowedEmail = () => process.env.AUTH_ALLOWED_EMAIL?.trim().toLowerCase()
@@ -45,6 +46,9 @@ export const { handlers, auth } = NextAuth({
     debug() {},
   },
   callbacks: {
+    redirect({ url, baseUrl }) {
+      return new URL(callbackReturnTo(url, baseUrl), baseUrl).href
+    },
     signIn({ account, profile }) {
       return Boolean(
         authConfigured() &&

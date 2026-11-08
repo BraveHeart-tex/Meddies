@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/layout/app-shell'
 import { auth, authConfigured } from '@/features/auth/server'
 import { SessionBoundary } from '@/features/auth/session-boundary'
@@ -28,16 +28,7 @@ export default async function MedicationsPage({
         : '/medications'
   const configured = authConfigured()
   const session = configured ? await auth() : null
-  if (!session?.user?.id)
-    return (
-      <main className="mx-auto max-w-lg space-y-4 px-6 py-12">
-        <h1 className="text-2xl font-semibold">Medications</h1>
-        <p>Sign in to view your medications.</p>
-        <Link className="underline" href={`/?returnTo=${encodeURIComponent(returnTo)}`}>
-          Sign in
-        </Link>
-      </main>
-    )
+  if (!session?.user?.id) redirect(`/?returnTo=${encodeURIComponent(returnTo)}`)
   return (
     <SessionBoundary ownerId={session.user.id} expires={session.expires}>
       <AppShell>

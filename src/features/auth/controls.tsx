@@ -1,12 +1,13 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { signIn, signOut } from 'next-auth/react'
+import { signOut } from 'next-auth/react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import { Icon } from '@/components/ui/icon'
 import { Button } from '@/components/ui/button'
 import { endSessionQueryClient } from '@/lib/session-query-client'
+import { SignInScreen } from './sign-in-screen'
 
 export function AuthControl({
   signedIn = false,
@@ -15,6 +16,10 @@ export function AuthControl({
   signedIn?: boolean
   returnTo?: string
 }) {
+  return signedIn ? <SignOutControl /> : <SignInScreen configured returnTo={returnTo} />
+}
+
+function SignOutControl() {
   const submitting = useRef(false)
   const [pending, setPending] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -22,46 +27,39 @@ export function AuthControl({
   const offline = useKnownOffline()
 
   async function submit() {
-    if (submitting.current || (signedIn && !navigator.onLine)) return
+    if (submitting.current || !navigator.onLine) return
     submitting.current = true
     setPending(true)
     setFailed(false)
     setResult(null)
     try {
-      if (signedIn) {
-        // Even a lost POST response can have ended the session. Always check independently.
-        try {
-          await signOut({ redirect: false })
-        } catch {
-          // Only the no-store session read can establish the result.
-        }
-        try {
-          const response = await fetch('/api/session', { cache: 'no-store' })
-          if (response.status === 401) {
-            endSessionQueryClient()
-            window.location.replace('/?reason=signed-out')
-            return
-          }
-          const session = response.ok ? await response.json() : null
-          setResult(
-            typeof session?.id === 'string' &&
-              session.id.length > 0 &&
-              typeof session?.expires === 'string' &&
-              Number.isFinite(Date.parse(session.expires))
-              ? 'active'
-              : 'unknown',
-          )
-        } catch {
-          setResult('unknown')
-        }
-        submitting.current = false
-        setPending(false)
-      } else {
-        const localTarget = returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/'
-        const result = await signIn('google', { redirect: false, redirectTo: localTarget })
-        if (!result?.ok || result.error || !result.url) throw new Error('Sign-in not available')
-        window.location.assign(result.url)
+      // Even a lost POST response can have ended the session. Always check independently.
+      try {
+        await signOut({ redirect: false })
+      } catch {
+        // Only the no-store session read can establish the result.
       }
+      try {
+        const response = await fetch('/api/session', { cache: 'no-store' })
+        if (response.status === 401) {
+          endSessionQueryClient()
+          window.location.replace('/?reason=signed-out')
+          return
+        }
+        const session = response.ok ? await response.json() : null
+        setResult(
+          typeof session?.id === 'string' &&
+            session.id.length > 0 &&
+            typeof session?.expires === 'string' &&
+            Number.isFinite(Date.parse(session.expires))
+            ? 'active'
+            : 'unknown',
+        )
+      } catch {
+        setResult('unknown')
+      }
+      submitting.current = false
+      setPending(false)
     } catch {
       setFailed(true)
       submitting.current = false
@@ -71,7 +69,7 @@ export function AuthControl({
 
   return (
     <div className="space-y-3">
-      {signedIn && (offline || result) && (
+      {(offline || result) && (
         <Alert variant={offline ? 'default' : 'destructive'}>
           <Icon name="warning" size={16} />
           <AlertDescription>
@@ -86,30 +84,24 @@ export function AuthControl({
       <Button
         type="button"
         onClick={submit}
-        disabled={pending || (signedIn && offline)}
-        variant={signedIn ? 'outline' : 'default'}
-        size={signedIn ? 'lg' : 'default'}
-        className={signedIn ? 'w-full' : 'min-h-11 px-5'}
+        disabled={pending || offline}
+        variant="outline"
+        size="lg"
+        className="w-full"
       >
         {pending
-          ? signedIn
-            ? 'Signing out…'
-            : 'Connecting to Google…'
-          : signedIn
-            ? offline
-              ? 'Connect to sign out'
-              : result
-                ? 'Try signing out again'
-                : 'Sign out'
-            : 'Continue with Google'}
+          ? 'Signing out…'
+          : offline
+            ? 'Connect to sign out'
+            : result
+              ? 'Try signing out again'
+              : 'Sign out'}
       </Button>
       <p role="status" className="text-sm" aria-live="polite">
         {failed
           ? 'Something went wrong. Check your connection and try again.'
           : pending
-            ? signedIn
-              ? 'Signing out…'
-              : 'Connecting to Google…'
+            ? 'Signing out…'
             : ''}
       </p>
     </div>
