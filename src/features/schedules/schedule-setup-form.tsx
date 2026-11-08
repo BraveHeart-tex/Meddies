@@ -38,7 +38,7 @@ export function ScheduleSetupForm({
   const [savedId, setSavedId] = useState('')
   const medicine = medicines.find((item) => item.id === medicineId)
   const schedule = schedules.find((item) => item.medicineId === medicineId)
-  const name = medicine?.label ?? 'This medicine'
+  const name = medicine?.label ?? 'This medication'
 
   function saved(confirmed: DailySchedule) {
     setSavedId(confirmed.id)
@@ -70,7 +70,7 @@ export function ScheduleSetupForm({
     body = (
       <Alert>
         <InfoIcon aria-hidden="true" />
-        <AlertTitle>This medicine isn&apos;t in your list.</AlertTitle>
+        <AlertTitle>This medication isn&apos;t in your list.</AlertTitle>
         <Link
           href="/medications"
           className={buttonVariants({ variant: 'outline', className: 'mt-2 justify-self-start' })}
@@ -118,7 +118,7 @@ export function ScheduleSetupForm({
             Set schedule
           </p>
           <h2 id="schedule-heading" className="text-title font-extrabold">
-            {medicine?.label ?? 'Medicine'}
+            {medicine?.label ?? 'Medication'}
           </h2>
           {medicine && (
             <p className="text-body-sm font-bold text-muted-foreground">

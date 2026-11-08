@@ -39,15 +39,15 @@ test('a pending medicine save survives remount, locks duplicate submit and retri
     )
   const user = userEvent.setup()
   const first = open()
-  await user.type(screen.getByLabelText('Medicine name'), 'Magnesium')
+  await user.type(screen.getByLabelText('Medication name'), 'Magnesium')
   await user.click(screen.getByRole('button', { name: 'Tablet' }))
-  const form = screen.getByRole('button', { name: 'Save medicine' }).closest('form')!
+  const form = screen.getByRole('button', { name: 'Save medication' }).closest('form')!
   fireEvent.submit(form)
   fireEvent.submit(form)
   await waitFor(() => expect(posts).toHaveLength(1))
   first.unmount()
   const second = open()
-  expect(screen.getByRole('button', { name: 'Saving medicine...' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Saving medication...' })).toBeDisabled()
   await act(async () => held.release())
   await screen.findByText('That might not have saved.')
   second.unmount()
@@ -75,9 +75,9 @@ test('a confirmed medicine remains cached when a later stale list omits it', asy
       <MedicineForm onSaved={() => {}} />
     </QueryClientProvider>,
   )
-  await user.type(screen.getByLabelText('Medicine name'), 'Magnesium')
+  await user.type(screen.getByLabelText('Medication name'), 'Magnesium')
   await user.click(screen.getByRole('button', { name: 'Tablet' }))
-  await user.click(screen.getByRole('button', { name: 'Save medicine' }))
+  await user.click(screen.getByRole('button', { name: 'Save medication' }))
   first.unmount()
   await act(async () => held.release())
   await waitFor(() =>
@@ -161,9 +161,9 @@ test('session end prevents a late save response from restoring private cache or 
       />
     </QueryClientProvider>,
   )
-  await user.type(screen.getByLabelText('Medicine name'), 'Magnesium')
+  await user.type(screen.getByLabelText('Medication name'), 'Magnesium')
   await user.click(screen.getByRole('button', { name: 'Tablet' }))
-  await user.click(screen.getByRole('button', { name: 'Save medicine' }))
+  await user.click(screen.getByRole('button', { name: 'Save medication' }))
   first.unmount()
   endSessionQueryClient()
   await act(async () => {

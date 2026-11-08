@@ -108,12 +108,12 @@ test(
       await shot('prod-medications', true)
     })
 
-    await test.step('capture Add medicine and its validation', async () => {
-      await page.getByRole('link', { name: 'Add a medicine' }).click()
-      await expect(page.getByRole('heading', { name: 'Add medicine' })).toBeVisible()
+    await test.step('capture Add medication and its validation', async () => {
+      await page.getByRole('link', { name: 'Add a medication' }).click()
+      await expect(page.getByRole('heading', { name: 'Add medication' })).toBeVisible()
       await shot('prod-add-medicine')
-      await page.getByRole('button', { name: 'Save medicine' }).click()
-      await expect(page.getByLabel('Medicine name')).toBeFocused()
+      await page.getByRole('button', { name: 'Save medication' }).click()
+      await expect(page.getByLabel('Medication name')).toBeFocused()
       await shot('prod-add-medicine-invalid', true)
     })
   },

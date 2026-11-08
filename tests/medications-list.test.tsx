@@ -98,6 +98,14 @@ function renderList() {
 const advance = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms))
 
 describe('with a cached list', () => {
+  test('names the list and its add link with medication', async () => {
+    medicinesApi(listOf(1))
+    cache(listOf(1))
+    renderList()
+    expect(await screen.findByRole('region', { name: 'Your medications' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Add a medication' })).toBeVisible()
+  })
+
   test('a fresh cache shows at once with no read', async () => {
     const api = medicinesApi(listOf(2))
     cache(listOf(1))

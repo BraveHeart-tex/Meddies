@@ -69,7 +69,7 @@ export function SchedulePanel({
         {mode === 'list' && (
           <section aria-labelledby="medicine-routines-heading" className="flex flex-col gap-4">
             <h2 id="medicine-routines-heading" className="sr-only">
-              Your medicines
+              Your medications
             </h2>
             {loading || medicinesLoading ? (
               <p role="status">Loading your medications…</p>

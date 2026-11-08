@@ -124,14 +124,14 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
         </div>
       )}
       <FieldSet disabled={locked} className="disabled:opacity-70">
-        <FieldLegend className="sr-only">Medicine details</FieldLegend>
+        <FieldLegend className="sr-only">Medication details</FieldLegend>
         <FieldGroup>
           <Controller
             name="label"
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor="medicine-label">Medicine name</FieldLabel>
+                <FieldLabel htmlFor="medicine-label">Medication name</FieldLabel>
                 <Input
                   {...field}
                   id="medicine-label"
@@ -243,12 +243,12 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
           aria-describedby={problem || offline ? 'medicine-save-problem' : undefined}
         >
           {isSubmitting
-            ? 'Saving medicine...'
+            ? 'Saving medication...'
             : offline
               ? saveMessages.connectToSave
               : problem === 'unconfirmed'
                 ? 'Try saving medication again'
-                : 'Save medicine'}
+                : 'Save medication'}
         </Button>
       )}
     </form>
@@ -267,7 +267,7 @@ function SaveProblemAlert({ problem, label }: { problem: SaveProblem; label: str
     },
     unauthorized: {
       title: saveMessages.sessionEnded,
-      body: `${label} wasn't saved. Sign in again to save your medicine.`,
+      body: `${label} wasn't saved. Sign in again to save your medication.`,
     },
     conflict: {
       title: 'A different version of this medication is already saved.',

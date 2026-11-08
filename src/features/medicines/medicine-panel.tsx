@@ -97,7 +97,7 @@ export function MedicinePanel({
           Medications
         </Link>
         <AppHeader
-          title="Add medicine"
+          title="Add medication"
           subtitle="Saved once Meddies has it. You can set a schedule straight after, or later."
         />
         <MedicineForm onSaved={saved} />
@@ -118,7 +118,7 @@ export function MedicinePanel({
           scheduleMode === 'list' && (
             <Link
               href="/medications?add"
-              aria-label="Add a medicine"
+              aria-label="Add a medication"
               className={buttonVariants({ className: 'rounded-full' })}
             >
               <Icon name="plus" data-icon="inline-start" />
@@ -163,7 +163,7 @@ export function MedicinePanel({
       )}
       {justSavedHere && (
         <section
-          aria-label="Saved medicine"
+          aria-label="Saved medication"
           className="flex flex-col gap-3 [overflow-wrap:anywhere]"
         >
           <Alert variant="confirmation" role="status">

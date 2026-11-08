@@ -177,6 +177,15 @@ describe('with a cached snapshot', () => {
   // focus, reconnect and Refresh Today reconcile.
   const focus = () => fireEvent(window, new Event('focus'))
 
+  test('a dose whose medication record is missing falls back to Medication', async () => {
+    schedulesApi(initialNow, [scheduleFor('09:00')])
+    cache(initialNow)
+    client.setQueryData(medicineKeys.list(), [])
+    renderToday()
+    expect(await doses()).toHaveTextContent('Medication')
+    expect(await doses()).not.toHaveTextContent('Medicine')
+  })
+
   test('cached doses stay on screen while one refresh runs', async () => {
     const api = schedulesApi(initialNow, [
       scheduleFor('09:00'),

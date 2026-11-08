@@ -18,7 +18,7 @@ const errorsOf = (values) => {
 test('blank defaults ask for a name and a unit, with nothing preselected', () => {
   assert.deepEqual(medicineFormDefaults, { label: '', strength: '', unit: '' })
   assert.deepEqual(errorsOf(medicineFormDefaults), {
-    label: 'Enter the medicine name.',
+    label: 'Enter the medication name.',
     unit: 'Choose tablet or capsule.',
   })
 })

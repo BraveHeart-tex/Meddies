@@ -19,17 +19,17 @@ test('Add restores editing values across remounts and Clear form discards them',
       </QueryClientProvider>,
     )
   const first = open()
-  await user.type(screen.getByLabelText('Medicine name'), 'Draft medicine')
+  await user.type(screen.getByLabelText('Medication name'), 'Draft medicine')
   await user.type(screen.getByLabelText(/^Strength/), ' 5 mg ')
   await user.click(screen.getByRole('button', { name: 'Capsule' }))
   first.unmount()
   const second = open()
-  expect(screen.getByLabelText('Medicine name')).toHaveValue('Draft medicine')
+  expect(screen.getByLabelText('Medication name')).toHaveValue('Draft medicine')
   expect(screen.getByLabelText(/^Strength/)).toHaveValue(' 5 mg ')
   expect(screen.getByRole('button', { name: 'Capsule' })).toHaveAttribute('aria-pressed', 'true')
   expect(screen.getByText('Pick up where you left off. Your details are still here.')).toBeVisible()
   await user.click(screen.getByRole('button', { name: 'Clear form' }))
-  expect(screen.getByLabelText('Medicine name')).toHaveValue('')
+  expect(screen.getByLabelText('Medication name')).toHaveValue('')
   expect(screen.getByRole('button', { name: 'Capsule' })).toHaveAttribute('aria-pressed', 'false')
   second.unmount()
   open()
@@ -126,4 +126,27 @@ test('a confirmed schedule save removes the draft before the form is opened agai
     screen.queryByText('Pick up where you left off. Your details are still here.'),
   ).not.toBeInTheDocument()
   client.clear()
+})
+
+test('the add form names its details and a session end with medication', async () => {
+  server.use(
+    http.get('/api/medicines', () => HttpResponse.json({ medicines: [] })),
+    http.post('/api/medicines', () =>
+      HttpResponse.json({ error: 'unauthorized' }, { status: 401 }),
+    ),
+  )
+  const user = userEvent.setup()
+  render(
+    <QueryClientProvider client={createQueryClient()}>
+      <MedicineForm onSaved={() => {}} />
+    </QueryClientProvider>,
+  )
+  expect(screen.getByRole('group', { name: 'Medication details' })).toBeVisible()
+  await user.type(screen.getByLabelText('Medication name'), 'Magnesium')
+  await user.type(screen.getByLabelText(/^Strength/), '5 mg')
+  await user.click(screen.getByRole('button', { name: 'Tablet' }))
+  await user.click(screen.getByRole('button', { name: 'Save medication' }))
+  expect(
+    await screen.findByText("Magnesium wasn't saved. Sign in again to save your medication."),
+  ).toBeVisible()
 })

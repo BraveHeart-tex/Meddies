@@ -8,12 +8,12 @@ const isSave = (method: string, url: URL) => method === 'POST' && url.pathname =
 test('add a medicine: validation, failures keep values, retry saves once, handoff', async ({
   page,
 }) => {
-  const name = page.getByLabel('Medicine name')
+  const name = page.getByLabel('Medication name')
   const strength = page.getByLabel(/^Strength/)
   const unitGroup = page.getByRole('group', { name: 'Unit' })
   const tablet = page.getByRole('button', { name: 'Tablet' })
   const capsule = page.getByRole('button', { name: 'Capsule' })
-  const save = page.getByRole('button', { name: 'Save medicine' })
+  const save = page.getByRole('button', { name: 'Save medication' })
   const label = `Add Journey Medicine ${'L'.repeat(60)}`
   const posted: string[] = []
   page.on('request', (request) => {
@@ -23,9 +23,9 @@ test('add a medicine: validation, failures keep values, retry saves once, handof
   await test.step('open Add from the list with nothing preselected', async () => {
     await page.goto('/medications')
     await waitForClientRouter(page)
-    await page.getByRole('link', { name: 'Add a medicine' }).click()
+    await page.getByRole('link', { name: 'Add a medication' }).click()
     await expect(page).toHaveURL(/\/medications\?add$/)
-    await expect(page.getByRole('heading', { name: 'Add medicine' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Add medication' })).toBeVisible()
     await expect(tablet).toHaveAttribute('aria-pressed', 'false')
     await expect(capsule).toHaveAttribute('aria-pressed', 'false')
     await expect(unitGroup).toHaveAccessibleDescription(/whole or half tablets/)
@@ -39,7 +39,7 @@ test('add a medicine: validation, failures keep values, retry saves once, handof
     await save.click()
     await expect(name).toBeFocused()
     await expect(name).toHaveAttribute('aria-invalid', 'true')
-    await expect(name).toHaveAccessibleDescription(/Enter the medicine name\./)
+    await expect(name).toHaveAccessibleDescription(/Enter the medication name\./)
     await expect(strength).toHaveAccessibleDescription(/Use 120 characters or fewer\./)
     await expect(unitGroup).toHaveAccessibleDescription(/Choose tablet or capsule\./)
     expect(posted).toHaveLength(0)
@@ -103,7 +103,7 @@ test('add a medicine: validation, failures keep values, retry saves once, handof
     )
     // Two rapid activations before the pending render: the synchronous guard sends one.
     await retry.dblclick()
-    const saving = page.getByRole('button', { name: 'Saving medicine...' })
+    const saving = page.getByRole('button', { name: 'Saving medication...' })
     await expect(saving).toBeDisabled()
     await expect(name).toBeDisabled()
     await expect(capsule).toBeDisabled()
@@ -136,7 +136,7 @@ test('add a medicine: validation, failures keep values, retry saves once, handof
 
 test('a lost save response is reconciled before claiming failure', async ({ page }) => {
   await page.goto('/medications?add')
-  await page.getByLabel('Medicine name').fill('Lost Response Medicine')
+  await page.getByLabel('Medication name').fill('Lost Response Medicine')
   await page.getByRole('button', { name: 'Tablet' }).click()
   // The save reaches the server, but its response is lost on the way back.
   await page.route(
@@ -148,14 +148,14 @@ test('a lost save response is reconciled before claiming failure', async ({ page
     },
     { times: 1 },
   )
-  await page.getByRole('button', { name: 'Save medicine' }).click()
+  await page.getByRole('button', { name: 'Save medication' }).click()
   await expect(page.getByText('Lost Response Medicine saved.')).toBeVisible()
   await expect(page.getByText('That might not have saved.')).toBeHidden()
 })
 
 test('a conflict locks the form and offers Medications', async ({ page }) => {
   await page.goto('/medications?add')
-  await page.getByLabel('Medicine name').fill('Conflict Medicine')
+  await page.getByLabel('Medication name').fill('Conflict Medicine')
   await page.getByRole('button', { name: 'Capsule' }).click()
   await page.route(
     (url) => url.pathname === '/api/medicines',
@@ -164,11 +164,11 @@ test('a conflict locks the form and offers Medications', async ({ page }) => {
         ? route.fulfill({ status: 409, json: { error: 'conflict' } })
         : route.fallback(),
   )
-  await page.getByRole('button', { name: 'Save medicine' }).click()
+  await page.getByRole('button', { name: 'Save medication' }).click()
   await expect(
     page.getByText('A different version of this medication is already saved.'),
   ).toBeVisible()
-  await expect(page.getByLabel('Medicine name')).toBeDisabled()
+  await expect(page.getByLabel('Medication name')).toBeDisabled()
   await expect(page.getByRole('button', { name: /save medicine/i })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Open Medications' })).toHaveAttribute(
     'href',
@@ -178,15 +178,15 @@ test('a conflict locks the form and offers Medications', async ({ page }) => {
 
 test('known offline waits for a connection and keeps values', async ({ page, context }) => {
   await page.goto('/medications?add')
-  await page.getByLabel('Medicine name').fill('Offline Medicine')
+  await page.getByLabel('Medication name').fill('Offline Medicine')
   await context.setOffline(true)
   const connect = page.getByRole('button', { name: 'Connect to save' })
   await expect(connect).toBeDisabled()
   await expect(page.getByText("You're offline.")).toBeVisible()
   await page.getByLabel(/^Strength/).fill('10 mg')
-  await expect(page.getByLabel('Medicine name')).toHaveValue('Offline Medicine')
+  await expect(page.getByLabel('Medication name')).toHaveValue('Offline Medicine')
   await context.setOffline(false)
-  await expect(page.getByRole('button', { name: 'Save medicine' })).toBeEnabled()
+  await expect(page.getByRole('button', { name: 'Save medication' })).toBeEnabled()
   await expect(page.getByText("You're offline.")).toBeHidden()
 })
 
@@ -194,12 +194,12 @@ test('Add keeps a session draft across routes, clears explicitly and after confi
   page,
 }) => {
   await page.goto('/medications?add')
-  const name = page.getByLabel('Medicine name')
+  const name = page.getByLabel('Medication name')
   const strength = page.getByLabel(/^Strength/)
   const note = page.getByText('Pick up where you left off. Your details are still here.')
   const openAdd = async () => {
     await page.getByRole('link', { name: 'Medications', exact: true }).first().click()
-    await page.getByRole('link', { name: 'Add a medicine' }).click()
+    await page.getByRole('link', { name: 'Add a medication' }).click()
   }
   await expect(note).toBeHidden()
   await name.fill('Draft medicine')
@@ -224,10 +224,10 @@ test('Add keeps a session draft across routes, clears explicitly and after confi
   await page.getByRole('button', { name: 'Tablet' }).click()
   await openAdd()
   await expect(note).toBeVisible()
-  await page.getByRole('button', { name: 'Save medicine' }).click()
+  await page.getByRole('button', { name: 'Save medication' }).click()
   await expect(page.getByText('Confirmed draft medicine saved.')).toBeVisible()
   await page.getByRole('link', { name: 'Done for now' }).click()
-  await page.getByRole('link', { name: 'Add a medicine' }).click()
+  await page.getByRole('link', { name: 'Add a medication' }).click()
   await expect(name).toHaveValue('')
   await expect(note).toBeHidden()
 })

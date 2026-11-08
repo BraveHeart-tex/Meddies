@@ -32,7 +32,7 @@ export default async function MedicationsPage({
     return (
       <main className="mx-auto max-w-lg space-y-4 px-6 py-12">
         <h1 className="text-2xl font-semibold">Medications</h1>
-        <p>Sign in to view your medicines.</p>
+        <p>Sign in to view your medications.</p>
         <Link className="underline" href={`/?returnTo=${encodeURIComponent(returnTo)}`}>
           Sign in
         </Link>

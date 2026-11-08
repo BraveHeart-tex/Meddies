@@ -39,7 +39,8 @@ export function TodaySchedule({
     retry: retryMedicines,
   } = useMedicines()
   const medicinesError = medicinesLoadError || medicinesRefreshFailed
-  const name = (id: string) => medicines.find((medicine) => medicine.id === id)?.label ?? 'Medicine'
+  const name = (id: string) =>
+    medicines.find((medicine) => medicine.id === id)?.label ?? 'Medication'
   const now = useScheduleNow(serverNow)
   // Statuses follow the scheduling clock. Records cover only the snapshot's date, so a new day
   // waits for its own read instead of inventing coverage.

@@ -207,7 +207,7 @@ function HistoryDoseRow({
         <ItemTitle>
           <h3 id={`dose-${dose.id}`} tabIndex={-1}>
             <span className="sr-only">{clock(dose.dueAt)} · </span>
-            {medicine?.label ?? 'Medicine'}
+            {medicine?.label ?? 'Medication'}
           </h3>
         </ItemTitle>
         <ItemDescription>

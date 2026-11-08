@@ -5,7 +5,7 @@ import { z } from 'zod'
 const tooLong = 'Use 120 characters or fewer.'
 
 export const medicineFormSchema = z.object({
-  label: z.string().trim().min(1, 'Enter the medicine name.').max(120, tooLong),
+  label: z.string().trim().min(1, 'Enter the medication name.').max(120, tooLong),
   strength: z
     .string()
     .trim()

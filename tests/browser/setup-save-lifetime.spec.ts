@@ -38,11 +38,11 @@ for (const viewport of [
           await route.fallback()
         })
         await page.goto('/medications?add')
-        await page.getByLabel('Medicine name').fill('Magnesium')
+        await page.getByLabel('Medication name').fill('Magnesium')
         await page.getByLabel(/^Strength/).fill(' 200 mg ')
         await page.getByRole('button', { name: 'Tablet', exact: true }).click()
-        await page.getByRole('button', { name: 'Save medicine', exact: true }).click()
-        await expect(page.getByRole('button', { name: 'Saving medicine...' })).toBeDisabled()
+        await page.getByRole('button', { name: 'Save medication', exact: true }).click()
+        await expect(page.getByRole('button', { name: 'Saving medication...' })).toBeDisabled()
         await page.getByRole('link', { name: 'Today', exact: true }).click()
         await expect(page).toHaveURL(app.origin + '/')
         await expect(page.getByText('Saving Magnesium…', { exact: true })).toBeVisible()
@@ -55,10 +55,10 @@ for (const viewport of [
               page.getByRole('heading', { name: 'Magnesium', exact: true }),
             ).toBeVisible()
             await page.getByRole('link', { name: 'Medications', exact: true }).click()
-            await page.getByRole('link', { name: 'Add a medicine' }).click()
-            await expect(page.getByLabel('Medicine name')).toHaveValue('')
+            await page.getByRole('link', { name: 'Add a medication' }).click()
+            await expect(page.getByLabel('Medication name')).toHaveValue('')
             await expect(
-              page.getByRole('button', { name: 'Save medicine', exact: true }),
+              page.getByRole('button', { name: 'Save medication', exact: true }),
             ).toBeEnabled()
           },
           unconfirmed: async () => {
@@ -66,10 +66,10 @@ for (const viewport of [
               page.getByText('Magnesium might not have saved', { exact: true }),
             ).toBeVisible()
             await page.getByRole('button', { name: 'Return to form', exact: true }).click()
-            await expect(page.getByLabel('Medicine name')).toHaveValue('Magnesium')
+            await expect(page.getByLabel('Medication name')).toHaveValue('Magnesium')
             await expect(page.getByLabel(/^Strength/)).toHaveValue(' 200 mg ')
             await page.getByRole('button', { name: 'Try saving medication again' }).click()
-            await expect(page.getByRole('region', { name: 'Saved medicine' })).toBeVisible()
+            await expect(page.getByRole('region', { name: 'Saved medication' })).toBeVisible()
             expect(posts).toHaveLength(2)
             expect(posts[1]).toBe(posts[0])
           },

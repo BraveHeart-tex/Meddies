@@ -126,7 +126,7 @@ test('schedule rows: add, remove, duplicates, quantities, failures and known off
 
   await test.step('an unknown medicine is not in the list', async () => {
     await page.goto(`/medications?schedule=${randomUUID()}`)
-    await expect(page.getByText("This medicine isn't in your list.")).toBeVisible()
+    await expect(page.getByText("This medication isn't in your list.")).toBeVisible()
     await expect(page.getByRole('link', { name: 'Back to Medications' })).toBeVisible()
   })
 })
