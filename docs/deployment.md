@@ -56,7 +56,8 @@ A single non-canceling concurrency group covers verification and the complete re
 
 The Vercel CLI is locked in the root dependencies. Its optional `koffi` build is
 disabled; releases use remote Vercel builds, not local native build tooling.
-No production environment files or build artifacts are uploaded by Actions.
+No production environment files or deployable build artifacts are uploaded by Actions;
+Verify caches only the `.next/cache` compiler cache.
 Alias verification calls Vercel's read-only deployment API with an explicit
 `teamId` from `VERCEL_ORG_ID`, using `VERCEL_TOKEN` from the environment. It checks
 the ready production deployment URL, project ID and commit SHA. This avoids the

@@ -24,6 +24,15 @@ The Verify workflow runs three jobs in parallel, then an aggregator:
 The build jobs set `CI_SKIP_BUILD_TYPECHECK=1`, so their builds skip the Next.js type check
 that `pnpm typecheck` runs in `Static`. Vercel and local builds keep the check.
 
+`Unit` and `Journeys` restore Turbopack's `.next/cache`. Its key is the OS, a hash of
+`pnpm-lock.yaml` and `next.config.ts`, and the commit SHA, with prefix restore keys. Only
+main runs save it, so pull requests cannot poison or evict it. To clear it:
+
+```sh
+gh cache list --key Linux-next-cache- --limit 1000 --json id --jq '.[].id' \
+  | xargs -n1 gh cache delete
+```
+
 ## Cheapest proof
 
 Prove each behavior at the cheapest level that can prove it, with delays and failures

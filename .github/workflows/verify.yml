@@ -44,10 +44,26 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Restore Next.js build cache
+        id: next-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-next-cache-${{ hashFiles('pnpm-lock.yaml', 'next.config.ts') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-next-cache-${{ hashFiles('pnpm-lock.yaml', 'next.config.ts') }}-
+            ${{ runner.os }}-next-cache-
       - name: Production build
         env:
           CI_SKIP_BUILD_TYPECHECK: '1'
         run: pnpm build
+      # Only main saves, so pull requests cannot poison or evict its cache.
+      - name: Save Next.js build cache
+        if: github.ref == 'refs/heads/main' && steps.next-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .next/cache
+          key: ${{ steps.next-cache.outputs.cache-primary-key }}
       - run: pnpm test
 
   journeys:
@@ -64,10 +80,26 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Restore Next.js build cache
+        id: next-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-next-cache-${{ hashFiles('pnpm-lock.yaml', 'next.config.ts') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-next-cache-${{ hashFiles('pnpm-lock.yaml', 'next.config.ts') }}-
+            ${{ runner.os }}-next-cache-
       - name: Production build
         env:
           CI_SKIP_BUILD_TYPECHECK: '1'
         run: pnpm build
+      # Only main saves, so pull requests cannot poison or evict its cache.
+      - name: Save Next.js build cache
+        if: github.ref == 'refs/heads/main' && steps.next-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .next/cache
+          key: ${{ steps.next-cache.outputs.cache-primary-key }}
       - name: Worker build
         run: pnpm worker:build
       - name: Playwright version
