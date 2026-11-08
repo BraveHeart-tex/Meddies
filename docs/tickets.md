@@ -89,8 +89,8 @@ ticket's description in the same change, then comments on both tickets.
 
 ## Closing
 
-Close a ticket only when every criterion is checked, `pnpm verify:local` passes, CI
-passes (including browser journeys) on the pushed commit, and the evidence comment is
-recorded in the ticket ([verification](verification.md#evidence-and-completion)).
+Close a ticket only when every criterion is checked, `pnpm verify:local` passes, the
+change is pushed to main, and the evidence comment is recorded in the ticket
+([verification](verification.md#evidence-and-completion)).
 For any criterion that will not be finished, create a follow-up ticket with a single
 owner, link it from this ticket, and remove the item here.

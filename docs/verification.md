@@ -119,12 +119,12 @@ needs a reason. Prettier rewraps after indentation changes also remain.
 
 ## Evidence and completion
 
-Record one evidence comment in the active Linear issue: the commit, the Release run link,
-journeys added or changed (by file), visual and manual checks performed, limitations and
-outstanding device checks. The assertions are the evidence; do not copy measurements or
+Record one evidence comment in the active Linear issue: the commit, journeys added or
+changed (by file), visual and manual checks performed, limitations and outstanding device
+checks. The assertions are the evidence; do not copy measurements or
 results. Link existing evidence rather than copying it between issues.
 
 Verification is complete when `pnpm verify:local` passes, the change is pushed to main,
-the Release verify job (journeys included) is green on that commit and linked in the
-issue, applicable manual checks are recorded, and any unverified deployment behavior is
-named. A failed or blocked check keeps verification incomplete; record it explicitly.
+applicable manual checks are recorded, and any unverified deployment behavior is named.
+The maintainer checks the Release verify job (journeys included). A failed or blocked
+check keeps verification incomplete; record it explicitly.
