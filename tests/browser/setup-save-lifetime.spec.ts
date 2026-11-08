@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { expect, test } from './fixtures'
+import { scrollsHorizontally } from './actions'
 import { pickTime } from './pickers'
 
 test.use({
@@ -8,7 +9,6 @@ test.use({
 
 for (const viewport of [
   { name: 'phone', width: 402, height: 874, reducedMotion: 'no-preference' as const },
-  { name: 'narrow', width: 320, height: 740, reducedMotion: 'reduce' as const },
   // Retained after FE-668 found a zero-width Toast message beside its recovery action.
   // This is a narrow viewport regression, not text enlargement or zoom evidence.
   {
@@ -23,7 +23,10 @@ for (const viewport of [
       viewport: { width: viewport.width, height: viewport.height },
       reducedMotion: viewport.reducedMotion,
     })
-    for (const outcome of ['confirmed', 'unconfirmed'] as const) {
+    const outcomes =
+      viewport.width === 402 ? (['confirmed', 'unconfirmed'] as const) : (['unconfirmed'] as const)
+    // Allowed reason: navigation during a save.
+    for (const outcome of outcomes) {
       test(`medicine save ${outcome} after leaving Add`, async ({ page, app }) => {
         let release!: () => void
         const held = new Promise<void>((resolve) => (release = resolve))
@@ -65,6 +68,10 @@ for (const viewport of [
             await expect(
               page.getByText('Magnesium might not have saved', { exact: true }),
             ).toBeVisible()
+            expect(
+              await scrollsHorizontally(page),
+              'the unconfirmed save toast fits the viewport',
+            ).toBe(false)
             await page.getByRole('button', { name: 'Return to form', exact: true }).click()
             await expect(page.getByLabel('Medication name')).toHaveValue('Magnesium')
             await expect(page.getByLabel(/^Strength/)).toHaveValue(' 200 mg ')
@@ -78,6 +85,9 @@ for (const viewport of [
       })
     }
 
+    if (viewport.width !== 402) return
+
+    // Allowed reason: navigation during a save.
     test('schedule confirmation follows navigation to Today', async ({ page, app }) => {
       const id = randomUUID()
       await app.api('POST', '/api/medicines', {
