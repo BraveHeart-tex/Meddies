@@ -7,7 +7,7 @@ and the signed-in session behave from the user's side.
 
 **Medicine**:
 Something the user takes and tracks in Meddies, with a label, quantity unit and strength.
-_Avoid_: medication, in UI copy
+_Avoid_: medicine, in UI copy; write medication there
 
 ## Doses
 

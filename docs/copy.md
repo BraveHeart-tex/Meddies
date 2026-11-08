@@ -36,7 +36,7 @@ These are banned in UI copy and stay fine in code, docs and tickets, including t
 | confirmed, unconfirmed   | saved, "might not have saved"             |
 | routine (as a data noun) | schedule, doses                           |
 
-Say "medicine", never "medication", and call the tab "Medicines". The `/medications` URL and code
+Say "medication", never "medicine", and call the tab "Medications". The `/medications` URL and code
 names stay.
 
 ## Errors
@@ -64,7 +64,7 @@ The target warmth.
 | Instead of                                                       | Write                                                                                              |
 | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | No doses scheduled for today.                                    | Nothing to take today. You're all set.                                                             |
-| No medicines saved yet.                                          | No medicines here yet. Add your first one whenever you're ready.                                   |
+| No medicines saved yet.                                          | No medications here yet. Add your first one whenever you're ready.                                 |
 | Today could not be refreshed. Connect to the internet and retry. | Today didn't update just now. Check your connection and try again.                                 |
 | Confirm skipped dose                                             | Skip this dose                                                                                     |
 | Unsaved details from earlier.                                    | Pick up where you left off. Your details are still here.                                           |
