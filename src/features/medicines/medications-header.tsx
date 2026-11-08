@@ -36,7 +36,8 @@ export function MedicationsHeader() {
         />
       </>
     )
-  if (view.mode !== 'list') return <AppHeader title="Medications" />
+  // The medication page and setup have their own Back row and identity header (650 Fix 1).
+  if (view.mode !== 'list') return null
   return (
     <AppHeader
       title="Medications"

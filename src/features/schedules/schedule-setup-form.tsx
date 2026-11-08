@@ -5,17 +5,30 @@ import { MedicationsLink } from '@/features/medicines/medications-nav'
 import { medicationsHref } from '@/features/medicines/routes'
 import { InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import type { Medicine } from '@/features/medicines/contract'
-import { MedicationTile } from '@/features/medicines/medication-tile'
+import { LoadingSection } from '@/components/ui/skeleton'
+import {
+  MedicationBackRow,
+  MedicationIdentity,
+  MedicationLoadFailed,
+  MedicationNotFound,
+  medicationsListHref,
+  MedicinesRefreshAlert,
+  ScheduleUnchecked,
+} from '@/features/medicines/medication-sub-screen'
+import {
+  MedicationSetupSkeleton,
+  ScheduleFormSkeleton,
+} from '@/features/medicines/medications-skeleton'
 import { useMedicines } from '@/features/medicines/queries'
 import type { DailySchedule } from './contract'
 import { ScheduleForm } from './schedule-form'
 import { type SchedulesRead } from './queries'
 
 /**
- * First schedule setup for the `?schedule=ID` medicine (FE-647 A7, S5, S6). The form shows only
- * once Meddies knows the medicine has no schedule; `onSaved` runs after server confirmation.
+ * First schedule setup for the `?schedule=ID` medicine (FE-647 A7, S5, S6), under 650 Fix 1's
+ * header. The form shows only once Meddies knows the medicine has no schedule; `onSaved` runs after server confirmation.
  */
 export function ScheduleSetupForm({
   schedulesRead: { schedules, loading, loadError, retry: retrySchedules },
@@ -31,17 +44,32 @@ export function ScheduleSetupForm({
   onSaved?: (medicine: Medicine) => void
   serverEntry?: boolean
 }) {
-  const {
-    medicines,
-    loading: medicinesLoading,
-    loadError: medicinesError,
-    retry: retryMedicines,
-  } = useMedicines({ serverEntry })
+  const medicinesRead = useMedicines({ serverEntry })
+  const { medicines, loading: medicinesLoading, loadError: medicinesError } = medicinesRead
   const [conflict, setConflict] = useState(false)
   const [savedId, setSavedId] = useState('')
+  if (medicinesLoading) return <MedicationSetupSkeleton />
+
   const medicine = medicines.find((item) => item.id === medicineId)
+  if (!medicine)
+    return (
+      <div className="flex flex-col gap-5">
+        <MedicationBackRow href={medicationsListHref}>Medications</MedicationBackRow>
+        <MedicinesRefreshAlert medicinesRead={medicinesRead} />
+        {medicinesError ? (
+          <MedicationLoadFailed
+            onRetry={() => {
+              medicinesRead.retry()
+              if (loadError) retrySchedules()
+            }}
+          />
+        ) : (
+          <MedicationNotFound />
+        )}
+      </div>
+    )
+
   const schedule = schedules.find((item) => item.medicineId === medicineId)
-  const name = medicine?.label ?? 'This medication'
 
   function saved(confirmed: DailySchedule) {
     setSavedId(confirmed.id)
@@ -49,39 +77,13 @@ export function ScheduleSetupForm({
   }
 
   let body
-  if (loading || medicinesLoading) body = <p role="status">Loading schedule…</p>
-  else if ((medicinesError && !medicine) || loadError)
+  if (loading)
     body = (
-      <Alert variant="destructive">
-        <AlertTitle>{name} didn&apos;t load just now.</AlertTitle>
-        <AlertDescription>
-          Meddies needs to check its schedule first. Check your connection and try again.
-        </AlertDescription>
-        <Button
-          variant="outline"
-          className="mt-2 justify-self-start"
-          onClick={() => {
-            if (medicinesError) retryMedicines()
-            if (loadError) retrySchedules()
-          }}
-        >
-          Try again
-        </Button>
-      </Alert>
+      <LoadingSection label="Loading schedule">
+        <ScheduleFormSkeleton />
+      </LoadingSection>
     )
-  else if (!medicine)
-    body = (
-      <Alert>
-        <InfoIcon aria-hidden="true" />
-        <AlertTitle>This medication isn&apos;t in your list.</AlertTitle>
-        <MedicationsLink
-          href={medicationsHref({ mode: 'list' })}
-          className={buttonVariants({ variant: 'outline', className: 'mt-2 justify-self-start' })}
-        >
-          Back to Medications
-        </MedicationsLink>
-      </Alert>
-    )
+  else if (loadError) body = <ScheduleUnchecked name={medicine.label} onRetry={retrySchedules} />
   else if (schedule && schedule.id === savedId)
     body = <p role="status">Schedule saved for {medicine.label}.</p>
   else if (schedule || conflict)
@@ -114,23 +116,12 @@ export function ScheduleSetupForm({
       aria-labelledby="schedule-heading"
       className="flex flex-col gap-5 [overflow-wrap:anywhere]"
     >
-      <header className="flex items-start gap-3.5">
-        {medicine && <MedicationTile medicineId={medicine.id} />}
-        <div className="flex min-w-0 flex-col gap-1">
-          <p className="text-label font-extrabold tracking-eyebrow text-muted-foreground uppercase">
-            Set schedule
-          </p>
-          <h2 id="schedule-heading" className="text-title font-extrabold">
-            {medicine?.label ?? 'Medication'}
-          </h2>
-          {medicine && (
-            <p className="text-body-sm font-bold text-muted-foreground">
-              {[medicine.strength, medicine.unit].filter(Boolean).join(' · ')}
-            </p>
-          )}
-        </div>
-      </header>
-      {medicine && !schedule && !conflict && (
+      <MedicationBackRow href={medicationsHref({ mode: 'detail', medicineId: medicine.id })}>
+        {medicine.label}
+      </MedicationBackRow>
+      <MedicationIdentity medicine={medicine} eyebrow="Set schedule" headingId="schedule-heading" />
+      <MedicinesRefreshAlert medicinesRead={medicinesRead} />
+      {!loading && !loadError && !schedule && !conflict && (
         <p className="text-body-sm text-muted-foreground">
           Times are Istanbul time. Doses start from the next time after you save. Earlier times
           today aren&apos;t added.

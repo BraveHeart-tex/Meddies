@@ -65,7 +65,6 @@ function HeaderFrame({
   align?: 'start' | 'center'
   headingClassName: string
 }) {
-  const pathname = usePathname()
   return (
     <header
       className={cn(
@@ -78,15 +77,22 @@ function HeaderFrame({
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-2">
         {action}
-        <Link
-          href="/settings"
-          aria-label="Settings"
-          aria-current={pathname === '/settings' ? 'page' : undefined}
-          className="inline-flex size-11 items-center justify-center rounded-full border bg-card text-foreground aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
-        >
-          <Icon name="settings" size={20} />
-        </Link>
+        <SettingsLink />
       </div>
     </header>
+  )
+}
+
+export function SettingsLink() {
+  const pathname = usePathname()
+  return (
+    <Link
+      href="/settings"
+      aria-label="Settings"
+      aria-current={pathname === '/settings' ? 'page' : undefined}
+      className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border bg-card text-foreground aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
+    >
+      <Icon name="settings" size={20} />
+    </Link>
   )
 }

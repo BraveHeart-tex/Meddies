@@ -1,4 +1,5 @@
 import { resolve } from 'node:path'
+import type { Page } from '@playwright/test'
 import { captureCases, captureLoading, type CaptureRoute } from './capture'
 import { expect, test } from './fixtures'
 import {
@@ -6,6 +7,8 @@ import {
   historyFallback,
   historyList,
   historyRouteFallback,
+  medicationFallback,
+  medicationSetupFallback,
   medicationsFallback,
   medicationsList,
   settingsRouteFallback,
@@ -22,6 +25,10 @@ import { routeRender } from './worker-proxy'
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
 const out = process.env.MEDDIES_VISUAL_OUT
+const unscheduledId = '00000000-0000-4000-8000-0000000c0001'
+const longNameId = '00000000-0000-4000-8000-0000000c0002'
+const longName = 'Levothyroxine sodium extended release 75 micrograms'
+const heading = (name: string) => (page: Page) => page.getByRole('heading', { level: 1, name })
 
 const routes: CaptureRoute[] = [
   { name: 'today', path: '/', fallback: todayFallback, content: todaysDoses },
@@ -36,6 +43,24 @@ const routes: CaptureRoute[] = [
     path: '/medications',
     fallback: medicationsFallback,
     content: medicationsList,
+  },
+  {
+    name: 'medication-detail',
+    path: `/medications?medicine=${unscheduledId}`,
+    fallback: medicationFallback,
+    content: heading('Capture Unscheduled Medicine'),
+  },
+  {
+    name: 'medication-setup',
+    path: `/medications?schedule=${unscheduledId}`,
+    fallback: medicationSetupFallback,
+    content: heading('Capture Unscheduled Medicine'),
+  },
+  {
+    name: 'medication-setup-long-name',
+    path: `/medications?schedule=${longNameId}`,
+    fallback: medicationSetupFallback,
+    content: heading(longName),
   },
   {
     name: 'history-route',
@@ -74,12 +99,23 @@ test.use({
     auth: true,
     storage: true,
     initialScheduleTime,
-    seed: ({ db, ownerId }) =>
-      insertScheduledMedicine(db, ownerId, {
+    seed: async ({ db, ownerId }) => {
+      await insertScheduledMedicine(db, ownerId, {
         label: 'Capture Fixture Medicine',
         startDate: addDays(today, -1),
         times: [{ time: '08:00', quantity: 1 }],
-      }),
+      })
+      for (const [id, label] of [
+        [unscheduledId, 'Capture Unscheduled Medicine'],
+        [longNameId, longName],
+      ])
+        await db
+          .prepare(
+            'INSERT INTO user_medications(owner_id,id,label,strength,unit) VALUES(?,?,?,?,?)',
+          )
+          .bind(ownerId, id, label, '10 mg', 'tablet')
+          .run()
+    },
   },
 })
 

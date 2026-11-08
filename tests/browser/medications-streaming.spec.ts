@@ -3,6 +3,8 @@ import type { Page } from '@playwright/test'
 import { expect, test, type JourneyDatabase } from './fixtures'
 import { layoutViewports, trackLayout } from './layout'
 import {
+  medicationFallback,
+  medicationSetupFallback,
   medicationsFallback as fallback,
   medicationsFallbackSection,
   medicationsList as list,
@@ -16,7 +18,8 @@ import type { WorkerRoute } from './worker-proxy'
 
 // Medications streams one section for its data views (FE-625): the shell, title and Add render
 // first, 647·L2 holds the list while the server reads, the browser reuses the hydrated data, and
-// view changes use the native History API.
+// view changes use the native History API. FE-626 adds the medication page and schedule setup,
+// whose direct links hold 647·D1 and its setup equivalent.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
 
@@ -33,10 +36,15 @@ const layoutShiftBudget = 0.01
 const scheduled = 'Streaming Scheduled Medicine'
 const unscheduled = 'Streaming Unscheduled Medicine'
 
-function insertMedicine(db: JourneyDatabase, ownerId: string, label: string) {
+function insertMedicine(
+  db: JourneyDatabase,
+  ownerId: string,
+  label: string,
+  id: string = randomUUID(),
+) {
   return db
     .prepare('INSERT INTO user_medications(owner_id,id,label,strength,unit) VALUES(?,?,?,?,?)')
-    .bind(ownerId, randomUUID(), label, '10 mg', 'tablet')
+    .bind(ownerId, id, label, '10 mg', 'tablet')
     .run()
 }
 
@@ -200,6 +208,14 @@ test('view changes make no server request, and Back, Forward and reload restore 
   await page.goBack()
   await page.goForward()
   await expect(page).toHaveURL(/\/medications\?schedule=/)
+
+  // 650 Fix 1: setup's Back row names the medication and returns to its page.
+  await page.getByRole('link', { name: unscheduled, exact: true }).click()
+  await expect(page).toHaveURL(/\/medications\?medicine=/)
+  await expect(page.getByRole('heading', { level: 1, name: unscheduled })).toBeVisible()
+  await page.goBack()
+  await expect(page).toHaveURL(/\/medications\?schedule=/)
+  await expect(page.getByRole('heading', { level: 1, name: unscheduled })).toBeVisible()
   expect(pageRequests.count(), 'page requests during view changes').toBe(0)
   expectNoRepeatedReads(api)
 
@@ -208,23 +224,13 @@ test('view changes make no server request, and Back, Forward and reload restore 
   await expect(page.getByRole('heading', { name: 'Schedule' }).first()).toBeVisible()
 })
 
-test('Add never waits for the reads, and detail shows no list skeleton', async ({ page, app }) => {
+test('Add never waits for the reads', async ({ page, app }) => {
   for (const route of reads) app.worker.hold(route)
   await page.goto('/medications?add', { waitUntil: 'commit' })
   await expect(page.getByRole('heading', { level: 1, name: 'Add medication' })).toBeVisible()
   await expect(page.getByRole('textbox').first()).toBeVisible()
   await expect(placeholders(page)).toHaveCount(0)
   for (const route of reads) app.worker.release(route)
-  app.worker.clear()
-
-  const id = randomUUID()
-  for (const route of reads) app.worker.hold(route)
-  await page.goto(`/medications?medicine=${id}`, { waitUntil: 'commit' })
-  await expect(title(page)).toBeVisible()
-  await expect(fallback(page)).toHaveCount(0)
-  await expect(placeholders(page)).toHaveCount(0)
-  for (const route of reads) app.worker.release(route)
-  await expect(page.getByText("This medication isn't in your list.")).toBeVisible()
 })
 
 test('failed reads show one alert with Retry and Add, and Retry recovers', async ({
@@ -242,13 +248,105 @@ test('failed reads show one alert with Retry and Add, and Retry recovers', async
   await expect(page.getByRole('alert').filter({ hasText: 'load just now' })).toHaveCount(0)
 })
 
+test.describe('direct links to one medication', () => {
+  const linkedId = randomUUID()
+  const linked = 'Magnesium'
+
+  test.use({
+    journey: {
+      auth: true,
+      storage: true,
+      initialScheduleTime,
+      seed: ({ db, ownerId }) => insertMedicine(db, ownerId, linked, linkedId),
+    },
+  })
+
+  // Streaming: the shell and the view's own fallback appear before the held reads return.
+  const views = [
+    {
+      name: 'medication page',
+      path: `/medications?medicine=${linkedId}`,
+      fallback: medicationFallback,
+      backRow: 'Medications',
+    },
+    {
+      name: 'schedule setup',
+      path: `/medications?schedule=${linkedId}`,
+      fallback: medicationSetupFallback,
+      backRow: linked,
+    },
+  ]
+
+  for (const view of views)
+    test(`the ${view.name} streams its fallback, then content, in a stable layout`, async ({
+      page,
+      app,
+    }) => {
+      const api = countApiRequests(page, app.origin)
+      const layout = await trackLayout(page, layoutViewports.phone)
+      for (const route of reads) app.worker.hold(route)
+      await page.goto(view.path, { waitUntil: 'commit' })
+      await expectReadsOverlap(app.worker, reads)
+      await expect(view.fallback(page)).toBeVisible()
+      await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
+      await expect(rootFallback(page)).toHaveCount(0)
+      await expect(fallback(page)).toHaveCount(0)
+      await expect(title(page)).toHaveCount(0)
+      await expect(page.getByRole('status')).toHaveCount(1)
+      for (const placeholder of await placeholders(page).all())
+        await expect(placeholder).toHaveAttribute('aria-hidden', 'true')
+      await layout.snapshot('fallback')
+
+      const heading = page.getByRole('heading', { level: 1, name: linked })
+      await expectStreamingOrder(app.worker, {
+        routes: reads,
+        fallback: view.fallback(page),
+        content: heading,
+      })
+      await expect(heading).toBeFocused()
+      await expect(
+        page.getByRole('main').getByRole('link', { name: view.backRow, exact: true }),
+      ).toBeVisible()
+      await expect(placeholders(page)).toHaveCount(0)
+      await page.waitForLoadState('load')
+      expectNoRepeatedReads(api)
+      await layout.snapshot('loaded')
+
+      const result = await layout.result()
+      const [fallbackBoxes, loadedBoxes] = result.snapshots.map((snapshot) => snapshot.boxes)
+      expect(loadedBoxes, 'the Back row, Settings and nav keep their geometry').toEqual(
+        fallbackBoxes,
+      )
+      // Same budget as Today, History and the list. The skeleton is replaced rather than moved, and
+      // it reserves each line of a one-line name, as this fixture has, so any shift is a regression.
+      expect(result.cumulativeLayoutShift).toBeLessThanOrEqual(layoutShiftBudget)
+    })
+
+  test('a link to a medication that is not in the list shows 647·D2', async ({ page, app }) => {
+    for (const route of reads) app.worker.hold(route)
+    await page.goto(`/medications?medicine=${randomUUID()}`, { waitUntil: 'commit' })
+    await expect(medicationFallback(page)).toBeVisible()
+    for (const route of reads) app.worker.release(route)
+    await expect(page.getByText("This medication isn't in your list")).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Open Medications' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Set schedule' })).toHaveCount(0)
+  })
+})
+
 test.describe('without a session', () => {
   test.use({ journey: { auth: false, storage: true, initialScheduleTime } })
 
   test('performs no private reads and hydrates no private data', async ({ page, app }) => {
-    await page.goto('/medications')
-    await expect(page).toHaveURL(/\/\?returnTo=%2Fmedications$/)
-    for (const route of reads) expect(app.worker.requests(route)).toHaveLength(0)
-    expect(await page.content()).not.toContain(scheduled)
+    const id = randomUUID()
+    for (const path of [
+      '/medications',
+      `/medications?medicine=${id}`,
+      `/medications?schedule=${id}`,
+    ]) {
+      await page.goto(path)
+      await expect(page).toHaveURL(`${app.origin}/?returnTo=${encodeURIComponent(path)}`)
+      for (const route of reads) expect(app.worker.requests(route)).toHaveLength(0)
+      expect(await page.content()).not.toContain(scheduled)
+    }
   })
 })

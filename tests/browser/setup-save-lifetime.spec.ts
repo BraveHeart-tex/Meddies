@@ -58,7 +58,10 @@ for (const viewport of [
             await expect(
               page.getByRole('heading', { name: 'Magnesium', exact: true }),
             ).toBeVisible()
-            await page.getByRole('link', { name: 'Medications', exact: true }).click()
+            await page
+              .getByRole('main')
+              .getByRole('link', { name: 'Medications', exact: true })
+              .click()
             await page.getByRole('link', { name: 'Add a medication' }).click()
             await expect(page.getByLabel('Medication name')).toHaveValue('')
             await expect(

@@ -114,6 +114,14 @@ export const selectedNavigation = (page: Page) =>
 export const medicationsFallback = (page: Page) =>
   page.getByRole('status').filter({ hasText: 'Loading medications' })
 
+/** The medication page's fallback (647·D1). The exact match keeps it apart from the list's. */
+export const medicationFallback = (page: Page) =>
+  page.getByRole('status').filter({ hasText: /^Loading medication$/ })
+
+/** Schedule setup's fallback: D1's header above a form-area block. */
+export const medicationSetupFallback = (page: Page) =>
+  page.getByRole('status').filter({ hasText: /^Loading schedule setup$/ })
+
 /** The loaded Medications list section. */
 export const medicationsList = (page: Page) =>
   page.getByRole('region', { name: 'Your medications' })

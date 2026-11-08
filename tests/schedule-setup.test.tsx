@@ -85,7 +85,9 @@ function panel(medicineId: string, mode: 'setup' | 'detail', onSaved: () => void
 async function openSetup(medicineId: string) {
   const onSaved = vi.fn()
   const view = render(panel(medicineId, 'setup', onSaved))
-  await waitFor(() => expect(screen.queryByText('Loading schedule…')).not.toBeInTheDocument())
+  await waitFor(() =>
+    expect(document.querySelector('[data-slot="skeleton"]')).not.toBeInTheDocument(),
+  )
   return { ...view, user: userEvent.setup(), onSaved }
 }
 
@@ -276,9 +278,9 @@ test('a medicine that already has a schedule shows no form and links to it', asy
 test('an unknown medicine is not in the list and links back to Medications', async () => {
   api(capsules)
   await openSetup('00000000-0000-4000-8000-00000000ffff')
-  expect(await screen.findByText("This medication isn't in your list.")).toBeVisible()
+  expect(await screen.findByText("This medication isn't in your list")).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Save schedule' })).not.toBeInTheDocument()
-  expect(screen.getByRole('link', { name: 'Back to Medications' })).toHaveAttribute(
+  expect(screen.getByRole('link', { name: 'Open Medications' })).toHaveAttribute(
     'href',
     '/medications',
   )

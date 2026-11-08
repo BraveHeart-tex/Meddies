@@ -355,16 +355,16 @@ describe('a medication detail', () => {
     renderDetail(medicine(1).id)
     expect(await screen.findByText('No schedule yet.')).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Schedule', level: 2 })).toBeVisible()
-    expect(screen.getByText('Strength: Not added')).toBeVisible()
-    expect(screen.getByText("Medication details can't be changed here.")).toBeVisible()
+    expect(screen.getByText('tablet')).toBeVisible()
+    expect(screen.getByText("Details and schedules can't be changed here yet.")).toBeVisible()
   })
 
   test('says when the medication is not in the list', async () => {
     medicinesApi(listOf(1))
     cache(listOf(1))
     renderDetail('00000000-0000-4000-8000-000000000999')
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      "This medication isn't in your list.",
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
+      "This medication isn't in your list",
     )
   })
 
@@ -378,9 +378,9 @@ describe('a medication detail', () => {
     cache(listOf(1))
     renderDetail(medicine(1).id)
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      "This schedule didn't load just now. Check your connection and try again.",
+      "Medicine 1's schedule couldn't be checked.",
     )
-    expect(screen.getByRole('button', { name: 'Try loading schedule again' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible()
   })
 })
 
