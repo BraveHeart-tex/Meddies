@@ -12,8 +12,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  checks:
-    name: Checks
+  static:
+    name: Static
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -26,11 +26,50 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Lint, format, types, build, full suite
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+
+  unit:
+    name: Unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Production build
         env:
           CI_SKIP_BUILD_TYPECHECK: '1'
-        run: bash scripts/verify.sh
-      # Journeys reuse the .next and .worker-build outputs from scripts/verify.sh.
+        run: pnpm build
+      - run: pnpm test
+
+  journeys:
+    name: Journeys
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Production build
+        env:
+          CI_SKIP_BUILD_TYPECHECK: '1'
+        run: pnpm build
+      - name: Worker build
+        run: pnpm worker:build
       - name: Playwright version
         id: playwright
         run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
@@ -65,9 +104,22 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 14
+
+  # Branch protection is configured against the `Checks` status context. Keep this name.
+  checks:
+    name: Checks
+    needs: [static, unit, journeys]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
       - name: Verification result
-        if: always()
         env:
           COMMIT: ${{ github.sha }}
-          RESULT: ${{ job.status }}
-        run: echo "Verification for $COMMIT - $RESULT" >> "$GITHUB_STEP_SUMMARY"
+          STATIC: ${{ needs.static.result }}
+          UNIT: ${{ needs.unit.result }}
+          JOURNEYS: ${{ needs.journeys.result }}
+        # Failed, cancelled and skipped needs all fail this job.
+        run: |
+          echo "Verification for $COMMIT - Static $STATIC, Unit $UNIT, Journeys $JOURNEYS" >> "$GITHUB_STEP_SUMMARY"
+          [[ "$STATIC" == success && "$UNIT" == success && "$JOURNEYS" == success ]]
