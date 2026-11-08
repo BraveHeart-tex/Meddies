@@ -23,6 +23,7 @@ import { useSessionFormDraft } from '@/lib/use-session-form-draft'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { parseMedicine, type Medicine } from './contract'
 import { medicinesQuery, confirmMedicine } from './queries'
+import { saveMessages } from '@/lib/save-messages'
 import { requestSave, type SaveProblem } from '@/lib/session-saves'
 import { useSessionSave } from '@/lib/use-session-save'
 import { discardSessionFormDraft } from '@/lib/use-session-form-draft'
@@ -106,7 +107,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
     >
       {draft.restored && (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-body-sm text-muted-foreground">Unsaved details from earlier.</p>
+          <p className="text-body-sm text-muted-foreground">{saveMessages.draftRestored}</p>
           <Button
             type="button"
             variant="ghost"
@@ -157,8 +158,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
                 <FieldLabel htmlFor="medicine-strength">
-                  Product strength{' '}
-                  <span className="font-semibold text-muted-foreground">(optional)</span>
+                  Strength <span className="font-semibold text-muted-foreground">(optional)</span>
                 </FieldLabel>
                 <Input
                   {...field}
@@ -228,8 +228,8 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
       {offline && !isSubmitting && problem !== 'conflict' ? (
         <Alert id="medicine-save-problem">
           <InfoIcon aria-hidden="true" />
-          <AlertTitle>You&apos;re offline.</AlertTitle>
-          <AlertDescription>Your details stay here for this session.</AlertDescription>
+          <AlertTitle>{saveMessages.offline}</AlertTitle>
+          <AlertDescription>{saveMessages.offlineFormDetails}</AlertDescription>
         </Alert>
       ) : problem ? (
         <SaveProblemAlert problem={problem} label={problemLabel} />
@@ -245,9 +245,9 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
           {isSubmitting
             ? 'Saving medicine...'
             : offline
-              ? 'Connect to save'
+              ? saveMessages.connectToSave
               : problem === 'unconfirmed'
-                ? 'Retry saving medicine'
+                ? 'Try saving medication again'
                 : 'Save medicine'}
         </Button>
       )}
@@ -258,19 +258,19 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
 function SaveProblemAlert({ problem, label }: { problem: SaveProblem; label: string }) {
   const copy = {
     unconfirmed: {
-      title: 'Save could not be confirmed.',
-      body: `Your details are still here. Retry saves ${label} once, even if the first try arrived. If you change the details, check Medications first so it isn't saved twice.`,
+      title: saveMessages.mightNotHaveSaved,
+      body: `Your details are still here. Trying again saves ${label} only once, even if the first try went through. If you change anything, check Medications first so it doesn't save twice.`,
     },
     rejected: {
       title: `${label} wasn't saved.`,
       body: "Meddies couldn't accept these details. Check the name and strength, then save again.",
     },
     unauthorized: {
-      title: 'Your session ended.',
+      title: saveMessages.sessionEnded,
       body: `${label} wasn't saved. Sign in again to save your medicine.`,
     },
     conflict: {
-      title: 'A different version of this save is already recorded.',
+      title: 'A different version of this medication is already saved.',
       body: 'Open Medications to see what was saved before adding it again.',
     },
   }[problem]

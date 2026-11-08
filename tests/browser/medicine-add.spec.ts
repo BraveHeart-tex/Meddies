@@ -9,7 +9,7 @@ test('add a medicine: validation, failures keep values, retry saves once, handof
   page,
 }) => {
   const name = page.getByLabel('Medicine name')
-  const strength = page.getByLabel(/^Product strength/)
+  const strength = page.getByLabel(/^Strength/)
   const unitGroup = page.getByRole('group', { name: 'Unit' })
   const tablet = page.getByRole('button', { name: 'Tablet' })
   const capsule = page.getByRole('button', { name: 'Capsule' })
@@ -84,10 +84,10 @@ test('add a medicine: validation, failures keep values, retry saves once, handof
       { times: 1 },
     )
     await save.click()
-    await expect(page.getByText('Save could not be confirmed.')).toBeVisible()
+    await expect(page.getByText('That might not have saved.')).toBeVisible()
     await expect(name).toHaveValue(label)
-    const retry = page.getByRole('button', { name: 'Retry saving medicine' })
-    await expect(retry).toHaveAccessibleDescription(/Retry saves .* once/)
+    const retry = page.getByRole('button', { name: 'Try saving medication again' })
+    await expect(retry).toHaveAccessibleDescription(/Trying again saves .* only once/)
 
     // Hold the retry to observe the pending state and a second activation.
     let release = () => {}
@@ -150,7 +150,7 @@ test('a lost save response is reconciled before claiming failure', async ({ page
   )
   await page.getByRole('button', { name: 'Save medicine' }).click()
   await expect(page.getByText('Lost Response Medicine saved.')).toBeVisible()
-  await expect(page.getByText('Save could not be confirmed.')).toBeHidden()
+  await expect(page.getByText('That might not have saved.')).toBeHidden()
 })
 
 test('a conflict locks the form and offers Medications', async ({ page }) => {
@@ -166,7 +166,7 @@ test('a conflict locks the form and offers Medications', async ({ page }) => {
   )
   await page.getByRole('button', { name: 'Save medicine' }).click()
   await expect(
-    page.getByText('A different version of this save is already recorded.'),
+    page.getByText('A different version of this medication is already saved.'),
   ).toBeVisible()
   await expect(page.getByLabel('Medicine name')).toBeDisabled()
   await expect(page.getByRole('button', { name: /save medicine/i })).toHaveCount(0)
@@ -183,7 +183,7 @@ test('known offline waits for a connection and keeps values', async ({ page, con
   const connect = page.getByRole('button', { name: 'Connect to save' })
   await expect(connect).toBeDisabled()
   await expect(page.getByText("You're offline.")).toBeVisible()
-  await page.getByLabel(/^Product strength/).fill('10 mg')
+  await page.getByLabel(/^Strength/).fill('10 mg')
   await expect(page.getByLabel('Medicine name')).toHaveValue('Offline Medicine')
   await context.setOffline(false)
   await expect(page.getByRole('button', { name: 'Save medicine' })).toBeEnabled()
@@ -195,8 +195,8 @@ test('Add keeps a session draft across routes, clears explicitly and after confi
 }) => {
   await page.goto('/medications?add')
   const name = page.getByLabel('Medicine name')
-  const strength = page.getByLabel(/^Product strength/)
-  const note = page.getByText('Unsaved details from earlier.')
+  const strength = page.getByLabel(/^Strength/)
+  const note = page.getByText('Pick up where you left off. Your details are still here.')
   const openAdd = async () => {
     await page.getByRole('link', { name: 'Medications', exact: true }).first().click()
     await page.getByRole('link', { name: 'Add a medicine' }).click()

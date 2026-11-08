@@ -98,7 +98,7 @@ export function MedicinePanel({
         </Link>
         <AppHeader
           title="Add medicine"
-          subtitle="Saved once Meddies confirms it. You can set a schedule straight after, or later."
+          subtitle="Saved once Meddies has it. You can set a schedule straight after, or later."
         />
         <MedicineForm onSaved={saved} />
       </div>

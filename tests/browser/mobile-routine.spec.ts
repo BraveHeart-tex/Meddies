@@ -36,7 +36,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await expect(page.getByRole('heading', { name: 'Medications' })).toBeVisible()
     await page.getByRole('link', { name: 'Add a medicine' }).click()
     await page.getByLabel('Medicine name').fill('Routine Medicine')
-    await page.getByLabel(/^Product strength/).fill('5 mg')
+    await page.getByLabel(/^Strength/).fill('5 mg')
     await page.getByRole('button', { name: 'Tablet' }).click()
     await page.getByRole('button', { name: 'Save medicine' }).press('Enter')
     await expect(page.getByText('Routine Medicine saved.')).toBeVisible()
