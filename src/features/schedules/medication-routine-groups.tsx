@@ -1,8 +1,13 @@
-import Link from 'next/link'
+'use client'
+
+import { useEffect, useRef } from 'react'
+import { ChevronRightIcon } from 'lucide-react'
 import { MedicationTile } from '@/features/medicines/medication-tile'
 import { buttonVariants } from '@/components/ui/button'
-import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
+import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
 import type { Medicine } from '@/features/medicines/contract'
+import { MedicationsLink } from '@/features/medicines/medications-nav'
+import { medicationSetupHref, medicationsHref } from '@/features/medicines/routes'
 import type { DailySchedule } from './contract'
 
 import { ALL_WEEKDAYS, weekdaySummary } from './weekdays'
@@ -17,10 +22,21 @@ function routineSummary(schedule: DailySchedule) {
 export function MedicationRoutineGroups({
   medicines,
   schedules,
+  focusMedicineId,
+  onMedicineFocused,
 }: {
   medicines: Medicine[]
   schedules: DailySchedule[]
+  /** The row to focus once, when the list shows after Done for now (647·B1). */
+  focusMedicineId?: string | null
+  onMedicineFocused?: () => void
 }) {
+  const focusRow = useRef<HTMLAnchorElement>(null)
+  useEffect(() => {
+    if (!focusMedicineId || !focusRow.current) return
+    focusRow.current.focus()
+    onMedicineFocused?.()
+  }, [focusMedicineId, onMedicineFocused])
   const routines = medicines.map((medicine) => ({
     medicine,
     schedule: schedules.find((item) => item.medicineId === medicine.id),
@@ -60,26 +76,30 @@ export function MedicationRoutineGroups({
                       No schedule yet.
                     </p>
                   )}
+                  {!schedule && (
+                    <MedicationsLink
+                      href={medicationSetupHref(medicine.id)}
+                      aria-label={`Set schedule for ${medicine.label}`}
+                      className={buttonVariants({
+                        variant: 'soft',
+                        size: 'sm',
+                        className: 'relative z-1 mt-1.5 self-start',
+                      })}
+                    >
+                      Set schedule
+                    </MedicationsLink>
+                  )}
                 </ItemContent>
-                <Link
+                <ChevronRightIcon aria-hidden="true" className="size-5 text-muted-foreground" />
+                <MedicationsLink
+                  ref={medicine.id === focusMedicineId ? focusRow : undefined}
                   data-row-link
                   className="absolute inset-0 rounded-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                  href={`/medications?medicine=${encodeURIComponent(medicine.id)}`}
+                  href={medicationsHref({ mode: 'detail', medicineId: medicine.id })}
                   aria-label={`View details for ${medicine.label}`}
                 >
                   <span className="sr-only">View details</span>
-                </Link>
-                {!schedule && (
-                  <ItemActions className="relative">
-                    <Link
-                      href={`/medications?schedule=${encodeURIComponent(medicine.id)}#schedule-heading`}
-                      aria-label={`Add schedule for ${medicine.label}`}
-                      className={buttonVariants({ variant: 'soft', size: 'sm' })}
-                    >
-                      Add schedule
-                    </Link>
-                  </ItemActions>
-                )}
+                </MedicationsLink>
               </Item>
             ))}
           </ul>

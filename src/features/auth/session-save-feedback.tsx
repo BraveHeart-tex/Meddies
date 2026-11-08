@@ -4,6 +4,8 @@ import { useEffect, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/components/ui/toast'
+import { showMedicationsView } from '@/features/medicines/medications-nav'
+import { medicationsHref } from '@/features/medicines/routes'
 import { sessionSaves } from '@/lib/session-saves'
 
 /** Each route observes the same session saves. Toast identity survives the host's remount. */
@@ -32,7 +34,7 @@ export function SessionSaveFeedback() {
             : `${attempt.label} saved`
           : `${attempt.label}${schedule ? ' schedule' : ''} might not have saved`
       const href = saved
-        ? (attempt.openHref ?? `/medications?medicine=${encodeURIComponent(saved.id)}`)
+        ? (attempt.openHref ?? medicationsHref({ mode: 'detail', medicineId: saved.id }))
         : attempt.href
       const options = {
         title,
@@ -44,7 +46,10 @@ export function SessionSaveFeedback() {
             const id = store.toasts.get(key)
             if (id) toast.close(id)
             store.toasts.delete(key)
-            router.push(href)
+            // A view change inside Medications needs no server round trip.
+            if (window.location.pathname === '/medications' && href.startsWith('/medications'))
+              showMedicationsView(href)
+            else router.push(href)
           },
         },
       }

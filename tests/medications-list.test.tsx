@@ -1,17 +1,26 @@
-import { QueryClientProvider, onlineManager, type QueryClient } from '@tanstack/react-query'
+import {
+  QueryClientProvider,
+  dehydrate,
+  onlineManager,
+  type QueryClient,
+} from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Medicine } from '../src/features/medicines/contract'
 import { MedicinePanel } from '../src/features/medicines/medicine-panel'
+import { MedicationsHeader } from '../src/features/medicines/medications-header'
 import { medicineKeys } from '../src/features/medicines/queries'
+import { scheduleKeys } from '../src/features/schedules/queries'
+import { MedicationsHydration } from '../src/features/schedules/medications-hydration'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
   usePathname: () => '/medications',
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }))
 
 const medicine = (n: number): Medicine => ({
@@ -24,8 +33,8 @@ const listOf = (length: number) => Array.from({ length }, (_, i) => medicine(i +
 const count = (n: number) => `${n} ${n === 1 ? 'medication' : 'medications'}`
 // Just past `createQueryClient`'s 30s stale time.
 const stale = 31_000
-const refreshFailed =
-  /Your medications didn't update just now\. Showing the last list that loaded\./
+const refreshFailed = /Your medications didn't update just now\. Showing what loaded at \d\d:\d\d\./
+const unavailable = "Your medications didn't load just now. Check your connection and try again."
 
 /** Serves the medicine list and schedules snapshot, counting medicine reads. */
 function medicinesApi(initial: Medicine[]) {
@@ -67,6 +76,13 @@ function medicinesApi(initial: Medicine[]) {
   }
 }
 
+const snapshot = {
+  schedules: [],
+  records: [],
+  date: '2026-11-14',
+  now: '2026-11-14T08:00:00.000Z',
+}
+
 let client: QueryClient
 
 beforeEach(() => {
@@ -89,6 +105,7 @@ function cache(list: Medicine[], age = 0) {
 function renderList() {
   render(
     <QueryClientProvider client={client}>
+      <MedicationsHeader />
       <MedicinePanel scheduleMode="list" initialNow="2026-11-14T08:00:00.000Z" />
     </QueryClientProvider>,
   )
@@ -174,10 +191,73 @@ describe('with a cached list', () => {
     expect(screen.getByText(count(1))).toBeVisible()
     expect(screen.getByText('Medicine 1')).toBeVisible()
     api.serve(listOf(2))
-    await user.click(screen.getByRole('button', { name: 'Try loading medications again' }))
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
     expect(await screen.findByText(count(2))).toBeVisible()
     expect(screen.queryByText(refreshFailed)).not.toBeInTheDocument()
     expect(api.reads()).toBe(2)
+  })
+
+  test('the alert times the older read, in Istanbul', async () => {
+    vi.setSystemTime(new Date('2026-11-14T10:40:00.000Z'))
+    const api = medicinesApi(listOf(1))
+    api.failNext()
+    cache(listOf(1), stale)
+    renderList()
+    // 10:39:29 UTC is 13:39 in Istanbul, however the machine's zone is set.
+    expect(await screen.findByText(/Showing what loaded at 13:39\./)).toBeVisible()
+  })
+
+  test('a failed schedules refresh is the same single alert, and keeps rows and Add', async () => {
+    medicinesApi(listOf(1))
+    client.setQueryData(scheduleKeys.snapshot(), snapshot, { updatedAt: Date.now() - stale })
+    server.use(
+      http.get('/api/schedules', () =>
+        HttpResponse.json({ error: 'unavailable' }, { status: 503 }),
+      ),
+    )
+    cache(listOf(1))
+    renderList()
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(refreshFailed)
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+    expect(screen.getByText('Medicine 1')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Add a medication' })).toBeVisible()
+  })
+
+  test('a newer confirmed medicine survives a late hydration of an older list', async () => {
+    medicinesApi(listOf(2))
+    cache(listOf(2))
+    // The server read finished after the save but saw the list from before it.
+    const request = createQueryClient()
+    request.setQueryData(medicineKeys.list(), listOf(1), { updatedAt: Date.now() + 1_000 })
+    const late = dehydrate(request)
+    render(
+      <QueryClientProvider client={client}>
+        <MedicationsHydration state={late}>
+          <MedicinePanel scheduleMode="list" initialNow="2026-11-14T08:00:00.000Z" serverEntry />
+        </MedicationsHydration>
+      </QueryClientProvider>,
+    )
+    await advance(1_000)
+    expect(client.getQueryState(medicineKeys.list())?.dataUpdatedAt).toBeGreaterThan(
+      Date.now() - 500,
+    )
+    expect(await screen.findByText('Medicine 2')).toBeVisible()
+  })
+
+  test('a server-read entry starts no browser read of stale data', async () => {
+    const api = medicinesApi(listOf(1))
+    cache(listOf(1), stale)
+    client.setQueryData(scheduleKeys.snapshot(), snapshot, { updatedAt: Date.now() - stale })
+    render(
+      <QueryClientProvider client={client}>
+        <MedicinePanel scheduleMode="list" initialNow="2026-11-14T08:00:00.000Z" serverEntry />
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByText('Medicine 1')).toBeVisible()
+    await advance(1_000)
+    expect(api.reads()).toBe(0)
   })
 })
 
@@ -186,11 +266,14 @@ describe('with no cache', () => {
     const api = medicinesApi(listOf(1))
     const release = api.hold()
     renderList()
-    expect(await screen.findByRole('status')).toHaveTextContent('Loading your medications…')
+    expect(await screen.findByRole('status')).toHaveTextContent('Loading medications')
+    expect(screen.getAllByRole('status')).toHaveLength(1)
+    expect(document.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(4)
+    expect(screen.getByRole('link', { name: 'Add a medication' })).toBeVisible()
     expect(screen.queryByText(count(0))).not.toBeInTheDocument()
     release()
     expect(await screen.findByText(count(1))).toBeVisible()
-    expect(screen.queryByText('Loading your medications…')).not.toBeInTheDocument()
+    expect(screen.queryByText('Loading medications')).not.toBeInTheDocument()
     expect(api.reads()).toBe(1)
   })
 
@@ -199,11 +282,10 @@ describe('with no cache', () => {
     api.failNext()
     const user = renderList()
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent(
-      "Your medications didn't load just now. Check your connection and try again.",
-    )
+    expect(alert).toHaveTextContent(unavailable)
     expect(screen.queryByText(count(0))).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Try loading medications again' }))
+    expect(screen.getByRole('link', { name: 'Add a medication' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
     expect(await screen.findByText(count(1))).toBeVisible()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(api.reads()).toBe(2)
@@ -212,9 +294,14 @@ describe('with no cache', () => {
   test('an empty list invites the first medication', async () => {
     medicinesApi([])
     renderList()
-    expect(
-      await screen.findByText("No medications here yet. Add your first one whenever you're ready."),
-    ).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'No medications here yet.' })).toBeVisible()
+    expect(screen.getByText("Add your first one whenever you're ready.")).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Add medication' })).toHaveAttribute(
+      'href',
+      '/medications?add',
+    )
+    expect(screen.getByRole('link', { name: 'Add a medication' })).toBeVisible()
+    expect(screen.queryByText(count(0))).not.toBeInTheDocument()
   })
 
   test('a medication with no schedule says so in its list row', async () => {
@@ -222,6 +309,10 @@ describe('with no cache', () => {
     renderList()
     expect(await screen.findByText('No schedule yet.')).toBeVisible()
     expect(screen.getByRole('link', { name: 'View details for Medicine 1' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Set schedule for Medicine 1' })).toHaveAttribute(
+      'href',
+      `/medications?schedule=${medicine(1).id}#schedule-heading`,
+    )
   })
 
   test('a failed schedules read shows the load error with its retry', async () => {
@@ -232,10 +323,13 @@ describe('with no cache', () => {
       ),
     )
     renderList()
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      "Your schedules didn't load just now. Check your connection and try again.",
-    )
-    expect(screen.getByRole('button', { name: 'Try loading schedules again' })).toBeVisible()
+    expect(await screen.findByRole('alert')).toHaveTextContent(unavailable)
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible()
+    // Unknown schedules never read as no schedule, and no rows or groups are invented.
+    expect(screen.queryByText('No schedule yet.')).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'No schedule' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Medicine 1')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Add a medication' })).toBeVisible()
   })
 })
 

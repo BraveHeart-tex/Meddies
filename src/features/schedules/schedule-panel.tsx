@@ -1,7 +1,5 @@
 'use client'
 
-import Link from 'next/link'
-
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import type { Medicine } from '@/features/medicines/contract'
@@ -12,13 +10,18 @@ import { TodaySchedule } from './today-schedule'
 import { ScheduleSetupForm } from './schedule-setup-form'
 import { istanbulDate } from './contract'
 import { weekdaySummary } from './weekdays'
-import { MedicationRoutineGroups } from './medication-routine-groups'
+import { MedicationsLink } from '@/features/medicines/medications-nav'
+import { medicationSetupHref } from '@/features/medicines/routes'
+import { MedicationsList } from './medications-list'
 
 export function SchedulePanel({
   mode = 'setup',
   initialMedicineId = '',
   onScheduleSaved,
   initialNow,
+  serverEntry = false,
+  focusMedicineId,
+  onMedicineFocused,
 }: {
   /** The server scheduling time at render, until a newer schedules snapshot replaces it. */
   initialNow: string
@@ -26,8 +29,12 @@ export function SchedulePanel({
   initialMedicineId?: string
   /** Runs after the server confirms a first schedule. */
   onScheduleSaved?: (medicine: Medicine) => void
+  /** This render's server read already refreshed both queries. */
+  serverEntry?: boolean
+  focusMedicineId?: string | null
+  onMedicineFocused?: () => void
 }) {
-  const schedulesRead = useScheduleSnapshot({ serverEntry: mode === 'today' })
+  const schedulesRead = useScheduleSnapshot({ serverEntry: serverEntry || mode === 'today' })
   const {
     snapshot,
     schedules,
@@ -37,12 +44,13 @@ export function SchedulePanel({
     refreshing,
     retry: retrySchedules,
   } = schedulesRead
+  const medicinesRead = useMedicines({ serverEntry })
   const {
     medicines,
     loading: medicinesLoading,
     loadError: medicinesError,
     retry: retryMedicines,
-  } = useMedicines()
+  } = medicinesRead
   // The latest server scheduling time anchors the clock: a snapshot cached before this render
   // is older than `initialNow`, one read since is newer.
   const now = snapshot && snapshot.now > initialNow ? snapshot.now : initialNow
@@ -51,7 +59,7 @@ export function SchedulePanel({
     <SchedulingClockProvider serverNow={now}>
       <div className="space-y-10">
         {mode === 'today' && <TodaySchedule schedulesRead={schedulesRead} serverNow={now} />}
-        {refreshFailed && (mode === 'list' || mode === 'detail') && (
+        {refreshFailed && mode === 'detail' && (
           <Alert role="status">
             <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
               <p>Your schedules didn&apos;t update just now. Showing the last list that loaded.</p>
@@ -67,36 +75,12 @@ export function SchedulePanel({
           </Alert>
         )}
         {mode === 'list' && (
-          <section aria-labelledby="medicine-routines-heading" className="flex flex-col gap-4">
-            <h2 id="medicine-routines-heading" className="sr-only">
-              Your medications
-            </h2>
-            {loading || medicinesLoading ? (
-              <p role="status">Loading your medications…</p>
-            ) : medicinesError ? (
-              <div role={medicines.length === 0 ? 'alert' : 'status'} className="space-y-2">
-                <p>
-                  Your medications didn&apos;t load just now. Check your connection and try again.
-                </p>
-                <Button variant="outline" className="min-h-11" onClick={retryMedicines}>
-                  Try loading medications again
-                </Button>
-              </div>
-            ) : loadError ? (
-              <div role="alert" className="space-y-2">
-                <p>
-                  Your schedules didn&apos;t load just now. Check your connection and try again.
-                </p>
-                <Button variant="outline" className="min-h-11" onClick={retrySchedules}>
-                  Try loading schedules again
-                </Button>
-              </div>
-            ) : medicines.length === 0 ? (
-              <p>No medications here yet. Add your first one whenever you&apos;re ready.</p>
-            ) : (
-              <MedicationRoutineGroups medicines={medicines} schedules={schedules} />
-            )}
-          </section>
+          <MedicationsList
+            medicinesRead={medicinesRead}
+            schedulesRead={schedulesRead}
+            focusMedicineId={focusMedicineId}
+            onMedicineFocused={onMedicineFocused}
+          />
         )}
         {mode === 'detail' && (
           <section aria-labelledby="routine-heading" className="space-y-3 [overflow-wrap:anywhere]">
@@ -136,12 +120,12 @@ export function SchedulePanel({
             ) : medicines.some((item) => item.id === initialMedicineId) ? (
               <div className="space-y-2">
                 <p>No schedule yet.</p>
-                <Link
+                <MedicationsLink
                   className="inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-primary-foreground"
-                  href={`/medications?schedule=${encodeURIComponent(initialMedicineId)}#schedule-heading`}
+                  href={medicationSetupHref(initialMedicineId)}
                 >
                   Set schedule
-                </Link>
+                </MedicationsLink>
               </div>
             ) : (
               <p role="alert">This medication isn&apos;t in your list.</p>
@@ -154,6 +138,7 @@ export function SchedulePanel({
             today={istanbulDate(new Date(now))}
             medicineId={initialMedicineId}
             onSaved={onScheduleSaved}
+            serverEntry={serverEntry}
           />
         )}
       </div>

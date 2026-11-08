@@ -116,6 +116,8 @@ export function useScheduleSnapshot({ serverEntry = false }: { serverEntry?: boo
     /** A refresh failed; the cached snapshot stays on screen. */
     refreshFailed: hasSnapshot && read.isError,
     refreshing: read.isFetching,
+    /** When the cached snapshot last read successfully. */
+    updatedAt: read.dataUpdatedAt,
     retry,
     ensureFresh,
   }

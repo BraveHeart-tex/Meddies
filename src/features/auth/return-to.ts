@@ -1,11 +1,12 @@
+import { isMedicationsReturnTo } from '@/features/medicines/routes'
+
 /** Carried to sign-in in place of any save detail. */
 export const saveInProgressNotice = 'save-in-progress'
 
 /** The complete set of private destinations supported by sign-in. */
 export function safeReturnTo(value: unknown): string {
   if (typeof value !== 'string') return '/'
-  if (['/', '/medications', '/medications?add', '/history', '/settings'].includes(value))
-    return value
+  if (['/', '/history', '/settings'].includes(value)) return value
   if (/^\/history\?date=\d{4}-\d{2}-\d{2}$/.test(value)) {
     const date = value.slice('/history?date='.length)
     const parsed = new Date(`${date}T00:00:00Z`)
@@ -13,7 +14,7 @@ export function safeReturnTo(value: unknown): string {
       ? value
       : '/'
   }
-  return /^\/medications\?(?:medicine|schedule)=[a-f0-9-]{36}$/i.test(value) ? value : '/'
+  return isMedicationsReturnTo(value) ? value : '/'
 }
 
 /** Auth.js stores an absolute callback URL. Never accept another origin. */

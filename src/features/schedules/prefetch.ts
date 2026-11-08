@@ -1,9 +1,9 @@
 import 'server-only'
 import { dehydrate } from '@tanstack/react-query'
-import { medicinesQuery } from '@/features/medicines/queries'
+import { medicineKeys, medicinesQuery } from '@/features/medicines/queries'
 import { medicines } from '@/features/medicines/server'
 import { requestQueryClient } from '@/lib/request-query-client'
-import { historyDayQuery, scheduleSnapshotQuery, toScheduleSnapshot } from './queries'
+import { historyDayQuery, scheduleKeys, scheduleSnapshotQuery, toScheduleSnapshot } from './queries'
 import { schedules } from './server'
 
 /**
@@ -21,6 +21,19 @@ export async function prefetchToday() {
     }),
   ])
   return dehydrate(client)
+}
+
+/**
+ * Reads Medications' medicines and schedules together, as Today does. `complete` says both reads
+ * succeeded, so the browser can reuse them; a failed read is left out for the browser to retry.
+ */
+export async function prefetchMedications() {
+  const state = await prefetchToday()
+  const client = requestQueryClient()
+  const complete = [medicineKeys.list(), scheduleKeys.snapshot()].every(
+    (queryKey) => client.getQueryState(queryKey)?.status === 'success',
+  )
+  return { state, complete }
 }
 
 /**

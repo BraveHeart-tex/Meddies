@@ -1,0 +1,297 @@
+import { randomUUID } from 'node:crypto'
+import type { Page } from '@playwright/test'
+import { expect, test, type JourneyDatabase } from './fixtures'
+import { layoutViewports, trackLayout } from './layout'
+import {
+  medicationsFallback as fallback,
+  medicationsFallbackSection,
+  medicationsList as list,
+  placeholders,
+  rootFallback,
+} from './locators'
+import { countApiRequests, type ApiRequestCounter } from './requests'
+import { addDays, insertScheduledMedicine } from './seed'
+import { blockPrefetch, expectReadsOverlap, expectStreamingOrder } from './streaming'
+import type { WorkerRoute } from './worker-proxy'
+
+// Medications streams one section for its data views (FE-625): the shell, title and Add render
+// first, 647·L2 holds the list while the server reads, the browser reuses the hydrated data, and
+// view changes use the native History API.
+const initialScheduleTime = '2035-06-15T09:00:00+03:00'
+const today = initialScheduleTime.slice(0, 10)
+
+const reads: WorkerRoute[] = [
+  { method: 'POST', path: '/schedules', operation: 'listOutcomes' },
+  { method: 'POST', path: '/medicines', operation: 'list' },
+]
+
+// Direct-load layout shift budget, as Today and History: the skeleton is replaced, not moved, and
+// the header above it reserves the count's line, so any shift is a regression. The allowance
+// absorbs sub-pixel font metrics only.
+const layoutShiftBudget = 0.01
+
+const scheduled = 'Streaming Scheduled Medicine'
+const unscheduled = 'Streaming Unscheduled Medicine'
+
+function insertMedicine(db: JourneyDatabase, ownerId: string, label: string) {
+  return db
+    .prepare('INSERT INTO user_medications(owner_id,id,label,strength,unit) VALUES(?,?,?,?,?)')
+    .bind(ownerId, randomUUID(), label, '10 mg', 'tablet')
+    .run()
+}
+
+const seedTwo = async ({ db, ownerId }: { db: JourneyDatabase; ownerId: string }) => {
+  await insertScheduledMedicine(db, ownerId, {
+    label: scheduled,
+    startDate: addDays(today, -3),
+    times: [{ time: '08:00', quantity: 1 }],
+  })
+  await insertMedicine(db, ownerId, unscheduled)
+}
+
+test.use({ journey: { auth: true, storage: true, initialScheduleTime, seed: seedTwo } })
+
+const title = (page: Page) => page.getByRole('heading', { level: 1, name: 'Medications' })
+const add = (page: Page) => page.getByRole('link', { name: 'Add a medication' })
+const row = (page: Page, label: string) =>
+  page.getByRole('link', { name: `View details for ${label}` })
+
+function expectNoRepeatedReads(api: ApiRequestCounter) {
+  expect(api.count('/api/medicines'), '/api/medicines reads').toBe(0)
+  expect(api.count('/api/schedules'), '/api/schedules reads').toBe(0)
+}
+
+/** Server round trips for the page itself: documents and RSC payloads. */
+function countPageRequests(page: Page) {
+  let count = 0
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/medications') count++
+  })
+  return { count: () => count, reset: () => (count = 0) }
+}
+
+async function expectShellWithFallback(page: Page) {
+  await expect(title(page)).toBeVisible()
+  await expect(add(page)).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
+  await expect(fallback(page)).toBeVisible()
+  await expect(rootFallback(page)).toHaveCount(0)
+  await expect(page.getByRole('status')).toHaveCount(1)
+  await expect(placeholders(page)).toHaveCount(4)
+  for (const placeholder of await placeholders(page).all())
+    await expect(placeholder).toHaveAttribute('aria-hidden', 'true')
+  await expect(page.getByText(/^\d+ medications?$/)).toHaveCount(0)
+}
+
+test('direct load shows the shell and fallback while the concurrent reads are held', async ({
+  page,
+  app,
+}) => {
+  const api = countApiRequests(page, app.origin)
+  for (const route of reads) app.worker.hold(route)
+  await page.goto('/medications', { waitUntil: 'commit' })
+  await expectReadsOverlap(app.worker, reads)
+  await expectShellWithFallback(page)
+  await expectStreamingOrder(app.worker, {
+    routes: reads,
+    fallback: fallback(page),
+    content: list(page),
+  })
+  await expect(row(page, scheduled)).toBeVisible()
+  await expect(page.getByText('2 medications')).toBeVisible()
+  await page.waitForLoadState('load')
+  expectNoRepeatedReads(api)
+})
+
+test('cold client navigation shows the same fallback before the list', async ({ page, app }) => {
+  const prefetch = await blockPrefetch(page, '/medications')
+  const api = countApiRequests(page, app.origin)
+  await page.goto('/settings')
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible()
+  await page.waitForLoadState('load')
+  await prefetch.expectBlocked()
+  for (const route of reads) app.worker.hold(route)
+  api.reset()
+  await page
+    .getByRole('navigation', { name: 'Primary' })
+    .getByRole('link', { name: 'Medications' })
+    .click()
+  await expectReadsOverlap(app.worker, reads)
+  await expectShellWithFallback(page)
+  await expectStreamingOrder(app.worker, {
+    routes: reads,
+    fallback: fallback(page),
+    content: list(page),
+  })
+  await expect(page).toHaveURL(/\/medications$/)
+  await expect(row(page, scheduled)).toBeVisible()
+  expectNoRepeatedReads(api)
+})
+
+test('a warm navigation keeps the cached list on screen instead of the skeleton', async ({
+  page,
+  app,
+}) => {
+  await page.goto('/medications')
+  await expect(row(page, scheduled)).toBeVisible()
+  await page.waitForLoadState('load')
+  await page.getByRole('link', { name: 'Settings' }).click()
+  await expect(page).toHaveURL(`${app.origin}/settings`)
+  for (const route of reads) app.worker.hold(route)
+  await page
+    .getByRole('navigation', { name: 'Primary' })
+    .getByRole('link', { name: 'Medications' })
+    .click()
+  await expect(page).toHaveURL(`${app.origin}/medications`)
+  await expect(row(page, scheduled)).toBeVisible()
+  await expect(fallback(page)).toHaveCount(0)
+  await expect(placeholders(page)).toHaveCount(0)
+  // A row opened from the cached list still lands on its medicine when the page arrives.
+  await row(page, unscheduled).click()
+  await expect(page).toHaveURL(/\/medications\?medicine=/)
+  for (const route of reads) app.worker.release(route)
+  await expect(page.getByRole('heading', { name: unscheduled })).toBeVisible()
+  await expect(page).toHaveURL(/\/medications\?medicine=/)
+})
+
+test('view changes make no server request, and Back, Forward and reload restore the view', async ({
+  page,
+  app,
+}) => {
+  const api = countApiRequests(page, app.origin)
+  const pageRequests = countPageRequests(page)
+  await page.goto('/medications')
+  await expect(row(page, unscheduled)).toBeVisible()
+  await page.waitForLoadState('load')
+  expectNoRepeatedReads(api)
+  pageRequests.reset()
+
+  await row(page, unscheduled).click()
+  await expect(page).toHaveURL(/\/medications\?medicine=/)
+  await expect(page.getByRole('heading', { name: unscheduled })).toBeVisible()
+
+  await page.goBack()
+  await expect(page).toHaveURL(/\/medications$/)
+  await expect(row(page, unscheduled)).toBeVisible()
+
+  await add(page).click()
+  await expect(page).toHaveURL(/\/medications\?add$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Add medication' })).toBeVisible()
+  await page.goBack()
+  await expect(row(page, unscheduled)).toBeVisible()
+
+  await page.getByRole('link', { name: `Set schedule for ${unscheduled}` }).click()
+  await expect(page).toHaveURL(/\/medications\?schedule=.*#schedule-heading$/)
+  await expect(page.getByRole('heading', { name: 'Schedule' }).first()).toBeVisible()
+
+  await page.goBack()
+  await page.goForward()
+  await expect(page).toHaveURL(/\/medications\?schedule=/)
+  expect(pageRequests.count(), 'page requests during view changes').toBe(0)
+  expectNoRepeatedReads(api)
+
+  await page.reload()
+  await expect(page).toHaveURL(/\/medications\?schedule=/)
+  await expect(page.getByRole('heading', { name: 'Schedule' }).first()).toBeVisible()
+})
+
+test('Add never waits for the reads, and detail shows no list skeleton', async ({ page, app }) => {
+  for (const route of reads) app.worker.hold(route)
+  await page.goto('/medications?add', { waitUntil: 'commit' })
+  await expect(page.getByRole('heading', { level: 1, name: 'Add medication' })).toBeVisible()
+  await expect(page.getByRole('textbox').first()).toBeVisible()
+  await expect(placeholders(page)).toHaveCount(0)
+  for (const route of reads) app.worker.release(route)
+  app.worker.clear()
+
+  const id = randomUUID()
+  for (const route of reads) app.worker.hold(route)
+  await page.goto(`/medications?medicine=${id}`, { waitUntil: 'commit' })
+  await expect(title(page)).toBeVisible()
+  await expect(fallback(page)).toHaveCount(0)
+  await expect(placeholders(page)).toHaveCount(0)
+  for (const route of reads) app.worker.release(route)
+  await expect(page.getByText("This medication isn't in your list.")).toBeVisible()
+})
+
+test('Done for now returns to the list and focuses the saved medicine', async ({ page }) => {
+  const label = 'Handoff Medicine'
+  await page.goto('/medications?add')
+  await page.getByLabel('Medication name').fill(label)
+  await page.getByRole('button', { name: 'Tablet' }).click()
+  await page.getByRole('button', { name: 'Save medication' }).click()
+  await expect(page).toHaveURL(/\/medications\?medicine=/)
+  await expect(page.getByRole('heading', { name: label })).toBeFocused()
+  await page.getByRole('link', { name: 'Done for now' }).click()
+  await expect(page).toHaveURL(/\/medications$/)
+  await expect(row(page, label)).toBeFocused()
+  await expect(page.getByText(`${label} saved.`)).toHaveCount(0)
+})
+
+test('failed reads show one alert with Retry and Add, and Retry recovers', async ({
+  page,
+  app,
+}) => {
+  for (const route of reads) app.worker.fail(route, 503)
+  await page.goto('/medications')
+  await expect(page.getByRole('alert').filter({ hasText: "didn't load just now" })).toHaveCount(1)
+  await expect(add(page)).toBeVisible()
+  await expect(page.getByText('No schedule yet.')).toHaveCount(0)
+  app.worker.clear()
+  await page.getByRole('button', { name: 'Retry' }).click()
+  await expect(row(page, scheduled)).toBeVisible()
+  await expect(page.getByRole('alert').filter({ hasText: 'load just now' })).toHaveCount(0)
+})
+
+const longSeed = async ({ db, ownerId }: { db: JourneyDatabase; ownerId: string }) => {
+  for (let n = 1; n <= 12; n++) await insertMedicine(db, ownerId, `Long List Medicine ${n}`)
+}
+
+for (const [name, seed, content] of [
+  ['empty', undefined, 'No medications here yet.'],
+  ['short', seedTwo, 'On a schedule'],
+  ['long', longSeed, 'No schedule'],
+] as const)
+  test.describe(`with a ${name} list`, () => {
+    test.use({ journey: { auth: true, storage: true, initialScheduleTime, seed } })
+
+    test('keeps header geometry and layout shift within budget', async ({
+      page,
+      app,
+    }, testInfo) => {
+      const layout = await trackLayout(page, layoutViewports.phone)
+      for (const route of reads) app.worker.hold(route)
+      await page.goto('/medications', { waitUntil: 'commit' })
+      await expect(fallback(page)).toBeVisible()
+      // EntryFocus mounts with the page, so the route's loading fallback has been replaced.
+      await expect(title(page)).toBeFocused()
+      await layout.snapshot('fallback')
+      const before = await medicationsFallbackSection(page).boundingBox()
+      for (const route of reads) app.worker.release(route)
+      await expect(list(page).getByText(content, { exact: true }).first()).toBeVisible()
+      await page.waitForLoadState('load')
+      await layout.snapshot('loaded')
+      const after = await list(page).boundingBox()
+      const result = await layout.result()
+      await testInfo.attach(`layout-${name}.json`, {
+        body: JSON.stringify(result, null, 2),
+        contentType: 'application/json',
+      })
+      console.log(`Medications layout ${name}: ${JSON.stringify(result)}`)
+      const [fallbackBoxes, loadedBoxes] = result.snapshots.map((snapshot) => snapshot.boxes)
+      expect(loadedBoxes, 'the shell keeps its geometry').toEqual(fallbackBoxes)
+      expect(after!.y, 'the list starts where the fallback did').toBe(before!.y)
+      expect(result.cumulativeLayoutShift).toBeLessThanOrEqual(layoutShiftBudget)
+    })
+  })
+
+test.describe('without a session', () => {
+  test.use({ journey: { auth: false, storage: true, initialScheduleTime } })
+
+  test('performs no private reads and hydrates no private data', async ({ page, app }) => {
+    await page.goto('/medications')
+    await expect(page).toHaveURL(/\/\?returnTo=%2Fmedications$/)
+    for (const route of reads) expect(app.worker.requests(route)).toHaveLength(0)
+    expect(await page.content()).not.toContain(scheduled)
+  })
+})

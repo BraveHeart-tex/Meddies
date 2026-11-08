@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { Icon, type IconName } from '@/components/ui/icon'
+import { showMedicationsView } from '@/features/medicines/medications-nav'
 import { cn } from '@/lib/utils'
 
 const destinations: { href: string; label: string; icon: IconName }[] = [
@@ -30,6 +31,15 @@ export function AppShell({ children }: { children: ReactNode }) {
               <li key={href} className="min-w-0">
                 <Link
                   href={href}
+                  onNavigate={
+                    // The Medications tab from another Medications view is only a view change.
+                    active && href === '/medications'
+                      ? (event) => {
+                          event.preventDefault()
+                          showMedicationsView(href)
+                        }
+                      : undefined
+                  }
                   aria-current={active ? 'page' : undefined}
                   className={cn(
                     'flex min-h-14 flex-col items-center justify-center gap-1 rounded-full px-1 text-center text-micro [overflow-wrap:anywhere] transition-colors duration-220 ease-calm motion-reduce:transition-none',

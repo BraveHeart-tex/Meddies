@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { expect, test } from './fixtures'
 import { pickTime, timePicker } from './pickers'
-import { scrollsHorizontally } from './actions'
+import { focusWindow, scrollsHorizontally } from './actions'
 
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 
@@ -174,7 +174,7 @@ test('schedule drafts belong to each medicine and clear on discard or confirmed 
   const open = async (label: string) => {
     await page.getByRole('link', { name: 'Medications', exact: true }).first().click()
     await page.getByRole('link', { name: `View details for ${label}` }).click()
-    await page.getByRole('link', { name: 'Set schedule' }).first().click()
+    await page.getByRole('link', { name: 'Set schedule', exact: true }).first().click()
   }
   await pickTime(page, 'Time 1', '08:15')
   await page.getByLabel('Quantity for time 1').fill('2')
@@ -213,7 +213,14 @@ test('schedule drafts belong to each medicine and clear on discard or confirmed 
       await route.fulfill({ response, json: { ...body, schedules: [] } })
     },
   )
-  await page.getByRole('link', { name: 'Today', exact: true }).click()
+  // A focus refresh is the browser read; a route entry would use the server's current list.
+  // The save's own reconcile may still be in flight, and a focus refresh joins it, so repeat.
+  await expect
+    .poll(async () => {
+      await focusWindow(page)
+      return page.getByRole('link', { name: 'Set schedule', exact: true }).count()
+    })
+    .toBeGreaterThan(0)
   await open('Draft Beta')
   await expect(note).toBeHidden()
   await expect(timePicker(page, 'Time 1').hour).toHaveText('HH')

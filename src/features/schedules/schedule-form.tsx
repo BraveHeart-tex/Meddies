@@ -1,5 +1,6 @@
 'use client'
 
+import { medicationsHref } from '@/features/medicines/routes'
 import { useEffect, useRef } from 'react'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -100,8 +101,8 @@ export function ScheduleForm({
         payload: { medicineId: medicine.id, ...values },
         label: medicine.label,
         kind: 'schedule',
-        href: `/medications?schedule=${encodeURIComponent(medicine.id)}`,
-        openHref: `/medications?medicine=${encodeURIComponent(medicine.id)}`,
+        href: medicationsHref({ mode: 'setup', medicineId: medicine.id }),
+        openHref: medicationsHref({ mode: 'detail', medicineId: medicine.id }),
       },
       async (payload, active) => {
         const result = await requestSave(

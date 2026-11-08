@@ -108,3 +108,15 @@ export const signInCard = (page: Page) => page.locator('main [data-slot="card"]'
 /** Any selected primary destination; recovery pages outside the app have none. */
 export const selectedNavigation = (page: Page) =>
   page.getByRole('navigation', { name: 'Primary' }).locator('a[aria-current="page"]')
+
+/** The Medications list fallback (647·L2), shown while its reads are held. */
+export const medicationsFallback = (page: Page) =>
+  page.getByRole('status').filter({ hasText: 'Loading medications' })
+
+/** The loaded Medications list section. */
+export const medicationsList = (page: Page) =>
+  page.getByRole('region', { name: 'Your medications' })
+
+/** The fallback's four row placeholders. */
+export const medicationsFallbackSection = (page: Page) =>
+  page.locator('[data-slot="loading-section"]').filter({ has: medicationsFallback(page) })

@@ -56,34 +56,36 @@ test('the Medications list stays cached across Today and refreshes stale data in
   // Query's stale time follows the browser clock; session lifetime stays real time.
   await page.clock.install()
 
-  await test.step('the first visit reads the list once', async () => {
+  await test.step('the first visit reuses the server read', async () => {
     await page.goto('/medications')
     await expect(count(1)).toBeVisible()
-    expect(reads).toHaveLength(1)
+    await page.waitForLoadState('load')
+    expect(reads).toHaveLength(0)
   })
 
-  await test.step('fresh cached list shows at once on Today → Medications, twice', async () => {
+  await test.step('the cached list shows at once on Today → Medications, twice', async () => {
     const release = await holdReads(page)
     for (let round = 0; round < 2; round++) {
       await toToday()
       await toMedications()
       await expect(count(1)).toBeVisible()
     }
-    expect(reads).toHaveLength(1)
+    expect(reads).toHaveLength(0)
     await release()
   })
 
-  await test.step('stale list refreshes on screen entry while the cached list stays', async () => {
-    // Settings reads no medicines; Today's server read would refresh the shared list itself.
+  await test.step('a changed list arrives from the entry read while the cached list stays', async () => {
     await page.getByRole('link', { name: 'Settings' }).click()
     await expect(page).toHaveURL(`${app.origin}/settings`)
     await addMedicine('Second Medicine')
     await page.clock.fastForward('00:31')
-    const release = await holdReads(page)
+    const medicinesRead = { method: 'POST', path: '/medicines', operation: 'list' }
+    app.worker.hold(medicinesRead)
     await toMedications()
-    await expect.poll(() => reads.length).toBe(2)
+    await expect.poll(() => app.worker.held(medicinesRead)).toBeGreaterThan(0)
     await expect(count(1)).toBeVisible()
-    await release()
+    app.worker.release(medicinesRead)
     await expect(count(2)).toBeVisible()
+    expect(reads).toHaveLength(0)
   })
 })

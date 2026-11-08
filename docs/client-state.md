@@ -52,7 +52,9 @@ store scoped to the session Query client, keyed by form and medicine ID.
 - A confirmed save or Clear form discards the draft; Clear form also resets defaults.
   Navigation, refresh and clock rollover keep it.
 - `/medications` query states (`?add`, `?medicine`, `?schedule`) share one mounted
-  `MedicinePanel`, so reset per-screen state when the screen changes.
+  `MedicinePanel`, so reset per-screen state when the screen changes. Changes between them use
+  the native History API (`medications-nav.tsx`), so they read the Query cache without a server
+  round trip; `features/medicines/routes.ts` owns view parsing and hrefs.
 - The selected History date lives in the URL.
 
 ## Session end

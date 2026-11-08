@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { MedicationsLink } from '@/features/medicines/medications-nav'
+import { medicationsHref } from '@/features/medicines/routes'
 import { InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -21,19 +22,21 @@ export function ScheduleSetupForm({
   today,
   medicineId,
   onSaved,
+  serverEntry = false,
 }: {
   schedulesRead: SchedulesRead
   /** Istanbul date on the scheduling clock. */
   today: string
   medicineId: string
   onSaved?: (medicine: Medicine) => void
+  serverEntry?: boolean
 }) {
   const {
     medicines,
     loading: medicinesLoading,
     loadError: medicinesError,
     retry: retryMedicines,
-  } = useMedicines()
+  } = useMedicines({ serverEntry })
   const [conflict, setConflict] = useState(false)
   const [savedId, setSavedId] = useState('')
   const medicine = medicines.find((item) => item.id === medicineId)
@@ -71,12 +74,12 @@ export function ScheduleSetupForm({
       <Alert>
         <InfoIcon aria-hidden="true" />
         <AlertTitle>This medication isn&apos;t in your list.</AlertTitle>
-        <Link
-          href="/medications"
+        <MedicationsLink
+          href={medicationsHref({ mode: 'list' })}
           className={buttonVariants({ variant: 'outline', className: 'mt-2 justify-self-start' })}
         >
           Back to Medications
-        </Link>
+        </MedicationsLink>
       </Alert>
     )
   else if (schedule && schedule.id === savedId)
@@ -87,12 +90,12 @@ export function ScheduleSetupForm({
         <InfoIcon aria-hidden="true" />
         <AlertTitle>{medicine.label} already has a schedule.</AlertTitle>
         <AlertDescription>Schedules can&apos;t be changed here yet.</AlertDescription>
-        <Link
-          href={`/medications?medicine=${encodeURIComponent(medicine.id)}`}
+        <MedicationsLink
+          href={medicationsHref({ mode: 'detail', medicineId: medicine.id })}
           className={buttonVariants({ variant: 'outline', className: 'mt-2 justify-self-start' })}
         >
           View schedule
-        </Link>
+        </MedicationsLink>
       </Alert>
     )
   else

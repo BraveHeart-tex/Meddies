@@ -1,5 +1,6 @@
 'use client'
 
+import { medicationsHref } from './routes'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
@@ -73,7 +74,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
         payload: { ...values },
         label: values.label,
         kind: 'medicine',
-        href: '/medications?add',
+        href: medicationsHref({ mode: 'add' }),
       },
       async (payload, active) => {
         let result = await requestSave('/api/medicines', payload, (data) =>

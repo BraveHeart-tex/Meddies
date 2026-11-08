@@ -1,45 +1,44 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { ChevronLeftIcon } from 'lucide-react'
 import { SchedulePanel } from '@/features/schedules/schedule-panel'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Icon } from '@/components/ui/icon'
-import { AppHeader } from '@/components/layout/app-header'
 import { MedicationTile } from './medication-tile'
 import { MedicineForm } from './medicine-form'
 import type { Medicine } from './contract'
+import { MedicationsLink, showMedicationsView } from './medications-nav'
 import { useMedicines } from './queries'
+import { medicationSetupHref, medicationsHref } from './routes'
 
 export function MedicinePanel({
   scheduleMode = 'list',
   scheduleMedicineId = '',
   detailMedicineId = '',
   initialNow,
+  serverEntry = false,
 }: {
   scheduleMode?: 'add' | 'setup' | 'list' | 'detail'
   scheduleMedicineId?: string
   detailMedicineId?: string
   initialNow: string
+  /** This render's server read already refreshed both queries, so views don't read again. */
+  serverEntry?: boolean
 }) {
-  const router = useRouter()
   // Handoff from Add to the saved medicine's page (FE-647 D7). Panel state carries it across
   // the replace navigation (one mounted panel per /medications); a reload drops it.
   const [savedMedicine, setSavedMedicine] = useState<Medicine | null>(null)
   // Handoff from schedule setup to the medicine's page (FE-647 D4), carried the same way.
   const [scheduledMedicine, setScheduledMedicine] = useState<Medicine | null>(null)
+  // Done for now hands focus to the saved medicine's list row (647·B1).
+  const [focusMedicineId, setFocusMedicineId] = useState<string | null>(null)
   const {
     medicines,
-    loading,
-    loadError,
     refreshFailed,
     refreshing,
     retry: retryMedicines,
-  } = useMedicines()
+  } = useMedicines({ serverEntry })
   const mounted = useRef(true)
   const mode = useRef(scheduleMode)
   const setupMedicineId = useRef(scheduleMedicineId)
@@ -76,58 +75,22 @@ export function MedicinePanel({
     setScheduledMedicine(medicine)
     // Never navigate someone who has already left this medicine's setup.
     if (mounted.current && mode.current === 'setup' && setupMedicineId.current === medicine.id)
-      router.replace(`/medications?medicine=${encodeURIComponent(medicine.id)}`)
+      showMedicationsView(medicationsHref({ mode: 'detail', medicineId: medicine.id }), 'replace')
   }
 
   function saved(medicine: Medicine) {
     setSavedMedicine(medicine)
     // Never navigate someone who has already left the Add screen.
     if (mounted.current && mode.current === 'add')
-      router.replace(`/medications?medicine=${encodeURIComponent(medicine.id)}`)
+      showMedicationsView(medicationsHref({ mode: 'detail', medicineId: medicine.id }), 'replace')
   }
 
-  if (scheduleMode === 'add')
-    return (
-      <div className="flex flex-col gap-5">
-        <Link
-          href="/medications"
-          className={buttonVariants({ variant: 'ghost', className: '-ml-3 self-start' })}
-        >
-          <ChevronLeftIcon data-icon="inline-start" aria-hidden="true" />
-          Medications
-        </Link>
-        <AppHeader
-          title="Add medication"
-          subtitle="Saved once Meddies has it. You can set a schedule straight after, or later."
-        />
-        <MedicineForm onSaved={saved} />
-      </div>
-    )
+  if (scheduleMode === 'add') return <MedicineForm onSaved={saved} />
 
   const detail = medicines.find((item) => item.id === detailMedicineId)
   return (
     <div className="flex flex-col gap-5">
-      <AppHeader
-        title="Medications"
-        subtitle={
-          scheduleMode === 'list' && !loading && !loadError
-            ? `${medicines.length} ${medicines.length === 1 ? 'medication' : 'medications'}`
-            : undefined
-        }
-        action={
-          scheduleMode === 'list' && (
-            <Link
-              href="/medications?add"
-              aria-label="Add a medication"
-              className={buttonVariants({ className: 'rounded-full' })}
-            >
-              <Icon name="plus" data-icon="inline-start" />
-              Add
-            </Link>
-          )
-        }
-      />
-      {refreshFailed && (
+      {refreshFailed && scheduleMode !== 'list' && (
         <Alert role="status">
           <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
             <p>Your medications didn&apos;t update just now. Showing the last list that loaded.</p>
@@ -170,18 +133,19 @@ export function MedicinePanel({
             <AlertTitle>{savedMedicine.label} saved.</AlertTitle>
           </Alert>
           <div className="flex flex-col gap-2.5">
-            <Link
-              href={`/medications?schedule=${encodeURIComponent(savedMedicine.id)}#schedule-heading`}
+            <MedicationsLink
+              href={medicationSetupHref(savedMedicine.id)}
               className={buttonVariants({ size: 'lg' })}
             >
               Set schedule
-            </Link>
-            <Link
-              href="/medications"
+            </MedicationsLink>
+            <MedicationsLink
+              href={medicationsHref({ mode: 'list' })}
+              onShow={() => setFocusMedicineId(savedMedicine.id)}
               className={buttonVariants({ size: 'lg', variant: 'outline' })}
             >
               Done for now
-            </Link>
+            </MedicationsLink>
           </div>
         </section>
       )}
@@ -195,6 +159,9 @@ export function MedicinePanel({
         onScheduleSaved={scheduled}
         mode={scheduleMode}
         initialMedicineId={scheduleMedicineId || detailMedicineId}
+        serverEntry={serverEntry}
+        focusMedicineId={focusMedicineId}
+        onMedicineFocused={() => setFocusMedicineId(null)}
       />
     </div>
   )

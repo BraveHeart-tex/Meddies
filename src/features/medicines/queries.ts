@@ -20,29 +20,28 @@ export async function fetchMedicines(signal?: AbortSignal): Promise<Medicine[]> 
   return data.medicines.map(parseMedicine)
 }
 
+/** A newer list wins, and medicines it has not seen yet stay. */
+export function mergeMedicines(current: Medicine[] | undefined, incoming: Medicine[]) {
+  return current
+    ? [...incoming, ...current.filter((item) => !incoming.some((value) => value.id === item.id))]
+    : incoming
+}
+
 export const medicinesQuery = () =>
   queryOptions({
     queryKey: medicineKeys.list(),
     queryFn: ({ signal }) => fetchMedicines(signal),
     // Medicines are immutable and cannot be deleted yet. A stale list cannot erase a save.
-    structuralSharing: (old, next) => {
-      const current = old as Medicine[] | undefined
-      const incoming = next as Medicine[]
-      return current
-        ? [
-            ...incoming,
-            ...current.filter((item) => !incoming.some((value) => value.id === item.id)),
-          ]
-        : incoming
-    },
+    structuralSharing: (old, next) =>
+      mergeMedicines(old as Medicine[] | undefined, next as Medicine[]),
   })
 
 /**
  * Reads the cached medicines. Cached content stays on screen while it refreshes; loading and
  * load error apply only until the session has a list (FE-666).
  */
-export function useMedicines() {
-  const read = useQuery(medicinesQuery())
+export function useMedicines({ serverEntry = false }: { serverEntry?: boolean } = {}) {
+  const read = useQuery({ ...medicinesQuery(), refetchOnMount: !serverEntry })
   const hasMedicines = read.data !== undefined
   const loadError = !hasMedicines && read.isError && !read.isFetching
   return {
@@ -52,9 +51,13 @@ export function useMedicines() {
     /** A refresh failed; the cached list stays on screen with a recoverable alert. */
     refreshFailed: hasMedicines && read.isError,
     refreshing: read.isFetching,
+    /** When the cached list last read successfully. */
+    updatedAt: read.dataUpdatedAt,
     retry: () => void read.refetch(),
   }
 }
+
+export type MedicinesRead = ReturnType<typeof useMedicines>
 
 /** A confirmed save replaces or appends that medicine in the cached list. */
 export function withSavedMedicine(list: Medicine[] | undefined, medicine: Medicine) {

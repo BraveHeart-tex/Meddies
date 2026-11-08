@@ -6,6 +6,8 @@ import {
   historyFallback,
   historyList,
   historyRouteFallback,
+  medicationsFallback,
+  medicationsList,
   settingsRouteFallback,
   signInRouteFallback,
   todayFallback,
@@ -28,6 +30,12 @@ const routes: CaptureRoute[] = [
     path: '/history',
     fallback: historyFallback,
     content: (page) => historyList(page, today),
+  },
+  {
+    name: 'medications',
+    path: '/medications',
+    fallback: medicationsFallback,
+    content: medicationsList,
   },
   {
     name: 'history-route',
