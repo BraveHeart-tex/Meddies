@@ -20,3 +20,37 @@ happen. After a design changes there, refresh the copy here.
   not chrome: build with the production AppShell, components and tokens, and take geometry
   from [DESIGN.md](../../DESIGN.md).
 - **Wording:** [docs/copy.md](../copy.md) overrides the wording in these snapshots.
+
+## Design lab
+
+Use the lab for new frames that should hand off as real production components. Run
+`pnpm dev`, then open `/lab` for the registry or `/lab/649-l1` for cold launch `649·L1`.
+The lab exists only under `next dev`; production and preview builds return the themed
+HTTP 404. Existing HTML snapshots above remain supported.
+
+`src/features/design-lab/frames.tsx` is the typed registry: each lowercase
+`<design>-<frame>` slug owns its title, citation and render function. Routes only adapt
+and compose. Import production compositions; reusable UI belongs in shared UI, layout
+or feature modules from day one. The initial frame imports the root loading composition,
+including its AppShell exactly once.
+
+Synthetic fixtures must be typed against feature contracts and seeded into a per-frame
+Query client, with no data network reads. Cold launch needs no data wrapper. The first
+data-driven frame's owner implements that wrapper.
+
+Capture persistent frames with the shared stylesheet/font readiness, screenshot and
+summary measurements:
+
+```sh
+MEDDIES_BROWSER_DEV=1 MEDDIES_VISUAL_OUT=/tmp/meddies-lab \
+  pnpm exec playwright test design-lab-capture --project=phone --grep=@visual
+```
+
+This opt-in visual check uses 402×874 with normal motion, asserts one loading status,
+no horizontal overflow and production shell geometry, and writes PNG and JSON evidence.
+It neither holds Worker reads nor waits for the persistent status to disappear. Existing
+fallback/loaded capture remains available through `loading-capture.spec.ts`. Choose
+additional checks by risk under [verification](../verification.md#visual-verification).
+
+Attach screenshots and JSON to the owning Linear issue, record design review and approval
+there, and link the same evidence in the implementation handoff. Commit no binary artifacts.

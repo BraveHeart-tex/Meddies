@@ -43,6 +43,9 @@ the ticket that owns each nearby item.
 - [ ] One checkable outcome per line, citing design frames as `647·M6`
 ```
 
+- For lab frames, hand off the lab slug (for example `/lab/649-l1`), frame citation
+  and linked Linear capture evidence with design approval. Reuse the same production
+  components and evidence; HTML snapshots remain supported (see [design guide](design/README.md)).
 - Set blockers as native Linear relations. Add a "Blocked by" section only when a
   blocker cannot be linked.
 - Describe behaviour, not file paths. Link stable docs and design artifacts.

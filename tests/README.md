@@ -2,8 +2,9 @@
 
 `pnpm test` builds the Worker bundle, then runs the Vitest projects in
 `vitest.config.mts` (`unit`, `component`, `integration`). The `integration` project runs the
-Worker bundle (`.worker-build`) in local workerd/D1; its auth suite also starts
-`next start`, so it needs a production build in `.next`.
+Worker bundle (`.worker-build`) in local workerd/D1; its auth and design-lab suites also start
+`next start`, so they need a production build in `.next`. The lab suite additionally
+checks `next dev` HTTP behavior.
 
 ```sh
 pnpm test:unit                           # unit and component projects, no Worker build

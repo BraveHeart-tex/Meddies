@@ -42,7 +42,7 @@ export type CaptureEntry = {
   captureCase: string
   route: string
   path: string
-  stage: 'fallback' | 'loaded'
+  stage: 'fallback' | 'loaded' | 'rendered'
   viewport: string
   reducedMotion: 'reduce' | 'no-preference'
   screenshot: string
@@ -86,32 +86,61 @@ export async function captureLoading(
     for (const { name, viewport, reducedMotion } of cases) {
       await page.setViewportSize(viewport)
       await page.emulateMedia({ reducedMotion })
-      const shoot = async (stage: CaptureEntry['stage']) => {
-        await expect
-          .poll(() => stylesheetsLoaded(page), { message: 'stylesheets should load' })
-          .toBe(true)
-        const screenshot = `${route.name}-${stage}-${name}.png`
-        await page.screenshot({ path: resolve(out, screenshot) })
-        summary.push({
-          captureCase: name,
-          route: route.name,
-          path: route.path,
-          stage,
-          viewport: `${viewport.width}x${viewport.height}`,
-          reducedMotion,
-          screenshot,
-          ...(await measure(page)),
-        })
-      }
       worker.hold(route.hold ?? holdAll)
       await page.goto(route.path, { waitUntil: 'commit' })
       await expect(route.fallback(page)).toBeVisible()
-      await shoot('fallback')
+      summary.push(
+        await captureStage(page, route, { name, viewport, reducedMotion }, 'fallback', out),
+      )
       worker.release()
       await expect(route.content(page)).toBeVisible()
       await expect(route.fallback(page)).toHaveCount(0)
-      await shoot('loaded')
+      summary.push(
+        await captureStage(page, route, { name, viewport, reducedMotion }, 'loaded', out),
+      )
     }
   await writeFile(resolve(out, 'loading-capture.json'), `${JSON.stringify(summary, null, 2)}\n`)
   return summary
+}
+
+/** Shared readiness, screenshot and summary for both transient fallbacks and persistent frames. */
+async function captureStage(
+  page: Page,
+  route: Pick<CaptureRoute, 'name' | 'path'>,
+  captureCase: CaptureCase,
+  stage: CaptureEntry['stage'],
+  out: string,
+): Promise<CaptureEntry> {
+  await expect
+    .poll(() => stylesheetsLoaded(page), { message: 'stylesheets should load' })
+    .toBe(true)
+  const screenshot = `${route.name}-${stage}-${captureCase.name}.png`
+  await page.screenshot({ path: resolve(out, screenshot) })
+  return {
+    captureCase: captureCase.name,
+    route: route.name,
+    path: route.path,
+    stage,
+    viewport: `${captureCase.viewport.width}x${captureCase.viewport.height}`,
+    reducedMotion: captureCase.reducedMotion,
+    screenshot,
+    ...(await measure(page)),
+  }
+}
+
+/** Capture an already-rendered frame without Worker holds or waiting for its status to disappear. */
+export async function captureRendered(
+  page: Page,
+  route: Pick<CaptureRoute, 'name' | 'path'> & { ready: (page: Page) => Locator },
+  out: string,
+  captureCase: CaptureCase = captureCases.phone,
+) {
+  await mkdir(out, { recursive: true })
+  await page.setViewportSize(captureCase.viewport)
+  await page.emulateMedia({ reducedMotion: captureCase.reducedMotion })
+  await page.goto(route.path)
+  await expect(route.ready(page)).toBeVisible()
+  const entry = await captureStage(page, route, captureCase, 'rendered', out)
+  await writeFile(resolve(out, 'frame-capture.json'), `${JSON.stringify(entry, null, 2)}\n`)
+  return entry
 }

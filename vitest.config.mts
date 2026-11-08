@@ -1,8 +1,12 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
-// Tests that load the Worker bundle (`.worker-build`, from `pnpm worker:build`).
-const integration = ['tests/auth.test.ts', 'tests/medicine-storage.test.ts']
+// HTTP and Worker integration tests; production HTTP tests also need a Next.js build.
+const integration = [
+  'tests/auth.test.ts',
+  'tests/medicine-storage.test.ts',
+  'tests/design-lab-http.test.ts',
+]
 
 export default defineConfig({
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
