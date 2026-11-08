@@ -66,7 +66,7 @@ test('a schedule on selected weekdays shows its next Istanbul occurrence', async
     await page
       .getByRole('link', { name: /^View details for Weekday Browser Medicine/ })
       .press('Enter')
-    await expect(page.getByRole('heading', { name: 'Saved routine' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Schedule', exact: true })).toBeVisible()
     await expect(page).toHaveURL(new RegExp(`[?&]medicine=${medicineId}`))
     await expect(page.getByText('Monday at 23:59')).toBeVisible()
   })

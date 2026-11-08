@@ -165,7 +165,7 @@ test('failed Today reads show recoverable errors in the shell', async ({ page, a
     page.getByText('Today could not be refreshed. Connect to the internet and retry.'),
   ).toBeVisible()
   app.worker.clear()
-  await page.getByRole('button', { name: 'Retry loading medicines' }).click()
+  await page.getByRole('button', { name: 'Try loading medications again' }).click()
   await page.getByRole('button', { name: 'Retry Today' }).click()
   await expect(todaysDoses(page)).toContainText('Streaming Fixture Medicine')
 })

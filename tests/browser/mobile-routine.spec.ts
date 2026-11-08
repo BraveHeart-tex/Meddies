@@ -121,8 +121,8 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await page.reload()
     await page.getByRole('link', { name: 'View details for Evening Vitamin' }).click()
     await expect(page.getByRole('heading', { name: 'Evening Vitamin' })).toBeVisible()
-    await expect(page.getByRole('region', { name: 'Saved routine' })).toContainText(
-      'No schedule saved yet.',
+    await expect(page.getByRole('region', { name: 'Schedule', exact: true })).toContainText(
+      'No schedule yet.',
     )
   })
 

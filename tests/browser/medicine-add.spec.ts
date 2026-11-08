@@ -119,7 +119,7 @@ test('add a medicine: validation, failures keep values, retry saves once, handof
   await test.step('the saved handoff replaces Add and focuses the medicine', async () => {
     await expect(page.getByRole('heading', { name: label })).toBeFocused()
     await expect(page.getByRole('status').filter({ hasText: `${label} saved.` })).toBeVisible()
-    await expect(page.getByText('Product strength: 5 mg')).toBeVisible()
+    await expect(page.getByText('Strength: 5 mg')).toBeVisible()
     await expect(page.getByText('Unit: capsule')).toBeVisible()
     await expect(page.getByRole('link', { name: 'Set schedule' }).first()).toHaveAttribute(
       'href',

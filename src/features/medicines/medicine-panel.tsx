@@ -130,14 +130,14 @@ export function MedicinePanel({
       {refreshFailed && (
         <Alert role="status">
           <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
-            <p>Your medicines could not be refreshed. Showing the last successful list.</p>
+            <p>Your medications didn&apos;t update just now. Showing the last list that loaded.</p>
             <Button
               variant="outline"
               className="min-h-11"
               disabled={refreshing}
               onClick={retryMedicines}
             >
-              {refreshing ? 'Retrying…' : 'Retry loading medicines'}
+              {refreshing ? 'Retrying…' : 'Try loading medications again'}
             </Button>
           </AlertDescription>
         </Alert>
@@ -153,10 +153,10 @@ export function MedicinePanel({
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-1">
-            <p>Product strength: {detail.strength || 'Not provided'}</p>
+            <p>Strength: {detail.strength || 'Not added'}</p>
             <p>Unit: {detail.unit}</p>
             <p className="text-label text-muted-foreground">
-              Medicine details are saved and cannot be edited here.
+              Medication details can&apos;t be changed here.
             </p>
           </CardContent>
         </Card>

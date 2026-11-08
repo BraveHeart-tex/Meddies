@@ -127,7 +127,7 @@ export function TodaySchedule({
                 : 'Medicine details could not be refreshed. Showing the last successful list.'}
             </p>
             <Button variant="outline" onClick={retryMedicines}>
-              Retry loading medicines
+              Try loading medications again
             </Button>
           </AlertDescription>
         </Alert>

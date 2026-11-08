@@ -54,14 +54,14 @@ export function SchedulePanel({
         {refreshFailed && (mode === 'list' || mode === 'detail') && (
           <Alert role="status">
             <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
-              <p>Saved routines could not be refreshed. Showing the last successful list.</p>
+              <p>Your schedules didn&apos;t update just now. Showing the last list that loaded.</p>
               <Button
                 variant="outline"
                 className="min-h-11"
                 disabled={refreshing}
                 onClick={retrySchedules}
               >
-                {refreshing ? 'Retrying…' : 'Retry loading routines'}
+                {refreshing ? 'Retrying…' : 'Try loading schedules again'}
               </Button>
             </AlertDescription>
           </Alert>
@@ -72,23 +72,27 @@ export function SchedulePanel({
               Your medicines
             </h2>
             {loading || medicinesLoading ? (
-              <p role="status">Loading saved routines...</p>
+              <p role="status">Loading your medications…</p>
             ) : medicinesError ? (
               <div role={medicines.length === 0 ? 'alert' : 'status'} className="space-y-2">
-                <p>Your medicines could not be refreshed.</p>
+                <p>
+                  Your medications didn&apos;t load just now. Check your connection and try again.
+                </p>
                 <Button variant="outline" className="min-h-11" onClick={retryMedicines}>
-                  Retry loading medicines
+                  Try loading medications again
                 </Button>
               </div>
             ) : loadError ? (
               <div role="alert" className="space-y-2">
-                <p>Saved routines could not be loaded.</p>
+                <p>
+                  Your schedules didn&apos;t load just now. Check your connection and try again.
+                </p>
                 <Button variant="outline" className="min-h-11" onClick={retrySchedules}>
-                  Retry loading routines
+                  Try loading schedules again
                 </Button>
               </div>
             ) : medicines.length === 0 ? (
-              <p>No medicines saved yet.</p>
+              <p>No medications here yet. Add your first one whenever you&apos;re ready.</p>
             ) : (
               <MedicationRoutineGroups medicines={medicines} schedules={schedules} />
             )}
@@ -97,22 +101,24 @@ export function SchedulePanel({
         {mode === 'detail' && (
           <section aria-labelledby="routine-heading" className="space-y-3 [overflow-wrap:anywhere]">
             <h2 id="routine-heading" className="text-xl font-semibold">
-              Saved routine
+              Schedule
             </h2>
             {loading || medicinesLoading ? (
-              <p role="status">Loading saved routine...</p>
+              <p role="status">Loading schedule…</p>
             ) : medicinesError ? (
               <div role="alert" className="space-y-2">
-                <p>The medicine could not be loaded.</p>
+                <p>
+                  This medication didn&apos;t load just now. Check your connection and try again.
+                </p>
                 <Button variant="outline" className="min-h-11" onClick={retryMedicines}>
-                  Retry loading medicine
+                  Try loading medication again
                 </Button>
               </div>
             ) : loadError ? (
               <div role="alert" className="space-y-2">
-                <p>The saved routine could not be loaded.</p>
+                <p>This schedule didn&apos;t load just now. Check your connection and try again.</p>
                 <Button variant="outline" className="min-h-11" onClick={retrySchedules}>
-                  Retry loading routine
+                  Try loading schedule again
                 </Button>
               </div>
             ) : selectedSchedule ? (
@@ -129,7 +135,7 @@ export function SchedulePanel({
               </div>
             ) : medicines.some((item) => item.id === initialMedicineId) ? (
               <div className="space-y-2">
-                <p>No schedule saved yet.</p>
+                <p>No schedule yet.</p>
                 <Link
                   className="inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-primary-foreground"
                   href={`/medications?schedule=${encodeURIComponent(initialMedicineId)}#schedule-heading`}
@@ -138,7 +144,7 @@ export function SchedulePanel({
                 </Link>
               </div>
             ) : (
-              <p role="alert">This medicine could not be found.</p>
+              <p role="alert">This medication isn&apos;t in your list.</p>
             )}
           </section>
         )}

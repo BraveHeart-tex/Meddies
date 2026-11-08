@@ -57,7 +57,7 @@ export function MedicationRoutineGroups({
                     <p className="text-label font-bold">{routineSummary(schedule)}</p>
                   ) : (
                     <p className="text-label font-semibold text-muted-foreground">
-                      No schedule saved yet.
+                      No schedule yet.
                     </p>
                   )}
                 </ItemContent>

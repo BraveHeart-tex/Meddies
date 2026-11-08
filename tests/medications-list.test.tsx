@@ -24,7 +24,8 @@ const listOf = (length: number) => Array.from({ length }, (_, i) => medicine(i +
 const count = (n: number) => `${n} ${n === 1 ? 'medication' : 'medications'}`
 // Just past `createQueryClient`'s 30s stale time.
 const stale = 31_000
-const refreshFailed = /Your medicines could not be refreshed\. Showing the last successful list\./
+const refreshFailed =
+  /Your medications didn't update just now\. Showing the last list that loaded\./
 
 /** Serves the medicine list and schedules snapshot, counting medicine reads. */
 function medicinesApi(initial: Medicine[]) {
@@ -165,7 +166,7 @@ describe('with a cached list', () => {
     expect(screen.getByText(count(1))).toBeVisible()
     expect(screen.getByText('Medicine 1')).toBeVisible()
     api.serve(listOf(2))
-    await user.click(screen.getByRole('button', { name: 'Retry loading medicines' }))
+    await user.click(screen.getByRole('button', { name: 'Try loading medications again' }))
     expect(await screen.findByText(count(2))).toBeVisible()
     expect(screen.queryByText(refreshFailed)).not.toBeInTheDocument()
     expect(api.reads()).toBe(2)
@@ -177,11 +178,11 @@ describe('with no cache', () => {
     const api = medicinesApi(listOf(1))
     const release = api.hold()
     renderList()
-    expect(await screen.findByRole('status')).toHaveTextContent('Loading saved routines...')
+    expect(await screen.findByRole('status')).toHaveTextContent('Loading your medications…')
     expect(screen.queryByText(count(0))).not.toBeInTheDocument()
     release()
     expect(await screen.findByText(count(1))).toBeVisible()
-    expect(screen.queryByText('Loading saved routines...')).not.toBeInTheDocument()
+    expect(screen.queryByText('Loading your medications…')).not.toBeInTheDocument()
     expect(api.reads()).toBe(1)
   })
 
@@ -190,11 +191,90 @@ describe('with no cache', () => {
     api.failNext()
     const user = renderList()
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent('Your medicines could not be refreshed.')
+    expect(alert).toHaveTextContent(
+      "Your medications didn't load just now. Check your connection and try again.",
+    )
     expect(screen.queryByText(count(0))).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Retry loading medicines' }))
+    await user.click(screen.getByRole('button', { name: 'Try loading medications again' }))
     expect(await screen.findByText(count(1))).toBeVisible()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(api.reads()).toBe(2)
+  })
+
+  test('an empty list invites the first medication', async () => {
+    medicinesApi([])
+    renderList()
+    expect(
+      await screen.findByText("No medications here yet. Add your first one whenever you're ready."),
+    ).toBeVisible()
+  })
+
+  test('a medication with no schedule says so in its list row', async () => {
+    medicinesApi(listOf(1))
+    renderList()
+    expect(await screen.findByText('No schedule yet.')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'View details for Medicine 1' })).toBeVisible()
+  })
+
+  test('a failed schedules read shows the load error with its retry', async () => {
+    medicinesApi(listOf(1))
+    server.use(
+      http.get('/api/schedules', () =>
+        HttpResponse.json({ error: 'unavailable' }, { status: 503 }),
+      ),
+    )
+    renderList()
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "Your schedules didn't load just now. Check your connection and try again.",
+    )
+    expect(screen.getByRole('button', { name: 'Try loading schedules again' })).toBeVisible()
+  })
+})
+
+describe('a medication detail', () => {
+  function renderDetail(id: string) {
+    render(
+      <QueryClientProvider client={client}>
+        <MedicinePanel
+          scheduleMode="detail"
+          detailMedicineId={id}
+          initialNow="2026-11-14T08:00:00.000Z"
+        />
+      </QueryClientProvider>,
+    )
+  }
+
+  test('shows its details and that no schedule is set', async () => {
+    medicinesApi(listOf(1))
+    cache(listOf(1))
+    renderDetail(medicine(1).id)
+    expect(await screen.findByText('No schedule yet.')).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Schedule', level: 2 })).toBeVisible()
+    expect(screen.getByText('Strength: Not added')).toBeVisible()
+    expect(screen.getByText("Medication details can't be changed here.")).toBeVisible()
+  })
+
+  test('says when the medication is not in the list', async () => {
+    medicinesApi(listOf(1))
+    cache(listOf(1))
+    renderDetail('00000000-0000-4000-8000-000000000999')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "This medication isn't in your list.",
+    )
+  })
+
+  test('a failed schedules read shows the detail error with its retry', async () => {
+    medicinesApi(listOf(1))
+    server.use(
+      http.get('/api/schedules', () =>
+        HttpResponse.json({ error: 'unavailable' }, { status: 503 }),
+      ),
+    )
+    cache(listOf(1))
+    renderDetail(medicine(1).id)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "This schedule didn't load just now. Check your connection and try again.",
+    )
+    expect(screen.getByRole('button', { name: 'Try loading schedule again' })).toBeVisible()
   })
 })
