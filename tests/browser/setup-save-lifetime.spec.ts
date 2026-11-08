@@ -18,6 +18,7 @@ for (const viewport of [
     reducedMotion: 'reduce' as const,
   },
 ]) {
+  // eslint-disable-next-line meddies/no-width-loop-tests -- only 201px squeezed the Toast message to zero width (FE-668)
   test.describe(viewport.name, () => {
     test.use({
       viewport: { width: viewport.width, height: viewport.height },

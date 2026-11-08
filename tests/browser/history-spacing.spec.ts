@@ -61,6 +61,7 @@ const viewports = [
 ]
 
 for (const { width, height } of viewports)
+  // eslint-disable-next-line meddies/no-width-loop-tests -- on-request @visual: the layout reflows at each width
   test(
     `History sections are 20px apart and the header matches Today at ${width}px`,
     { tag: '@visual' },

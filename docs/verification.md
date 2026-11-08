@@ -79,6 +79,8 @@ covers every journey that runs in CI; on-request `@visual` journeys sit outside 
 - **Shape:** one scenario per test. One page load may carry all its checks, and one test
   may step through several routes for the same behavior.
 - **Viewport:** CI runs at 402px unless the allowed behavior itself differs by width.
+  Lint fails on a test or describe declared in a loop over widths or viewports; a real
+  exception needs an inline disable saying why behavior differs by width.
 - **Assertions:** specs that run in CI assert behavior; fixed pixel values belong in
   `@visual`. Request counts are asserted exactly: zero repeated initial reads per path
   after load unless the assertion's comment justifies otherwise.

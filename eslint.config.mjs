@@ -3,8 +3,12 @@ import nextVitals from 'eslint-config-next/core-web-vitals'
 import prettier from 'eslint-config-prettier/flat'
 import playwright from 'eslint-plugin-playwright'
 import bannedUiWords from './eslint-rules/banned-ui-words.mjs'
+import noWidthLoopTests from './eslint-rules/no-width-loop-tests.mjs'
 
 const browserJourneys = 'tests/browser/**'
+const meddies = {
+  rules: { 'banned-ui-words': bannedUiWords, 'no-width-loop-tests': noWidthLoopTests },
+}
 const browserRestrictedImports = [
   'server-only',
   '**/server',
@@ -74,7 +78,7 @@ const eslintConfig = defineConfig([
   // Internal words stay out of visible copy (docs/copy.md).
   {
     files: ['src/**/*.tsx'],
-    plugins: { meddies: { rules: { 'banned-ui-words': bannedUiWords } } },
+    plugins: { meddies },
     rules: { 'meddies/banned-ui-words': 'error' },
   },
   // Browser code reads through authenticated API routes, never server wiring or storage transport.
@@ -146,8 +150,11 @@ const eslintConfig = defineConfig([
   {
     ...playwright.configs['flat/recommended'],
     files: [browserJourneys],
+    plugins: { ...playwright.configs['flat/recommended'].plugins, meddies },
     rules: {
       ...playwright.configs['flat/recommended'].rules,
+      // Width variants never earn a journey; exceptions need an inline disable with a reason.
+      'meddies/no-width-loop-tests': 'error',
       // Playwright fixtures call `use`, which is not a React hook.
       'react-hooks/rules-of-hooks': 'off',
       'playwright/no-wait-for-timeout': 'error',
