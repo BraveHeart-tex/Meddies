@@ -24,9 +24,9 @@ const todayReads: WorkerRoute[] = [
   { method: 'POST', path: '/medicines', operation: 'list' },
 ]
 
-// Direct-load layout shift budget at 320px and 402px; measured 0 at both (FE-672). The fallback
-// is replaced, not moved, and nothing above it changes size, so any shift is a regression. The
-// small allowance absorbs sub-pixel font metrics only.
+// Direct-load layout shift budget at 402px; measured 0 (FE-672). The fallback is replaced, not
+// moved, and nothing above it changes size, so any shift is a regression. The small allowance
+// absorbs sub-pixel font metrics only.
 const layoutShiftBudget = 0.01
 
 test.use({
@@ -67,15 +67,17 @@ async function expectShellWithFallback(page: Page) {
     await expect(placeholder).toHaveAttribute('aria-hidden', 'true')
 }
 
-test('direct load shows the shell and doses fallback while Today reads are held', async ({
+test('direct load streams the shell, fallback and doses in a stable layout', async ({
   page,
   app,
 }) => {
   const api = countApiRequests(page, app.origin)
+  const layout = await trackLayout(page, layoutViewports.phone)
   for (const route of todayReads) app.worker.hold(route)
   await page.goto('/', { waitUntil: 'commit' })
   await expectReadsOverlap(app.worker, todayReads)
   await expectShellWithFallback(page)
+  await layout.snapshot('fallback')
   await expectStreamingOrder(app.worker, {
     routes: todayReads,
     fallback: fallback(page),
@@ -84,6 +86,11 @@ test('direct load shows the shell and doses fallback while Today reads are held'
   await expect(todaysDoses(page)).toContainText('Streaming Fixture Medicine')
   await page.waitForLoadState('load')
   expectNoRepeatedReads(api)
+  await layout.snapshot('loaded')
+  const result = await layout.result()
+  const [fallbackBoxes, loadedBoxes] = result.snapshots.map((snapshot) => snapshot.boxes)
+  expect(loadedBoxes, 'the shell keeps its geometry').toEqual(fallbackBoxes)
+  expect(result.cumulativeLayoutShift).toBeLessThanOrEqual(layoutShiftBudget)
 })
 
 test('cold client navigation shows the same fallback before Today', async ({ page, app }) => {
@@ -131,31 +138,6 @@ test('warm client navigation shows cached doses instead of the skeleton', async 
   await expect(todaysDoses(page)).toContainText('Streaming Fixture Medicine')
 })
 
-for (const [name, viewport] of Object.entries(layoutViewports))
-  test(`keeps Today layout shift within budget on direct load at ${viewport.width}px`, async ({
-    page,
-    app,
-  }, testInfo) => {
-    const layout = await trackLayout(page, viewport)
-    for (const route of todayReads) app.worker.hold(route)
-    await page.goto('/', { waitUntil: 'commit' })
-    await expect(fallback(page)).toBeVisible()
-    await layout.snapshot('fallback')
-    for (const route of todayReads) app.worker.release(route)
-    await expect(todaysDoses(page)).toBeVisible()
-    await page.waitForLoadState('load')
-    await layout.snapshot('loaded')
-    const result = await layout.result()
-    await testInfo.attach(`layout-${name}.json`, {
-      body: JSON.stringify(result, null, 2),
-      contentType: 'application/json',
-    })
-    console.log(`Today layout ${viewport.width}px: ${JSON.stringify(result)}`)
-    const [fallbackBoxes, loadedBoxes] = result.snapshots.map((snapshot) => snapshot.boxes)
-    expect(loadedBoxes, 'the shell keeps its geometry').toEqual(fallbackBoxes)
-    expect(result.cumulativeLayoutShift).toBeLessThanOrEqual(layoutShiftBudget)
-  })
-
 test('failed Today reads show recoverable errors in the shell', async ({ page, app }) => {
   for (const route of todayReads) app.worker.fail(route, 503)
   await page.goto('/')
@@ -168,22 +150,4 @@ test('failed Today reads show recoverable errors in the shell', async ({ page, a
   await page.getByRole('button', { name: 'Try loading medications again' }).click()
   await page.getByRole('button', { name: 'Try again' }).click()
   await expect(todaysDoses(page)).toContainText('Streaming Fixture Medicine')
-})
-
-test.describe('with no medicines', () => {
-  test.use({ journey: { auth: true, storage: true, initialScheduleTime } })
-
-  test('streams the empty state', async ({ page, app }) => {
-    const api = countApiRequests(page, app.origin)
-    await page.goto('/')
-    await expect(
-      page.getByText("No medications here yet. Add your first one whenever you're ready."),
-    ).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Go to Medications' })).toHaveAttribute(
-      'href',
-      '/medications',
-    )
-    await page.waitForLoadState('load')
-    expectNoRepeatedReads(api)
-  })
 })

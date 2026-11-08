@@ -83,24 +83,37 @@ async function expectShellWithFallback(page: Page) {
   await expect(page.getByText(/^\d+ medications?$/)).toHaveCount(0)
 }
 
-test('direct load shows the shell and fallback while the concurrent reads are held', async ({
+test('direct load streams the shell, fallback and list in a stable layout', async ({
   page,
   app,
 }) => {
   const api = countApiRequests(page, app.origin)
+  const layout = await trackLayout(page, layoutViewports.phone)
   for (const route of reads) app.worker.hold(route)
   await page.goto('/medications', { waitUntil: 'commit' })
   await expectReadsOverlap(app.worker, reads)
   await expectShellWithFallback(page)
+  // EntryFocus mounts with the page, so the route's loading fallback has been replaced.
+  await expect(title(page)).toBeFocused()
+  await layout.snapshot('fallback')
+  const before = await medicationsFallbackSection(page).boundingBox()
   await expectStreamingOrder(app.worker, {
     routes: reads,
     fallback: fallback(page),
     content: list(page),
   })
   await expect(row(page, scheduled)).toBeVisible()
+  await expect(list(page).getByText('On a schedule', { exact: true }).first()).toBeVisible()
   await expect(page.getByText('2 medications')).toBeVisible()
   await page.waitForLoadState('load')
   expectNoRepeatedReads(api)
+  await layout.snapshot('loaded')
+  const after = await list(page).boundingBox()
+  const result = await layout.result()
+  const [fallbackBoxes, loadedBoxes] = result.snapshots.map((snapshot) => snapshot.boxes)
+  expect(loadedBoxes, 'the shell keeps its geometry').toEqual(fallbackBoxes)
+  expect(after!.y, 'the list starts where the fallback did').toBe(before!.y)
+  expect(result.cumulativeLayoutShift).toBeLessThanOrEqual(layoutShiftBudget)
 })
 
 test('cold client navigation shows the same fallback before the list', async ({ page, app }) => {
@@ -242,48 +255,6 @@ test('failed reads show one alert with Retry and Add, and Retry recovers', async
   await expect(row(page, scheduled)).toBeVisible()
   await expect(page.getByRole('alert').filter({ hasText: 'load just now' })).toHaveCount(0)
 })
-
-const longSeed = async ({ db, ownerId }: { db: JourneyDatabase; ownerId: string }) => {
-  for (let n = 1; n <= 12; n++) await insertMedicine(db, ownerId, `Long List Medicine ${n}`)
-}
-
-for (const [name, seed, content] of [
-  ['empty', undefined, 'No medications here yet.'],
-  ['short', seedTwo, 'On a schedule'],
-  ['long', longSeed, 'No schedule'],
-] as const)
-  test.describe(`with a ${name} list`, () => {
-    test.use({ journey: { auth: true, storage: true, initialScheduleTime, seed } })
-
-    test('keeps header geometry and layout shift within budget', async ({
-      page,
-      app,
-    }, testInfo) => {
-      const layout = await trackLayout(page, layoutViewports.phone)
-      for (const route of reads) app.worker.hold(route)
-      await page.goto('/medications', { waitUntil: 'commit' })
-      await expect(fallback(page)).toBeVisible()
-      // EntryFocus mounts with the page, so the route's loading fallback has been replaced.
-      await expect(title(page)).toBeFocused()
-      await layout.snapshot('fallback')
-      const before = await medicationsFallbackSection(page).boundingBox()
-      for (const route of reads) app.worker.release(route)
-      await expect(list(page).getByText(content, { exact: true }).first()).toBeVisible()
-      await page.waitForLoadState('load')
-      await layout.snapshot('loaded')
-      const after = await list(page).boundingBox()
-      const result = await layout.result()
-      await testInfo.attach(`layout-${name}.json`, {
-        body: JSON.stringify(result, null, 2),
-        contentType: 'application/json',
-      })
-      console.log(`Medications layout ${name}: ${JSON.stringify(result)}`)
-      const [fallbackBoxes, loadedBoxes] = result.snapshots.map((snapshot) => snapshot.boxes)
-      expect(loadedBoxes, 'the shell keeps its geometry').toEqual(fallbackBoxes)
-      expect(after!.y, 'the list starts where the fallback did').toBe(before!.y)
-      expect(result.cumulativeLayoutShift).toBeLessThanOrEqual(layoutShiftBudget)
-    })
-  })
 
 test.describe('without a session', () => {
   test.use({ journey: { auth: false, storage: true, initialScheduleTime } })

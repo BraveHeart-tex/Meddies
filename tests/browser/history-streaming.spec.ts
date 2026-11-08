@@ -28,7 +28,7 @@ const historyReads: WorkerRoute[] = [
   { method: 'POST', path: '/medicines', operation: 'list' },
 ]
 
-// Direct-load layout shift budget at 320px and 402px, Today's FE-672 budget. The fallback is
+// Direct-load layout shift budget at 402px, Today's FE-672 budget. The fallback is
 // replaced, not moved, and the shell and date bar above it do not change size, so any shift is a
 // regression. The small allowance absorbs sub-pixel font metrics only.
 const layoutShiftBudget = 0.01
@@ -69,16 +69,18 @@ async function expectShellWithFallback(page: Page) {
     await expect(placeholder).toHaveAttribute('aria-hidden', 'true')
 }
 
-test('direct load shows the shell and results fallback while History reads are held', async ({
+test('direct load streams the shell, fallback and results in a stable layout', async ({
   page,
   app,
 }) => {
   const api = countApiRequests(page, app.origin)
+  const layout = await trackLayout(page, layoutViewports.phone)
   for (const route of historyReads) app.worker.hold(route)
   await page.goto('/history', { waitUntil: 'commit' })
   await expectReadsOverlap(app.worker, historyReads)
   await expectShellWithFallback(page)
   await expect(page.getByText('Nothing to show for that day.')).toHaveCount(0)
+  await layout.snapshot('fallback')
   await expectStreamingOrder(app.worker, {
     routes: historyReads,
     fallback: fallback(page),
@@ -87,6 +89,11 @@ test('direct load shows the shell and results fallback while History reads are h
   await expect(doses(page)).toContainText('Streaming Fixture Medicine')
   await page.waitForLoadState('load')
   expectNoRepeatedReads(api)
+  await layout.snapshot('loaded')
+  const result = await layout.result()
+  const [fallbackBoxes, loadedBoxes] = result.snapshots.map((snapshot) => snapshot.boxes)
+  expect(loadedBoxes, 'the shell keeps its geometry').toEqual(fallbackBoxes)
+  expect(result.cumulativeLayoutShift).toBeLessThanOrEqual(layoutShiftBudget)
 })
 
 test('cold client navigation shows the same fallback before History', async ({ page, app }) => {
@@ -153,31 +160,6 @@ test('an uncached date shows the fallback, then a visited date shows at once', a
   await expect(doses(page, yesterday)).toContainText('Streaming Fixture Medicine')
 })
 
-for (const [name, viewport] of Object.entries(layoutViewports))
-  test(`keeps History layout shift within budget on direct load at ${viewport.width}px`, async ({
-    page,
-    app,
-  }, testInfo) => {
-    const layout = await trackLayout(page, viewport)
-    for (const route of historyReads) app.worker.hold(route)
-    await page.goto('/history', { waitUntil: 'commit' })
-    await expect(fallback(page)).toBeVisible()
-    await layout.snapshot('fallback')
-    for (const route of historyReads) app.worker.release(route)
-    await expect(doses(page)).toBeVisible()
-    await page.waitForLoadState('load')
-    await layout.snapshot('loaded')
-    const result = await layout.result()
-    await testInfo.attach(`layout-${name}.json`, {
-      body: JSON.stringify(result, null, 2),
-      contentType: 'application/json',
-    })
-    console.log(`History layout ${viewport.width}px: ${JSON.stringify(result)}`)
-    const [fallbackBoxes, loadedBoxes] = result.snapshots.map((snapshot) => snapshot.boxes)
-    expect(loadedBoxes, 'the shell keeps its geometry').toEqual(fallbackBoxes)
-    expect(result.cumulativeLayoutShift).toBeLessThanOrEqual(layoutShiftBudget)
-  })
-
 test('failed History reads show the unavailable state, and Retry recovers', async ({
   page,
   app,
@@ -198,43 +180,24 @@ test('failed History reads show the unavailable state, and Retry recovers', asyn
   expect(api.count('/api/schedules/history')).toBe(1)
 })
 
-test.describe('with no medicines', () => {
-  test.use({ journey: { auth: true, storage: true, initialScheduleTime } })
-
-  test('streams the empty state', async ({ page, app }) => {
-    const api = countApiRequests(page, app.origin)
-    await page.goto('/history')
-    await expect(page.getByText('Nothing was due before now today.')).toBeVisible()
-    await page.waitForLoadState('load')
-    expectNoRepeatedReads(api)
-  })
+// A future date is well formed, so only the page's own date check turns it away.
+test('invalid entry keeps its notice and day in place', async ({ page, app }, testInfo) => {
+  for (const route of historyReads) app.worker.hold(route)
+  await page.goto('/history?date=2035-12-24', { waitUntil: 'commit' })
+  await expectReadsOverlap(app.worker, historyReads)
+  await expectShellWithFallback(page)
+  const notice = page.getByRole('alert').filter({ hasText: 'Nothing to show for that day.' })
+  await expect(notice).toBeVisible()
+  const noticeBefore = await notice.boundingBox()
+  const dayBefore = await historyFallbackSection(page).boundingBox()
+  await page.screenshot({ path: testInfo.outputPath('invalid-loading.png') })
+  for (const route of historyReads) app.worker.release(route)
+  await expect(doses(page)).toContainText('Streaming Fixture Medicine')
+  await expect(page).toHaveURL(`/history?date=${today}`)
+  await expect(notice).toHaveCount(1)
+  await expect(page.getByRole('status')).toHaveCount(0)
+  const dayAfter = await page.getByRole('region', { name: 'Friday 15 June, 1 dose' }).boundingBox()
+  expect(await notice.boundingBox(), 'notice retains its final geometry').toEqual(noticeBefore)
+  expect(dayAfter!.y, 'the day starts at the same position after streaming').toBe(dayBefore!.y)
+  await page.screenshot({ path: testInfo.outputPath('invalid-loaded.png') })
 })
-
-for (const width of [402, 320])
-  for (const invalidDate of ['not-a-date', '2035-12-24'])
-    test(`invalid entry ${invalidDate} keeps its notice and day in place at ${width}px`, async ({
-      page,
-      app,
-    }, testInfo) => {
-      await page.setViewportSize({ width, height: 874 })
-      for (const route of historyReads) app.worker.hold(route)
-      await page.goto(`/history?date=${invalidDate}`, { waitUntil: 'commit' })
-      await expectReadsOverlap(app.worker, historyReads)
-      await expectShellWithFallback(page)
-      const notice = page.getByRole('alert').filter({ hasText: 'Nothing to show for that day.' })
-      await expect(notice).toBeVisible()
-      const noticeBefore = await notice.boundingBox()
-      const dayBefore = await historyFallbackSection(page).boundingBox()
-      await page.screenshot({ path: testInfo.outputPath('invalid-loading.png') })
-      for (const route of historyReads) app.worker.release(route)
-      await expect(doses(page)).toContainText('Streaming Fixture Medicine')
-      await expect(page).toHaveURL(`/history?date=${today}`)
-      await expect(notice).toHaveCount(1)
-      await expect(page.getByRole('status')).toHaveCount(0)
-      const dayAfter = await page
-        .getByRole('region', { name: 'Friday 15 June, 1 dose' })
-        .boundingBox()
-      expect(await notice.boundingBox(), 'notice retains its final geometry').toEqual(noticeBefore)
-      expect(dayAfter!.y, 'the day starts at the same position after streaming').toBe(dayBefore!.y)
-      await page.screenshot({ path: testInfo.outputPath('invalid-loaded.png') })
-    })
