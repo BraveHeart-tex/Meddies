@@ -57,7 +57,7 @@ export function HistoryDay({
       {notice === 'invalid' && (
         <Alert>
           <Icon name="warning" size={16} />
-          <AlertTitle>That date is not available.</AlertTitle>
+          <AlertTitle>Nothing to show for that day.</AlertTitle>
           <AlertDescription>
             History shows dates up to today. Showing today instead.
           </AlertDescription>
@@ -79,12 +79,12 @@ export function HistoryDay({
         ) : result.status === 'unavailable' ? (
           <Alert role="alert" variant="destructive">
             <AlertTitle id={dayHeadingId} ref={focusTarget} tabIndex={-1}>
-              History for {dateLabel(date, today)} could not be loaded.
+              History for {dateLabel(date, today)} didn&apos;t load just now.
             </AlertTitle>
             <AlertDescription className="flex flex-col items-start gap-2">
-              <p>Connect to the internet and retry. Your records have not changed.</p>
+              <p>Check your connection and try again. Your records haven&apos;t changed.</p>
               <Button type="button" variant="outline" onClick={result.retry}>
-                Retry this date
+                Try this date again
               </Button>
             </AlertDescription>
           </Alert>
@@ -98,8 +98,8 @@ export function HistoryDay({
                 className="font-extrabold outline-none"
               >
                 {date === today
-                  ? 'No doses were due before now today.'
-                  : `No doses were scheduled on ${heading}.`}
+                  ? 'Nothing was due before now today.'
+                  : `Nothing was scheduled on ${heading}.`}
               </h2>
             </CardContent>
           </Card>

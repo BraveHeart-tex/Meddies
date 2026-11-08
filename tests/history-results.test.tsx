@@ -154,8 +154,8 @@ test('Retry refetches a failed date without reloading', async () => {
     fail ? HttpResponse.json({}, { status: 503 }) : HttpResponse.json({ doses: [dose(date)] }),
   )
   renderResults(seeded({}))
-  const retry = await screen.findByRole('button', { name: 'Retry this date' })
-  expect(screen.getByRole('alert')).toHaveTextContent('History for Wed 4 Nov could not be loaded.')
+  const retry = await screen.findByRole('button', { name: 'Try this date again' })
+  expect(screen.getByRole('alert')).toHaveTextContent("History for Wed 4 Nov didn't load just now.")
   fail = false
   retry.click()
   expect(await doseList('2026-11-04')).toHaveTextContent('Melatonin')

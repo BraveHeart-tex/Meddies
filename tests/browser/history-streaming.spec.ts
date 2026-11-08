@@ -185,12 +185,12 @@ test('failed History reads show the unavailable state, and Retry recovers', asyn
   await expect(
     page
       .getByRole('alert')
-      .filter({ hasText: 'History for Today, Fri 15 Jun could not be loaded.' }),
+      .filter({ hasText: "History for Today, Fri 15 Jun didn't load just now." }),
   ).toBeVisible()
   await expect(page.getByRole('heading', { level: 1, name: 'History' })).toBeVisible()
   app.worker.clear()
   const api = countApiRequests(page, app.origin)
-  await page.getByRole('button', { name: 'Retry this date' }).click()
+  await page.getByRole('button', { name: 'Try this date again' }).click()
   await expect(doses(page)).toContainText('Streaming Fixture Medicine')
   // Retry refetched in place; the page did not load again.
   expect(api.count('/api/schedules/history')).toBe(1)
@@ -202,7 +202,7 @@ test.describe('with no medicines', () => {
   test('streams the empty state', async ({ page, app }) => {
     const api = countApiRequests(page, app.origin)
     await page.goto('/history')
-    await expect(page.getByText('No doses were due before now today.')).toBeVisible()
+    await expect(page.getByText('Nothing was due before now today.')).toBeVisible()
     await page.waitForLoadState('load')
     expectNoRepeatedReads(api)
   })

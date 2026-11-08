@@ -79,7 +79,7 @@ test('step through History, go Back, reload, and recover from bad dates', async 
     const empty = addDays(startDate, -1)
     await pickDate(page, 'Choose a date', empty)
     await expect(page).toHaveURL(historyUrl(empty))
-    await expect(page.getByText('No doses were scheduled on Monday 11 June.')).toBeFocused()
+    await expect(page.getByText('Nothing was scheduled on Monday 11 June.')).toBeFocused()
     await expect(historyRows(page, empty)).toHaveCount(0)
     await page.screenshot({ path: testInfo.outputPath('history-empty-402.png') })
   })
@@ -87,7 +87,7 @@ test('step through History, go Back, reload, and recover from bad dates', async 
   for (const bad of ['2035-12-24', 'not-a-date'])
     await test.step(`${bad} shows today instead and replaces the URL (648·H6)`, async () => {
       await page.goto(`/history?date=${bad}`)
-      await expect(page.getByText('That date is not available.')).toBeVisible()
+      await expect(page.getByText('Nothing to show for that day.')).toBeVisible()
       await expect(page.getByText('Showing today instead.', { exact: false })).toBeVisible()
       await expect(dayHeading(page, 'Friday 15 June, 1 dose')).toBeVisible()
       await expect(page).toHaveURL(historyUrl(today))
@@ -95,7 +95,7 @@ test('step through History, go Back, reload, and recover from bad dates', async 
     })
   await page.screenshot({ path: testInfo.outputPath('history-invalid-402.png') })
   await page.reload()
-  await expect(page.getByText('That date is not available.')).toHaveCount(0)
+  await expect(page.getByText('Nothing to show for that day.')).toHaveCount(0)
 
   await test.step('at 320px the date bar keeps its three parts on one row (648·H7)', async () => {
     await page.setViewportSize({ width: 320, height: 740 })

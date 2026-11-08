@@ -100,7 +100,7 @@ for (const { width, height } of viewports)
         await expectSectionGaps(
           appHeader(page),
           dateNav(page),
-          historyDay(page, 'No doses were scheduled on Monday 11 June.'),
+          historyDay(page, 'Nothing was scheduled on Monday 11 June.'),
         )
       })
 
@@ -109,7 +109,7 @@ for (const { width, height } of viewports)
         await expectSectionGaps(
           appHeader(page),
           dateNav(page),
-          page.getByRole('alert').filter({ hasText: 'That date is not available.' }),
+          page.getByRole('alert').filter({ hasText: 'Nothing to show for that day.' }),
           historyDay(page, 'Friday 15 June, 1 dose'),
         )
         await page.screenshot({ path: testInfo.outputPath(`history-invalid-${width}.png`) })
@@ -128,7 +128,7 @@ for (const { width, height } of viewports)
         await expectSectionGaps(
           appHeader(page),
           dateNav(page),
-          historyDay(page, 'History for Today, Fri 15 Jun could not be loaded.'),
+          historyDay(page, "History for Today, Fri 15 Jun didn't load just now."),
         )
         app.worker.clear()
       })

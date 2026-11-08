@@ -88,7 +88,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
 
   await test.step('the recorded dose is absent from dated History before it is due', async () => {
     await page.goto(historyUrl)
-    await expect(page.getByText('No doses were due before now today.')).toBeVisible()
+    await expect(page.getByText('Nothing was due before now today.')).toBeVisible()
     await expect(historyDate).toHaveText(todayLabel)
     await expect(historyRows(page, today)).toHaveCount(0)
   })

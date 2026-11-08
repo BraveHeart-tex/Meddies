@@ -125,22 +125,30 @@ test('today so far points Not logged rows to Today (648·H2)', () => {
 
 test('an empty day says nothing was scheduled (648·H3)', () => {
   renderDay({ date: '2026-11-01' })
-  expect(screen.getByText('No doses were scheduled on Sunday 1 November.')).toBeVisible()
+  expect(screen.getByText('Nothing was scheduled on Sunday 1 November.')).toBeVisible()
+})
+
+test('an empty today says nothing was due yet (648·H3)', () => {
+  renderDay({ date: '2026-11-06' })
+  expect(screen.getByText('Nothing was due before now today.')).toBeVisible()
 })
 
 test('an unavailable day offers one retry for that date (648·H5)', async () => {
   const retry = vi.fn()
   renderDay({ date: '2026-11-04', result: { status: 'unavailable', retry } })
   const alert = screen.getByRole('alert')
-  expect(alert).toHaveTextContent('History for Wed 4 Nov could not be loaded.')
-  await userEvent.click(within(alert).getByRole('button', { name: 'Retry this date' }))
+  expect(alert).toHaveTextContent("History for Wed 4 Nov didn't load just now.")
+  expect(alert).toHaveTextContent(
+    "Check your connection and try again. Your records haven't changed.",
+  )
+  await userEvent.click(within(alert).getByRole('button', { name: 'Try this date again' }))
   expect(retry).toHaveBeenCalledOnce()
 })
 
 test('an invalid date shows today instead and replaces the URL (648·H6)', () => {
   const replaceState = vi.spyOn(window.history, 'replaceState')
   renderDay({ date: '2026-11-06', notice: 'invalid' })
-  expect(screen.getByText('That date is not available.')).toBeVisible()
+  expect(screen.getByText('Nothing to show for that day.')).toBeVisible()
   expect(screen.getByText('History shows dates up to today. Showing today instead.')).toBeVisible()
   expect(replaceState).toHaveBeenCalledWith(null, '', '/history?date=2026-11-06')
 })
