@@ -45,7 +45,7 @@ test('skip a dose from the keyboard and correct it back to Taken', async ({
     await trigger.press('Enter')
     await dialog.getByRole('button', { name: 'I skipped it' }).press('Enter')
     await expect(dialog.getByRole('button', { name: 'Save as skipped' })).toBeVisible()
-    await expect(dialog.getByRole('group', { name: `Confirm skipping ${label}` })).toBeVisible()
+    await expect(dialog.getByRole('group', { name: `Skip ${label}` })).toBeVisible()
     await page.keyboard.press('Escape')
     // Base UI returns focus to the opener once the drawer's exit transition finishes.
     await expect(dialog).toHaveCount(0)
@@ -84,10 +84,10 @@ test('skip a dose from the keyboard and correct it back to Taken', async ({
 
   await test.step('correct the Today outcome back to Taken', async () => {
     await doseTrigger(row, label).press('Enter')
-    await dialog.getByRole('button', { name: /^Correct outcome/ }).press('Enter')
+    await dialog.getByRole('button', { name: /^Change dose for/ }).press('Enter')
     await dialog.getByRole('button', { name: 'I took it' }).press('Enter')
     await app.worker.hold(correctionWrite)
-    await dialog.getByRole('button', { name: 'Save correction' }).press('Enter')
+    await dialog.getByRole('button', { name: 'Save changes' }).press('Enter')
     await expect.poll(() => app.worker.held(correctionWrite)).toBe(1)
     await expect(doseStatus(row)).toHaveAccessibleDescription('Saving · Taken')
     await expect(page.getByText('1 of 1 logged')).toBeAttached()

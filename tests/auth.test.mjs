@@ -114,7 +114,7 @@ test('private deep links offer sign-in while retaining the requested destination
     const location = page.headers.get('location')
     const signInTarget = location || html
     assert.ok(signInTarget.includes(`returnTo=${encodeURIComponent(path)}`), path)
-    assert.doesNotMatch(html, /Save medicine|Correct outcome|Sign out/)
+    assert.doesNotMatch(html, /Save medicine|Change this dose|Sign out/)
   }
 })
 

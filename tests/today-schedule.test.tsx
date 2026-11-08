@@ -413,7 +413,7 @@ describe('recording a dose', () => {
       const list = await doses()
       const row = within(list).getByRole('listitem')
       await user.click(screen.getByRole('button', { name: /^Review dose for Morning Tablet/ }))
-      await user.click(screen.getByRole('button', { name: /^Correct outcome/ }))
+      await user.click(screen.getByRole('button', { name: /^Change dose for/ }))
       await user.click(screen.getByRole('button', { name: 'I skipped it' }))
       await user.click(screen.getByRole('button', { name: 'Save as skipped' }))
       expect(row).toHaveTextContent('Saving · Skipped')
@@ -574,7 +574,7 @@ describe('recording a dose', () => {
     const user = renderToday()
     const list = await doses()
     await user.click(screen.getByRole('button', { name: /^Review dose for Morning Tablet/ }))
-    await user.click(screen.getByRole('button', { name: /^Correct outcome/ }))
+    await user.click(screen.getByRole('button', { name: /^Change dose for/ }))
     await user.click(screen.getByRole('button', { name: 'I skipped it' }))
     await user.click(screen.getByRole('button', { name: 'Save as skipped' }))
     await screen.findByRole('button', { name: 'Try saving as skipped again' })
@@ -599,6 +599,58 @@ describe('recording a dose', () => {
       outcome: 'Skipped',
     })
     expect(list).toHaveTextContent('took 2 tablets')
+  })
+
+  test('recording a dose reads in plain wording', async () => {
+    schedulesApi(initialNow)
+    const user = renderToday()
+    await doses()
+    await user.click(screen.getByRole('button', { name: /^Record dose for Morning Tablet/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Morning Tablet' })
+    expect(within(dialog).getByText('What happened?')).toBeVisible()
+    expect(within(dialog).getByRole('button', { name: 'Choose what happened' })).toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: 'I skipped it' }))
+    expect(within(dialog).getByRole('group', { name: 'Skip this dose' })).toBeVisible()
+    expect(within(dialog).getByRole('group', { name: 'Skip Morning Tablet' })).toHaveTextContent(
+      'Skip Morning Tablet, scheduled for 09:00? No time or amount is saved.',
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'I took it' }))
+    expect(
+      within(dialog).getByRole('group', { name: 'What you took: Morning Tablet' }),
+    ).toBeVisible()
+  })
+
+  test('changing a skipped dose reads in plain wording', async () => {
+    schedulesApi(initialNow)
+    const record: DoseOutcomeRecord = {
+      scheduleId: scheduleFor('09:00').id,
+      dueAt: '2026-11-14T06:00:00.000Z',
+      outcome: 'Skipped',
+      recordedAt: initialNow,
+      revision: 0,
+    }
+    server.use(
+      http.get('/api/schedules', () =>
+        HttpResponse.json({
+          schedules: [scheduleFor('09:00')],
+          records: [record],
+          today: { now: initialNow, date: '2026-11-14' },
+        }),
+      ),
+    )
+    const user = renderToday()
+    await doses()
+    await user.click(screen.getByRole('button', { name: /^Review dose for Morning Tablet/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Morning Tablet' })
+    expect(within(dialog).getByText('Skipped. Nothing recorded as taken.')).toBeVisible()
+    const change = within(dialog).getByRole('button', {
+      name: 'Change dose for Morning Tablet at 09:00',
+    })
+    expect(change).toHaveTextContent('Change this dose')
+    await user.click(change)
+    expect(within(dialog).getByText('What happened?')).toBeVisible()
+    await user.click(within(dialog).getByRole('button', { name: 'I took it' }))
+    expect(within(dialog).getByRole('button', { name: 'Save changes' })).toBeVisible()
   })
 
   test('an uncertain correction shows the current intake beside its preserved recovery details', async () => {
@@ -634,7 +686,7 @@ describe('recording a dose', () => {
     const user = renderToday()
     await doses()
     await user.click(screen.getByRole('button', { name: /^Review dose for Morning Tablet/ }))
-    await user.click(screen.getByRole('button', { name: /^Correct outcome/ }))
+    await user.click(screen.getByRole('button', { name: /^Change dose for/ }))
     await user.click(screen.getByRole('button', { name: 'I skipped it' }))
     await user.click(screen.getByRole('button', { name: 'Save as skipped' }))
     const dialog = screen.getByRole('dialog', { name: 'Morning Tablet' })
@@ -642,7 +694,7 @@ describe('recording a dose', () => {
       await within(dialog).findByText("This dose has changed. Check what's saved now."),
     ).toBeVisible()
     expect(dialog).toHaveTextContent('Taken 2 tablets at 08:55')
-    expect(within(dialog).getByRole('button', { name: /^Edit intake/ })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: /^Edit dose for/ })).toBeDisabled()
     expect(
       within(dialog).getByRole('button', { name: 'Try saving as skipped again' }),
     ).toBeDisabled()

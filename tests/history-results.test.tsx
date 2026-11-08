@@ -212,7 +212,7 @@ test('a past-date History correction reconciles its own date, not Today or other
   await doseList('2026-11-05')
   const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: /^Review dose for Melatonin/ }))
-  await user.click(screen.getByRole('button', { name: /^Correct outcome/ }))
+  await user.click(screen.getByRole('button', { name: /^Change dose for/ }))
   await user.click(screen.getByRole('button', { name: 'I skipped it' }))
   await user.click(screen.getByRole('button', { name: 'Save as skipped' }))
   await waitFor(() => expect(reads).toEqual(['2026-11-05']))

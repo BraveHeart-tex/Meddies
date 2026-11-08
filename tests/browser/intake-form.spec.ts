@@ -138,7 +138,7 @@ test('record and edit intakes: validation, uncertain saves, double submit and co
   await test.step('an intake changed elsewhere while editing is not overwritten', async () => {
     const row = doseRow(page, mid)
     await doseTrigger(row).press('Enter')
-    await dialog.getByRole('button', { name: /^Edit intake/ }).click()
+    await dialog.getByRole('button', { name: /^Edit dose for/ }).click()
     await amount.fill('2')
     await app.api('PATCH', '/api/schedules', {
       actionId: randomUUID(),
@@ -150,7 +150,7 @@ test('record and edit intakes: validation, uncertain saves, double submit and co
       scheduleId,
       dueAt: mid,
     })
-    await dialog.getByRole('button', { name: 'Save intake changes' }).click()
+    await dialog.getByRole('button', { name: 'Save changes' }).click()
     await expect(
       page.getByText(
         "This dose changed somewhere else, so your change didn't save. Check what's saved now before changing it again.",
@@ -163,10 +163,10 @@ test('record and edit intakes: validation, uncertain saves, double submit and co
   await test.step('editing only the amount keeps the exact recorded instant', async () => {
     const row = doseRow(page, mid)
     await doseTrigger(row).press('Enter')
-    await dialog.getByRole('button', { name: /^Edit intake/ }).click()
+    await dialog.getByRole('button', { name: /^Edit dose for/ }).click()
     await expect(amount).toHaveValue('3')
     await amount.fill('2')
-    await dialog.getByRole('button', { name: 'Save intake changes' }).click()
+    await dialog.getByRole('button', { name: 'Save changes' }).click()
     await expect(dialog).toHaveCount(0)
     await expect(
       toastMessage(page, 'Intake Medicine 10:00 · updated to taken at 10:05, 2 tablets'),

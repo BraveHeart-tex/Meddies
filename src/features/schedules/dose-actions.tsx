@@ -303,7 +303,7 @@ export function DoseActions({
                 <Button
                   type="button"
                   variant="outline"
-                  aria-label={`Correct outcome for ${medicine.label} at ${doseClock(dose.dueAt)}`}
+                  aria-label={`Change dose for ${medicine.label} at ${doseClock(dose.dueAt)}`}
                   onClick={() => {
                     pinCorrection({
                       outcome: dose.status,
@@ -312,7 +312,7 @@ export function DoseActions({
                     setCorrecting(true)
                   }}
                 >
-                  Correct outcome
+                  Change this dose
                 </Button>
               )}
             </fieldset>
@@ -321,7 +321,7 @@ export function DoseActions({
         {choosing && (
           <div className="flex flex-col gap-2.5">
             <span id={`outcome-${dose.id}`} className="font-extrabold">
-              {correcting && recorded ? `Change ${dose.status.toLowerCase()} to` : 'What happened?'}
+              What happened?
             </span>
             <ToggleGroup
               data-base-ui-swipe-ignore="y"
@@ -401,7 +401,7 @@ export function DoseActions({
             </p>
             <div className="flex flex-col gap-1.5">
               <Button type="button" size="drawer" className="w-full" disabled>
-                Choose an outcome
+                Choose what happened
               </Button>
               <Button
                 type="button"

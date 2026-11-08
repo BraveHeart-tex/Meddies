@@ -101,7 +101,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
 
   await test.step('correct the History dose and verify it persists after reload', async () => {
     await doseTrigger(scheduled).click()
-    await dialog.getByRole('button', { name: /^Correct outcome/ }).click()
+    await dialog.getByRole('button', { name: /^Change dose for/ }).click()
     await dialog.getByRole('button', { name: 'I skipped it' }).click()
     await dialog.getByRole('button', { name: 'Save as skipped' }).click()
     await expectHistoryDose('Skipped')

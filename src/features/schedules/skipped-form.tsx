@@ -58,17 +58,13 @@ export function SkippedForm({
       aria-describedby={!saving && (problem || offline) ? `${id}-problem` : undefined}
       className="flex min-w-0 flex-col gap-4.5"
     >
-      <legend className="sr-only">Confirm skipped dose</legend>
-      <div
-        role="group"
-        aria-label={`Confirm skipping ${medicine.label}`}
-        className="flex flex-col gap-4.5"
-      >
+      <legend className="sr-only">Skip this dose</legend>
+      <div role="group" aria-label={`Skip ${medicine.label}`} className="flex flex-col gap-4.5">
         <Alert className="[overflow-wrap:anywhere]">
           <InfoIcon aria-hidden="true" />
           <AlertDescription>
-            Skip {medicine.label}, scheduled for {doseClock(dose.dueAt)}? No intake time or quantity
-            is recorded.
+            Skip {medicine.label}, scheduled for {doseClock(dose.dueAt)}? No time or amount is
+            saved.
           </AlertDescription>
         </Alert>
         {!saving && (

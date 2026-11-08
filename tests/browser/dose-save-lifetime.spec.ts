@@ -163,7 +163,7 @@ test('F8 and drafts: details survive navigation, a record elsewhere keeps them, 
     'aria-pressed',
     'true',
   )
-  // A recorded dose also renders the hidden Edit intake form.
+  // A recorded dose also renders the hidden Edit dose form.
   const amount = drawer(page)
     .getByLabel(/^Amount/)
     .filter({ visible: true })

@@ -61,14 +61,14 @@ type Mode = 'record' | 'edit' | 'correct'
 
 const primaryLabels: Record<Mode, { save: string; retry: string }> = {
   record: { save: 'Save as taken', retry: 'Try saving as taken again' },
-  edit: { save: 'Save intake changes', retry: 'Try saving changes again' },
-  correct: { save: 'Save correction', retry: 'Try saving your change again' },
+  edit: { save: 'Save changes', retry: 'Try saving changes again' },
+  correct: { save: 'Save changes', retry: 'Try saving your change again' },
 }
 
 /**
  * Actual intake details for a Taken outcome (FE-648 R2/R3, C1 to C5). `record` opens from the
  * drawer's outcome choice, `correct` changes a Skipped dose to Taken, and `edit` opens a recorded
- * intake through Edit intake. Values stay here; the parent's mutation owns saving, the duplicate
+ * intake through Edit dose. Values stay here; the parent's mutation owns saving, the duplicate
  * lock, retry identity and errors.
  */
 export function TakenForm({
@@ -168,7 +168,7 @@ export function TakenForm({
           variant="outline"
           aria-expanded={open}
           aria-controls={id}
-          aria-label={`Edit intake for ${medicine.label} at ${doseClock(dose.dueAt)}`}
+          aria-label={`Edit dose for ${medicine.label} at ${doseClock(dose.dueAt)}`}
           disabled={saving}
           onClick={() => {
             if (!open && dose.status === 'Taken') {
@@ -178,7 +178,7 @@ export function TakenForm({
             onOpen(!open)
           }}
         >
-          Edit intake
+          Edit dose
         </Button>
       )}
       <form
@@ -199,7 +199,7 @@ export function TakenForm({
         }}
       >
         <FieldSet disabled={saving} className="min-w-0 gap-4.5">
-          <FieldLegend className="sr-only">Actual intake for {medicine.label}</FieldLegend>
+          <FieldLegend className="sr-only">What you took: {medicine.label}</FieldLegend>
           {/* Closing the drawer is this form's Clear form: dismissal discards the draft. */}
           {draft.restored && (
             <p className="text-body-sm text-muted-foreground">{saveMessages.draftRestored}</p>

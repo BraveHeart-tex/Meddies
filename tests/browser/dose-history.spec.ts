@@ -87,12 +87,12 @@ test('review, edit and correct past doses in History', async ({ page, request },
   await test.step('edit actual intake details without changing the schedule', async () => {
     const originalTakenAt = await intakeTime(first).getAttribute('datetime')
     await reviewFirst()
-    await dialog.getByRole('button', { name: /^Edit intake/ }).click()
+    await dialog.getByRole('button', { name: /^Edit dose for/ }).click()
     await expect(dialog.getByLabel(/^Amount/)).toHaveValue('½')
     await expect(datePicker(dialog, 'Taken date in Istanbul')).toHaveText('Today, Fri 15 Jun')
     await expectTime(dialog, 'Taken time in Istanbul', '09:00')
     await dialog.getByLabel(/^Amount/).fill('1.5')
-    await dialog.getByRole('button', { name: 'Save intake changes' }).click()
+    await dialog.getByRole('button', { name: 'Save changes' }).click()
     await expect(first).toContainText('took 1½ tablets')
     await expect(
       toastMessage(
@@ -105,10 +105,10 @@ test('review, edit and correct past doses in History', async ({ page, request },
 
   await test.step('edit actual time while preserving quantity', async () => {
     await reviewFirst()
-    await dialog.getByRole('button', { name: /^Edit intake/ }).click()
+    await dialog.getByRole('button', { name: /^Edit dose for/ }).click()
     await pickDate(page, 'Taken date in Istanbul', date)
     await pickTime(page, 'Taken time in Istanbul', '12:00')
-    await dialog.getByRole('button', { name: 'Save intake changes' }).click()
+    await dialog.getByRole('button', { name: 'Save changes' }).click()
     await expect(intakeTime(first)).toHaveAttribute('datetime', `${date}T09:00:00.000Z`)
     await expect(first).toContainText('12:00')
     await expect(first).toContainText('took 1½ tablets')
@@ -120,7 +120,7 @@ test('review, edit and correct past doses in History', async ({ page, request },
 
   await test.step('correct a Taken history outcome to Skipped', async () => {
     await reviewFirst()
-    await dialog.getByRole('button', { name: /^Correct outcome/ }).click()
+    await dialog.getByRole('button', { name: /^Change dose for/ }).click()
     await dialog.getByRole('button', { name: 'I skipped it' }).click()
     await dialog.getByRole('button', { name: 'Save as skipped' }).click()
     await expect(first.getByText('Skipped', { exact: true })).toBeVisible()

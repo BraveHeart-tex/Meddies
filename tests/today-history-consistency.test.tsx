@@ -214,7 +214,7 @@ const historyRow = async (date: string) =>
 
 async function correctToSkipped(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('button', { name: /^Review dose for Morning Tablet/ }))
-  await user.click(await screen.findByRole('button', { name: /^Correct outcome/ }))
+  await user.click(await screen.findByRole('button', { name: /^Change dose for/ }))
   await user.click(screen.getByRole('button', { name: 'I skipped it' }))
   await user.click(screen.getByRole('button', { name: 'Save as skipped' }))
 }

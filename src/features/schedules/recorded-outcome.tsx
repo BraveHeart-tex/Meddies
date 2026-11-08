@@ -10,7 +10,7 @@ type Recorded = Extract<DoseOccurrence, { status: 'Taken' | 'Skipped' }>
 /** The drawer's recorded outcome line; an intake on another day names that day. */
 export function RecordedOutcome({ dose, unit }: { dose: Recorded; unit: DoseUnit }) {
   if (dose.status === 'Skipped')
-    return <p className="font-extrabold">Skipped. No intake recorded.</p>
+    return <p className="font-extrabold">Skipped. Nothing recorded as taken.</p>
   const taken = istanbulDate(new Date(dose.record.takenAt))
   const due = istanbulDate(new Date(dose.dueAt))
   return (
