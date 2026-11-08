@@ -40,7 +40,12 @@ test.use({
   },
 })
 
-test('review, edit and correct past doses in History', async ({ page, request }, testInfo) => {
+test('review, edit and correct past doses in History', async ({
+  page,
+  request,
+  browser,
+  app,
+}, testInfo) => {
   const date = historyDate()
   const rows = historyRows(page, date)
   const first = rows.first()
@@ -51,8 +56,18 @@ test('review, edit and correct past doses in History', async ({ page, request },
     const anonymous = await request.get(`/history?date=${date}`)
     expect(anonymous.status()).toBe(200)
     const body = await anonymous.text()
-    expect(body).toMatch(/Sign in to view dose history/)
     expect(body).not.toMatch(/History Fixture Medicine/)
+
+    // The route's loading state starts the stream, so the redirect to sign-in runs in the browser.
+    const signedOut = await browser.newContext({ baseURL: app.origin })
+    const visitor = await signedOut.newPage()
+    await visitor.goto(`/history?date=${date}`)
+    await expect(visitor.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible()
+    await expect(visitor).toHaveURL(
+      `${app.origin}/?returnTo=${encodeURIComponent(`/history?date=${date}`)}`,
+    )
+    await expect(visitor.getByText('History Fixture Medicine')).toHaveCount(0)
+    await signedOut.close()
   })
 
   await test.step('open history from the signed-in home page', async () => {
