@@ -101,6 +101,8 @@ export function DoseActions({
       setEditor(null)
       setDrawerOpen(false)
       setOpenedWithoutOutcome(false)
+      // Up next's button now shows the following dose, so the close must not return to it (648·W4).
+      returnFocus.current = rowTrigger.current
       requestAnimationFrame(() => rowTrigger.current?.focus())
     },
   })
@@ -143,6 +145,7 @@ export function DoseActions({
   // Reopening an unconfirmed attempt shows its details with Retry (D13, F6).
   const unconfirmed = problem?.kind === 'uncertain' && attempt !== null && !needsReview
   function openDrawer() {
+    returnFocus.current = rowTrigger.current
     clearFeedback()
     setDrawerOpen(true)
     if (!recorded && unconfirmed && attempt) choose(attempt.outcome)
@@ -178,10 +181,7 @@ export function DoseActions({
           aria-haspopup="dialog"
           aria-expanded={drawerOpen}
           aria-label={triggerLabel}
-          onClick={() => {
-            returnFocus.current = rowTrigger.current
-            openDrawer()
-          }}
+          onClick={openDrawer}
         >
           <span className="sr-only">{verb} dose</span>
         </button>
@@ -194,10 +194,7 @@ export function DoseActions({
           aria-haspopup="dialog"
           aria-expanded={drawerOpen}
           aria-label={triggerLabel}
-          onClick={() => {
-            returnFocus.current = rowTrigger.current
-            openDrawer()
-          }}
+          onClick={openDrawer}
         >
           {verb} dose
         </Button>

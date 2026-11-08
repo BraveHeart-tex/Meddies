@@ -317,6 +317,38 @@ describe('recording a dose', () => {
     },
   )
 
+  describe('focus after the drawer opened from Up next', () => {
+    const twoDoses = () =>
+      schedulesApi(initialNow, [
+        {
+          ...scheduleFor('09:00'),
+          times: [
+            { time: '09:00', quantity: 1 },
+            { time: '10:00', quantity: 1 },
+          ],
+        },
+      ])
+    const drawerClosed = async () => {
+      // Named, because a Toast is also a dialog.
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog', { name: 'Morning Tablet' })).not.toBeInTheDocument(),
+      )
+      // Return focus runs after the close; let it settle before reading where focus ended.
+      await advance(100)
+    }
+
+    test('dismissing without saving returns focus to the Up next button', async () => {
+      twoDoses()
+      const user = renderToday()
+      await doses()
+      const taken = screen.getByRole('button', { name: 'Record Morning Tablet at 09:00 as taken' })
+      await user.click(taken)
+      await user.click(await screen.findByRole('button', { name: 'Close dose details' }))
+      await drawerClosed()
+      expect(taken).toHaveFocus()
+    })
+  })
+
   test('a different Taken record does not confirm an uncertain attempt or discard its details', async () => {
     schedulesApi(initialNow)
     const user = renderToday()

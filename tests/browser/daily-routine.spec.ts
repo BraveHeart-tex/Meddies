@@ -111,7 +111,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
   await test.step('W4: the confirmed dose moves to Logged and Up next moves on', async () => {
     await app.worker.release(takenWrite)
     await expect(toastMessage(page, `${omega} 14:00 · taken at 14:00, 2 tablets`)).toBeVisible()
-    // Focus after an Up next save is asserted in the W4 expected-failure test below.
+    // Focus after an Up next save is asserted in the W4 tests below.
     await expect(dialog).toHaveCount(0)
     await expect(doseStatus(omegaRow)).toHaveAccessibleDescription(/Taken/)
     await expect(groupHeadings).toHaveText([
@@ -243,11 +243,15 @@ test('W2: the scheduled choice stays hidden during the scheduled minute', async 
   await expect(drawer(page).getByRole('button', { name: 'At 14:00' })).toHaveCount(0)
 })
 
-test('W4: saving from Up next returns focus to the saved row', async ({ page }) => {
-  test.fail()
-  await page.goto('/')
-  await page.getByRole('button', { name: `Record ${omega} at 14:00 as taken` }).click()
-  await drawer(page).getByRole('button', { name: 'Save as taken' }).click()
-  await expect(drawer(page)).toHaveCount(0)
-  await expect(focusInside(doseRow(page, instantOn(today, '14:00')))).toHaveCount(1)
-})
+// Base UI returns focus after the real exit transition, so only a browser can prove this.
+for (const outcome of ['taken', 'skipped'] as const) {
+  test(`W4: saving ${outcome} from Up next returns focus to the saved row`, async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('button', { name: `Record ${omega} at 14:00 as ${outcome}` }).click()
+    await drawer(page)
+      .getByRole('button', { name: `Save as ${outcome}` })
+      .click()
+    await expect(drawer(page)).toHaveCount(0)
+    await expect(focusInside(doseRow(page, instantOn(today, '14:00')))).toHaveCount(1)
+  })
+}
