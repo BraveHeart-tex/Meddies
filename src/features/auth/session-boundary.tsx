@@ -8,6 +8,7 @@ import {
   endSessionQueryClient,
   sessionQueryClient,
 } from '@/lib/session-query-client'
+import { saveMessages } from '@/lib/save-messages'
 
 /**
  * Hide authenticated content at absolute expiry, including after returning to a backgrounded tab.
@@ -69,7 +70,7 @@ export function SessionBoundary({
     }
   }, [expires])
   return expired ? (
-    <p role="status">Your session ended. Please sign in again.</p>
+    <p role="status">{saveMessages.sessionEnded} Please sign in again.</p>
   ) : (
     <QueryClientProvider client={client}>
       <SessionSaveFeedback />

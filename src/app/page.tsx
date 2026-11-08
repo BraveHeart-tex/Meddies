@@ -9,6 +9,7 @@ import { prefetchToday } from '@/features/schedules/prefetch'
 import { SchedulePanel } from '@/features/schedules/schedule-panel'
 import { TodayHeader } from '@/features/schedules/today-header'
 import { TodayDosesFallback } from '@/features/schedules/today-doses-fallback'
+import { saveMessages } from '@/lib/save-messages'
 
 /**
  * Today's doses section: the next-dose hero and the dose list derive from the same two reads,
@@ -71,11 +72,11 @@ export default async function HomePage({
           {!configured
             ? 'Sign-in is temporarily unavailable. Please try again later.'
             : error === 'AccessDenied'
-              ? 'This account cannot access Meddies. Try your approved Google account.'
+              ? "This account can't open Meddies. Try your approved Google account."
               : error
-                ? 'Sign-in did not finish. Please try again.'
+                ? "Sign-in didn't finish. Please try again."
                 : reason === 'expired'
-                  ? 'Your session ended. Please sign in again.'
+                  ? `${saveMessages.sessionEnded} Please sign in again.`
                   : reason === 'signed-out'
                     ? 'You’re signed out.'
                     : ''}

@@ -107,6 +107,18 @@ test('anonymous requests cannot read the account; entry offers private Google si
   assert.match(await page.text(), /Continue with Google/)
 })
 
+test('sign-in explains why the account is back on the entry screen', async () => {
+  const messages = [
+    ['/?error=AccessDenied', "This account can't open Meddies. Try your approved Google account."],
+    ['/?error=OAuthCallbackError', "Sign-in didn't finish. Please try again."],
+    ['/?reason=expired', 'Your session ended. Please sign in again.'],
+  ]
+  for (const [path, message] of messages) {
+    const html = await (await request(path)).text()
+    assert(html.replaceAll('&#x27;', "'").includes(`>${message}<`), path)
+  }
+})
+
 test('private deep links offer sign-in while retaining the requested destination', async () => {
   for (const path of ['/medications', '/history?date=2026-10-30', '/settings']) {
     const page = await request(path)
