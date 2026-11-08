@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { quantityLabel } from '@/lib/dose-quantity'
 import { useQueryClient } from '@tanstack/react-query'
@@ -147,7 +148,7 @@ export function TodaySchedule({
         (!medicinesError || medicines.length > 0) &&
         (!medicinesLoading || medicines.length > 0) && (
           <>
-            {today.next && (
+            {today.next && today.doses.length > 0 && (
               <NextDose
                 dose={today.next}
                 pending={pendingDose(today.next)}
@@ -164,116 +165,137 @@ export function TodaySchedule({
               />
             )}
             {today.doses.length ? (
-              <section aria-labelledby="today-doses-heading" className="flex flex-col gap-3.5">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 px-1">
-                  <h3 id="today-doses-heading" className="text-heading font-extrabold">
-                    Today’s doses
-                  </h3>
-                  <p className="text-caption font-bold text-muted-foreground">
-                    {
-                      today.doses.filter(
-                        (dose) => dose.status === 'Taken' || dose.status === 'Skipped',
-                      ).length
-                    }{' '}
-                    of {today.doses.length} logged
-                  </p>
-                </div>
+              <section aria-label="Today’s doses" className="flex flex-col gap-3.5">
                 <ul aria-label="Today's doses" className="flex flex-col gap-2.5">
-                  {[...today.doses]
-                    .sort((left, right) => {
-                      const rank = (dose: DoseOccurrence) =>
-                        dose.status === 'Upcoming'
-                          ? 1
-                          : dose.status === 'Taken' || dose.status === 'Skipped'
-                            ? 2
-                            : 0
-                      return rank(left) - rank(right) || left.dueAt.localeCompare(right.dueAt)
-                    })
-                    .map((dose) => {
-                      const medicine = medicines.find((item) => item.id === dose.medicineId)
-                      const done = dose.status === 'Taken' || dose.status === 'Skipped'
-                      const recordedAt =
-                        dose.status === 'Taken'
-                          ? dose.record.takenAt
-                          : dose.status === 'Skipped'
-                            ? dose.record.recordedAt
-                            : ''
-                      return (
-                        <Item
-                          key={dose.id}
-                          render={<li data-dose-id={dose.id} />}
-                          variant={
-                            dose.status === 'Not logged' || dose.status === 'Due now'
-                              ? 'attention'
-                              : 'card'
-                          }
-                          className="has-[[data-row-trigger]:active]:scale-[0.98] has-[[data-row-trigger]:active]:bg-muted motion-reduce:has-[[data-row-trigger]:active]:scale-100"
-                        >
-                          <span
-                            aria-hidden="true"
-                            className={cn(
-                              'w-11.5 shrink-0 font-extrabold',
-                              done && 'text-muted-foreground',
-                            )}
+                  {[
+                    {
+                      label: 'To log',
+                      doses: today.doses.filter(
+                        (dose) => dose.status === 'Due now' || dose.status === 'Not logged',
+                      ),
+                    },
+                    {
+                      label: 'Later today',
+                      doses: today.doses.filter((dose) => dose.status === 'Upcoming'),
+                    },
+                    {
+                      label: 'Logged',
+                      doses: today.doses.filter(
+                        (dose) => dose.status === 'Taken' || dose.status === 'Skipped',
+                      ),
+                    },
+                  ].flatMap((group) =>
+                    group.doses.length
+                      ? [
+                          <li
+                            key={group.label}
+                            role="presentation"
+                            className="px-1 pt-2.5 first:pt-0"
                           >
-                            <time dateTime={dose.dueAt}>{clock(dose.dueAt)}</time>
-                          </span>
-                          <ItemContent className="gap-0.75">
-                            <ItemTitle>
-                              <h4 id={`dose-${dose.id}`} tabIndex={-1}>
-                                <span className="sr-only">{clock(dose.dueAt)} · </span>
-                                {name(dose.medicineId)}
-                              </h4>
-                            </ItemTitle>
-                            <ItemDescription>
-                              {[medicine?.strength, doseText(dose)].filter(Boolean).join(' · ')}
-                              {dose.status === 'Taken' &&
-                                dose.record.quantity !== dose.quantity &&
-                                ` · took ${doseText(dose, dose.record.quantity)}`}
-                              {recordedAt &&
-                                istanbulDate(new Date(recordedAt)) !== today.date &&
-                                ` · ${dose.status === 'Taken' ? 'taken' : 'skipped'} on ${istanbulDate(new Date(recordedAt))}`}
-                              {retryNote(dose) && (
-                                <span className="block font-bold text-foreground">
-                                  {retryNote(dose)}
+                            <h3 className="text-heading font-extrabold">
+                              {group.label} · {group.doses.length}
+                            </h3>
+                          </li>,
+                          ...group.doses.map((dose) => {
+                            const medicine = medicines.find((item) => item.id === dose.medicineId)
+                            const done = dose.status === 'Taken' || dose.status === 'Skipped'
+                            const recordedAt =
+                              dose.status === 'Taken'
+                                ? dose.record.takenAt
+                                : dose.status === 'Skipped'
+                                  ? dose.record.recordedAt
+                                  : ''
+                            return (
+                              <Item
+                                key={dose.id}
+                                render={<li data-dose-id={dose.id} />}
+                                variant={
+                                  dose.status === 'Not logged' || dose.status === 'Due now'
+                                    ? 'attention'
+                                    : 'card'
+                                }
+                                className="grid grid-cols-[2.875rem_minmax(0,1fr)_auto] max-[360px]:grid-cols-[2.875rem_minmax(0,1fr)] has-[[data-row-trigger]:active]:scale-[0.98] has-[[data-row-trigger]:active]:bg-muted motion-reduce:has-[[data-row-trigger]:active]:scale-100 [&_[data-slot=alert]]:col-span-full"
+                              >
+                                <span
+                                  aria-hidden="true"
+                                  className={cn(
+                                    'w-11.5 shrink-0 font-extrabold',
+                                    done && 'text-muted-foreground',
+                                  )}
+                                >
+                                  <time dateTime={dose.dueAt}>{clock(dose.dueAt)}</time>
                                 </span>
-                              )}
-                            </ItemDescription>
-                          </ItemContent>
-                          <DoseStatusBadge
-                            id={`dose-status-${dose.id}`}
-                            pending={pendingDose(dose)}
-                            status={dose.status}
-                            time={
-                              recordedAt ? (
-                                <time dateTime={recordedAt}>{clock(recordedAt)}</time>
-                              ) : undefined
-                            }
-                          />
-                          {medicine && (
-                            <DoseActions
-                              dose={dose}
-                              medicine={medicine}
-                              appearance="row"
-                              todayDate={today.date}
-                              describedBy={`dose-status-${dose.id}`}
-                              opener={dose.id === today.next?.id ? heroOpener : undefined}
-                              refresh={async () =>
-                                typeof (await checkRecorded(dose, true)) === 'object'
-                              }
-                              checkRecorded={() => checkRecorded(dose, false)}
-                              onRecorded={(record) => showOutcome(dose, record)}
-                            />
-                          )}
-                        </Item>
-                      )
-                    })}
+                                <ItemContent className="min-w-0 gap-0.75">
+                                  <ItemTitle>
+                                    <h4 id={`dose-${dose.id}`} tabIndex={-1}>
+                                      <span className="sr-only">{clock(dose.dueAt)} · </span>
+                                      {name(dose.medicineId)}
+                                    </h4>
+                                  </ItemTitle>
+                                  <ItemDescription>
+                                    {[medicine?.strength, doseText(dose)]
+                                      .filter(Boolean)
+                                      .join(' · ')}
+                                    {dose.status === 'Taken' &&
+                                      dose.record.quantity !== dose.quantity &&
+                                      ` · took ${doseText(dose, dose.record.quantity)}`}
+                                    {recordedAt &&
+                                      istanbulDate(new Date(recordedAt)) !== today.date &&
+                                      ` · ${dose.status === 'Taken' ? 'taken' : 'skipped'} on ${istanbulDate(new Date(recordedAt))}`}
+                                    {retryNote(dose) && (
+                                      <span className="block font-bold text-foreground">
+                                        {retryNote(dose)}
+                                      </span>
+                                    )}
+                                  </ItemDescription>
+                                </ItemContent>
+                                <DoseStatusBadge
+                                  className="max-w-full whitespace-normal max-[360px]:col-start-2 max-[360px]:justify-self-start"
+                                  id={`dose-status-${dose.id}`}
+                                  pending={pendingDose(dose)}
+                                  status={dose.status}
+                                  time={
+                                    recordedAt ? (
+                                      <time dateTime={recordedAt}>{clock(recordedAt)}</time>
+                                    ) : undefined
+                                  }
+                                />
+                                {medicine && (
+                                  <DoseActions
+                                    dose={dose}
+                                    medicine={medicine}
+                                    appearance="row"
+                                    todayDate={today.date}
+                                    describedBy={`dose-status-${dose.id}`}
+                                    opener={dose.id === today.next?.id ? heroOpener : undefined}
+                                    refresh={async () =>
+                                      typeof (await checkRecorded(dose, true)) === 'object'
+                                    }
+                                    checkRecorded={() => checkRecorded(dose, false)}
+                                    onRecorded={(record) => showOutcome(dose, record)}
+                                  />
+                                )}
+                              </Item>
+                            )
+                          }),
+                        ]
+                      : [],
+                  )}
                 </ul>
               </section>
             ) : (
               <Card variant="dashed">
                 <CardContent>
-                  <p>Nothing to take today. You&apos;re all set.</p>
+                  {medicines.length === 0 ? (
+                    <div className="flex flex-col items-start gap-3">
+                      <p>No medications here yet. Add your first one whenever you&apos;re ready.</p>
+                      <Button variant="outline" render={<Link href="/medications" />}>
+                        Go to Medications
+                      </Button>
+                    </div>
+                  ) : (
+                    <p>Nothing to take today. You&apos;re all set.</p>
+                  )}
                 </CardContent>
               </Card>
             )}

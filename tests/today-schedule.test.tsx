@@ -302,7 +302,9 @@ describe('recording a dose', () => {
       )
       expect(row).toHaveTextContent(`Saving · ${outcome}`)
       expect(within(list).getAllByRole('listitem', { hidden: true })[0]).toBe(row)
-      expect(screen.getByText('0 of 2 logged')).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: 'Later today · 2', hidden: true }),
+      ).toBeInTheDocument()
       expect(screen.getByRole('heading', { name: 'Up next', hidden: true })).toBeInTheDocument()
       expect(client.getQueryData<{ records: unknown[] }>(scheduleKeys.snapshot())?.records).toEqual(
         [],
@@ -310,6 +312,8 @@ describe('recording a dose', () => {
       release()
       await waitFor(() => expect(row).not.toHaveTextContent(`Saving · ${outcome}`))
       expect(row).toHaveTextContent(outcome)
+      expect(screen.getByRole('heading', { name: 'Logged · 1' })).toBeVisible()
+      expect(screen.getByRole('heading', { name: 'Later today · 1' })).toBeVisible()
     },
   )
 
@@ -430,7 +434,7 @@ describe('recording a dose', () => {
       await user.click(screen.getByRole('button', { name: 'I skipped it' }))
       await user.click(screen.getByRole('button', { name: 'Save as skipped' }))
       expect(row).toHaveTextContent('Saving · Skipped')
-      expect(screen.getByText('1 of 1 logged')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Logged · 1', hidden: true })).toBeInTheDocument()
       current = newer
       fireEvent(window, new Event('focus'))
       await waitFor(() => expect(row).toHaveTextContent('took 2 tablets'))
@@ -498,7 +502,7 @@ describe('recording a dose', () => {
     expect(rows[0]).not.toHaveTextContent('Saving')
     expect(rows[0]).toHaveTextContent('Scheduled')
     expect(rows[1]).toHaveTextContent('Skipped')
-    expect(screen.getByText('1 of 2 logged')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Logged · 1', hidden: true })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Close dose details' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(rows[0]).toHaveTextContent(
@@ -855,6 +859,8 @@ describe('with no cache', () => {
       await screen.findByText("Today didn't update just now. Check your connection and try again."),
     ).toBeVisible()
     expect(screen.queryByRole('list', { name: "Today's doses" })).not.toBeInTheDocument()
+    expect(screen.queryByText('Loading today’s doses')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
     await user.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await doses()).toHaveTextContent('Scheduled')
     expect(api.reads()).toBe(2)
@@ -895,6 +901,83 @@ describe('wording', () => {
       await screen.findByText(
         "Medication details didn't update just now. Showing the last list that loaded.",
       ),
+    ).toBeVisible()
+  })
+})
+
+describe('next actions', () => {
+  test('groups saved statuses in time order, with status and time in the hero eyebrow', async () => {
+    const now = '2026-11-14T06:00:00.000Z'
+    schedulesApi(now, [
+      {
+        ...scheduleFor('09:00'),
+        times: [
+          { time: '10:00', quantity: 1 },
+          { time: '09:00', quantity: 1 },
+          { time: '08:00', quantity: 1 },
+        ],
+      },
+    ])
+    renderToday(now)
+    const list = await doses()
+    expect(
+      within(list)
+        .getAllByRole('heading', { level: 3 })
+        .map((item) => item.textContent),
+    ).toEqual(['To log · 2', 'Later today · 1'])
+    expect(
+      within(list)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent?.slice(0, 5)),
+    ).toEqual(['08:00', '09:00', '10:00'])
+    expect(screen.queryByRole('heading', { name: /^Logged/ })).not.toBeInTheDocument()
+    expect(screen.getByText('Due now ·', { exact: false })).toHaveTextContent('Due now · 09:00')
+  })
+
+  test('all logged keeps only Logged and a dated future hero without actions', async () => {
+    schedulesApi(initialNow)
+    client.setQueryData(
+      scheduleKeys.snapshot(),
+      {
+        date: '2026-11-14',
+        schedules: [scheduleFor('09:00')],
+        records: [
+          {
+            scheduleId: scheduleFor('09:00').id,
+            dueAt: '2026-11-14T06:00:00.000Z',
+            outcome: 'Skipped',
+            recordedAt: initialNow,
+          },
+        ],
+      },
+      { updatedAt: Date.now() },
+    )
+    renderToday()
+    expect(await screen.findByRole('heading', { name: 'Logged · 1' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: /^(To log|Later today)/ })).not.toBeInTheDocument()
+    expect(screen.getByText(/Scheduled ·/)).toHaveTextContent('Scheduled · 09:00 on 2026-11-15')
+    expect(screen.queryByRole('button', { name: /^Record .* as taken$/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Record .* as skipped$/ })).not.toBeInTheDocument()
+  })
+
+  test('an empty day hides Up next even when a future dose exists', async () => {
+    schedulesApi(initialNow, [{ ...scheduleFor('09:00'), startDate: '2026-11-15' }])
+    renderToday()
+    expect(await screen.findByText("Nothing to take today. You're all set.")).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Up next' })).not.toBeInTheDocument()
+  })
+
+  test('no medications offers a route to Medications', async () => {
+    schedulesApi(initialNow, [])
+    client.setQueryData(medicineKeys.list(), [])
+    server.use(http.get('/api/medicines', () => HttpResponse.json({ medicines: [] })))
+    renderToday()
+    expect(await screen.findByRole('link', { name: 'Go to Medications' })).toHaveAttribute(
+      'href',
+      '/medications',
+    )
+    expect(
+      screen.getByText("No medications here yet. Add your first one whenever you're ready."),
     ).toBeVisible()
   })
 })

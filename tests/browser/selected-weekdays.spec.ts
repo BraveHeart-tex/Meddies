@@ -14,9 +14,6 @@ test('a schedule on selected weekdays shows its next Istanbul occurrence', async
 }) => {
   const medicineId = randomUUID()
   const startDate = addDays(initialScheduleTime.slice(0, 10), 1)
-  const monday = new Date(`${startDate}T12:00:00Z`)
-  while (monday.getUTCDay() !== 1) monday.setUTCDate(monday.getUTCDate() + 1)
-  const nextMonday = monday.toISOString().slice(0, 10)
   const weekdays = page.getByRole('group', { name: 'Days' })
   const label = `Weekday Browser Medicine ${'M'.repeat(90)}`
   const save = page.getByRole('button', { name: 'Save schedule' })
@@ -56,9 +53,10 @@ test('a schedule on selected weekdays shows its next Istanbul occurrence', async
     await expect(page).toHaveURL(new RegExp(`[?&]medicine=${medicineId}`))
   })
 
-  await test.step('check next Istanbul occurrence on Today', async () => {
+  await test.step('check the empty day on Today', async () => {
     await nav.getByRole('link', { name: 'Today' }).click()
-    await expect(page.getByText(`on ${nextMonday}`)).toBeVisible()
+    await expect(page.getByText("Nothing to take today. You're all set.")).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Up next' })).toHaveCount(0)
   })
 
   await test.step('open medicine detail and verify the saved routine', async () => {

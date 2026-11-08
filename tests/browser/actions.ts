@@ -91,3 +91,29 @@ export async function stylesheetsLoaded(page: Page) {
       ),
   )
 }
+
+/** Layout reflow and inner scrolling have no accessible API; inspect the rendered boxes. */
+export async function todayReflow(list: Locator, width: number) {
+  return list.evaluate((element, viewportWidth) => {
+    const rows = Array.from(element.querySelectorAll('li[data-dose-id]'))
+    return (
+      rows.every((row) => {
+        const name = row.querySelector('h4')!
+        const badge = row.querySelector('[data-slot="badge"]')!
+        const time = row.querySelector('time')!
+        const box = name.getBoundingClientRect()
+        return (
+          name.scrollWidth <= name.clientWidth &&
+          row.scrollHeight <= row.clientHeight &&
+          box.left > time.getBoundingClientRect().left &&
+          (viewportWidth > 360 || badge.getBoundingClientRect().top >= box.bottom)
+        )
+      }) && element.scrollHeight <= element.clientHeight
+    )
+  }, width)
+}
+
+/** Synthetic text-size probe: Playwright has no browser text-only zoom API. */
+export async function enlargeText(page: Page) {
+  await page.addStyleTag({ content: 'html { font-size: 200% !important; }' })
+}

@@ -59,7 +59,9 @@ test('skip a dose from the keyboard and correct it back to Taken', async ({
     await page.keyboard.press('Enter')
     await expect.poll(() => app.worker.held(skipWrite)).toBe(1)
     await expect(doseStatus(row)).toHaveAccessibleDescription('Saving · Skipped')
-    await expect(page.getByText('0 of 1 logged')).toBeAttached()
+    await expect(
+      page.getByRole('heading', { name: 'Later today · 1', includeHidden: true }),
+    ).toBeAttached()
     await expect(page.getByRole('heading', { name: 'Up next', includeHidden: true })).toBeAttached()
     await page.screenshot({ path: testInfo.outputPath('today-saving-skip.png') })
     await app.worker.release(skipWrite)
@@ -90,7 +92,9 @@ test('skip a dose from the keyboard and correct it back to Taken', async ({
     await dialog.getByRole('button', { name: 'Save changes' }).press('Enter')
     await expect.poll(() => app.worker.held(correctionWrite)).toBe(1)
     await expect(doseStatus(row)).toHaveAccessibleDescription('Saving · Taken')
-    await expect(page.getByText('1 of 1 logged')).toBeAttached()
+    await expect(
+      page.getByRole('heading', { name: 'Logged · 1', includeHidden: true }),
+    ).toBeAttached()
     await app.worker.release(correctionWrite)
     await expect(toastMessage(page, /· changed to taken at \d\d:\d\d, 1 tablet$/)).toBeVisible()
     await expect(doseStatus(row)).toHaveAccessibleDescription(/Taken/)
