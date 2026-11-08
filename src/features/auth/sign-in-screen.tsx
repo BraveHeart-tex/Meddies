@@ -95,7 +95,7 @@ export function SignInScreen({
       <Card>
         <CardHeader className="gap-3">
           <CardTitle>
-            <h1 ref={heading} tabIndex={-1}>
+            <h1 ref={heading} tabIndex={-1} className="outline-none">
               Sign in
             </h1>
           </CardTitle>

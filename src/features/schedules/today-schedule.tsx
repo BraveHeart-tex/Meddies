@@ -227,7 +227,11 @@ export function TodaySchedule({
                                 </span>
                                 <ItemContent className="min-w-0 gap-0.75">
                                   <ItemTitle>
-                                    <h4 id={`dose-${dose.id}`} tabIndex={-1}>
+                                    <h4
+                                      id={`dose-${dose.id}`}
+                                      tabIndex={-1}
+                                      className="outline-none"
+                                    >
                                       <span className="sr-only">{clock(dose.dueAt)} · </span>
                                       {name(dose.medicineId)}
                                     </h4>

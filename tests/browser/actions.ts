@@ -195,3 +195,36 @@ export async function signInAnnouncements(page: Page) {
     () => (window as unknown as { signInAnnouncements: string[] }).signInAnnouncements,
   )
 }
+
+/** Whether focus draws a ring. Computed outlines and `:focus-visible` have no user-facing API. */
+export function focusRing(target: Locator) {
+  return target.evaluate((element) => ({
+    focusVisible: element.matches(':focus-visible'),
+    outline: getComputedStyle(element).outlineStyle,
+  }))
+}
+
+/**
+ * Record the ring of the next Today row heading to take focus, read at the focus event: the
+ * closing drawer moves focus on to the row's button straight after.
+ */
+export async function trackRowHeadingFocus(page: Page) {
+  await page.evaluate(() => {
+    document.addEventListener('focusin', ({ target }) => {
+      if (!(target instanceof HTMLElement) || !target.matches('h4[id^="dose-"]')) return
+      ;(window as unknown as { rowHeadingFocus: unknown }).rowHeadingFocus = {
+        focusVisible: target.matches(':focus-visible'),
+        outline: getComputedStyle(target).outlineStyle,
+      }
+    })
+  })
+}
+
+export function rowHeadingFocus(page: Page) {
+  return page.evaluate(() => (window as unknown as { rowHeadingFocus: unknown }).rowHeadingFocus)
+}
+
+/** Leave nothing focused, as when a focused control is removed; no user action does this alone. */
+export async function clearFocus(page: Page) {
+  await page.evaluate(() => (document.activeElement as HTMLElement).blur())
+}

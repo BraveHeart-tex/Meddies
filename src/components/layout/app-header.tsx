@@ -21,7 +21,7 @@ export function AppHeader({
   return (
     <HeaderFrame action={action} headingClassName="[overflow-wrap:anywhere]">
       {eyebrow && <p className="text-body-sm font-bold text-muted-foreground">{eyebrow}</p>}
-      <h1 className="text-display font-extrabold">{title}</h1>
+      <h1 className="text-display font-extrabold outline-none">{title}</h1>
       {subtitle && <p className="text-caption font-bold text-muted-foreground">{subtitle}</p>}
     </HeaderFrame>
   )

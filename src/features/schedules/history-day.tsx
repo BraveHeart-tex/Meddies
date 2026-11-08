@@ -57,7 +57,7 @@ export function HistoryDay({
       <section aria-labelledby={dayHeadingId} className="flex flex-col gap-3.5">
         {result.status === 'unavailable' ? (
           <Alert role="alert" variant="destructive">
-            <AlertTitle id={dayHeadingId} ref={focusTarget} tabIndex={-1}>
+            <AlertTitle id={dayHeadingId} ref={focusTarget} tabIndex={-1} className="outline-none">
               History for {dateLabel(date, today)} didn&apos;t load just now.
             </AlertTitle>
             <AlertDescription className="flex flex-col items-start gap-2">
