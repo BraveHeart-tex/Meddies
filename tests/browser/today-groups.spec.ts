@@ -31,7 +31,7 @@ test.use({
   },
 })
 
-test('long Today groups reflow and their last action stays reachable', async ({
+test('long Today groups reflow and their last action stays reachable @visual', async ({
   page,
 }, testInfo) => {
   await page.goto('/')

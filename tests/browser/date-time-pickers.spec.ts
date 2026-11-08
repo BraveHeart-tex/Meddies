@@ -45,7 +45,6 @@ test('pick schedule dates, dose times and intake in Istanbul time from another t
     })
     await page.goto(`/medications?schedule=${medicineId}`)
     await expect(start).toHaveText('Today, Fri 15 Jun')
-    expect((await start.boundingBox())?.height).toBeGreaterThanOrEqual(44)
   })
 
   await test.step('open with the keyboard, dismiss with Escape and return focus', async () => {
@@ -77,29 +76,6 @@ test('pick schedule dates, dose times and intake in Istanbul time from another t
     await start.tap()
     await calendarDay(calendar, '2035-06-17').tap()
     await expect(start).toHaveText('Sun 17 Jun')
-  })
-
-  await test.step('widen calendar days to fit narrow phones', async () => {
-    const viewport = page.viewportSize()!
-    // At 360px days reach the 44px target; at 320px they stay below it (recorded exception).
-    for (const [width, minimum] of [
-      [360, 44],
-      [320, 39],
-    ] as const) {
-      await page.setViewportSize({ width, height: viewport.height })
-      await start.click()
-      const day = calendarDay(calendar, '2035-06-17')
-      await expect(day).toBeVisible()
-      const box = (await day.boundingBox())!
-      expect(box.width, `day width at ${width}px`).toBeGreaterThanOrEqual(minimum)
-      const popup = (await calendar.boundingBox())!
-      expect(popup.x).toBeGreaterThanOrEqual(0)
-      expect(popup.x + popup.width).toBeLessThanOrEqual(width)
-      expect(await scrollsHorizontally(page)).toBe(false)
-      await page.keyboard.press('Escape')
-      await expect(calendar).toBeHidden()
-    }
-    await page.setViewportSize(viewport)
   })
 
   await test.step('require both parts of every dose time', async () => {
@@ -173,5 +149,43 @@ test('pick schedule dates, dose times and intake in Istanbul time from another t
     await expect(dialog).toContainText('10 min after scheduled')
     await dialog.getByRole('button', { name: 'Save as taken' }).click()
     await expect(instant(doseRow(page, dueAt), '2035-06-15T20:10:00.000Z')).toBeVisible()
+  })
+})
+
+test('calendar day widths and date trigger size @visual', async ({ page, app }) => {
+  const medicineId = randomUUID()
+  await app.api('POST', '/api/medicines', {
+    id: medicineId,
+    label: 'Visual Picker Medicine',
+    strength: '5 mg',
+    unit: 'tablet',
+  })
+  await page.goto(`/medications?schedule=${medicineId}`)
+  const start = datePicker(page, 'Start date')
+  const calendar = page.getByRole('dialog', { name: 'Start date' })
+  await expect(start).toHaveText('Today, Fri 15 Jun')
+  expect((await start.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+
+  await test.step('widen calendar days to fit narrow phones', async () => {
+    const viewport = page.viewportSize()!
+    // At 360px days reach the 44px target; at 320px they stay below it (recorded exception).
+    for (const [width, minimum] of [
+      [360, 44],
+      [320, 39],
+    ] as const) {
+      await page.setViewportSize({ width, height: viewport.height })
+      await start.click()
+      const day = calendarDay(calendar, today)
+      await expect(day).toBeVisible()
+      const box = (await day.boundingBox())!
+      expect(box.width, `day width at ${width}px`).toBeGreaterThanOrEqual(minimum)
+      const popup = (await calendar.boundingBox())!
+      expect(popup.x).toBeGreaterThanOrEqual(0)
+      expect(popup.x + popup.width).toBeLessThanOrEqual(width)
+      expect(await scrollsHorizontally(page)).toBe(false)
+      await page.keyboard.press('Escape')
+      await expect(calendar).toBeHidden()
+    }
+    await page.setViewportSize(viewport)
   })
 })

@@ -45,11 +45,6 @@ test('step through History, go Back, reload, and recover from bad dates', async 
     await expect(page.getByText('Record it on Today')).toBeVisible()
     await expect(picker(page)).toHaveText('Today, Fri 15 Jun')
     await expect(next(page)).toBeDisabled()
-    for (const button of [previous(page), next(page)]) {
-      const box = await button.boundingBox()
-      expect(box?.width).toBeGreaterThanOrEqual(44)
-      expect(box?.height).toBeGreaterThanOrEqual(44)
-    }
   })
 
   await test.step('Previous day pushes each date and focuses its heading (D11)', async () => {
@@ -100,6 +95,16 @@ test('step through History, go Back, reload, and recover from bad dates', async 
   await page.screenshot({ path: testInfo.outputPath('history-invalid-402.png') })
   await page.reload()
   await expect(page.getByText('Nothing to show for that day.')).toHaveCount(0)
+})
+
+test('History date bar sizes and alignment @visual', async ({ page }, testInfo) => {
+  await page.goto('/history')
+  await expect(next(page)).toBeDisabled()
+  for (const button of [previous(page), next(page)]) {
+    const box = await button.boundingBox()
+    expect(box?.width).toBeGreaterThanOrEqual(44)
+    expect(box?.height).toBeGreaterThanOrEqual(44)
+  }
 
   await test.step('at 320px the date bar keeps its three parts on one row (648·H7)', async () => {
     await page.setViewportSize({ width: 320, height: 740 })

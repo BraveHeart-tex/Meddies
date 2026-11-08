@@ -29,8 +29,6 @@ test('add a medicine: validation, failures keep values, retry saves once, handof
     await expect(tablet).toHaveAttribute('aria-pressed', 'false')
     await expect(capsule).toHaveAttribute('aria-pressed', 'false')
     await expect(unitGroup).toHaveAccessibleDescription(/whole or half tablets/)
-    for (const control of [tablet, capsule, save])
-      expect((await control.boundingBox())?.height).toBeGreaterThanOrEqual(44)
   })
 
   await test.step('submit-first validation focuses the first invalid field', async () => {
@@ -230,4 +228,13 @@ test('Add keeps a session draft across routes, clears explicitly and after confi
   await page.getByRole('link', { name: 'Add a medication' }).click()
   await expect(name).toHaveValue('')
   await expect(note).toBeHidden()
+})
+
+test('Add medication controls meet tap-target sizes @visual', async ({ page }) => {
+  await page.goto('/medications?add')
+  for (const name of ['Tablet', 'Capsule', 'Save medication']) {
+    const control = page.getByRole('button', { name, exact: true })
+    await expect(control).toBeVisible()
+    expect((await control.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+  }
 })
