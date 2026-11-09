@@ -7,7 +7,7 @@ import { MedicationsFallback } from '@/features/medicines/medications-fallback'
 import { MedicationsHeader } from '@/features/medicines/medications-header'
 import { MedicationsScreen } from '@/features/medicines/medications-screen'
 import { medicationsHref, parseMedicationsView } from '@/features/medicines/routes'
-import { MedicationsHydration } from '@/features/schedules/medications-hydration'
+import { PrivateQueryHandoff } from '@/lib/private-query-handoff'
 import { prefetchMedications } from '@/features/schedules/prefetch'
 import { schedulingNow } from '@/features/schedules/server'
 
@@ -20,9 +20,9 @@ async function MedicationsSection({ add, initialNow }: { add: boolean; initialNo
   const read = add ? { state: { mutations: [], queries: [] }, complete: false } : null
   const { state, complete } = read ?? (await prefetchMedications())
   return (
-    <MedicationsHydration state={state}>
+    <PrivateQueryHandoff state={state}>
       <MedicationsScreen initialNow={initialNow} serverEntry={complete} />
-    </MedicationsHydration>
+    </PrivateQueryHandoff>
   )
 }
 

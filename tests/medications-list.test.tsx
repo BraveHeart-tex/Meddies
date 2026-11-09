@@ -16,7 +16,7 @@ import { MedicationsHeader } from '../src/features/medicines/medications-header'
 import { MedicationsScreen } from '../src/features/medicines/medications-screen'
 import { medicineKeys } from '../src/features/medicines/queries'
 import { scheduleKeys } from '../src/features/schedules/queries'
-import { MedicationsHydration } from '../src/features/schedules/medications-hydration'
+import { PrivateQueryHandoff } from '@/lib/private-query-handoff'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
 
@@ -237,9 +237,9 @@ describe('with a cached list', () => {
     const late = dehydrate(request)
     render(
       <QueryClientProvider client={client}>
-        <MedicationsHydration state={late}>
+        <PrivateQueryHandoff state={late}>
           <MedicinePanel scheduleMode="list" initialNow="2026-11-14T08:00:00.000Z" serverEntry />
-        </MedicationsHydration>
+        </PrivateQueryHandoff>
       </QueryClientProvider>,
     )
     await advance(1_000)

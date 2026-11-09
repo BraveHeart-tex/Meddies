@@ -1,6 +1,6 @@
+import { PrivateQueryHandoff } from '@/lib/private-query-handoff'
 import {
   dehydrate,
-  HydrationBoundary,
   QueryClientProvider,
   onlineManager,
   type QueryClient,
@@ -856,9 +856,9 @@ describe('server hydration', () => {
       <QueryClientProvider client={client}>
         <TodayHeader initialNow={initialNow} />
         {streamed && (
-          <HydrationBoundary state={dehydrate(serverClient)}>
+          <PrivateQueryHandoff state={dehydrate(serverClient)}>
             <SchedulePanel mode="today" initialNow={initialNow} />
-          </HydrationBoundary>
+          </PrivateQueryHandoff>
         )}
       </QueryClientProvider>
     )
@@ -887,9 +887,9 @@ describe('server hydration', () => {
       <QueryClientProvider client={client}>
         {/* As the page composes it: the shell header outside the streamed section's boundary. */}
         <TodayHeader initialNow={initialNow} />
-        <HydrationBoundary state={dehydrate(serverClient)}>
+        <PrivateQueryHandoff state={dehydrate(serverClient)}>
           <SchedulePanel mode="today" initialNow={initialNow} />
-        </HydrationBoundary>
+        </PrivateQueryHandoff>
       </QueryClientProvider>,
     )
     expect(await doses()).toHaveTextContent('Scheduled')

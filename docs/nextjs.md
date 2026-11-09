@@ -15,7 +15,7 @@ Today and History pass the FE-639 gate. Saves, drafts and session end follow
 
 - Page: [`src/app/page.tsx`](../src/app/page.tsx) authenticates, renders the shell and
   [`TodayHeader`](../src/features/schedules/today-header.tsx), and streams one doses section
-  in `<Suspense>` with `HydrationBoundary`.
+  in `<Suspense>` with `PrivateQueryHandoff`.
 - Server prefetch: [`schedules/prefetch.ts`](../src/features/schedules/prefetch.ts) into the
   request client from [`request-query-client.ts`](../src/lib/request-query-client.ts).
 - Section: [`schedule-panel.tsx`](../src/features/schedules/schedule-panel.tsx) and
@@ -84,7 +84,11 @@ Record these decisions in the owning ticket for each changed route:
 - One Query client per server request; one stable browser client per authenticated
   session, from `src/lib/session-query-client.ts` via `SessionBoundary`. Each page mounts
   its own boundary and the registry hands every mount the session's client.
-- Server sections prefetch into the request client and hydrate with `HydrationBoundary`.
+- Server sections prefetch into the request client and hydrate with `PrivateQueryHandoff`
+  (`src/lib/private-query-handoff.tsx`). Its explicit query-key policies reuse domain merge
+  helpers and read live browser data when hydration applies. Register a merge or replacement
+  policy before handing off a new private query family; direct hydration primitives belong
+  only to this adapter and its focused tests.
   Dehydrate display data only, never secrets, capabilities or session tokens. Dehydrating
   pending queries is optional, on measured benefit.
 - After hydration, TanStack Query owns medicines, schedules and dated history. Related

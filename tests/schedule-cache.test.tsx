@@ -1,7 +1,6 @@
 import { dehydrate, QueryClientProvider } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
-import { HistoryHydration } from '../src/features/schedules/history-hydration'
-import { TodayHydration } from '../src/features/schedules/today-hydration'
+import { PrivateQueryHandoff } from '@/lib/private-query-handoff'
 import { expect, test } from 'vitest'
 import {
   applyRecord,
@@ -41,9 +40,9 @@ test('a late hydration, stale read or older receipt cannot erase a confirmed rev
   incoming.setQueryData(scheduleKeys.snapshot(), { ...base, records: [] }, { updatedAt: 2 })
   render(
     <QueryClientProvider client={client}>
-      <TodayHydration state={dehydrate(incoming)}>
+      <PrivateQueryHandoff state={dehydrate(incoming)}>
         <span />
-      </TodayHydration>
+      </PrivateQueryHandoff>
     </QueryClientProvider>,
   )
   expect(client.getQueryData<ScheduleSnapshot>(scheduleKeys.snapshot())?.records).toEqual([latest])
@@ -108,9 +107,9 @@ test('a stale History read or late History hydration cannot erase a confirmed re
   incoming.setQueryData(scheduleKeys.history('2026-11-05'), [lateDose], { updatedAt: 2 })
   render(
     <QueryClientProvider client={client}>
-      <HistoryHydration state={dehydrate(incoming)}>
+      <PrivateQueryHandoff state={dehydrate(incoming)}>
         <span />
-      </HistoryHydration>
+      </PrivateQueryHandoff>
     </QueryClientProvider>,
   )
   expect(client.getQueryData(scheduleKeys.history('2026-11-05'))).toEqual([confirmed])
@@ -126,3 +125,27 @@ test('a stale History read or late History hydration cannot erase a confirmed re
   client.clear()
   incoming.clear()
 })
+
+for (const [screen, key, data] of [
+  ['Today', scheduleKeys.snapshot(), base],
+  ['History', scheduleKeys.history('2026-11-05'), [lateDose]],
+] as const) {
+  test(`${screen} handoff preserves a newly confirmed medicine after a late server read`, () => {
+    const client = createQueryClient()
+    const incoming = createQueryClient()
+    const saved = { id: 'saved', label: 'Saved medication', unit: 'tablet', strength: null }
+    client.setQueryData(['medicines', 'list'], [saved], { updatedAt: 1 })
+    incoming.setQueryData(['medicines', 'list'], [], { updatedAt: 2 })
+    incoming.setQueryData(key, data, { updatedAt: 2 })
+    render(
+      <QueryClientProvider client={client}>
+        <PrivateQueryHandoff state={dehydrate(incoming)}>
+          <span />
+        </PrivateQueryHandoff>
+      </QueryClientProvider>,
+    )
+    expect(client.getQueryData(['medicines', 'list'])).toEqual([saved])
+    client.clear()
+    incoming.clear()
+  })
+}

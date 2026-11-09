@@ -63,6 +63,13 @@ const architecture = {
           : source
       const local = target.startsWith('src/') || target.startsWith('worker/')
       if (
+        ['@tanstack/react-query', '@tanstack/query-core'].includes(target) &&
+        names.some((name) => ['HydrationBoundary', 'hydrate', '*'].includes(name)) &&
+        !['src/lib/private-query-handoff', 'tests/private-query-handoff.test'].includes(file)
+      )
+        report(node, 'Private hydration belongs to PrivateQueryHandoff and its focused tests.')
+
+      if (
         /^src\/features\/[^/]+\/queries$/.test(file) &&
         target === 'react' &&
         names.some((name) =>

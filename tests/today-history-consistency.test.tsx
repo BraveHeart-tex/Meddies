@@ -1,4 +1,5 @@
-import { dehydrate, hydrate, QueryClientProvider, type QueryClient } from '@tanstack/react-query'
+import { PrivateQueryHandoff } from '@/lib/private-query-handoff'
+import { dehydrate, QueryClientProvider, type QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -451,7 +452,13 @@ test('a server-streamed History date confirms a matching unconfirmed correction'
   streamed.setQueryData(scheduleKeys.history(yesterday), [dose(yesterday)], {
     updatedAt: Date.now() + 1_000,
   })
-  act(() => hydrate(client, dehydrate(streamed)))
+  render(
+    <QueryClientProvider client={client}>
+      <PrivateQueryHandoff state={dehydrate(streamed)}>
+        <span />
+      </PrivateQueryHandoff>
+    </QueryClientProvider>,
+  )
   expect(await screen.findByText('Morning Tablet 09:00 · already saved as skipped')).toBeVisible()
   expect(await historyRow(yesterday)).not.toHaveTextContent('Might not have saved')
   expect(state.writes).toHaveLength(1)

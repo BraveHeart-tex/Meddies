@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { TodayHydration } from '@/features/schedules/today-hydration'
+import { PrivateQueryHandoff } from '@/lib/private-query-handoff'
 import { auth, authConfigured } from '@/features/auth/server'
 import { SignInScreen } from '@/features/auth/sign-in-screen'
 import { safeReturnTo, saveInProgressNotice } from '@/features/auth/return-to'
@@ -18,9 +18,9 @@ import { TodayDosesFallback } from '@/features/schedules/today-doses-fallback'
  */
 async function TodayDoses({ initialNow }: { initialNow: string }) {
   return (
-    <TodayHydration state={await prefetchToday()}>
+    <PrivateQueryHandoff state={await prefetchToday()}>
       <SchedulePanel mode="today" initialNow={initialNow} />
-    </TodayHydration>
+    </PrivateQueryHandoff>
   )
 }
 

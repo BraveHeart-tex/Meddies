@@ -134,3 +134,14 @@ test('query composition retains its existing callback allowance', async () => {
     false,
   )
 })
+
+test('only the private handoff and focused tests may access hydration primitives', async () => {
+  for (const code of [
+    "import { HydrationBoundary as Boundary } from '@tanstack/react-query'",
+    "export { hydrate } from '@tanstack/query-core'",
+    "await import('@tanstack/react-query')",
+  ]) {
+    assert.equal(await rejected('src/app/example.tsx', code), true)
+    assert.equal(await rejected('src/lib/private-query-handoff.tsx', code), false)
+  }
+})

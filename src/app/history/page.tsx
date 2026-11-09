@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
-import { HistoryHydration } from '@/features/schedules/history-hydration'
+import { PrivateQueryHandoff } from '@/lib/private-query-handoff'
 import { auth, authConfigured } from '@/features/auth/server'
 import { SessionBoundary } from '@/features/auth/session-boundary'
 import { schedulingNow } from '@/features/schedules/server'
@@ -29,9 +29,9 @@ async function HistoryDateResults({
   notice?: 'invalid'
 }) {
   return (
-    <HistoryHydration state={await prefetchHistory(date)}>
+    <PrivateQueryHandoff state={await prefetchHistory(date)}>
       <HistoryResults today={today} notice={notice} />
-    </HistoryHydration>
+    </PrivateQueryHandoff>
   )
 }
 
