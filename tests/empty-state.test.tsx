@@ -34,10 +34,12 @@ test('the title keeps its heading level and can receive focus', () => {
       title="Nothing scheduled"
       body="Use the arrows."
       titleAs="h2"
+      titleId="day-title"
       titleRef={titleRef}
     />,
   )
   const heading = screen.getByRole('heading', { level: 2, name: 'Nothing scheduled' })
+  expect(heading).toHaveAttribute('id', 'day-title')
   titleRef.current?.focus()
   expect(heading).toHaveFocus()
 })

@@ -101,8 +101,9 @@ for (const { width, height } of viewports)
         await expectSectionGaps(
           appHeader(page),
           dateNav(page),
-          historyDay(page, 'Nothing was scheduled on Monday, 11 June.'),
+          historyDay(page, 'Nothing was scheduled on Monday, 11 June'),
         )
+        await page.screenshot({ path: testInfo.outputPath(`history-empty-${width}.png`) })
       })
 
       await test.step('invalid-date notice above today (648·H6)', async () => {

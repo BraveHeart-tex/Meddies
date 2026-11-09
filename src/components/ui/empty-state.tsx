@@ -8,6 +8,7 @@ export function EmptyState({
   body,
   action,
   titleAs: Title = 'h3',
+  titleId,
   titleRef,
 }: {
   icon: LucideIcon
@@ -16,6 +17,8 @@ export function EmptyState({
   /** The full-width primary action, plus any quieter actions stacked below it. */
   action?: ReactNode
   titleAs?: 'h2' | 'h3'
+  /** Lets a surrounding section name itself after the title. */
+  titleId?: string
   /** Makes the title focusable, for views that move focus to it. */
   titleRef?: Ref<HTMLHeadingElement>
 }) {
@@ -29,6 +32,7 @@ export function EmptyState({
       </span>
       <div className="flex max-w-77.5 flex-col gap-2">
         <Title
+          id={titleId}
           ref={titleRef}
           tabIndex={titleRef ? -1 : undefined}
           className="text-title font-extrabold text-balance outline-none"

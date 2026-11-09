@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, test, vi } from 'vitest'
 import type { Medicine } from '../src/features/medicines/contract'
 import type { DoseOccurrence } from '../src/features/schedules/contract'
-import { HistoryDateNav } from '../src/features/schedules/history-date-nav'
+import { dayHeadingId, HistoryDateNav } from '../src/features/schedules/history-date-nav'
 import { HistoryDay } from '../src/features/schedules/history-day'
 import { SchedulingClockProvider } from '../src/features/schedules/scheduling-clock'
 import { createQueryClient } from '../src/lib/session-query-client'
@@ -136,9 +136,16 @@ test('today so far points Not logged rows to Today (648·H2)', () => {
   expect(screen.getByText('Record it on Today')).toBeVisible()
 })
 
-test('an empty day says nothing was scheduled (648·H3)', () => {
+const emptyStateIcon = (name: string) => document.querySelector(`.lucide-${name}`)
+
+test('a past day with no doses points to another day, with no action (FE-752·B)', () => {
   renderDay({ date: '2026-11-01' })
-  expect(screen.getByText('Nothing was scheduled on Sunday, 1 November.')).toBeVisible()
+  expect(
+    screen.getByRole('heading', { level: 2, name: 'Nothing was scheduled on Sunday, 1 November' }),
+  ).toBeVisible()
+  expect(screen.getByText('Use the arrows to see another day.')).toBeVisible()
+  expect(emptyStateIcon('calendar')).toBeInTheDocument()
+  expect(screen.queryByRole('link')).not.toBeInTheDocument()
 })
 
 test('stepping to another day focuses its heading (D11)', async () => {
@@ -149,20 +156,40 @@ test('stepping to another day focuses its heading (D11)', async () => {
   expect(screen.getByRole('heading', { name: 'Thursday, 5 November, 1 dose' })).toHaveFocus()
 })
 
-test('picking an empty day focuses its message (648·H3)', async () => {
+test('picking an empty day focuses its title, which names the day (FE-752·B)', async () => {
   render(<HistoryDateNav today="2026-11-06" />)
   await userEvent.click(screen.getByRole('button', { name: /Choose a date/ }))
   await userEvent.click(document.querySelector<HTMLElement>('button[data-day="2026-11-01"]')!)
   renderDay({ date: '2026-11-01' })
+  const title = screen.getByRole('heading', { name: 'Nothing was scheduled on Sunday, 1 November' })
+  expect(title).toHaveFocus()
+  expect(title).toHaveAttribute('id', dayHeadingId)
   expect(
-    screen.getByRole('heading', { name: /Nothing was scheduled on Sunday, 1 November/ }),
-  ).toHaveFocus()
+    screen.getByRole('region', { name: 'Nothing was scheduled on Sunday, 1 November' }),
+  ).toBeVisible()
 })
 
-test('an empty today says nothing was due yet (648·H3)', () => {
+test('today with nothing due yet says doses will show, with no action (FE-752·B)', () => {
   renderDay({ date: '2026-11-06' })
-  expect(screen.getByText('Nothing was due before now today.')).toBeVisible()
+  expect(screen.getByRole('heading', { level: 2, name: 'Nothing due yet today' })).toBeVisible()
+  expect(screen.getByText("Doses will show here once they're due.")).toBeVisible()
+  expect(emptyStateIcon('calendar')).toBeInTheDocument()
+  expect(screen.queryByRole('link')).not.toBeInTheDocument()
 })
+
+test.each(['2026-11-01', '2026-11-06'])(
+  'no medicines and no doses on %s offers Add medication (FE-752·B)',
+  (date) => {
+    renderDay({ date, result: { status: 'loaded', doses: [], medicines: [] } })
+    expect(screen.getByRole('heading', { level: 2, name: 'No doses here yet' })).toBeVisible()
+    expect(screen.getByText('Doses you log will show here day by day.')).toBeVisible()
+    expect(emptyStateIcon('pill')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Add medication' })).toHaveAttribute(
+      'href',
+      '/medications?add',
+    )
+  },
+)
 
 test('an unavailable day offers one retry for that date (648·H5)', async () => {
   const retry = vi.fn()

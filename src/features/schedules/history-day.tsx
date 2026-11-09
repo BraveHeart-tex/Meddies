@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useRef, type RefObject } from 'react'
+import { Calendar, Pill } from 'lucide-react'
 import Link from 'next/link'
+import { useEffect, useRef, type RefObject } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
 import {
   formatLongDay,
@@ -16,6 +17,7 @@ import {
 import { quantityLabel } from '@/lib/dose-quantity'
 import { cn } from '@/lib/utils'
 import type { Medicine } from '@/features/medicines/contract'
+import { medicationsHref } from '@/features/medicines/routes'
 import { istanbulDate, type DoseOccurrence } from './contract'
 import { HistoryInvalidDateNotice } from './history-invalid-date-notice'
 import { DoseActions } from './dose-actions'
@@ -32,7 +34,7 @@ export type HistoryDayResult =
 const recorded = (dose: DoseOccurrence) => dose.status === 'Taken' || dose.status === 'Skipped'
 
 /**
- * One History date (648·H1 to H3, H5, H6). `notice: 'invalid'` means the URL named a future or
+ * One History date (648·H1, H2, H5, H6, FE-752·B). `notice: 'invalid'` means the URL named a future or
  * malformed date and this is today instead; the URL is replaced to match.
  */
 export function HistoryDay({
@@ -72,20 +74,13 @@ export function HistoryDay({
             </AlertDescription>
           </Alert>
         ) : result.doses.length === 0 ? (
-          <Card variant="dashed">
-            <CardContent>
-              <h2
-                id={dayHeadingId}
-                ref={focusTarget}
-                tabIndex={-1}
-                className="font-extrabold outline-none"
-              >
-                {date === today
-                  ? 'Nothing was due before now today.'
-                  : `Nothing was scheduled on ${heading}.`}
-              </h2>
-            </CardContent>
-          </Card>
+          <EmptyDay
+            date={date}
+            today={today}
+            heading={heading}
+            hasMedicines={result.medicines.length > 0}
+            focusTarget={focusTarget}
+          />
         ) : (
           <LoadedDay
             date={date}
@@ -99,6 +94,45 @@ export function HistoryDay({
       </section>
     </>
   )
+}
+
+/** Start with no medicines, otherwise Clear (FE-752·B). The title stays the day heading. */
+function EmptyDay({
+  date,
+  today,
+  heading,
+  hasMedicines,
+  focusTarget,
+}: {
+  date: string
+  today: string
+  heading: string
+  hasMedicines: boolean
+  focusTarget: RefObject<HTMLHeadingElement | null>
+}) {
+  const content = !hasMedicines
+    ? {
+        icon: Pill,
+        title: 'No doses here yet',
+        body: 'Doses you log will show here day by day.',
+        action: (
+          <Link href={medicationsHref({ mode: 'add' })} className={buttonVariants({ size: 'lg' })}>
+            Add medication
+          </Link>
+        ),
+      }
+    : date === today
+      ? {
+          icon: Calendar,
+          title: 'Nothing due yet today',
+          body: "Doses will show here once they're due.",
+        }
+      : {
+          icon: Calendar,
+          title: `Nothing was scheduled on ${heading}`,
+          body: 'Use the arrows to see another day.',
+        }
+  return <EmptyState {...content} titleAs="h2" titleId={dayHeadingId} titleRef={focusTarget} />
 }
 
 function LoadedDay({
