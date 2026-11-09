@@ -34,8 +34,8 @@ commands are for coordinated recovery only.
 
 `.github/workflows/verify.yml` runs on pull requests, using `.node-version`,
 `packageManager` and a frozen install. It has read-only repository access and no
-production environment or secrets. The `Static`, `Unit` and `Journeys` jobs
-([layout](verification.md#ci-jobs)) run in parallel, then `Checks` fails unless all three
+production environment or secrets. The `Unit` and `Journeys` jobs
+([layout](verification.md#ci-jobs)) run in parallel, then `Checks` fails unless both
 succeeded. The `Checks` status context stays the same whichever jobs sit behind it.
 `scripts/verify.mjs` is the local and manual-recovery path. Require the `Checks` status in
 main branch protection after its first successful run; verify the actual status context
@@ -58,7 +58,8 @@ A separate non-canceling concurrency group on the release job covers every mutat
 The Vercel CLI is locked in the root dependencies. Its optional `koffi` build is
 disabled; releases use remote Vercel builds, not local native build tooling.
 No production environment files or deployable build artifacts are uploaded by Actions;
-Verify caches only the `.next/cache` compiler cache.
+Verify caches installed dependencies and the `.next/cache` compiler cache; Release
+reuses the same dependency cache ([rules](verification.md#ci-jobs)).
 Alias verification calls Vercel's read-only deployment API with an explicit
 `teamId` from `VERCEL_ORG_ID`, using `VERCEL_TOKEN` from the environment. It checks
 the ready production deployment URL, project ID and commit SHA. This avoids the

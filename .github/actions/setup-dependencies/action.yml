@@ -1,0 +1,28 @@
+name: Setup dependencies
+description: Restore installed dependencies or install the frozen lockfile
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v4
+    - uses: actions/setup-node@v4
+      id: node
+      with:
+        node-version-file: .node-version
+    # Exact matches only: native packages and install policy must match this runner.
+    - name: Restore installed dependencies
+      id: dependencies
+      uses: actions/cache/restore@v4
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-${{ runner.arch }}-dependencies-v1-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('pnpm-lock.yaml', 'package.json', 'pnpm-workspace.yaml', '.npmrc') }}
+    - name: Install dependencies
+      if: steps.dependencies.outputs.cache-hit != 'true'
+      shell: bash
+      run: pnpm install --frozen-lockfile
+    # Save before tests so a later failure does not repeat installation next run.
+    - name: Save installed dependencies
+      if: github.ref == 'refs/heads/main' && steps.dependencies.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: node_modules
+        key: ${{ steps.dependencies.outputs.cache-primary-key }}
