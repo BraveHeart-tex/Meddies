@@ -7,8 +7,9 @@ on:
 permissions:
   contents: read
 
+# Release owns cancellation for main. A per-run group keeps its calls from queueing here.
 concurrency:
-  group: verify-${{ github.event_name }}-${{ github.ref }}
+  group: verify-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

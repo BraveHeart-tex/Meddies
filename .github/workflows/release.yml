@@ -8,20 +8,24 @@ on:
 permissions:
   contents: read
 
-# One lock covers checks and every mutation. GitHub may replace pending runs;
-# it never cancels the running release. The latest-main guard rejects stale reruns.
-concurrency:
-  group: production-release
-  cancel-in-progress: false
-
 jobs:
+  # A newer push cancels this job. The lock is job-level so it ends with Verify and
+  # can never reach a running release.
   verify:
     if: github.ref == 'refs/heads/main'
+    concurrency:
+      group: release-verify-${{ github.ref }}
+      cancel-in-progress: true
     uses: ./.github/workflows/verify.yml
 
+  # One lock covers every mutation. GitHub may replace a pending release; it never
+  # cancels the running one. The latest-main guard rejects superseded commits.
   release:
     name: Ordered production release
     needs: verify
+    concurrency:
+      group: production-release
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: production
