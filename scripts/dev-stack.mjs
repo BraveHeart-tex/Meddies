@@ -382,7 +382,10 @@ async function runStack() {
     if (stopping) return
     stopping = true
     for (const child of children) signalServiceGroup(child.pid, child.stackName, 'SIGTERM')
-    const timeout = sleep(2000).then(() => 'timeout')
+    let cleanupTimer
+    const timeout = new Promise((resolve) => {
+      cleanupTimer = setTimeout(resolve, 2000)
+    })
     await Promise.race([
       Promise.all(
         [...children].map((child) =>
@@ -393,6 +396,8 @@ async function runStack() {
       ),
       timeout,
     ])
+    // Successful cleanup must not keep the runner alive until the escalation deadline.
+    clearTimeout(cleanupTimer)
     for (const child of children) signalServiceGroup(child.pid, child.stackName, 'SIGKILL')
     await update({ stage, stageDetail: reason, ready: false }, 'failure')
     if (process.connected) process.disconnect()
