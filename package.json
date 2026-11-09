@@ -20,7 +20,7 @@
     "test:browser": "playwright test --project=phone --grep-invert @visual",
     "test:browser:build": "node scripts/test-browser-build.mjs",
     "test:browser:visual": "node scripts/test-browser-build.mjs --visual",
-    "lint": "eslint .",
+    "lint": "node scripts/check-architecture.mjs && eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
     "format:check": "prettier . --check",

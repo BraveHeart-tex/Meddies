@@ -85,3 +85,50 @@ owner.
   latest revision.
 
 Client retry and action-ID rules: [client state](client-state.md#saves).
+
+## Automated dependency checks
+
+`pnpm lint` runs ESLint plus `scripts/check-architecture.mjs`, a second ESLint pass
+that ignores inline configuration and reports only architecture violations. Inline
+`eslint-disable` or rule configuration cannot bypass this pass. `pnpm verify:local`
+runs it with the type, production build and behavior checks.
+
+`eslint-rules/architecture.mjs` owns module roles, the closed runtime-neutral surface
+and the named exceptions. Import aliases and relative paths resolve to the same role;
+explicit `.ts`/`.tsx` extensions do not change it. Imports, re-exports, literal dynamic
+imports and CommonJS imports are checked. Computed imports are rejected in application,
+neutral and Worker code because their dependency direction cannot be checked.
+
+- Contracts, neutral rules/errors and injected operations depend only on the listed
+  neutral modules. They cannot import framework, environment or persistence wiring.
+- Worker modules may import Worker code, Drizzle and the listed neutral modules.
+  HTTP and command decoding may import only each other and neutral modules.
+- Persistence stays inside the Worker. Only medicine and schedule server wiring may
+  import the private storage transport. Only server wiring and focused tests may
+  import injected operation factories.
+- Browser feature components and query modules cannot import server wiring or HTTP
+  policy. Server wiring and prefetch composition must retain `import 'server-only'`.
+  Next.js enforces that marker through arbitrarily named browser helpers and indirect
+  imports; the lint policy does not duplicate Next.js's module graph.
+- API routes import shared HTTP policy and authenticated feature server entry points.
+  Pages and other helpers cannot import, re-export or dynamically access raw `send`
+  exports from those entry points.
+
+Named exceptions (central definitions in the rule, fixtures in
+`tests/architecture-lint.test.ts`):
+
+- `tests/gateway.test.ts` may import raw feature senders to exercise decoding and
+  transport failures with synthetic authentication. Other tests use injected operations.
+- `features/auth/server.ts` owns Auth.js and signed-session authentication.
+- `app/api/auth/[...nextauth]/route.ts` preserves the Auth.js protocol handler.
+- `app/api/session/route.ts` calls `requireUser` directly for the session probe and its
+  human-readable errors.
+- `features/schedules/prefetch.ts` is marked server-only and may compose authenticated
+  feature operations with server-safe query options. Browser query modules remain
+  importable by that composition; client hooks belong in components.
+
+The negative compiler fixture in `tests/architecture-build.test.ts` proves indirect
+browser-to-server rejection with the installed Next.js compiler. The production build
+proves the legitimate application graph, including auth, session and prefetch, still
+compiles. These checks enforce dependency direction; authentication behavior remains
+covered at the injected operations and gateway seams.

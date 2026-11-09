@@ -2,6 +2,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 import nextVitals from 'eslint-config-next/core-web-vitals'
 import prettier from 'eslint-config-prettier/flat'
 import playwright from 'eslint-plugin-playwright'
+import architecture from './eslint-rules/architecture.mjs'
 import bannedUiWords from './eslint-rules/banned-ui-words.mjs'
 import noRawDateFormat from './eslint-rules/no-raw-date-format.mjs'
 import noWidthLoopTests from './eslint-rules/no-width-loop-tests.mjs'
@@ -9,6 +10,7 @@ import noWidthLoopTests from './eslint-rules/no-width-loop-tests.mjs'
 const browserJourneys = 'tests/browser/**'
 const meddies = {
   rules: {
+    architecture,
     'banned-ui-words': bannedUiWords,
     'no-raw-date-format': noRawDateFormat,
     'no-width-loop-tests': noWidthLoopTests,
@@ -62,6 +64,11 @@ export const wallClockOwners = [
 
 const eslintConfig = defineConfig([
   ...nextVitals,
+  {
+    files: ['src/**/*.{ts,tsx}', 'worker/**/*.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
+    plugins: { meddies },
+    rules: { 'meddies/architecture': 'error' },
+  },
   prettier,
   {
     files: ['src/**/*.ts'],
