@@ -112,35 +112,6 @@ const eslintConfig = defineConfig([
       'no-restricted-imports': ['error', { patterns: browserRestrictedImports }],
     },
   },
-  // Server prefetch imports feature query keys and options, so they stay usable in Server
-  // Components: no client-only React hooks (next build rejects them, lint says so first).
-  {
-    files: ['src/features/*/queries.ts'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: browserRestrictedImports,
-          paths: [
-            {
-              name: 'react',
-              importNames: [
-                'useState',
-                'useEffect',
-                'useLayoutEffect',
-                'useReducer',
-                'useRef',
-                'useSyncExternalStore',
-                'useTransition',
-                'useOptimistic',
-              ],
-              message: 'Server prefetch imports this module; put client hooks in a .tsx file.',
-            },
-          ],
-        },
-      ],
-    },
-  },
   // Worker code may consume neutral contracts/rules, never app wiring or browser policy.
   {
     files: ['worker/**/*.ts'],

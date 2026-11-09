@@ -45,7 +45,9 @@ const architecture = {
     const isBrowser =
       /^(src\/components\/|src\/features\/.*\.tsx$)/.test(
         path.relative(context.cwd, context.filename),
-      ) || /^src\/features\/[^/]+\/queries$/.test(file)
+      ) ||
+      /^src\/features\/[^/]+\/queries$/.test(file) ||
+      file === 'src/lib/session-query-client'
     const report = (node, reason) =>
       context.report({ node, messageId: 'boundary', data: { reason } })
     function dependency(node, source, names = []) {
@@ -60,6 +62,24 @@ const architecture = {
           ? stem(path.posix.normalize(path.posix.join(path.posix.dirname(file), source)))
           : source
       const local = target.startsWith('src/') || target.startsWith('worker/')
+      if (
+        /^src\/features\/[^/]+\/queries$/.test(file) &&
+        target === 'react' &&
+        names.some((name) =>
+          [
+            '*',
+            'useState',
+            'useEffect',
+            'useLayoutEffect',
+            'useReducer',
+            'useRef',
+            'useSyncExternalStore',
+            'useTransition',
+            'useOptimistic',
+          ].includes(name),
+        )
+      )
+        report(node, 'Server prefetch imports query options; client hooks belong in components.')
       if (
         file.startsWith('src/') &&
         (target.startsWith('worker/') || /^drizzle-orm(?:\/|$)/.test(target))
@@ -149,7 +169,9 @@ const architecture = {
           node,
           node.source.value,
           node.specifiers.map((s) =>
-            s.type === 'ImportNamespaceSpecifier' ? '*' : (s.imported?.name ?? s.imported?.value),
+            ['ImportNamespaceSpecifier', 'ImportDefaultSpecifier'].includes(s.type)
+              ? '*'
+              : (s.imported?.name ?? s.imported?.value),
           ),
         )
       },

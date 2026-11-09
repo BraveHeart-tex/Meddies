@@ -106,3 +106,31 @@ test('server-only markers cannot be removed from wiring or composition', async (
     assert.equal(await rejected(file, "import 'server-only'; export const value = 1"), false, file)
   }
 })
+
+test('query modules preserve the existing server-safe hook policy despite inline disables', async () => {
+  assert.equal(
+    await rejected(
+      'src/features/schedules/queries.ts',
+      "/* eslint-disable no-restricted-imports */\nimport { useState as state } from 'react'",
+    ),
+    true,
+  )
+  assert.equal(
+    await rejected('src/features/medicines/queries.tsx', "import * as React from 'react'"),
+    true,
+  )
+  assert.equal(
+    await rejected(
+      'src/lib/session-query-client.ts',
+      "/* eslint-disable no-restricted-imports */\nimport { medicines } from '@/features/medicines/server'",
+    ),
+    true,
+  )
+})
+
+test('query composition retains its existing callback allowance', async () => {
+  assert.equal(
+    await rejected('src/features/schedules/queries.ts', "import { useCallback } from 'react'"),
+    false,
+  )
+})
