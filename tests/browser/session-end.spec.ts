@@ -3,6 +3,7 @@ import { focusWindow } from './actions'
 import { expect, test } from './fixtures'
 import { doseTrigger, drawer } from './locators'
 import { insertScheduledMedicine } from './seed'
+import { chooseMedicineType } from './drawers'
 
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
@@ -36,9 +37,9 @@ test('expiry with a pending save shows the notice, removes private content and r
     held = route
   })
   await page.goto('/medications?add')
-  await page.getByLabel('Medication name').fill('Private Magnesium')
+  await page.getByLabel('Name', { exact: true }).fill('Private Magnesium')
   await page.getByLabel(/^Strength/).fill('200 mg')
-  await page.getByRole('button', { name: 'Tablet', exact: true }).click()
+  await chooseMedicineType(page, 'Tablet')
   await page.getByRole('button', { name: 'Save medication', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Saving medication...' })).toBeDisabled()
 
@@ -60,7 +61,7 @@ test('expiry with a pending save shows the notice, removes private content and r
   await page.reload()
 
   await expect(page).toHaveURL(`${app.origin}/medications?add`)
-  await expect(page.getByLabel('Medication name')).toHaveValue('')
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('')
   await expect(page.getByLabel(/^Strength/)).toHaveValue('')
   await expect(page.getByText('Pick up where you left off', { exact: false })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Save medication', exact: true })).toBeEnabled()

@@ -17,6 +17,22 @@ const shapes = {
   ring: 'size-[44%] rounded-full border-2 bg-card',
 }
 
+// A saved medicine's tile comes from its id; a unit choice has no id, so each unit keeps one.
+const unitIdentities = { tablet: identities[1], capsule: identities[2] }
+
+/** The 30px tile beside a unit option. */
+export function MedicationUnitTile({ unit }: { unit: keyof typeof unitIdentities }) {
+  const identity = unitIdentities[unit]
+  return (
+    <span
+      aria-hidden="true"
+      className={cn('grid size-7.5 shrink-0 place-items-center rounded-md', identity.tile)}
+    >
+      <span className={cn('block', shapes[identity.shape], identity.glyph)} />
+    </span>
+  )
+}
+
 export function MedicationTile({
   medicineId,
   size = 'md',

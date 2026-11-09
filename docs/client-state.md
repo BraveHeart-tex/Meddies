@@ -48,7 +48,8 @@ store scoped to the session Query client, keyed by form and medicine ID.
 
 - Returning restores values through React Hook Form `reset`, with "Unsaved details from
   earlier." and a ghost "Clear form". The dose drawer reopens itself with its chosen
-  outcome and Taken values; explicit dismissal is its Clear form.
+  outcome and Taken values; explicit dismissal is its Clear form. Add's Drawer works the same way:
+  swipe, Close, backdrop and Escape are its Clear form and also drop a failed save.
 - A confirmed save or Clear form discards the draft; Clear form also resets defaults.
   Navigation, refresh and clock rollover keep it.
 - `/medications` query states (`?add`, `?medicine`, `?schedule`) share one mounted

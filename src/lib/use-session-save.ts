@@ -4,6 +4,13 @@ import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { sessionSaves } from './session-saves'
 
+/** Whether a save is pending, without observing it: its result still reaches the feedback host. */
+export function useSessionSavePending(key: string) {
+  const store = sessionSaves(useQueryClient())
+  useSyncExternalStore(store.subscribe, store.snapshot, store.snapshot)
+  return store.entries.get(key)?.status === 'pending'
+}
+
 /** The form observes a session-owned save; unmounting only removes the observer. */
 export function useSessionSave<T>(key: string, onSaved?: (saved: T) => void) {
   const store = sessionSaves(useQueryClient())

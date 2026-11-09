@@ -25,13 +25,18 @@ function openAdd(onSaved = vi.fn()) {
   )
   return { ...view, user: userEvent.setup(), onSaved }
 }
-const name = () => screen.getByRole('textbox', { name: 'Medication name' })
+const name = () => screen.getByRole('textbox', { name: 'Name' })
 const strength = () => screen.getByRole('textbox', { name: /^Strength/ })
 const button = (label: string) => screen.getByRole('button', { name: label })
+const type = () => screen.getByRole('combobox', { name: 'Type' })
+async function chooseType(user: ReturnType<typeof userEvent.setup>, label: string) {
+  await user.click(type())
+  await user.click(await screen.findByRole('option', { name: label }))
+}
 async function fill(user: ReturnType<typeof userEvent.setup>) {
   await user.type(name(), 'Test Medicine')
   await user.type(strength(), ' 5 mg ')
-  await user.click(button('Capsule'))
+  await chooseType(user, 'Capsule')
 }
 
 test('submit-first validation focuses the first invalid field and clears corrected errors', async () => {
@@ -43,10 +48,15 @@ test('submit-first validation focuses the first invalid field and clears correct
     }),
   )
   const { user } = openAdd()
-  expect(button('Tablet')).toHaveAttribute('aria-pressed', 'false')
-  expect(button('Capsule')).toHaveAttribute('aria-pressed', 'false')
-  const unit = screen.getByRole('group', { name: 'Unit' })
-  expect(unit).toHaveAccessibleDescription(/whole or half tablets/)
+  expect(type()).toHaveTextContent('Choose')
+  expect(name()).toHaveAttribute('placeholder', 'On your pack')
+  expect(strength()).toHaveAttribute('placeholder', 'Optional')
+  expect(strength()).toHaveAccessibleDescription(
+    'Strength is printed on the pack, like 200 mg or 1000 IU. Not how much you take.',
+  )
+  expect(type()).toHaveAccessibleDescription(
+    'Schedules use whole or half tablets, or whole capsules.',
+  )
   await user.type(strength(), 'x'.repeat(121))
   expect(screen.queryByText('Use 120 characters or fewer.')).not.toBeInTheDocument()
   await user.click(button('Save medication'))
@@ -54,16 +64,17 @@ test('submit-first validation focuses the first invalid field and clears correct
   expect(name()).toHaveAttribute('aria-invalid', 'true')
   expect(name()).toHaveAccessibleDescription(/Enter the medication name\./)
   expect(strength()).toHaveAccessibleDescription(/Use 120 characters or fewer\./)
-  expect(unit).toHaveAccessibleDescription(/Choose tablet or capsule\./)
+  expect(type()).toHaveAccessibleDescription(/Choose tablet or capsule\./)
+  expect(screen.getByText('Choose tablet or capsule.')).toBeVisible()
   await user.type(name(), `Medicine ${'L'.repeat(60)}`)
   await waitFor(() => expect(name()).toHaveAttribute('aria-invalid', 'false'))
   await user.clear(strength())
   await user.type(strength(), ' 5 mg ')
   expect(screen.queryByText('Use 120 characters or fewer.')).not.toBeInTheDocument()
   await user.click(button('Save medication'))
-  await waitFor(() => expect(button('Tablet')).toHaveFocus())
-  await user.click(button('Capsule'))
-  expect(button('Capsule')).toHaveAttribute('aria-pressed', 'true')
+  await waitFor(() => expect(type()).toHaveFocus())
+  await chooseType(user, 'Capsule')
+  expect(type()).toHaveTextContent('Capsule')
   await waitFor(() =>
     expect(screen.queryByText('Choose tablet or capsule.')).not.toBeInTheDocument(),
   )
@@ -80,7 +91,7 @@ test('a rejected save keeps raw values and allows a fresh save', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent("Test Medicine wasn't saved.")
   expect(name()).toHaveValue('Test Medicine')
   expect(strength()).toHaveValue(' 5 mg ')
-  expect(button('Capsule')).toHaveAttribute('aria-pressed', 'true')
+  expect(type()).toHaveTextContent('Capsule')
   expect(button('Save medication')).toBeEnabled()
   expect(onSaved).not.toHaveBeenCalled()
 })
@@ -107,7 +118,7 @@ test('an unconfirmed save retries the identical request once and locks while pen
   expect(await screen.findByRole('alert')).toHaveTextContent('That might not have saved.')
   expect(name()).toHaveValue('Test Medicine')
   expect(strength()).toHaveValue(' 5 mg ')
-  expect(button('Capsule')).toHaveAttribute('aria-pressed', 'true')
+  expect(type()).toHaveTextContent('Capsule')
   const retry = button('Try saving medication again')
   expect(retry).toHaveAccessibleDescription(/Trying again saves Test Medicine only once/)
   // Two submissions in one turn exercise the synchronous guard before a pending render.
@@ -119,7 +130,7 @@ test('an unconfirmed save retries the identical request once and locks while pen
   expect(button('Saving medication...')).toBeDisabled()
   expect(name()).toBeDisabled()
   expect(strength()).toBeDisabled()
-  expect(button('Capsule')).toBeDisabled()
+  expect(type()).toBeDisabled()
   expect(onSaved).not.toHaveBeenCalled()
   expect(posted[1]).toEqual(posted[0])
   expect(posted[1]).toMatchObject({
@@ -179,8 +190,7 @@ test('a conflict locks the form and offers Medications', async () => {
   )
   expect(name()).toBeDisabled()
   expect(strength()).toBeDisabled()
-  expect(button('Tablet')).toBeDisabled()
-  expect(button('Capsule')).toBeDisabled()
+  expect(type()).toBeDisabled()
   expect(screen.queryByRole('button', { name: /save medication/i })).not.toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'Open Medications' })).toHaveAttribute(
     'href',
@@ -213,7 +223,7 @@ test('known offline waits for a connection, keeps values and queues nothing', as
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   expect(name()).toHaveValue('Test Medicine')
   expect(strength()).toHaveValue('10 mg')
-  expect(button('Capsule')).toHaveAttribute('aria-pressed', 'true')
+  expect(type()).toHaveTextContent('Capsule')
   expect(posts).toBe(0)
 })
 
@@ -231,12 +241,12 @@ test('the session draft survives leaving Add and clears explicitly and after con
   view = openAdd()
   expect(name()).toHaveValue('Test Medicine')
   expect(strength()).toHaveValue(' 5 mg ')
-  expect(button('Capsule')).toHaveAttribute('aria-pressed', 'true')
+  expect(type()).toHaveTextContent('Capsule')
   expect(screen.getByText(note)).toBeVisible()
   await view.user.click(button('Clear form'))
   expect(name()).toHaveValue('')
   expect(strength()).toHaveValue('')
-  expect(button('Capsule')).toHaveAttribute('aria-pressed', 'false')
+  expect(type()).toHaveTextContent('Choose')
   expect(screen.queryByText(note)).not.toBeInTheDocument()
   view.unmount()
   view = openAdd()
@@ -250,12 +260,40 @@ test('the session draft survives leaving Add and clears explicitly and after con
   await waitFor(() => expect(view.onSaved).toHaveBeenCalledOnce())
   expect(name()).toHaveValue('')
   expect(strength()).toHaveValue('')
-  expect(button('Capsule')).toHaveAttribute('aria-pressed', 'false')
+  expect(type()).toHaveTextContent('Choose')
   view.unmount()
   openAdd()
   expect(name()).toHaveValue('')
   expect(strength()).toHaveValue('')
-  expect(button('Tablet')).toHaveAttribute('aria-pressed', 'false')
-  expect(button('Capsule')).toHaveAttribute('aria-pressed', 'false')
+  expect(type()).toHaveTextContent('Choose')
   expect(screen.queryByText(note)).not.toBeInTheDocument()
+})
+
+test('the Type menu offers tablet and capsule, checks the choice and saves its unit', async () => {
+  const posted: Medicine[] = []
+  server.use(
+    http.post('/api/medicines', async ({ request }) => {
+      const payload = (await request.json()) as Medicine
+      posted.push(payload)
+      return HttpResponse.json({ medicines: [payload] })
+    }),
+  )
+  const { user, onSaved } = openAdd()
+  await user.type(name(), 'Magnesium')
+  await user.click(type())
+  expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual([
+    'Tablet',
+    'Capsule',
+  ])
+  expect(screen.getByRole('option', { name: 'Tablet' })).toHaveAttribute('aria-selected', 'false')
+  await user.click(screen.getByRole('option', { name: 'Tablet' }))
+  await user.click(type())
+  expect(await screen.findByRole('option', { name: 'Tablet' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await user.keyboard('{Escape}')
+  await user.click(button('Save medication'))
+  await waitFor(() => expect(onSaved).toHaveBeenCalledOnce())
+  expect(posted[0]).toMatchObject({ label: 'Magnesium', strength: null, unit: 'tablet' })
 })

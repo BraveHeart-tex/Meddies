@@ -73,6 +73,7 @@ export function MedicationsList({
               </p>
               <MedicationsLink
                 href={medicationsHref({ mode: 'add' })}
+                keepScroll
                 className={buttonVariants({ size: 'lg' })}
               >
                 Add medication

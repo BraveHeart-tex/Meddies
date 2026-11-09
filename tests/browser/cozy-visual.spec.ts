@@ -110,11 +110,17 @@ test(
 
     await test.step('capture Add medication and its validation', async () => {
       await page.getByRole('link', { name: 'Add a medication' }).click()
-      await expect(page.getByRole('heading', { name: 'Add medication' })).toBeVisible()
+      await expect(
+        page.getByRole('dialog').getByRole('heading', { name: 'Add medication' }),
+      ).toBeVisible()
       await shot('prod-add-medicine')
       await page.getByRole('button', { name: 'Save medication' }).click()
-      await expect(page.getByLabel('Medication name')).toBeFocused()
+      await expect(page.getByLabel('Name', { exact: true })).toBeFocused()
       await shot('prod-add-medicine-invalid', true)
+      await page.getByRole('combobox', { name: 'Type' }).click()
+      await expect(page.getByRole('option', { name: 'Tablet' })).toBeVisible()
+      await shot('prod-add-medicine-type-menu')
+      await page.keyboard.press('Escape')
     })
   },
 )

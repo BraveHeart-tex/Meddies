@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test'
 import { expect, test, type JourneyDatabase } from './fixtures'
 import { layoutViewports, trackLayout } from './layout'
 import {
+  drawer,
   medicationFallback,
   medicationSetupFallback,
   medicationsFallback as fallback,
@@ -197,7 +198,7 @@ test('view changes make no server request, and Back, Forward and reload restore 
 
   await add(page).click()
   await expect(page).toHaveURL(/\/medications\?add$/)
-  await expect(page.getByRole('heading', { level: 1, name: 'Add medication' })).toBeVisible()
+  await expect(drawer(page).getByRole('heading', { name: 'Add medication' })).toBeVisible()
   await page.goBack()
   await expect(row(page, unscheduled)).toBeVisible()
 
@@ -227,9 +228,8 @@ test('view changes make no server request, and Back, Forward and reload restore 
 test('Add never waits for the reads', async ({ page, app }) => {
   for (const route of reads) app.worker.hold(route)
   await page.goto('/medications?add', { waitUntil: 'commit' })
-  await expect(page.getByRole('heading', { level: 1, name: 'Add medication' })).toBeVisible()
+  await expect(drawer(page).getByRole('heading', { name: 'Add medication' })).toBeVisible()
   await expect(page.getByRole('textbox').first()).toBeVisible()
-  await expect(placeholders(page)).toHaveCount(0)
   for (const route of reads) app.worker.release(route)
 })
 

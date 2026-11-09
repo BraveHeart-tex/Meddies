@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { expect, test } from './fixtures'
 import { scrollsHorizontally } from './actions'
 import { pickTime } from './pickers'
+import { chooseMedicineType } from './drawers'
 
 test.use({
   journey: { auth: true, storage: true, initialScheduleTime: '2035-06-15T09:00:00+03:00' },
@@ -41,12 +42,15 @@ for (const viewport of [
           }
           await route.fallback()
         })
-        await page.goto('/medications?add')
-        await page.getByLabel('Medication name').fill('Magnesium')
+        await page.goto('/medications')
+        await page.getByRole('link', { name: 'Add a medication' }).click()
+        await page.getByLabel('Name', { exact: true }).fill('Magnesium')
         await page.getByLabel(/^Strength/).fill(' 200 mg ')
-        await page.getByRole('button', { name: 'Tablet', exact: true }).click()
+        await chooseMedicineType(page, 'Tablet')
         await page.getByRole('button', { name: 'Save medication', exact: true }).click()
         await expect(page.getByRole('button', { name: 'Saving medication...' })).toBeDisabled()
+        // The modal Drawer covers the nav, so Back is how she leaves during the save.
+        await page.goBack()
         await page.getByRole('link', { name: 'Today', exact: true }).click()
         await expect(page).toHaveURL(app.origin + '/')
         await expect(page.getByText('Saving Magnesium…', { exact: true })).toBeVisible()
@@ -63,7 +67,7 @@ for (const viewport of [
               .getByRole('link', { name: 'Medications', exact: true })
               .click()
             await page.getByRole('link', { name: 'Add a medication' }).click()
-            await expect(page.getByLabel('Medication name')).toHaveValue('')
+            await expect(page.getByLabel('Name', { exact: true })).toHaveValue('')
             await expect(
               page.getByRole('button', { name: 'Save medication', exact: true }),
             ).toBeEnabled()
@@ -77,7 +81,7 @@ for (const viewport of [
               'the unconfirmed save toast fits the viewport',
             ).toBe(false)
             await page.getByRole('button', { name: 'Return to form', exact: true }).click()
-            await expect(page.getByLabel('Medication name')).toHaveValue('Magnesium')
+            await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Magnesium')
             await expect(page.getByLabel(/^Strength/)).toHaveValue(' 200 mg ')
             await page.getByRole('button', { name: 'Try saving medication again' }).click()
             await expect(page.getByRole('status', { name: 'Saved medication' })).toBeVisible()

@@ -2,6 +2,7 @@ import { expect, test } from './fixtures'
 import { datePicker, expectTime, pickDate, pickTime } from './pickers'
 import { focusWindow } from './actions'
 import { doseRow, doseTrigger, historyRow, historyRows, instant, drawer } from './locators'
+import { chooseMedicineType } from './drawers'
 
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
@@ -43,9 +44,9 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await expect(page.getByRole('heading', { name: 'No medications here yet.' })).toBeVisible()
     pageRequests = 0
     await page.getByRole('link', { name: 'Add a medication' }).click()
-    await page.getByLabel('Medication name').fill('Routine Medicine')
+    await page.getByLabel('Name', { exact: true }).fill('Routine Medicine')
     await page.getByLabel(/^Strength/).fill('5 mg')
-    await page.getByRole('button', { name: 'Tablet' }).click()
+    await chooseMedicineType(page, 'Tablet')
     await page.getByRole('button', { name: 'Save medication' }).press('Enter')
     await expect(page.getByText('Routine Medicine saved.')).toBeVisible()
     expect(pageRequests, 'D7 makes no document or RSC request').toBe(0)
@@ -150,8 +151,8 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
   await test.step('save another medicine without a schedule and reload', async () => {
     await nav.getByRole('link', { name: 'Medications' }).click()
     await page.getByRole('link', { name: 'Add a medication' }).click()
-    await page.getByLabel('Medication name').fill('Evening Vitamin')
-    await page.getByRole('button', { name: 'Capsule' }).click()
+    await page.getByLabel('Name', { exact: true }).fill('Evening Vitamin')
+    await chooseMedicineType(page, 'Capsule')
     await page.getByRole('button', { name: 'Save medication' }).press('Enter')
     await expect(page.getByText('Evening Vitamin saved.')).toBeVisible()
     await page.reload()

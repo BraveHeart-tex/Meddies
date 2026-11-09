@@ -39,8 +39,9 @@ test('a pending medicine save survives remount, locks duplicate submit and retri
     )
   const user = userEvent.setup()
   const first = open()
-  await user.type(screen.getByLabelText('Medication name'), 'Magnesium')
-  await user.click(screen.getByRole('button', { name: 'Tablet' }))
+  await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Magnesium')
+  await user.click(screen.getByRole('combobox', { name: 'Type' }))
+  await user.click(await screen.findByRole('option', { name: 'Tablet' }))
   const form = screen.getByRole('button', { name: 'Save medication' }).closest('form')!
   fireEvent.submit(form)
   fireEvent.submit(form)
@@ -75,8 +76,9 @@ test('a confirmed medicine remains cached when a later stale list omits it', asy
       <MedicineForm onSaved={() => {}} />
     </QueryClientProvider>,
   )
-  await user.type(screen.getByLabelText('Medication name'), 'Magnesium')
-  await user.click(screen.getByRole('button', { name: 'Tablet' }))
+  await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Magnesium')
+  await user.click(screen.getByRole('combobox', { name: 'Type' }))
+  await user.click(await screen.findByRole('option', { name: 'Tablet' }))
   await user.click(screen.getByRole('button', { name: 'Save medication' }))
   first.unmount()
   await act(async () => held.release())
@@ -161,8 +163,9 @@ test('session end prevents a late save response from restoring private cache or 
       />
     </QueryClientProvider>,
   )
-  await user.type(screen.getByLabelText('Medication name'), 'Magnesium')
-  await user.click(screen.getByRole('button', { name: 'Tablet' }))
+  await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Magnesium')
+  await user.click(screen.getByRole('combobox', { name: 'Type' }))
+  await user.click(await screen.findByRole('option', { name: 'Tablet' }))
   await user.click(screen.getByRole('button', { name: 'Save medication' }))
   first.unmount()
   endSessionQueryClient()

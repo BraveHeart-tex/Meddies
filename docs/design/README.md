@@ -4,13 +4,14 @@ Read-only copies of the approved Cozy Care journey designs, so frames can be sea
 locally. The live artifact linked at the top of each file is where reviews and comments
 happen. After a design changes there, refresh the copy here.
 
-| File                                                       | Design                                    | Frames                                                    |
-| ---------------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------- |
-| [fe-646-screen-map.html](fe-646-screen-map.html)           | FE-646 screen and control map, D1 to D6   | Flow map, inventory, pattern mocks (screenshots stripped) |
-| [fe-647-medications.html](fe-647-medications.html)         | FE-647 Medications journey, D7 to D9      | A, B, M, S, L, D                                          |
-| [fe-648-daily-routine.html](fe-648-daily-routine.html)     | FE-648 Today, drawer, History, D10 to D14 | W, T, R, E, F, C, H                                       |
-| [fe-649-access-recovery.html](fe-649-access-recovery.html) | FE-649 access and recovery, D15 to D19    | A, X, S, G, L                                             |
-| [fe-650-routine-handoff.html](fe-650-routine-handoff.html) | FE-650 cross-journey review, D20 to D23   | Corrections (Fix 1 to 6), coverage, owner handoff         |
+| File                                                       | Design                                    | Frames                                                        |
+| ---------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------- |
+| [fe-646-screen-map.html](fe-646-screen-map.html)           | FE-646 screen and control map, D1 to D6   | Flow map, inventory, pattern mocks (screenshots stripped)     |
+| [fe-647-medications.html](fe-647-medications.html)         | FE-647 Medications journey, D7 to D9      | A, B, M, S, L, D                                              |
+| [fe-648-daily-routine.html](fe-648-daily-routine.html)     | FE-648 Today, drawer, History, D10 to D14 | W, T, R, E, F, C, H                                           |
+| [fe-649-access-recovery.html](fe-649-access-recovery.html) | FE-649 access and recovery, D15 to D19    | A, X, S, G, L                                                 |
+| [fe-650-routine-handoff.html](fe-650-routine-handoff.html) | FE-650 cross-journey review, D20 to D23   | Corrections (Fix 1 to 6), coverage, owner handoff             |
+| [fe-745-add-flow.html](fe-745-add-flow.html)               | FE-745 Add medication, direction B chosen | B·Drawer, B·Scanner, B·Barcode read, B·No match, B·More types |
 
 - **Citations:** frame IDs repeat across designs, so cite them with the ticket number:
   `649·L1` is frame `L1` in the FE-649 file.

@@ -23,9 +23,10 @@ test('Settings checks session end before showing the signed-out destination and 
   page,
   app,
 }) => {
-  await page.goto('/medications?add=1')
-  await page.getByLabel('Medication name').fill('Private draft')
-  await page.getByRole('link', { name: 'Medications', exact: true }).first().click()
+  await page.goto('/medications')
+  await page.getByRole('link', { name: 'Add a medication' }).click()
+  await page.getByLabel('Name', { exact: true }).fill('Private draft')
+  await page.goBack()
   await page.getByRole('link', { name: 'Settings' }).click()
   await expect(page.getByText('Approved', { exact: true })).toBeVisible()
   let release!: () => void

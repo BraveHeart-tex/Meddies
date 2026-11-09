@@ -27,7 +27,8 @@ export function MedicationsFallback() {
   const view = useMedicationsView()
   const medicines = useCachedQueryData<Medicine[]>(medicineKeys.list())
   const snapshot = useCachedQueryData<ScheduleSnapshot>(scheduleKeys.snapshot())
-  if (view.mode === 'add') return null
+  // Add's Drawer belongs to the mounted panel, so only the list's place is held here.
+  if (view.mode === 'add') return <MedicationsListSkeleton />
   const linkedMedicineCached =
     view.mode === 'list' || medicines?.some((item) => item.id === view.medicineId)
   return (

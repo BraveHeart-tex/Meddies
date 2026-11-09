@@ -4,10 +4,11 @@ import { medicationsHref } from './routes'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { InfoIcon } from 'lucide-react'
+import { ChevronsUpDownIcon, InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import Link from 'next/link'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import {
   Field,
   FieldDescription,
@@ -16,12 +17,18 @@ import {
   FieldLabel,
   FieldLegend,
   FieldSet,
-  FieldTitle,
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import { useSessionFormDraft } from '@/lib/use-session-form-draft'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { MedicationUnitTile } from './medication-tile'
 import { parseMedicine, type Medicine } from './contract'
 import { medicinesQuery, confirmMedicine } from './queries'
 import { saveMessages } from '@/lib/save-messages'
@@ -29,6 +36,7 @@ import { requestSave, type SaveProblem } from '@/lib/session-saves'
 import { useSessionSave } from '@/lib/use-session-save'
 import { discardSessionFormDraft } from '@/lib/session-drafts'
 import {
+  medicineAddKey,
   medicineFormDefaults,
   medicineFormSchema,
   type MedicineFormOutput,
@@ -39,6 +47,14 @@ const UNITS = [
   { value: 'tablet', label: 'Tablet' },
   { value: 'capsule', label: 'Capsule' },
 ] as const
+
+// Inset rows from `B·Drawer`: a 92px label column, 56px minimum height, the focus ring on the row.
+const textRow =
+  'grid min-h-14 grid-cols-[5.75rem_minmax(0,1fr)] items-center gap-0 px-4 not-first:border-t first:rounded-t-2xl has-[input:focus-visible]:outline-2 has-[input:focus-visible]:-outline-offset-2 has-[input:focus-visible]:outline-ring'
+const rowInput =
+  'h-auto min-h-14 rounded-none border-0 bg-transparent px-0 text-body-lg font-bold placeholder:font-semibold focus-visible:outline-none disabled:bg-transparent aria-invalid:ring-0'
+const underGroup = 'px-1 font-extrabold'
+const rowHelp = 'px-1 text-caption nth-last-2:mt-0'
 
 /** Reconciling read: refreshes the cached list and finds the attempted medicine in it. */
 async function findSavedMedicine(client: QueryClient, id: string) {
@@ -59,17 +75,17 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
     resolver: zodResolver(medicineFormSchema),
     defaultValues: medicineFormDefaults,
   })
-  const draft = useSessionFormDraft('medicine:add', form)
+  const draft = useSessionFormDraft(medicineAddKey, form)
   const offline = useKnownOffline()
   const queryClient = useQueryClient()
-  const saveState = useSessionSave<Medicine>('medicine:add', (saved) => {
+  const saveState = useSessionSave<Medicine>(medicineAddKey, (saved) => {
     form.reset(medicineFormDefaults)
     draft.discard()
     onSaved(saved)
   })
   async function save(values: MedicineFormOutput) {
     await saveState.store.submit(
-      'medicine:add',
+      medicineAddKey,
       {
         payload: { ...values },
         label: values.label,
@@ -85,7 +101,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
           if (saved) result = { saved }
         }
         if (result.saved && active()) {
-          discardSessionFormDraft(queryClient, 'medicine:add')
+          discardSessionFormDraft(queryClient, medicineAddKey)
           await confirmMedicine(queryClient, result.saved, active)
         }
         return result
@@ -93,6 +109,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
     )
   }
 
+  const { errors } = form.formState
   const isSubmitting = Boolean(saveState.pending)
   const problem = saveState.problem
   const problemLabel = saveState.attempt?.label ?? ''
@@ -104,7 +121,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
       // Wrapped so building the handler during render never touches the save refs.
       onSubmit={(event) => void form.handleSubmit(save)(event)}
       aria-busy={isSubmitting}
-      className="flex flex-col gap-5"
+      className="flex flex-col gap-3.5"
     >
       {draft.restored && (
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -115,7 +132,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
             disabled={isSubmitting}
             onClick={() => {
               if (saveState.pending) return
-              saveState.store.clear('medicine:add')
+              saveState.store.clear(medicineAddKey)
               form.reset(medicineFormDefaults)
               draft.discard()
             }}
@@ -124,107 +141,123 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
           </Button>
         </div>
       )}
-      <FieldSet disabled={locked} className="disabled:opacity-70">
+      <FieldSet disabled={locked} className="gap-2 disabled:opacity-70">
         <FieldLegend className="sr-only">Medication details</FieldLegend>
-        <FieldGroup>
-          <Controller
-            name="label"
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor="medicine-label">Medication name</FieldLabel>
-                <Input
-                  {...field}
-                  id="medicine-label"
-                  autoComplete="off"
-                  autoCapitalize="words"
-                  enterKeyHint="next"
-                  aria-invalid={fieldState.invalid}
-                  aria-describedby={
-                    fieldState.invalid
-                      ? 'medicine-label-error medicine-label-help'
-                      : 'medicine-label-help'
-                  }
-                />
-                <FieldError id="medicine-label-error" errors={[fieldState.error]} />
-                <FieldDescription id="medicine-label-help">
-                  Use the name on your pack.
-                </FieldDescription>
-              </Field>
-            )}
-          />
-          <Controller
-            name="strength"
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor="medicine-strength">
-                  Strength <span className="font-semibold text-muted-foreground">(optional)</span>
-                </FieldLabel>
-                <Input
-                  {...field}
-                  id="medicine-strength"
-                  autoComplete="off"
-                  enterKeyHint="done"
-                  aria-invalid={fieldState.invalid}
-                  aria-describedby={
-                    fieldState.invalid
-                      ? 'medicine-strength-error medicine-strength-help'
-                      : 'medicine-strength-help'
-                  }
-                />
-                <FieldError id="medicine-strength-error" errors={[fieldState.error]} />
-                <FieldDescription id="medicine-strength-help">
-                  Printed on the pack, like 200 mg or 1000 IU. Not how much you take.
-                </FieldDescription>
-              </Field>
-            )}
-          />
-          <Controller
-            name="unit"
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldTitle id="medicine-unit-label">Unit</FieldTitle>
-                <ToggleGroup
-                  variant="outline"
-                  className="grid w-full grid-cols-2"
-                  aria-labelledby="medicine-unit-label"
-                  aria-describedby={
-                    fieldState.invalid
-                      ? 'medicine-unit-error medicine-unit-help'
-                      : 'medicine-unit-help'
-                  }
-                  aria-invalid={fieldState.invalid}
-                  value={field.value ? [field.value] : []}
-                  onValueChange={(value) => field.onChange(value[0] ?? '')}
-                  onBlur={field.onBlur}
-                  disabled={field.disabled || locked}
-                >
-                  {UNITS.map((unit, index) => (
-                    <ToggleGroupItem
-                      key={unit.value}
-                      value={unit.value}
-                      // RHF focuses the first option when unit is the first invalid field.
-                      ref={index === 0 ? field.ref : undefined}
+        <Card className="gap-0 py-0">
+          <FieldGroup className="gap-0">
+            <Controller
+              name="label"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid} className={textRow}>
+                  <FieldLabel htmlFor="medicine-label">Name</FieldLabel>
+                  <Input
+                    {...field}
+                    id="medicine-label"
+                    placeholder="On your pack"
+                    autoComplete="off"
+                    autoCapitalize="words"
+                    enterKeyHint="next"
+                    aria-invalid={fieldState.invalid}
+                    aria-describedby={fieldState.invalid ? 'medicine-label-error' : undefined}
+                    className={rowInput}
+                  />
+                </Field>
+              )}
+            />
+            <Controller
+              name="strength"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid} className={textRow}>
+                  <FieldLabel htmlFor="medicine-strength">Strength</FieldLabel>
+                  <Input
+                    {...field}
+                    id="medicine-strength"
+                    placeholder="Optional"
+                    autoComplete="off"
+                    enterKeyHint="done"
+                    aria-invalid={fieldState.invalid}
+                    aria-describedby={
+                      fieldState.invalid
+                        ? 'medicine-strength-error medicine-strength-help'
+                        : 'medicine-strength-help'
+                    }
+                    className={rowInput}
+                  />
+                </Field>
+              )}
+            />
+            <Controller
+              name="unit"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid} className="not-first:border-t">
+                  <Select
+                    items={UNITS}
+                    value={field.value || null}
+                    onValueChange={(value) => field.onChange(value ?? '')}
+                    disabled={field.disabled || locked}
+                  >
+                    {/* The whole row is the trigger, its label included. */}
+                    <SelectTrigger
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      icon={ChevronsUpDownIcon}
+                      aria-labelledby="medicine-unit-label"
+                      aria-describedby={
+                        fieldState.invalid
+                          ? 'medicine-unit-error medicine-unit-help'
+                          : 'medicine-unit-help'
+                      }
                       aria-invalid={fieldState.invalid}
+                      className='grid min-h-14 grid-cols-[5.75rem_minmax(0,1fr)_1.375rem] gap-0 rounded-none rounded-b-2xl border-0 bg-transparent px-4 text-body-lg focus-visible:-outline-offset-2 aria-invalid:ring-0 [&_svg:not([class*="size-"])]:size-5.5'
                     >
-                      {unit.label}
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
-                <FieldError id="medicine-unit-error" errors={[fieldState.error]} />
-                {/* The toggle group is data-horizontal; keep normal wrapping, not the horizontal-field balance. */}
-                <FieldDescription
-                  id="medicine-unit-help"
-                  className="group-has-data-horizontal/field:text-pretty"
-                >
-                  How you take it. Schedules use whole or half tablets, or whole capsules.
-                </FieldDescription>
-              </Field>
-            )}
-          />
-        </FieldGroup>
+                      <span
+                        id="medicine-unit-label"
+                        className="text-base font-extrabold text-foreground group-data-[invalid=true]/field:text-destructive"
+                      >
+                        Type
+                      </span>
+                      <SelectValue
+                        placeholder="Choose"
+                        className="font-bold in-data-placeholder:font-semibold"
+                      />
+                    </SelectTrigger>
+                    {/* Opens above the row, so it never hides Save medication. */}
+                    <SelectContent side="top" align="end" className="w-61 rounded-lg p-0.5">
+                      {UNITS.map((unit) => (
+                        <SelectItem
+                          key={unit.value}
+                          value={unit.value}
+                          className="min-h-12 pl-1.5 font-extrabold data-[selected]:bg-transparent data-[selected]:text-foreground data-[selected]:data-highlighted:bg-secondary"
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <MedicationUnitTile unit={unit.value} />
+                            {unit.label}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
+            />
+          </FieldGroup>
+        </Card>
+        <FieldError id="medicine-label-error" className={underGroup} errors={[errors.label]} />
+        <FieldError
+          id="medicine-strength-error"
+          className={underGroup}
+          errors={[errors.strength]}
+        />
+        <FieldError id="medicine-unit-error" className={underGroup} errors={[errors.unit]} />
+        <FieldDescription id="medicine-strength-help" className={rowHelp}>
+          Strength is printed on the pack, like 200 mg or 1000 IU. Not how much you take.
+        </FieldDescription>
+        <FieldDescription id="medicine-unit-help" className={rowHelp}>
+          Schedules use whole or half tablets, or whole capsules.
+        </FieldDescription>
       </FieldSet>
       {offline && !isSubmitting && problem !== 'conflict' ? (
         <Alert id="medicine-save-problem">
@@ -238,7 +271,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
       {problem !== 'conflict' && (
         <Button
           type="submit"
-          size="lg"
+          size="drawer"
           disabled={isSubmitting || offline}
           className="w-full whitespace-normal"
           aria-describedby={problem || offline ? 'medicine-save-problem' : undefined}

@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronLeftIcon, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { AppHeader } from '@/components/layout/app-header'
 import { buttonVariants } from '@/components/ui/button'
 import { useCachedQueryData } from '@/lib/use-cached-query-data'
@@ -19,24 +19,8 @@ const reservedCount = ' '
 export function MedicationsHeader() {
   const view = useMedicationsView()
   const medicines = useCachedQueryData<Medicine[]>(medicineKeys.list())
-  if (view.mode === 'add')
-    return (
-      <>
-        <MedicationsLink
-          href={medicationsHref({ mode: 'list' })}
-          className={buttonVariants({ variant: 'ghost', className: '-ml-3 self-start' })}
-        >
-          <ChevronLeftIcon data-icon="inline-start" aria-hidden="true" />
-          Medications
-        </MedicationsLink>
-        <AppHeader
-          title="Add medication"
-          subtitle="Saved once Meddies has it. You can set a schedule straight after, or later."
-        />
-      </>
-    )
   // The medication page and setup have their own Back row and identity header (650 Fix 1).
-  if (view.mode !== 'list') return null
+  if (view.mode !== 'list' && view.mode !== 'add') return null
   return (
     <AppHeader
       title="Medications"
@@ -47,10 +31,11 @@ export function MedicationsHeader() {
       }
       action={
         // Before the list is cached the section may still be streaming, so Add goes through the
-        // router and replaces it; the Add page reads nothing, so its form never waits.
+        // router and replaces it; Add's section reads nothing, so its Drawer never waits.
         <MedicationsLink
           href={medicationsHref({ mode: 'add' })}
           routerNavigation={!medicines}
+          keepScroll
           aria-label="Add a medication"
           className={buttonVariants({ className: 'rounded-full' })}
         >

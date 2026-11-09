@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { SchedulePanel } from '@/features/schedules/schedule-panel'
 import { buttonVariants } from '@/components/ui/button'
-import { MedicineForm } from './medicine-form'
+import { MedicineAddDrawer } from './medicine-add-drawer'
 import type { Medicine } from './contract'
 import { MedicationsLink, showMedicationsView } from './medications-nav'
 import { medicationsHref } from './routes'
@@ -75,31 +75,37 @@ export function MedicinePanel({
       showMedicationsView(medicationsHref({ mode: 'detail', medicineId: medicine.id }), 'replace')
   }
 
-  if (scheduleMode === 'add') return <MedicineForm onSaved={saved} />
-
   return (
-    <SchedulePanel
-      initialNow={initialNow}
-      onScheduleSaved={scheduled}
-      mode={scheduleMode}
-      initialMedicineId={scheduleMedicineId || detailMedicineId}
-      serverEntry={serverEntry}
-      focusMedicineId={focusMedicineId}
-      onMedicineFocused={() => setFocusMedicineId(null)}
-      detailHeadingRef={detailHeading}
-      justSaved={justSavedHere}
-      justScheduled={justScheduledHere}
-      detailActions={
-        justSavedHere ? (
-          <MedicationsLink
-            href={medicationsHref({ mode: 'list' })}
-            onShow={() => setFocusMedicineId(savedMedicine.id)}
-            className={buttonVariants({ size: 'lg', variant: 'outline' })}
-          >
-            Done for now
-          </MedicationsLink>
-        ) : null
-      }
-    />
+    <>
+      <SchedulePanel
+        initialNow={initialNow}
+        onScheduleSaved={scheduled}
+        // Add opens as a Drawer over the list.
+        mode={scheduleMode === 'add' ? 'list' : scheduleMode}
+        initialMedicineId={scheduleMedicineId || detailMedicineId}
+        serverEntry={serverEntry}
+        focusMedicineId={focusMedicineId}
+        onMedicineFocused={() => setFocusMedicineId(null)}
+        detailHeadingRef={detailHeading}
+        justSaved={justSavedHere}
+        justScheduled={justScheduledHere}
+        detailActions={
+          justSavedHere ? (
+            <MedicationsLink
+              href={medicationsHref({ mode: 'list' })}
+              onShow={() => setFocusMedicineId(savedMedicine.id)}
+              className={buttonVariants({ size: 'lg', variant: 'outline' })}
+            >
+              Done for now
+            </MedicationsLink>
+          ) : null
+        }
+      />
+      <MedicineAddDrawer
+        open={scheduleMode === 'add'}
+        returnFocus={scheduleMode === 'list'}
+        onSaved={saved}
+      />
+    </>
   )
 }

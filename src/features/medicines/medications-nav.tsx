@@ -18,13 +18,18 @@ let scrollRequested = false
  * Changes the `/medications` view with the native History API, as History does for dates: the
  * view reads the Query cache and the panel, its handoffs and its session drafts stay mounted.
  */
-export function showMedicationsView(href: string, method: 'push' | 'replace' = 'push') {
+export function showMedicationsView(
+  href: string,
+  method: 'push' | 'replace' = 'push',
+  { keepScroll = false }: { keepScroll?: boolean } = {},
+) {
   const { pathname, search, hash } = window.location
   if (`${pathname}${search}${hash}` === href) {
     window.scrollTo(0, 0)
     return
   }
-  scrollRequested = true
+  // The Add drawer opens and closes over the list without moving it.
+  scrollRequested = !keepScroll
   if (method === 'push') window.history.pushState(null, '', href)
   else window.history.replaceState(null, '', href)
 }
@@ -51,6 +56,7 @@ export function MedicationsLink({
   href,
   onShow,
   routerNavigation = false,
+  keepScroll = false,
   ...props
 }: Omit<ComponentProps<typeof Link>, 'href' | 'prefetch' | 'onNavigate'> & {
   href: string
@@ -58,6 +64,8 @@ export function MedicationsLink({
   onShow?: () => void
   /** Navigate through the router instead, while the section it leaves may still be streaming. */
   routerNavigation?: boolean
+  /** Leave the page where it is, for a view that opens over this one. */
+  keepScroll?: boolean
 }) {
   const pendingRoute = useContext(PendingRouteContext)
   return (
@@ -69,7 +77,7 @@ export function MedicationsLink({
         if (routerNavigation || pendingRoute) return
         event.preventDefault()
         onShow?.()
-        showMedicationsView(href)
+        showMedicationsView(href, 'push', { keepScroll })
       }}
     />
   )

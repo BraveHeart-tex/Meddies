@@ -4,6 +4,9 @@ import { z } from 'zod'
 // stays authoritative; keep trimming, the 120-character limits and units in step with it.
 const tooLong = 'Use 120 characters or fewer.'
 
+/** Names Add medicine's session draft and session save. */
+export const medicineAddKey = 'medicine:add'
+
 export const medicineFormSchema = z.object({
   label: z.string().trim().min(1, 'Enter the medication name.').max(120, tooLong),
   strength: z

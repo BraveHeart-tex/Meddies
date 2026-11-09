@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, ChevronDownIcon, ChevronUpIcon } from 'lucide-react'
+import { Check, ChevronDownIcon, ChevronUpIcon, type LucideIcon } from 'lucide-react'
 import * as React from 'react'
 import { Select as SelectPrimitive } from '@base-ui/react/select'
 import { cn } from '@/lib/utils'
@@ -30,10 +30,12 @@ function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
 function SelectTrigger({
   className,
   size = 'default',
+  icon: Icon = ChevronDownIcon,
   children,
   ...props
 }: SelectPrimitive.Trigger.Props & {
   size?: 'sm' | 'default'
+  icon?: LucideIcon
 }) {
   return (
     <SelectPrimitive.Trigger
@@ -47,7 +49,7 @@ function SelectTrigger({
     >
       {children}
       <SelectPrimitive.Icon className="flex shrink-0 text-muted-foreground">
-        <ChevronDownIcon aria-hidden="true" />
+        <Icon aria-hidden="true" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   )
