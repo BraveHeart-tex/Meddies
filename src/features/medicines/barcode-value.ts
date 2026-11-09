@@ -1,3 +1,14 @@
+import type { IScannerProps } from '@yudiel/react-qr-scanner'
+
+/** Retail pack symbologies, and the DataMatrix that carries a GS1 GTIN on medicine packs. */
+export const barcodeFormats: NonNullable<IScannerProps['formats']> = [
+  'ean_13',
+  'ean_8',
+  'upc_a',
+  'upc_e',
+  'data_matrix',
+]
+
 // GS1 element string: optional symbology identifier and FNC1, then AI 01 and its 14-digit GTIN.
 const gs1Gtin = /^(?:\]d2)?\u001d?(?:\(01\)|01)(\d{14})/
 
