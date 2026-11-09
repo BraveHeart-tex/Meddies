@@ -80,7 +80,7 @@ test('X1 to X3: session end clears an unsaved correction and returns to the old 
   await focusWindow(page)
 
   await expect(page).toHaveURL(`${app.origin}${expiredUrl}`)
-  await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeFocused()
+  await expect(page.getByRole('heading', { name: 'Good to see you', exact: true })).toBeFocused()
   await expect(page.getByText('Your session ended.', { exact: true })).toBeVisible()
   await expect(page.getByRole('status')).toContainText(cleared)
   await expect(page.getByRole('status')).not.toContainText(saveNotice)
@@ -117,7 +117,7 @@ test('X4, X5: a correction refused by the expired session keeps the old outcome'
   await app.expireSession()
   await save.click()
 
-  await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Good to see you', exact: true })).toBeVisible()
   await expectSaveInProgressSignIn(page, app)
   await expectDateAfterSignIn(page, app, 'Taken')
 })

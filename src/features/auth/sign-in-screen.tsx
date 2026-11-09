@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { safeReturnTo } from './return-to'
 import { SignInFrame } from './sign-in-frame'
 
@@ -79,58 +78,54 @@ export function SignInScreen({
 
   return (
     <SignInFrame>
-      {message && (
-        <Alert
-          variant={!configured || info ? 'default' : 'destructive'}
-          role={info ? 'status' : 'alert'}
-          aria-atomic="true"
-        >
-          {info ? <Info aria-hidden="true" /> : <TriangleAlert aria-hidden="true" />}
-          <AlertTitle aria-hidden={info || undefined}>{message[0]}</AlertTitle>
-          <AlertDescription aria-hidden={info || undefined}>{detail}</AlertDescription>
-          {info && <span className="sr-only">{announce ? `${message[0]} ${detail}` : ''}</span>}
-        </Alert>
-      )}
-      <Card>
-        <CardHeader className="gap-3">
-          <CardTitle>
-            <h1 ref={heading} tabIndex={-1} className="outline-none">
-              Sign in
-            </h1>
-          </CardTitle>
-          <CardDescription>Use your approved Google account to open your routine.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!configured ? (
-            <Button
-              variant="outline"
-              size="lg"
-              className="w-full"
-              onClick={() => window.location.reload()}
-            >
-              Reload
-            </Button>
-          ) : (
-            <Button
-              size="lg"
-              className="w-full whitespace-normal"
-              disabled={pending}
-              aria-busy={pending}
-              onClick={submit}
-            >
-              {pending
-                ? 'Opening Google…'
-                : failed
-                  ? 'Try again'
-                  : error === 'AccessDenied'
-                    ? 'Choose another Google account'
-                    : error
-                      ? 'Try again'
-                      : 'Continue with Google'}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+      <div className="flex flex-col gap-1.5">
+        <h1 ref={heading} tabIndex={-1} className="text-display font-extrabold outline-none">
+          Good to see you
+        </h1>
+        <p className="text-body-lg text-secondary-foreground">Sign in to see what&apos;s next.</p>
+      </div>
+      <div className="flex flex-col gap-3">
+        {message && (
+          <Alert
+            variant={!configured || info ? 'default' : 'destructive'}
+            role={info ? 'status' : 'alert'}
+            aria-atomic="true"
+          >
+            {info ? <Info aria-hidden="true" /> : <TriangleAlert aria-hidden="true" />}
+            <AlertTitle aria-hidden={info || undefined}>{message[0]}</AlertTitle>
+            <AlertDescription aria-hidden={info || undefined}>{detail}</AlertDescription>
+            {info && <span className="sr-only">{announce ? `${message[0]} ${detail}` : ''}</span>}
+          </Alert>
+        )}
+        {!configured ? (
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full"
+            onClick={() => window.location.reload()}
+          >
+            Reload
+          </Button>
+        ) : (
+          <Button
+            size="lg"
+            className="w-full whitespace-normal"
+            disabled={pending}
+            aria-busy={pending}
+            onClick={submit}
+          >
+            {pending
+              ? 'Opening Google…'
+              : failed
+                ? 'Try again'
+                : error === 'AccessDenied'
+                  ? 'Choose another Google account'
+                  : error
+                    ? 'Try again'
+                    : 'Continue with Google'}
+          </Button>
+        )}
+      </div>
     </SignInFrame>
   )
 }

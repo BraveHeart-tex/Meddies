@@ -13,7 +13,7 @@ test('signed-out entry replaces history and returns to History', async ({ page, 
   await page.goto('/not-a-page')
   await page.goto(destination)
   await expect(page).toHaveURL(`${app.origin}/?returnTo=${encodeURIComponent(destination)}`)
-  await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Good to see you', exact: true })).toBeVisible()
   await page.goBack()
   await expect(page).toHaveURL(`${app.origin}/not-a-page`)
   await page.goForward()
@@ -36,7 +36,9 @@ test('signed-out entry guards Medications and Settings', async ({ page, context,
     await test.step(destination, async () => {
       await page.goto(destination)
       await expect(page).toHaveURL(`${app.origin}/?returnTo=${encodeURIComponent(destination)}`)
-      await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible()
+      await expect(
+        page.getByRole('heading', { name: 'Good to see you', exact: true }),
+      ).toBeVisible()
     })
   }
 })
@@ -57,7 +59,7 @@ test('restricted retry keeps the Auth.js callback destination and requests the c
   await expect(page.getByRole('heading', { name: 'Synthetic Google' })).toBeVisible()
   await page.goto('/api/auth/error?error=AccessDenied')
   await expect(page.getByRole('button', { name: 'Choose another Google account' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeFocused()
+  await expect(page.getByRole('heading', { name: 'Good to see you', exact: true })).toBeFocused()
   await page.route('**/api/auth/signin/google*', async (route) => {
     expect(new URLSearchParams(route.request().postData()!).get('callbackUrl')).toBe(destination)
     await route.fallback()

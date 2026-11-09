@@ -73,12 +73,13 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-const signInShown = () => expect(screen.getByRole('heading', { name: 'Sign in' })).toBeVisible()
+const signInShown = () =>
+  expect(screen.getByRole('heading', { name: 'Good to see you' })).toBeVisible()
 
 test('the absolute deadline ends the session without a network request', async () => {
   sessionAnswers(active)
   mount(new Date(Date.now() - 1000).toISOString())
-  await screen.findByRole('heading', { name: 'Sign in' })
+  await screen.findByRole('heading', { name: 'Good to see you' })
   expect(screen.queryByText('Private Omega-3')).not.toBeInTheDocument()
   expect(checks).toBe(0)
   expect(replace).toHaveBeenCalledWith(
@@ -90,7 +91,7 @@ test('offline expiry keeps the sign-in screen instead of navigating to nothing',
   const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
   const replaceState = vi.spyOn(window.history, 'replaceState')
   mount(new Date(Date.now() - 1000).toISOString())
-  await screen.findByRole('heading', { name: 'Sign in' })
+  await screen.findByRole('heading', { name: 'Good to see you' })
   expect(replace).not.toHaveBeenCalled()
   expect(replaceState).toHaveBeenCalled()
   online.mockRestore()
@@ -137,7 +138,7 @@ test('a read 401 confirmed by the session check ends the session once', async ()
         .catch(() => {}),
     ])
   })
-  await screen.findByRole('heading', { name: 'Sign in' })
+  await screen.findByRole('heading', { name: 'Good to see you' })
   expect(replace).toHaveBeenCalledTimes(1)
   expect(checks).toBe(1)
 })
@@ -154,7 +155,7 @@ test('focus uses the same check; a confirmed 401 ends the session', async () => 
   act(() => {
     window.dispatchEvent(new Event('focus'))
   })
-  await screen.findByRole('heading', { name: 'Sign in' })
+  await screen.findByRole('heading', { name: 'Good to see you' })
   expect(replace).toHaveBeenCalledTimes(1)
 })
 
@@ -182,7 +183,7 @@ test('a save 401 holds the save pending, then ends with only a generic notice', 
   expect(store.entries.get('medicine:add')?.status).toBe('pending')
   act(() => answer())
   await act(() => saved)
-  await screen.findByRole('heading', { name: 'Sign in' })
+  await screen.findByRole('heading', { name: 'Good to see you' })
   const href = replace.mock.calls[0][0] as string
   expect(href).toBe(
     `/?reason=expired&returnTo=${encodeURIComponent('/history?date=2026-11-04')}&notice=save-in-progress`,
@@ -301,7 +302,7 @@ test('a confirmed dose save 401 ends the session with the generic notice', async
   mount()
   const doses = doseSaves(clientOf())
   await act(() => doses.submit('s|due', doseRequest))
-  await screen.findByRole('heading', { name: 'Sign in' })
+  await screen.findByRole('heading', { name: 'Good to see you' })
   expect(replace.mock.calls[0][0]).toMatch(/&notice=save-in-progress$/)
   expect(doses.entries.size).toBe(0)
 })
@@ -398,7 +399,7 @@ test('Sign out anyway ends the session only after the server confirms, keeping t
   await waitFor(() => expect(checks).toBe(1))
   expect(replace).not.toHaveBeenCalled()
   act(() => answer())
-  await screen.findByRole('heading', { name: 'Sign in' })
+  await screen.findByRole('heading', { name: 'Good to see you' })
   expect(replace).toHaveBeenCalledWith(
     `/?reason=signed-out&returnTo=${encodeURIComponent('/settings')}&notice=save-in-progress`,
   )

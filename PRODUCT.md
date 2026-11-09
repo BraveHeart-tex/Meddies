@@ -39,7 +39,7 @@ A reminder is never confused with confirmed intake. Every dose outcome is explic
 
 ## Brand Commitments
 
-- Name: Meddies. The logo is Two capsules, used for app icons and favicons. In app screens, write the name as a wordmark.
+- Name: Meddies. The logo is Two capsules, used for app icons, favicons and the sign-in screen. In other app screens, write the name as a wordmark.
 - Personality: cozy, cheerful, dependable. [docs/copy.md](docs/copy.md) holds the voice and the wording rules.
 - No guilt, pressure or motivational mechanics such as streaks.
 - No medical advice. Meddies never infers intake automatically.

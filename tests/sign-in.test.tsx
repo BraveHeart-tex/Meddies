@@ -67,7 +67,7 @@ test.each([
     expect(status).toHaveAttribute('aria-atomic', 'true')
     expect(status).toHaveTextContent(message)
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    const heading = screen.getByRole('heading', { name: 'Sign in', level: 1 })
+    const heading = screen.getByRole('heading', { name: 'Good to see you', level: 1 })
     expect(heading).toHaveFocus()
     expect(heading).not.toHaveAttribute('aria-describedby')
     await userEvent.tab()

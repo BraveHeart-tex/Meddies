@@ -49,7 +49,7 @@ function focusScenarios(checkRing: (actual: unknown, expected: unknown) => void)
 
   test('the sign-in heading stays focused after a reason or error', async ({ page, context }) => {
     await context.clearCookies()
-    const heading = page.getByRole('heading', { name: 'Sign in', exact: true })
+    const heading = page.getByRole('heading', { name: 'Good to see you', exact: true })
     await page.goto('/?reason=expired')
     await expect(heading).toBeFocused()
     checkRing(await focusRing(heading), noRing)

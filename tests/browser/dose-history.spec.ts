@@ -62,7 +62,9 @@ test('review, edit and correct past doses in History', async ({
     const signedOut = await browser.newContext({ baseURL: app.origin })
     const visitor = await signedOut.newPage()
     await visitor.goto(`/history?date=${date}`)
-    await expect(visitor.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible()
+    await expect(
+      visitor.getByRole('heading', { name: 'Good to see you', exact: true }),
+    ).toBeVisible()
     await expect(visitor).toHaveURL(
       `${app.origin}/?returnTo=${encodeURIComponent(`/history?date=${date}`)}`,
     )

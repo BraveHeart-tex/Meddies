@@ -10,7 +10,7 @@ test.describe('unknown address', () => {
     const cookies = await context.cookies()
     for (const { title, session, heading } of [
       { title: 'signed in', session: cookies, heading: /Good / },
-      { title: 'signed out', session: [], heading: 'Sign in' },
+      { title: 'signed out', session: [], heading: 'Good to see you' },
     ]) {
       await context.clearCookies()
       await context.addCookies(session)

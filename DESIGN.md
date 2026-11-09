@@ -4,7 +4,7 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 
 ## Foundations
 
-- Cream canvas, flat white cards, and cocoa text. Berry is for primary actions. Blush is for selected surfaces and the next-dose hero.
+- Cream canvas, flat white cards, and cocoa text. Berry is for primary actions. Blush is for selected surfaces, the next-dose hero, and the sign-in welcome. Sign-in is a blush screen with the logo and wordmark above a cream bottom sheet; this replaces `649·S1`.
 - Use the Tailwind semantic roles in [the global theme](src/global.css). Pale card borders are decorative. Use the stronger input border and solid focus ring on controls. This is a light theme.
 - Nunito is served through Next.js. Use the theme's type roles (`text-display`, `text-title`, `text-heading`, `text-body-lg`, `text-body-sm`, `text-caption`, `text-label`, `text-micro`), heavy headings and action labels, readable supporting text, and tabular numerals. Keep times in 24-hour Istanbul time and show the actual date when it differs from the scheduled date.
 - Start with 20px page and section spacing, 10px list gaps, and 16px card padding. Use the theme's larger radii for cards, the hero, and the drawer. Reserve shadows for floating surfaces.
