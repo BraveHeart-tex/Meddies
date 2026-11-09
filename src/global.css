@@ -43,6 +43,8 @@
   --color-dose-skipped: #f3eae1;
   --color-dose-skipped-foreground: #7a6266;
   --color-drawer-scrim: rgb(48 28 34 / 48%);
+  --color-camera-ground: #2a2023;
+  --color-camera-scrim: rgb(24 14 17 / 46%);
   --shadow-nav: 0 10px 30px -10px rgb(90 40 55 / 25%);
   --shadow-drawer: 0 -8px 30px -12px rgb(48 28 34 / 25%);
   --shadow-toast: 0 12px 28px -12px rgb(59 42 47 / 35%);
