@@ -27,7 +27,7 @@ test('Settings checks session end before showing the signed-out destination and 
   await page.getByLabel('Medication name').fill('Private draft')
   await page.getByRole('link', { name: 'Medications', exact: true }).first().click()
   await page.getByRole('link', { name: 'Settings' }).click()
-  await expect(page.getByText('Signed in with your approved Google account')).toBeVisible()
+  await expect(page.getByText('Approved', { exact: true })).toBeVisible()
   let release!: () => void
   const gate = new Promise<void>((resolve) => {
     release = resolve

@@ -1,3 +1,4 @@
+import { Hourglass, ShieldCheck, UserRound } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { connection } from 'next/server'
 import { AuthControl } from '@/features/auth/controls'
@@ -7,6 +8,7 @@ import { schedulingNow } from '@/features/schedules/server'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { holdRouteRender } from '@/lib/route-render-hold'
 import { SettingsFrame } from './settings-frame'
+import { SettingsRow } from './settings-list'
 
 export default async function SettingsPage() {
   // Session-dependent: never prerender, even when auth env is absent at build time.
@@ -18,16 +20,23 @@ export default async function SettingsPage() {
   const today = schedulingNow().toISOString()
   return (
     <SessionBoundary ownerId={session.user.id} expires={session.expires}>
-      <SettingsFrame>
-        <p className="text-body-sm text-muted-foreground">
-          Signed in with your approved Google account
-        </p>
-        <p className="text-body-sm">
-          Session ends{' '}
-          <time dateTime={session.expires}>
-            {formatShortDay(session.expires, today)} at {formatTime(session.expires)}
-          </time>
-        </p>
+      <SettingsFrame
+        account={
+          <>
+            <SettingsRow icon={UserRound} label="Google account">
+              <span className="inline-flex items-center gap-1 text-dose-taken-foreground [&>svg]:size-4">
+                <ShieldCheck aria-hidden="true" />
+                Approved
+              </span>
+            </SettingsRow>
+            <SettingsRow icon={Hourglass} label="Session ends">
+              <time dateTime={session.expires}>
+                {formatShortDay(session.expires, today)} at {formatTime(session.expires)}
+              </time>
+            </SettingsRow>
+          </>
+        }
+      >
         <AuthControl signedIn />
         <p className="text-caption text-muted-foreground">
           Signs you out of Meddies in this browser. Your Google account and Meddies sessions on

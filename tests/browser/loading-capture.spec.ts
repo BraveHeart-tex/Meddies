@@ -74,7 +74,7 @@ const routes: CaptureRoute[] = [
     path: '/settings',
     hold: routeRender('settings'),
     fallback: settingsRouteFallback,
-    content: (page) => page.getByText('Signed in with your approved Google account'),
+    content: (page) => page.getByText('Approved', { exact: true }),
   },
   {
     name: 'sign-in-error',

@@ -168,7 +168,7 @@ test('session reads preserve provider identity and absolute expiry without discl
   const settings = await request('/settings', { headers })
   assert.equal(settings.status, 200)
   const settingsHtml = await settings.text()
-  assert.match(settingsHtml, /Signed in with your approved Google account/)
+  assert.match(settingsHtml, /Google account[\s\S]*Approved/)
   assert.match(settingsHtml, /Sign out/)
   assert.match(settingsHtml, /Fri 13 Nov/)
   assert.match(settingsHtml, /14:02/)

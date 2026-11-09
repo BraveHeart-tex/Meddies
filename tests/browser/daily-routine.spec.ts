@@ -221,7 +221,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
       await route.continue()
     })
     await page.getByRole('link', { name: 'Settings' }).click()
-    await expect(page.getByText('Signed in with your approved Google account')).toBeVisible()
+    await expect(page.getByText('Approved', { exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Sign out', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Signing out…' })).toBeDisabled()
     finishSignOut()

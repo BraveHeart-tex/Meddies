@@ -169,7 +169,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
 
   await test.step('recover from session expiry on Settings', async () => {
     await page.getByRole('link', { name: 'Settings' }).click()
-    await expect(page.getByText('Signed in with your approved Google account')).toBeVisible()
+    await expect(page.getByText('Approved', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
     await app.expireSession()
     await focusWindow(page)

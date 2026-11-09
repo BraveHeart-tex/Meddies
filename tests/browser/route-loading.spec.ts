@@ -42,7 +42,7 @@ const settings: Route = {
   url: '/settings',
   hold: routeRender('settings'),
   fallback: settingsRouteFallback,
-  content: (page) => page.getByText('Signed in with your approved Google account'),
+  content: (page) => page.getByText('Approved', { exact: true }),
   tab: null,
   shell: true,
 }

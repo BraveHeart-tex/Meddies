@@ -1,35 +1,26 @@
+import { Clock } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { AppShell } from '@/components/layout/app-shell'
 import { AppHeader } from '@/components/layout/app-header'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { SettingsGroup, SettingsRow } from './settings-list'
 
 /**
- * Settings without its account facts (649·G1), shared by the page and its route fallback so the
- * shell, headings and Time card cannot drift. `children` is the Account card's content.
+ * Settings without its session facts, shared by the page and its route fallback so the shell,
+ * headings and Time group cannot drift. `account` is the Account group's rows and `children` is
+ * the sign-out area below the list.
  */
-export function SettingsFrame({ children }: { children: ReactNode }) {
+export function SettingsFrame({ account, children }: { account: ReactNode; children: ReactNode }) {
   return (
     <AppShell>
       <section className="space-y-5">
         <AppHeader title="Settings" align="center" />
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <h2>Account</h2>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">{children}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <h2>Time</h2>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-body-sm text-muted-foreground">
-            Times are Istanbul time, 24-hour, wherever your device is.
-          </CardContent>
-        </Card>
+        <SettingsGroup title="Account">{account}</SettingsGroup>
+        <SettingsGroup title="Time" note="The same wherever your device is.">
+          <SettingsRow icon={Clock} label="Times">
+            Istanbul, 24-hour
+          </SettingsRow>
+        </SettingsGroup>
+        <div className="space-y-1">{children}</div>
       </section>
     </AppShell>
   )
