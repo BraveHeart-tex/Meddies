@@ -11,7 +11,7 @@ const addLink = (page: Parameters<typeof drawer>[0]) =>
 // Allowed reason: Back, Forward or reload behavior.
 test('reload at Add opens the Drawer and Back closes it', async ({ page, app }) => {
   await page.goto('/medications')
-  await expect(page.getByRole('heading', { name: 'No medications here yet.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'No medications here yet' })).toBeVisible()
   await addLink(page).click()
   await expect(page).toHaveURL(`${app.origin}/medications?add`)
   await expect(drawer(page).getByRole('heading', { name: 'Add medication' })).toBeVisible()
@@ -23,13 +23,13 @@ test('reload at Add opens the Drawer and Back closes it', async ({ page, app }) 
   await page.goBack()
   await expect(page).toHaveURL(`${app.origin}/medications`)
   await expect(drawer(page)).toHaveCount(0)
-  await expect(page.getByRole('heading', { name: 'No medications here yet.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'No medications here yet' })).toBeVisible()
 })
 
 // Allowed reason: real pointer gestures.
 test('a swipe discards the draft and is refused while saving', async ({ page, app }) => {
   await page.goto('/medications')
-  await expect(page.getByRole('heading', { name: 'No medications here yet.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'No medications here yet' })).toBeVisible()
   await addLink(page).click()
 
   await test.step('a short swipe snaps back and keeps the draft', async () => {

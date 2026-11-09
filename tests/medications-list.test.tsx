@@ -297,7 +297,10 @@ describe('with no cache', () => {
   test('an empty list invites the first medication', async () => {
     medicinesApi([])
     renderList()
-    expect(await screen.findByRole('heading', { name: 'No medications here yet.' })).toBeVisible()
+    const heading = await screen.findByRole('heading', { name: 'No medications here yet' })
+    expect(heading).toBeVisible()
+    const emptyState = heading.closest('[data-slot="empty-state"]')
+    expect(emptyState?.querySelector('svg.lucide-pill')).toHaveAttribute('aria-hidden', 'true')
     expect(screen.getByText("Add your first one whenever you're ready.")).toBeVisible()
     expect(screen.getByRole('link', { name: 'Add medication' })).toHaveAttribute(
       'href',
@@ -305,6 +308,24 @@ describe('with no cache', () => {
     )
     expect(screen.getByRole('link', { name: 'Add a medication' })).toBeVisible()
     expect(screen.queryByText(count(0))).not.toBeInTheDocument()
+  })
+
+  test('the header Add is soft only while the list is known to be empty', async () => {
+    medicinesApi([])
+    renderList()
+    await screen.findByRole('heading', { name: 'No medications here yet' })
+    const add = screen.getByRole('link', { name: 'Add a medication' })
+    expect(add).toHaveClass('bg-accent')
+    expect(add).not.toHaveClass('bg-primary')
+    expect(screen.getByRole('link', { name: 'Add medication' })).toHaveClass('bg-primary')
+  })
+
+  test('the header Add stays primary with medications, and before the list is known', async () => {
+    medicinesApi(listOf(1))
+    renderList()
+    expect(screen.getByRole('link', { name: 'Add a medication' })).toHaveClass('bg-primary')
+    expect(await screen.findByText(count(1))).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Add a medication' })).toHaveClass('bg-primary')
   })
 
   test('a medication with no schedule says so in its list row', async () => {
@@ -389,6 +410,24 @@ describe('Done for now', () => {
   const router = { prefetch: async () => {} } as unknown as NextRouter
   afterEach(() => window.history.replaceState(null, '', '/'))
 
+  test('the empty state Add medication opens the add Drawer', async () => {
+    medicinesApi([])
+    window.history.replaceState(null, '', '/medications')
+    const medicationsScreen = () => (
+      <RouterContext.Provider value={router}>
+        <QueryClientProvider client={client}>
+          <MedicationsScreen initialNow="2026-11-14T08:00:00.000Z" />
+        </QueryClientProvider>
+      </RouterContext.Provider>
+    )
+    const { rerender } = render(medicationsScreen())
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
+    await user.click(await screen.findByRole('link', { name: 'Add medication' }))
+    expect(window.location.search).toBe('?add')
+    rerender(medicationsScreen())
+    expect(await screen.findByRole('dialog', { name: 'Add medication' })).toBeVisible()
+  })
+
   test('returns to the list and focuses the saved medicine (647·B1)', async () => {
     const saved = { ...medicine(1), label: 'Handoff Medicine' }
     const api = medicinesApi([])
@@ -416,6 +455,13 @@ describe('Done for now', () => {
     await waitFor(() => expect(window.location.search).toBe(`?medicine=${saved.id}`))
     rerender(medicationsScreen())
     expect(await screen.findByRole('heading', { name: saved.label })).toHaveFocus()
+    expect(await screen.findByRole('heading', { name: 'No schedule yet' })).toBeVisible()
+    expect(
+      screen.getByText(
+        `Set the days and times you take it, or do it later from this page. Today won't list ${saved.label} until it has a schedule.`,
+      ),
+    ).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Set schedule' })).toBeVisible()
     await user.click(screen.getByRole('link', { name: 'Done for now' }))
     expect(window.location.pathname + window.location.search).toBe('/medications')
     rerender(medicationsScreen())

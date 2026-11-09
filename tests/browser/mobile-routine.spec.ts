@@ -41,7 +41,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await nav.getByRole('link', { name: 'Medications' }).click()
     await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible()
     // Wait for the streamed list: Add from a pending route intentionally uses router navigation.
-    await expect(page.getByRole('heading', { name: 'No medications here yet.' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'No medications here yet' })).toBeVisible()
     pageRequests = 0
     await page.getByRole('link', { name: 'Add a medication' }).click()
     await page.getByLabel('Name', { exact: true }).fill('Routine Medicine')

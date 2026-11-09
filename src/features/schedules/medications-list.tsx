@@ -1,8 +1,9 @@
 'use client'
 
+import { Pill } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { Item } from '@/components/ui/item'
+import { EmptyState } from '@/components/ui/empty-state'
 import { formatTime } from '@/lib/calendar-date'
 import { MedicationsLink } from '@/features/medicines/medications-nav'
 import { MedicationsListSkeleton } from '@/features/medicines/medications-skeleton'
@@ -51,7 +52,7 @@ export function MedicationsList({
   )
 
   return (
-    <section aria-labelledby="medicine-routines-heading" className="flex flex-col gap-4">
+    <section aria-labelledby="medicine-routines-heading" className="flex flex-col gap-5">
       <h2 id="medicine-routines-heading" className="sr-only">
         Your medications
       </h2>
@@ -66,19 +67,20 @@ export function MedicationsList({
               `Your medications didn't update just now. Showing what loaded at ${formatTime(loadedAt)}.`,
             )}
           {medicinesRead.medicines.length === 0 ? (
-            <Item variant="dashed" className="flex-col items-start gap-3 p-5">
-              <h3 className="text-title font-extrabold">No medications here yet.</h3>
-              <p className="text-muted-foreground">
-                Add your first one whenever you&apos;re ready.
-              </p>
-              <MedicationsLink
-                href={medicationsHref({ mode: 'add' })}
-                keepScroll
-                className={buttonVariants({ size: 'lg' })}
-              >
-                Add medication
-              </MedicationsLink>
-            </Item>
+            <EmptyState
+              icon={Pill}
+              title="No medications here yet"
+              body="Add your first one whenever you're ready."
+              action={
+                <MedicationsLink
+                  href={medicationsHref({ mode: 'add' })}
+                  keepScroll
+                  className={buttonVariants({ size: 'lg' })}
+                >
+                  Add medication
+                </MedicationsLink>
+              }
+            />
           ) : (
             <MedicationRoutineGroups
               medicines={medicinesRead.medicines}

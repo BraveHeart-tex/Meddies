@@ -243,14 +243,29 @@ describe('the medication page', () => {
   test('647·D2 not found offers Open Medications and no Set schedule', async () => {
     api()
     renderDetail(unknownId)
-    expect(await screen.findByText("This medication isn't in your list")).toBeVisible()
-    expect(screen.getByText('It may be a link from another account or an old link.')).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Open Medications' })).toHaveAttribute(
-      'href',
-      '/medications',
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent("This medication isn't in your list")
+    expect(alert).toHaveTextContent('It may be a link from another account or an old link.')
+    expect(alert.querySelector('svg.lucide-info')).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      "This medication isn't in your list",
     )
+    const open = screen.getByRole('link', { name: 'Open Medications' })
+    expect(open).toHaveAttribute('href', '/medications')
+    expect(alert).not.toContainElement(open)
     expect(backRow('Medications')).toBeVisible()
     expect(setSchedule()).not.toBeInTheDocument()
+  })
+
+  test('a medication with no schedule says what is missing and offers Set schedule', async () => {
+    api()
+    renderDetail()
+    const heading = await screen.findByRole('heading', { name: 'No schedule yet' })
+    const emptyState = heading.closest('[data-slot="empty-state"]')
+    expect(emptyState?.querySelector('svg.lucide-clock')).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.getByText("Today won't list Magnesium until it has a schedule.")).toBeVisible()
+    expect(setSchedule()).toBeVisible()
+    expect(setSchedule()).toHaveClass('bg-primary')
   })
 
   test('647·D2 does not wait for the schedule read, or show its failure', async () => {

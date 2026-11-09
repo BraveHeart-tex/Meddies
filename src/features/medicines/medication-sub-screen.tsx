@@ -1,11 +1,10 @@
 'use client'
 
 import type { ReactNode, Ref } from 'react'
-import { ChevronLeftIcon } from 'lucide-react'
+import { ChevronLeftIcon, Info } from 'lucide-react'
 import { SettingsLink } from '@/components/layout/app-header'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import type { Medicine } from './contract'
 import { MedicationTile } from './medication-tile'
@@ -84,24 +83,21 @@ export function MedicationIdentity({
 /** 647·D2. Nothing can be done with this medication, so only the way out is offered. */
 export function MedicationNotFound() {
   return (
-    <Card className="border-[1.5px] border-dashed border-border-strong bg-transparent [overflow-wrap:anywhere]">
-      <CardContent className="flex flex-col items-start gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-heading font-extrabold outline-none">
-            This medication isn&apos;t in your list
-          </h1>
-          <p className="text-body-sm text-muted-foreground">
-            It may be a link from another account or an old link.
-          </p>
-        </div>
-        <MedicationsLink
-          href={medicationsListHref}
-          className={cn(buttonVariants({ variant: 'outline' }))}
-        >
-          Open Medications
-        </MedicationsLink>
-      </CardContent>
-    </Card>
+    <div className="flex flex-col gap-5">
+      <Alert>
+        <Info aria-hidden="true" />
+        <AlertTitle>
+          <h1 className="outline-none">This medication isn&apos;t in your list</h1>
+        </AlertTitle>
+        <AlertDescription>It may be a link from another account or an old link.</AlertDescription>
+      </Alert>
+      <MedicationsLink
+        href={medicationsListHref}
+        className={cn(buttonVariants({ variant: 'outline' }))}
+      >
+        Open Medications
+      </MedicationsLink>
+    </div>
   )
 }
 

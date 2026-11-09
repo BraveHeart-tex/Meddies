@@ -1,8 +1,10 @@
 'use client'
 
 import type { ReactNode, Ref } from 'react'
+import { Clock } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 import { quantityLabel } from '@/lib/dose-quantity'
 import { scheduleToday } from './occurrences'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -151,27 +153,27 @@ export function MedicationDetail({
             </CardContent>
           </Card>
         ) : (
-          <div className="flex flex-col gap-5">
-            <Card variant="dashed">
-              <CardHeader>
-                <CardTitle>No schedule yet</CardTitle>
-                <CardDescription>
-                  {justSaved &&
-                    'Set the days and times you take it, or do it later from this page. '}
-                  Today won&apos;t list {medicine.label} until it has a schedule.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            <div className="flex flex-col gap-2.5">
-              <MedicationsLink
-                className={buttonVariants({ size: 'lg' })}
-                href={medicationSetupHref(medicineId)}
-              >
-                Set schedule
-              </MedicationsLink>
-              {actions}
-            </div>
-          </div>
+          <EmptyState
+            icon={Clock}
+            title="No schedule yet"
+            body={
+              <>
+                {justSaved && 'Set the days and times you take it, or do it later from this page. '}
+                Today won&apos;t list {medicine.label} until it has a schedule.
+              </>
+            }
+            action={
+              <>
+                <MedicationsLink
+                  className={buttonVariants({ size: 'lg' })}
+                  href={medicationSetupHref(medicineId)}
+                >
+                  Set schedule
+                </MedicationsLink>
+                {actions}
+              </>
+            }
+          />
         )}
       </section>
       <p className="text-label text-muted-foreground">
