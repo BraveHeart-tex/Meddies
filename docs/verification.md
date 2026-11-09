@@ -152,5 +152,6 @@ results. Link existing evidence rather than copying it between issues.
 
 Verification is complete when `pnpm verify:local` passes, the change is pushed to main,
 applicable manual checks are recorded, and any unverified deployment behavior is named.
-The maintainer checks the Release verify job (journeys included). A failed or blocked
-check keeps verification incomplete; record it explicitly.
+A commit is proven by the latest green Release run containing it, so a Verify canceled by
+a newer push is not a failure. The maintainer checks that run's Verify job (journeys
+included). A failed or blocked check keeps verification incomplete; record it explicitly.

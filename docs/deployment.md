@@ -43,7 +43,8 @@ in GitHub before configuring it. Repository files alone do not enforce branch pr
 
 `.github/workflows/release.yml` runs on `main` pushes or manual dispatch on `main`.
 It reruns verification for the event SHA, then enters the `production` environment.
-A single non-canceling concurrency group covers verification and the complete release:
+A newer push cancels an in-progress Verify, and the newer Verify starts without waiting.
+A separate non-canceling concurrency group on the release job covers every mutation:
 
 1. Reject a SHA that is no longer main's head before any mutation.
 2. Apply pending remote D1 migrations with Wrangler's migration ledger.
@@ -69,8 +70,10 @@ gate, not Google callback correctness, authenticated D1 reads or medication beha
 Check those separately when their configuration changes.
 
 GitHub concurrency can replace pending releases and does not guarantee FIFO order.
-The running release is never canceled by a newer push. Superseded pending commits
-may be skipped; the latest main commit includes their migrations. Do not manually
+The running release is never canceled by a newer push, and two release jobs never run
+at once. Main is linear, so a commit is proven by the latest green Release run
+containing it; a canceled Verify or skipped release on an older commit is expected.
+The latest main commit includes the migrations of superseded commits. Do not manually
 cancel an active release or run manual production commands concurrently.
 
 ### Maintainer runbook: initial setup
@@ -131,7 +134,8 @@ This repeats verification and the entire ordered sequence for the same checkout.
 Wrangler skips applied migrations, including releases with no pending migrations.
 Do not use **Re-run failed jobs** as the normal recovery path since it skips checks.
 If main has advanced, release the latest reviewed main commit instead; stale reruns
-are rejected before mutation. Dispatch Release on main to recover a skipped run.
+are rejected before mutation and would cancel the newer Verify, so do not start them.
+Dispatch Release on main to recover a skipped run.
 
 For manual recovery, coordinate with maintainers so no Actions release is active
 or can begin, then use a clean checkout of the intended reviewed SHA:

@@ -2,9 +2,10 @@ Keep plans extremely concise. Sacrifice grammar for concision.
 Always use normal dashes instead of em dashes.
 
 Done means: `pnpm verify:local` passes, every ticket criterion is checked, the change is
-pushed to main, and the evidence comment is in the active Linear issue. The maintainer
-checks the Release verify job. Progress and verification live in Linear; repo docs hold
-only durable rules, setup and architecture.
+pushed to main, and the evidence comment is in the active Linear issue. A commit is proven
+by the latest green Release run containing it; the maintainer checks that run's Verify
+job. Progress and verification live in Linear; repo docs hold only durable rules, setup
+and architecture.
 
 Use [GLOSSARY.md](GLOSSARY.md) terms verbatim in code, docs and tickets; UI copy follows
 [docs/copy.md](docs/copy.md).
