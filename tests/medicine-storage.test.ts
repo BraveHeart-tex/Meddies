@@ -439,6 +439,7 @@ test('0004 preserves pre-existing Taken rows, legacy list shape and identical Ta
   const body = (await response.json()) as ScheduleResponse<{ operation: 'list'; ownerId: string }>
   assert.deepEqual(Object.keys(body).sort(), ['records', 'schedules'])
   assert.equal(body.records![0].outcome, 'Taken')
+  assert.equal(body.schedules[0].intervalHours, null)
   assert.equal(body.records![0].quantity, legacy.quantity)
   const handler = createWorker(() => new Date('2026-11-05T08:00:00.000Z'))
   const db = await runtime.getD1Database('DB')
@@ -805,5 +806,200 @@ test('D1 correction ledger flips outcomes, replays exact actions and rejects sta
         dueAt: '2026-11-04T07:00:00.000Z',
       }),
     /conflict/,
+  )
+})
+
+test('Interval schedules save, retry and track only real elapsed occurrences through the application boundary', async () => {
+  let now = new Date('2026-11-03T07:00:00.000Z') // 10:00 Istanbul
+  const handler = createWorker(() => now)
+  const db = await runtime.getD1Database('DB')
+  const ownerId = 'google:interval'
+  const send: SendSchedule = async <C extends ScheduleCommand>(command: C) => {
+    const response = await handler.fetch(
+      new Request('http://worker/schedules', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${secret}` },
+        body: JSON.stringify(command),
+      }),
+      { DB: db, MEDICINES_WORKER_SECRET: secret },
+    )
+    const body = await response.json()
+    if (!response.ok) throw new Error((body as { error: string }).error)
+    return body as ScheduleResponse<C>
+  }
+  const operations = createScheduleOperations({
+    requireUser: async () => ({ id: ownerId }),
+    send,
+    now: () => now,
+  })
+  const makeInput = async (intervalHours: number): Promise<DailyScheduleInput> => {
+    const tablet = { ...medicine, id: randomUUID() }
+    await call({ operation: 'save', ownerId, medicine: tablet })
+    return {
+      id: randomUUID(),
+      medicineId: tablet.id,
+      startDate: '2026-11-03',
+      times: [{ time: '08:00', quantity: 1 }],
+      intervalHours,
+    }
+  }
+  for (const intervalHours of [1, 7, 24]) {
+    const input = await makeInput(intervalHours)
+    const saved = await operations.save(input)
+    assert.equal(saved[0].intervalHours, intervalHours)
+    assert.deepEqual(saved[0].weekdays, [0, 1, 2, 3, 4, 5, 6])
+    assert.deepEqual(await operations.save(input), saved)
+    await assert.rejects(
+      () => operations.save({ ...input, intervalHours: intervalHours === 1 ? 7 : 1 }),
+      /conflict/,
+    )
+  }
+  const input = await makeInput(8)
+  // Direct Worker input also rejects invalid values, without relying on the application parser.
+  for (const intervalHours of [0, -1, 1.5, 25])
+    await assert.rejects(
+      () => send({ operation: 'save', ownerId, schedule: { ...input, intervalHours } }),
+      /validation/,
+    )
+  await assert.rejects(
+    () =>
+      send({
+        operation: 'save',
+        ownerId,
+        schedule: { ...input, times: [...input.times, { time: '16:00', quantity: 1 }] },
+      }),
+    /validation/,
+  )
+  await assert.rejects(() => operations.save({ ...input, startDate: '2026-11-02' }), /validation/)
+  const saved = await operations.save(input)
+  const today = (await operations.snapshot()).today
+  assert.deepEqual(
+    today.doses.filter((d) => d.scheduleId === input.id).map((d) => d.dueAt),
+    ['2026-11-03T13:00:00.000Z'],
+  )
+  const dueAt = '2026-11-03T13:00:00.000Z'
+  now = new Date('2026-11-04T00:00:00.000Z')
+  const taken = await operations.recordTaken({
+    scheduleId: input.id,
+    dueAt,
+    takenAt: '2026-11-03T20:15:00.000Z',
+    quantity: 1,
+  })
+  assert.equal(taken.dueAt, dueAt)
+  const skipped = await operations.recordSkipped({
+    scheduleId: input.id,
+    dueAt: '2026-11-03T21:00:00.000Z',
+  })
+  assert.equal(skipped.outcome, 'Skipped')
+  const correction = await operations.correctOutcome({
+    scheduleId: input.id,
+    dueAt,
+    actionId: randomUUID(),
+    expectedRevision: 0,
+    expectedOutcome: 'Taken',
+    outcome: 'Skipped',
+  })
+  assert.equal(correction.revision, 1)
+  assert.equal(
+    (await operations.history('2026-11-03')).find((d) => d.scheduleId === input.id)?.status,
+    'Skipped',
+  )
+  assert.deepEqual(
+    (await operations.snapshot()).today.doses
+      .filter((d) => d.scheduleId === input.id)
+      .map((d) => d.dueAt),
+    ['2026-11-03T21:00:00.000Z', '2026-11-04T05:00:00.000Z', '2026-11-04T13:00:00.000Z'],
+  )
+  assert.equal((await operations.snapshot()).today.next?.dueAt, '2026-11-04T00:00:00.000Z') // hourly schedule is Due now
+  assert.deepEqual(await operations.save(input), saved) // retry after midnight preserves cutoff
+  for (const invalid of ['2026-11-03T05:00:00.000Z', '2026-11-03T14:00:00.000Z']) {
+    await assert.rejects(
+      () =>
+        operations.recordTaken({
+          scheduleId: input.id,
+          dueAt: invalid,
+          takenAt: now.toISOString(),
+          quantity: 1,
+        }),
+      /validation/,
+    )
+    await assert.rejects(
+      () => operations.recordSkipped({ scheduleId: input.id, dueAt: invalid }),
+      /validation/,
+    )
+    await assert.rejects(
+      () =>
+        operations.correctOutcome({
+          scheduleId: input.id,
+          dueAt: invalid,
+          actionId: randomUUID(),
+          expectedRevision: 0,
+          expectedOutcome: 'Taken',
+          outcome: 'Skipped',
+        }),
+      /validation/,
+    )
+  }
+})
+
+test('Interval end cutoff excludes midnight while retaining earlier doses for recording and correction', async () => {
+  let now = new Date('2026-11-03T04:00:00.000Z')
+  const handler = createWorker(() => now)
+  const db = await runtime.getD1Database('DB')
+  const ownerId = 'google:interval-end'
+  const tablet = { ...medicine, id: randomUUID() }
+  await call({ operation: 'save', ownerId, medicine: tablet })
+  const send: SendSchedule = async <C extends ScheduleCommand>(command: C) => {
+    const response = await handler.fetch(
+      new Request('http://worker/schedules', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${secret}` },
+        body: JSON.stringify(command),
+      }),
+      { DB: db, MEDICINES_WORKER_SECRET: secret },
+    )
+    const body = await response.json()
+    if (!response.ok) throw new Error((body as { error: string }).error)
+    return body as ScheduleResponse<C>
+  }
+  const operations = createScheduleOperations({
+    requireUser: async () => ({ id: ownerId }),
+    send,
+    now: () => now,
+  })
+  const input: DailyScheduleInput = {
+    id: randomUUID(),
+    medicineId: tablet.id,
+    startDate: '2026-11-03',
+    endDate: '2026-11-03',
+    times: [{ time: '08:00', quantity: 1 }],
+    intervalHours: 8,
+  }
+  await operations.save(input)
+  now = new Date('2026-11-04T09:00:00.000Z')
+  const dueAt = '2026-11-03T13:00:00.000Z'
+  await operations.recordSkipped({ scheduleId: input.id, dueAt })
+  await operations.correctOutcome({
+    scheduleId: input.id,
+    dueAt,
+    actionId: randomUUID(),
+    expectedRevision: 0,
+    expectedOutcome: 'Skipped',
+    outcome: 'Taken',
+    takenAt: now.toISOString(),
+    quantity: 1,
+  })
+  assert.deepEqual(
+    (await operations.history('2026-11-03')).map((d) => [d.dueAt, d.status]),
+    [
+      ['2026-11-03T05:00:00.000Z', 'Not logged'],
+      [dueAt, 'Taken'],
+    ],
+  )
+  assert.deepEqual((await operations.snapshot()).today.doses, [])
+  assert.equal((await operations.snapshot()).today.next, null)
+  await assert.rejects(
+    () => operations.recordSkipped({ scheduleId: input.id, dueAt: '2026-11-03T21:00:00.000Z' }),
+    /validation/,
   )
 })

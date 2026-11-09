@@ -14,6 +14,29 @@ export function scheduledInstant(date: string, time: string) {
   return new Date(`${date}T${time}:00+03:00`).toISOString()
 }
 
+// Both projections and recording validation use this bounded sequence.
+export function scheduleSlotsOn(
+  schedule: Pick<DailySchedule, 'startDate' | 'endDate' | 'weekdays' | 'times' | 'intervalHours'>,
+  date: string,
+) {
+  if (!scheduleRunsOn(schedule, date)) return []
+  if (schedule.intervalHours == null)
+    return schedule.times.map((slot) => ({ dueAt: scheduledInstant(date, slot.time), slot }))
+  const slot = schedule.times[0]
+  const anchor = Date.parse(scheduledInstant(schedule.startDate, slot.time))
+  const start = Date.parse(scheduledInstant(date, '00:00'))
+  const end = start + 24 * 60 * 60 * 1000
+  const step = schedule.intervalHours * 60 * 60 * 1000
+  const slots = []
+  for (
+    let due = anchor + Math.max(0, Math.ceil((start - anchor) / step)) * step;
+    due < end;
+    due += step
+  )
+    slots.push({ dueAt: new Date(due).toISOString(), slot })
+  return slots
+}
+
 function occurrenceFor(
   schedule: DailySchedule,
   dueAt: string,
@@ -61,8 +84,7 @@ export function scheduleToday(
       localDate.setUTCDate(localDate.getUTCDate() + day)
       const dateString = localDate.toISOString().slice(0, 10)
       if (!scheduleRunsOn(schedule, dateString)) continue
-      for (const slot of schedule.times) {
-        const dueAt = scheduledInstant(dateString, slot.time)
+      for (const { dueAt, slot } of scheduleSlotsOn(schedule, dateString)) {
         const occurrence = occurrenceFor(schedule, dueAt, slot, nowIso, outcomes)
         if (occurrence) occurrences.push(occurrence)
       }
@@ -94,8 +116,7 @@ export function scheduleHistoryDay(
   const doses: DoseOccurrence[] = []
   for (const schedule of schedules) {
     if (!scheduleRunsOn(schedule, date)) continue
-    for (const slot of schedule.times) {
-      const dueAt = scheduledInstant(date, slot.time)
+    for (const { dueAt, slot } of scheduleSlotsOn(schedule, date)) {
       if (dueAt >= nowIso) continue
       const occurrence = occurrenceFor(schedule, dueAt, slot, nowIso, outcomes)
       if (occurrence) doses.push(occurrence)

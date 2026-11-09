@@ -203,3 +203,29 @@ test('malformed Worker save fields are unavailable while genuine rejections rema
   globalThis.fetch = async () => new Response('{}', { status: 400 })
   await assert.rejects(() => medicineSend(command), { status: 400, code: 'validation' })
 })
+
+test('schedule gateway preserves Interval hours and normalizes legacy Clock schedules', async () => {
+  const schedule = {
+    id: '10000000-0000-4000-8000-000000000001',
+    medicineId: '10000000-0000-4000-8000-000000000002',
+    startDate: '2026-11-03',
+    times: [{ time: '22:17', quantity: 1 }],
+    confirmedAt: '2026-11-03T18:00:00.000Z',
+  }
+  for (const intervalHours of [null, 7]) {
+    globalThis.fetch = async () =>
+      Response.json({ schedules: [{ ...schedule, intervalHours }], records: [] })
+    const decoded = await scheduleSend({
+      operation: 'listOutcomes',
+      ownerId: list.ownerId,
+      date: '2026-11-03',
+    })
+    assert.equal(decoded.schedules[0].intervalHours, intervalHours)
+  }
+  globalThis.fetch = async () => Response.json({ schedules: [schedule], records: [] })
+  assert.equal(
+    (await scheduleSend({ operation: 'listOutcomes', ownerId: list.ownerId, date: '2026-11-03' }))
+      .schedules[0].intervalHours,
+    null,
+  )
+})

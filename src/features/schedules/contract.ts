@@ -10,6 +10,7 @@ export type DailyScheduleInput = {
   startDate: string
   times: { time: string; quantity: number }[]
   weekdays?: number[]
+  intervalHours?: number | null
   endDate?: string | null
 }
 export type DailySchedule = DailyScheduleInput & { confirmedAt: string; weekdays: number[] }
@@ -86,6 +87,16 @@ export function parseSchedule(
     input.times.length > 24
   )
     throw new ApplicationError('validation', 400)
+  const intervalHours = input.intervalHours === undefined ? null : input.intervalHours
+  if (
+    intervalHours !== null &&
+    (typeof intervalHours !== 'number' ||
+      !Number.isInteger(intervalHours) ||
+      intervalHours < 1 ||
+      intervalHours > 24 ||
+      input.times.length !== 1)
+  )
+    throw new ApplicationError('validation', 400)
   const weekdays = input.weekdays === undefined ? [...ALL_WEEKDAYS] : input.weekdays
   if (
     !Array.isArray(weekdays) ||
@@ -117,8 +128,9 @@ export function parseSchedule(
     medicineId: input.medicineId,
     startDate: input.startDate,
     times,
-    weekdays: [...weekdays].sort((a, b) => a - b),
+    weekdays: intervalHours === null ? [...weekdays].sort((a, b) => a - b) : [...ALL_WEEKDAYS],
     endDate,
+    intervalHours,
   }
 }
 

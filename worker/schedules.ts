@@ -19,6 +19,7 @@ const scheduleColumns = {
   confirmedAt: dailySchedules.confirmedAt,
   weekdays: dailySchedules.weekdays,
   endDate: dailySchedules.endDate,
+  intervalHours: dailySchedules.intervalHours,
 }
 
 async function listSchedules(db: DrizzleD1Database, ownerId: string): Promise<DailySchedule[]> {
@@ -62,6 +63,7 @@ export async function saveSchedule(
     saved.startDate === schedule.startDate &&
     JSON.stringify(saved.weekdays) === JSON.stringify(schedule.weekdays) &&
     saved.endDate === schedule.endDate &&
+    saved.intervalHours === schedule.intervalHours &&
     JSON.stringify(saved.times) === JSON.stringify(schedule.times)
   // An identical retry remains valid after the initial start date has passed.
   if (existing) {
