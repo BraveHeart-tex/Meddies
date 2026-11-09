@@ -59,7 +59,7 @@ export function MedicationRoutineGroups({
                 key={medicine.id}
                 render={<li />}
                 variant={schedule ? 'card' : 'dashed'}
-                className="p-3.5 has-[[data-row-link]:active]:scale-[0.98] has-[[data-row-link]:active]:bg-muted motion-reduce:has-[[data-row-link]:active]:scale-100"
+                className="p-3.5 [&>svg]:size-5 has-[[data-row-link]:active]:scale-[0.98] has-[[data-row-link]:active]:bg-muted motion-reduce:has-[[data-row-link]:active]:scale-100"
               >
                 <MedicationTile medicineId={medicine.id} />
                 <ItemContent className="gap-0.75">
@@ -90,7 +90,7 @@ export function MedicationRoutineGroups({
                     </MedicationsLink>
                   )}
                 </ItemContent>
-                <ChevronRightIcon aria-hidden="true" className="size-5 text-muted-foreground" />
+                <ChevronRightIcon aria-hidden="true" className="text-muted-foreground" />
                 <MedicationsLink
                   ref={medicine.id === focusMedicineId ? focusRow : undefined}
                   data-row-link

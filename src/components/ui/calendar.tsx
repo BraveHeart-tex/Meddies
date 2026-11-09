@@ -126,7 +126,15 @@ function Calendar({
               : orientation === 'right'
                 ? ChevronRightIcon
                 : ChevronDownIcon
-          return <Glyph className={cn('size-5', className)} {...props} />
+          // The Cozy Care calendar keeps 20px chevrons within its 44px day controls.
+          return (
+            <Glyph
+              aria-hidden="true"
+              data-icon="inline-start"
+              className={cn('size-5', className)}
+              {...props}
+            />
+          )
         },
         DayButton: CalendarDayButton,
         ...components,

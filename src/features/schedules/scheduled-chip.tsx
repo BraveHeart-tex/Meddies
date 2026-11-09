@@ -1,7 +1,7 @@
 'use client'
 
+import { Clock, TriangleAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Icon } from '@/components/ui/icon'
 import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
@@ -32,8 +32,8 @@ export function ScheduledChip({
   const reference = today ?? istanbulDate(clock.now())
   return (
     <Item variant="muted" size="sm" className="rounded-md bg-muted px-3.5 py-3">
-      <ItemMedia className="text-muted-foreground">
-        <Icon name="clock" size={18} />
+      <ItemMedia className="text-muted-foreground [&>svg]:size-4.5">
+        <Clock aria-hidden="true" />
       </ItemMedia>
       <ItemContent>
         <ItemTitle className="text-body-sm font-bold text-muted-foreground">
@@ -51,7 +51,7 @@ export function ScheduledChip({
           <Badge variant="pending">Saving · {savingOutcome}</Badge>
         ) : unconfirmed ? (
           <Badge variant="unconfirmed">
-            <Icon name="warning" size={13} />
+            <TriangleAlert aria-hidden="true" />
             Might not have saved
           </Badge>
         ) : (

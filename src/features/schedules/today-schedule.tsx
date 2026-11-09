@@ -1,5 +1,6 @@
 'use client'
 
+import { Check } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
@@ -9,7 +10,6 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent } from '@/components/ui/card'
-import { Icon } from '@/components/ui/icon'
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
 import { useMedicines } from '@/features/medicines/queries'
 import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
@@ -112,8 +112,8 @@ export function TodaySchedule({
       <div role={showLoading ? undefined : 'status'} className="empty:sr-only">
         {intakeMessage && (
           <Alert role="none" variant="confirmation" className="[overflow-wrap:anywhere]">
-            <span className="grid size-6.5 place-items-center rounded-full bg-dose-taken text-dose-taken-foreground">
-              <Icon name="check" size={14} strokeWidth={2.4} />
+            <span className="grid size-6.5 place-items-center [&>svg]:size-3.5 rounded-full bg-dose-taken text-dose-taken-foreground">
+              <Check aria-hidden="true" />
             </span>
             <AlertDescription className="font-bold">{intakeMessage}</AlertDescription>
           </Alert>

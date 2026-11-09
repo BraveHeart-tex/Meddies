@@ -17,13 +17,13 @@ This reference kit captures **1a Cozy Care**, the direction chosen in the origin
   - `ds-loader.js`: helper that lets cards and kits load components (it uses the compiled bundle, or transpiles the source if there is no bundle)
 - `guidelines/`: foundation specimen cards (colors, type, spacing, radii, elevation, touch targets, status system, voice, wordmark)
 - `ui_kits/meddies-app/`: interactive Today, Medications and Record-dose flow
-- `assets/icons/`: SVG copies of the icon set
+- `assets/icons/`: historical SVG references
 - `SKILL.md`: an Agent Skill entry point
 
 **Intentional additions** (these were not in the explored screens):
 - **Toast**: the brief asks for elegant confirmation, and a toast does that without a celebration.
 - **Switch**: needed for future Settings.
-- **Icon**: a wrapper for the glyph set.
+- **Icons**: direct Lucide components in production.
 - **Motion tokens**: proposed values; motion was never specified.
 
 ---
@@ -82,10 +82,11 @@ The rules for UI wording are in `docs/copy.md`, which wins where this section di
   Scheduled time and actual time always appear separately.
 
 ## ICONOGRAPHY
-- These are custom rounded line icons, drawn in the exploration and copied into `components/core/Icon.jsx` and `assets/icons/*.svg`. Strokes are 1.6–2.2 with round caps and joins, on 16/18/20 grids, using `currentColor`.
-- The set: check, clock, notLogged, skipped, warning, plus, minus, close, search, settings (sliders), today, medications (capsule), history, chevronRight.
-- No icon font and no PNGs. Never use emoji or unicode symbols as icons.
-- To extend the set, **Lucide** (rounded, 2px) is the closest match. This is a suggested substitute that hasn't been adopted yet. Match the stroke weight when using it.
+- **Lucide** is the production UI icon set. Import directly from `lucide-react` and pass components rather than string names. Use `currentColor` and the global `.lucide { stroke-width: 2.5; }` rule, with no local stroke overrides.
+- Containers own sizing. Icons inside shadcn components have no sizing classes unless an approved design requires an exception. Button icons carry `data-icon`.
+- Use Check, Clock, Calendar, Plus, Minus, X, TriangleAlert, CircleDotDashed (Not logged), Ban (Skipped), Settings2, CircleDot (Today), Pill (Medications), and List (History).
+- The exported `components/`, `assets/icons/`, specimen cards and UI kit are historical visual references, not production icon APIs. Do not copy their custom glyph implementation or name-based icon props into production. Medication identity tiles remain decorative brand shapes.
+- Never use emoji or unicode symbols as icons.
 - **Logo:** none supplied. Wherever a mark would go, write "Meddies" in Nunito 800 (see `guidelines/wordmark.html`). Do not draw a logo.
 
 ## Fonts

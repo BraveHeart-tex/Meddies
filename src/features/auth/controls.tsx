@@ -1,11 +1,11 @@
 'use client'
 
+import { TriangleAlert } from 'lucide-react'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { signOut } from 'next-auth/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useKnownOffline } from '@/lib/use-known-offline'
-import { Icon } from '@/components/ui/icon'
 import { Button } from '@/components/ui/button'
 import { sessionSaves, type OutstandingSave } from '@/lib/session-saves'
 import { endSession } from './session-end'
@@ -31,7 +31,7 @@ function SaveWarning({ saves }: { saves: OutstandingSave[] }) {
   )
   return (
     <Alert>
-      <Icon name="warning" size={16} />
+      <TriangleAlert aria-hidden="true" />
       <AlertTitle>
         {saves.length === 1
           ? `A ${saveNouns[saves[0].kind]} save hasn't finished yet.`
@@ -116,7 +116,7 @@ function SignOutControl() {
     <div className="space-y-3">
       {(offline || result) && (
         <Alert variant={offline ? 'default' : 'destructive'}>
-          <Icon name="warning" size={16} />
+          <TriangleAlert aria-hidden="true" />
           <AlertDescription>
             {offline
               ? "You're offline. Connect to the internet to sign out."

@@ -1,8 +1,8 @@
 'use client'
 
+import { X } from 'lucide-react'
 import { useRef, type ReactNode, type RefObject } from 'react'
 import { Button } from '@/components/ui/button'
-import { Icon } from '@/components/ui/icon'
 import {
   Drawer,
   DrawerClose,
@@ -76,7 +76,7 @@ export function DoseDrawer({
             render={<Button variant="outline" size="icon" className="rounded-full border-border" />}
             aria-label="Close dose details"
           >
-            <Icon name="close" size={14} />
+            <X aria-hidden="true" data-icon="inline-start" />
           </DrawerClose>
         </DrawerHeader>
         {children}

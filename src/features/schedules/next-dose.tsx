@@ -1,7 +1,7 @@
+import { Check, Clock } from 'lucide-react'
 import { MedicationTile } from '@/features/medicines/medication-tile'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Icon } from '@/components/ui/icon'
 import { formatShortDay, formatTime, istanbulHour } from '@/lib/calendar-date'
 import type { Medicine } from '@/features/medicines/contract'
 import { istanbulDate, type DoseOccurrence } from './contract'
@@ -37,8 +37,8 @@ export function NextDose({
         <CardTitle className="text-label leading-none tracking-eyebrow text-accent-foreground uppercase">
           <h3>Up next</h3>
         </CardTitle>
-        <p className="flex flex-wrap items-center gap-1.5 text-label font-bold text-accent-foreground">
-          <Icon name="clock" size={14} />
+        <p className="flex flex-wrap items-center gap-1.5 text-label font-bold text-accent-foreground [&>svg]:size-3.5">
+          <Clock aria-hidden="true" />
           <span>
             {pending
               ? pending.unconfirmed
@@ -69,7 +69,7 @@ export function NextDose({
             aria-label={`Record ${name} at ${formatTime(dose.dueAt)} as taken`}
             onClick={() => onRecord('Taken')}
           >
-            <Icon name="check" data-icon="inline-start" />
+            <Check aria-hidden="true" data-icon="inline-start" />
             Taken
           </Button>
           <Button

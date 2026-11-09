@@ -1,11 +1,9 @@
 'use client'
 
+import { Ban, Check, Loader2Icon, TriangleAlert, X, type LucideIcon } from 'lucide-react'
 import { Toast as ToastPrimitive } from '@base-ui/react/toast'
-import { Loader2Icon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
 import { Button } from '@/components/ui/button'
-import { Icon, type IconName } from '@/components/ui/icon'
 
 // Cozy Care toast: quiet cocoa confirmation above the bottom nav that states what was saved.
 const toast = ToastPrimitive.createToastManager()
@@ -127,17 +125,17 @@ function ToastClose({
       )}
       {...props}
     >
-      {children ?? <Icon name="close" size={14} />}
+      {children ?? <X aria-hidden="true" data-icon="inline-start" />}
     </ToastPrimitive.Close>
   )
 }
 
 // Toast types map to the dose status grammar: glyph on a pale status chip.
-const toastIcons: Record<string, { name: IconName; className: string }> = {
-  success: { name: 'check', className: 'bg-dose-taken text-dose-taken-foreground' },
-  skipped: { name: 'skipped', className: 'bg-dose-skipped text-dose-skipped-foreground' },
-  warning: { name: 'warning', className: 'bg-dose-unlogged text-dose-unlogged-foreground' },
-  error: { name: 'close', className: 'bg-accent text-destructive' },
+const toastIcons: Record<string, { icon: LucideIcon; className: string }> = {
+  success: { icon: Check, className: 'bg-dose-taken text-dose-taken-foreground' },
+  skipped: { icon: Ban, className: 'bg-dose-skipped text-dose-skipped-foreground' },
+  warning: { icon: TriangleAlert, className: 'bg-dose-unlogged text-dose-unlogged-foreground' },
+  error: { icon: X, className: 'bg-accent text-destructive' },
 }
 
 function ToastIcon({ type }: { type: string | undefined }) {
@@ -145,12 +143,9 @@ function ToastIcon({ type }: { type: string | undefined }) {
     return (
       <span
         data-slot="toast-icon"
-        className="flex size-6.5 shrink-0 items-center justify-center rounded-full bg-primary-foreground/12"
+        className="[&>svg]:size-3.5 flex size-6.5 shrink-0 items-center justify-center rounded-full bg-primary-foreground/12"
       >
-        <Loader2Icon
-          aria-hidden="true"
-          className="size-3.5 animate-spin motion-reduce:animate-none"
-        />
+        <Loader2Icon aria-hidden="true" className="animate-spin motion-reduce:animate-none" />
       </span>
     )
   }
@@ -160,15 +155,16 @@ function ToastIcon({ type }: { type: string | undefined }) {
     return null
   }
 
+  const Glyph = icon.icon
   return (
     <span
       data-slot="toast-icon"
       className={cn(
-        'flex size-6.5 shrink-0 items-center justify-center rounded-full',
+        '[&>svg]:size-3.5 flex size-6.5 shrink-0 items-center justify-center rounded-full',
         icon.className,
       )}
     >
-      <Icon name={icon.name} size={14} strokeWidth={2.4} />
+      <Glyph aria-hidden="true" />
     </span>
   )
 }

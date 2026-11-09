@@ -7,3 +7,5 @@ user-invocable: true
 Read the readme.md file within this skill, and explore the other available files.
 If creating visual artifacts (slides, mocks, throwaway prototypes, etc), copy assets out and create static HTML files for the user to view. If working on production code, you can copy assets and read the rules here to become an expert in designing with this brand.
 If the user invokes this skill without any other guidance, ask them what they want to build or design, ask some questions, and act as an expert designer who outputs HTML artifacts _or_ production code, depending on the need.
+
+Production UI icons use direct `lucide-react` imports, component references, container-owned sizes, `data-icon` in Button, and one global stroke width of 2.5. The exported custom icons and name-based props are historical references only; do not copy them into production. Medication identity tiles keep their brand shapes.

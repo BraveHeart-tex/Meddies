@@ -1,12 +1,11 @@
 'use client'
 
+import { Info, TriangleAlert } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { Info } from 'lucide-react'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
-import { Icon } from '@/components/ui/icon'
 import { safeReturnTo } from './return-to'
 import { SignInFrame } from './sign-in-frame'
 
@@ -86,7 +85,7 @@ export function SignInScreen({
           role={info ? 'status' : 'alert'}
           aria-atomic="true"
         >
-          {info ? <Info size={16} aria-hidden="true" /> : <Icon name="warning" size={16} />}
+          {info ? <Info aria-hidden="true" /> : <TriangleAlert aria-hidden="true" />}
           <AlertTitle aria-hidden={info || undefined}>{message[0]}</AlertTitle>
           <AlertDescription aria-hidden={info || undefined}>{detail}</AlertDescription>
           {info && <span className="sr-only">{announce ? `${message[0]} ${detail}` : ''}</span>}

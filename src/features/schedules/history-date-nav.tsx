@@ -80,7 +80,7 @@ export function HistoryDateNav({ today }: { today: string }) {
         aria-label="Previous day"
         onClick={() => go(shiftDate(value, -1))}
       >
-        <ChevronLeft aria-hidden="true" />
+        <ChevronLeft aria-hidden="true" data-icon="inline-start" />
       </Button>
       {/* Portal clicks bubble here too, so a day click resets before onValueChange sets it. */}
       <div className="min-w-0 flex-1" onClickCapture={() => setPicked(false)}>
@@ -105,7 +105,7 @@ export function HistoryDateNav({ today }: { today: string }) {
         disabled={value >= today}
         onClick={() => go(shiftDate(value, 1))}
       >
-        <ChevronRight aria-hidden="true" />
+        <ChevronRight aria-hidden="true" data-icon="inline-start" />
       </Button>
     </nav>
   )

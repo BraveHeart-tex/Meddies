@@ -1,8 +1,8 @@
 'use client'
 
+import { Minus, Plus } from 'lucide-react'
 import type { Ref } from 'react'
 import { Button } from '@/components/ui/button'
-import { Icon } from '@/components/ui/icon'
 import { Input } from '@/components/ui/input'
 import {
   parseQuantity,
@@ -54,7 +54,7 @@ export function QuantityStepper({
         disabled={disabled || atMinimum}
         onClick={() => onValueChange(stepQuantity(value, unit, -1))}
       >
-        <Icon name="minus" />
+        <Minus aria-hidden="true" data-icon="inline-start" />
       </Button>
       <Input
         ref={ref}
@@ -79,7 +79,7 @@ export function QuantityStepper({
         disabled={disabled}
         onClick={() => onValueChange(stepQuantity(value, unit, 1))}
       >
-        <Icon name="plus" />
+        <Plus aria-hidden="true" data-icon="inline-start" />
       </Button>
       <span id={`${id}-unit`} className="font-bold text-muted-foreground">
         {unitName(Number.isNaN(number) ? null : number, unit)}

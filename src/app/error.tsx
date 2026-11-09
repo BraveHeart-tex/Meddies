@@ -1,11 +1,11 @@
 'use client'
 
+import { TriangleAlert } from 'lucide-react'
 import Link from 'next/link'
 import { AppHeader } from '@/components/layout/app-header'
 import { AppShell } from '@/components/layout/app-shell'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { Icon } from '@/components/ui/icon'
 import { cn } from '@/lib/utils'
 
 export default function ErrorPage({ retry }: { retry: () => void }) {
@@ -14,7 +14,7 @@ export default function ErrorPage({ retry }: { retry: () => void }) {
       <div className="flex flex-col gap-5">
         <AppHeader title="Meddies" align="center" />
         <Alert variant="destructive">
-          <Icon name="warning" />
+          <TriangleAlert aria-hidden="true" />
           <AlertTitle>This page couldn&apos;t open.</AlertTitle>
           <AlertDescription>Your records haven&apos;t changed.</AlertDescription>
         </Alert>

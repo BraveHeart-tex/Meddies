@@ -1,4 +1,6 @@
-Rounded line icon from the Meddies set — use for status glyphs, nav, and control affordances; never use emoji.
+Historical reference only: production UI icons are direct `lucide-react` imports (see `readme.md`, Iconography). Do not copy this component or its name-based prop.
+
+Rounded line icon from the exported Meddies set; never use emoji.
 
 ```jsx
 <Icon name="check" size={18} />

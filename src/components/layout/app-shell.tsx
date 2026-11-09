@@ -1,16 +1,16 @@
 'use client'
 
+import { CircleDot, List, Pill, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
-import { Icon, type IconName } from '@/components/ui/icon'
 import { showMedicationsView } from '@/features/medicines/medications-nav'
 import { cn } from '@/lib/utils'
 
-const destinations: { href: string; label: string; icon: IconName }[] = [
-  { href: '/', label: 'Today', icon: 'today' },
-  { href: '/medications', label: 'Medications', icon: 'medications' },
-  { href: '/history', label: 'History', icon: 'history' },
+const destinations: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: '/', label: 'Today', icon: CircleDot },
+  { href: '/medications', label: 'Medications', icon: Pill },
+  { href: '/history', label: 'History', icon: List },
 ]
 
 // Pages render their own AppHeader so the title row can carry page actions beside Settings.
@@ -25,7 +25,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom,0px))] z-10 mx-auto max-w-2xl rounded-[2.125rem] border bg-card p-1.5 shadow-nav"
       >
         <ul className="grid grid-cols-3 gap-1">
-          {destinations.map(({ href, label, icon }) => {
+          {destinations.map(({ href, label, icon: Icon }) => {
             const active = pathname === href
             return (
               <li key={href} className="min-w-0">
@@ -42,13 +42,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                   }
                   aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'flex min-h-14 flex-col items-center justify-center gap-1 rounded-full px-1 text-center text-micro [overflow-wrap:anywhere] transition-colors duration-220 ease-calm motion-reduce:transition-none',
+                    'flex min-h-14 flex-col items-center justify-center gap-1 rounded-full px-1 [&>svg]:size-5 text-center text-micro [overflow-wrap:anywhere] transition-colors duration-220 ease-calm motion-reduce:transition-none',
                     active
                       ? 'bg-accent font-extrabold text-accent-foreground'
                       : 'font-bold text-muted-foreground',
                   )}
                 >
-                  <Icon name={icon} size={20} />
+                  <Icon aria-hidden="true" />
                   {label}
                 </Link>
               </li>

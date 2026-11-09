@@ -1,9 +1,8 @@
 'use client'
 
-import { ChevronLeftIcon } from 'lucide-react'
+import { ChevronLeftIcon, Plus } from 'lucide-react'
 import { AppHeader } from '@/components/layout/app-header'
 import { buttonVariants } from '@/components/ui/button'
-import { Icon } from '@/components/ui/icon'
 import { useCachedQueryData } from '@/lib/use-cached-query-data'
 import type { Medicine } from './contract'
 import { MedicationsLink, useMedicationsView } from './medications-nav'
@@ -55,7 +54,7 @@ export function MedicationsHeader() {
           aria-label="Add a medication"
           className={buttonVariants({ className: 'rounded-full' })}
         >
-          <Icon name="plus" data-icon="inline-start" />
+          <Plus aria-hidden="true" data-icon="inline-start" />
           Add
         </MedicationsLink>
       }

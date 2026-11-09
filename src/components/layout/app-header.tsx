@@ -1,9 +1,9 @@
 'use client'
 
+import { Settings2 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
-import { Icon } from '@/components/ui/icon'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
@@ -90,9 +90,9 @@ export function SettingsLink() {
       href="/settings"
       aria-label="Settings"
       aria-current={pathname === '/settings' ? 'page' : undefined}
-      className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border bg-card text-foreground aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
+      className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border bg-card text-foreground [&>svg]:size-5 aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
     >
-      <Icon name="settings" size={20} />
+      <Settings2 aria-hidden="true" />
     </Link>
   )
 }

@@ -1,23 +1,22 @@
+import { Ban, Check, CircleDotDashed, Clock, TriangleAlert, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Icon, type IconName } from '@/components/ui/icon'
 import type { PendingDose } from './dose-saves'
 import type { DoseOccurrence } from './contract'
 
 const appearances: Record<
   DoseOccurrence['status'],
   {
-    icon: IconName
+    icon: LucideIcon
     label: string
     variant: 'taken' | 'skipped' | 'unlogged' | 'scheduled' | 'due'
-    stroke?: number
   }
 > = {
-  Taken: { icon: 'check', label: 'Taken', variant: 'taken', stroke: 2.4 },
-  Skipped: { icon: 'skipped', label: 'Skipped', variant: 'skipped' },
-  'Not logged': { icon: 'notLogged', label: 'Not logged', variant: 'unlogged' },
-  Upcoming: { icon: 'clock', label: 'Scheduled', variant: 'scheduled' },
-  'Due now': { icon: 'clock', label: 'Due now', variant: 'due' },
+  Taken: { icon: Check, label: 'Taken', variant: 'taken' },
+  Skipped: { icon: Ban, label: 'Skipped', variant: 'skipped' },
+  'Not logged': { icon: CircleDotDashed, label: 'Not logged', variant: 'unlogged' },
+  Upcoming: { icon: Clock, label: 'Scheduled', variant: 'scheduled' },
+  'Due now': { icon: Clock, label: 'Due now', variant: 'due' },
 }
 
 // Status is always text plus icon. `time` is the recorded instant, never the scheduled time.
@@ -34,6 +33,7 @@ export function DoseStatusBadge({
   className?: string
   id?: string
 }) {
+  const PendingIcon = pending?.unconfirmed ? TriangleAlert : Clock
   if (pending)
     return (
       <Badge
@@ -41,14 +41,14 @@ export function DoseStatusBadge({
         variant={pending.unconfirmed ? 'unconfirmed' : 'pending'}
         className={className}
       >
-        <Icon name={pending.unconfirmed ? 'warning' : 'clock'} size={13} />
+        <PendingIcon aria-hidden="true" />
         {pending.unconfirmed ? 'Might not have saved' : `Saving · ${pending.outcome}`}
       </Badge>
     )
-  const { icon, label, variant, stroke } = appearances[status]
+  const { icon: Icon, label, variant } = appearances[status]
   return (
     <Badge id={id} variant={variant} className={className}>
-      <Icon name={icon} size={13} strokeWidth={stroke} />
+      <Icon aria-hidden="true" />
       {label}
       {time && <> {time}</>}
     </Badge>

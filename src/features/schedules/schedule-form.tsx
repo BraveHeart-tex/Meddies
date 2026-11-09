@@ -1,14 +1,13 @@
 'use client'
 
+import { InfoIcon, Plus } from 'lucide-react'
 import { medicationsHref } from '@/features/medicines/routes'
 import { useEffect, useRef } from 'react'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
-import { Icon } from '@/components/ui/icon'
 import {
   Field,
   FieldDescription,
@@ -263,7 +262,7 @@ export function ScheduleForm({
                 })
               }
             >
-              <Icon name="plus" data-icon="inline-start" />
+              <Plus aria-hidden="true" data-icon="inline-start" />
               Add another time
             </Button>
           )}

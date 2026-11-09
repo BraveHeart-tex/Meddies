@@ -1,6 +1,6 @@
 'use client'
 
-import { Icon } from '@/components/ui/icon'
+import { Ban, Check } from 'lucide-react'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { DoseOutcomeRecord } from './contract'
 
@@ -35,32 +35,26 @@ export function OutcomeChoice({
           if (outcome) onChoose(outcome)
         }}
       >
-        {(['Taken', 'Skipped'] as const).map((outcome) => (
-          <ToggleGroupItem
-            key={outcome}
-            value={outcome}
-            disabled={disabled(outcome)}
-            className="w-full"
-          >
-            {value === outcome ? (
-              <span className="grid size-6 place-items-center rounded-full bg-primary text-primary-foreground">
-                <Icon
-                  name={outcome === 'Taken' ? 'check' : 'skipped'}
-                  size={14}
-                  strokeWidth={2.4}
-                />
-              </span>
-            ) : (
-              <Icon
-                name={outcome === 'Taken' ? 'check' : 'skipped'}
-                size={24}
-                strokeWidth={1.4}
-                className="text-muted-foreground"
-              />
-            )}
-            {outcome === 'Taken' ? 'I took it' : 'I skipped it'}
-          </ToggleGroupItem>
-        ))}
+        {(['Taken', 'Skipped'] as const).map((outcome) => {
+          const OutcomeIcon = outcome === 'Taken' ? Check : Ban
+          return (
+            <ToggleGroupItem
+              key={outcome}
+              value={outcome}
+              disabled={disabled(outcome)}
+              className="w-full [&>svg]:size-6 [&>svg]:text-muted-foreground"
+            >
+              {value === outcome ? (
+                <span className="grid size-6 place-items-center [&>svg]:size-3.5 rounded-full bg-primary text-primary-foreground">
+                  <OutcomeIcon aria-hidden="true" />
+                </span>
+              ) : (
+                <OutcomeIcon aria-hidden="true" />
+              )}
+              {outcome === 'Taken' ? 'I took it' : 'I skipped it'}
+            </ToggleGroupItem>
+          )
+        })}
       </ToggleGroup>
     </div>
   )

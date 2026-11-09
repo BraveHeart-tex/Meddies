@@ -1,9 +1,8 @@
 'use client'
 
+import { Check, ChevronDownIcon, ChevronUpIcon } from 'lucide-react'
 import * as React from 'react'
 import { Select as SelectPrimitive } from '@base-ui/react/select'
-import { ChevronDownIcon, ChevronUpIcon } from 'lucide-react'
-import { Icon } from '@/components/ui/icon'
 import { cn } from '@/lib/utils'
 
 const Select = SelectPrimitive.Root
@@ -48,7 +47,7 @@ function SelectTrigger({
     >
       {children}
       <SelectPrimitive.Icon className="flex shrink-0 text-muted-foreground">
-        <ChevronDownIcon className="pointer-events-none size-4" />
+        <ChevronDownIcon aria-hidden="true" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   )
@@ -122,10 +121,10 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
       </SelectPrimitive.ItemText>
       <SelectPrimitive.ItemIndicator
         render={
-          <span className="pointer-events-none absolute right-3 flex size-4 items-center text-primary justify-center" />
+          <span className="pointer-events-none absolute right-3 flex size-4 items-center text-primary justify-center [&>svg]:size-4" />
         }
       >
-        <Icon name="check" className="pointer-events-none" />
+        <Check aria-hidden="true" className="pointer-events-none" />
       </SelectPrimitive.ItemIndicator>
     </SelectPrimitive.Item>
   )

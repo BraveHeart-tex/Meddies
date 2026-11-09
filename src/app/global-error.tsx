@@ -1,10 +1,10 @@
 'use client'
 
+import { TriangleAlert } from 'lucide-react'
 import localFont from 'next/font/local'
 import '@/global.css'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { Icon } from '@/components/ui/icon'
 import { cn } from '@/lib/utils'
 
 const nunito = localFont({
@@ -26,7 +26,7 @@ export default function GlobalError({ retry }: { retry: () => void }) {
         <main className="mx-auto flex min-h-svh max-w-lg flex-col gap-5 px-5 pt-[calc(2rem+env(safe-area-inset-top,0px))] pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
           <h1 className="text-display font-extrabold">Meddies</h1>
           <Alert variant="destructive">
-            <Icon name="warning" />
+            <TriangleAlert aria-hidden="true" />
             <AlertTitle>This page couldn&apos;t open.</AlertTitle>
             <AlertDescription>Your records haven&apos;t changed.</AlertDescription>
           </Alert>
