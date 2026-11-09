@@ -7,7 +7,7 @@ import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { quantityLabel } from '@/lib/dose-quantity'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent } from '@/components/ui/card'
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
@@ -293,9 +293,9 @@ export function TodaySchedule({
                   {medicines.length === 0 ? (
                     <div className="flex flex-col items-start gap-3">
                       <p>No medications here yet. Add your first one whenever you&apos;re ready.</p>
-                      <Button variant="outline" render={<Link href="/medications" />}>
+                      <Link href="/medications" className={buttonVariants({ variant: 'outline' })}>
                         Go to Medications
-                      </Button>
+                      </Link>
                     </div>
                   ) : (
                     <p>Nothing to take today. You&apos;re all set.</p>

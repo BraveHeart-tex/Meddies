@@ -841,6 +841,38 @@ describe('streamed section fallback', () => {
 })
 
 describe('server hydration', () => {
+  test('a streamed snapshot updates the mounted header without render-phase updates', async () => {
+    schedulesApi(initialNow)
+    const serverClient = createQueryClient()
+    serverClient.setQueryData(scheduleKeys.snapshot(), {
+      schedules: [],
+      records: [],
+      now: '2026-11-14T16:00:00.000Z',
+      date: '2026-11-14',
+    })
+    client.clear()
+    const errors = vi.spyOn(console, 'error')
+    const shell = (streamed: boolean) => (
+      <QueryClientProvider client={client}>
+        <TodayHeader initialNow={initialNow} />
+        {streamed && (
+          <HydrationBoundary state={dehydrate(serverClient)}>
+            <SchedulePanel mode="today" initialNow={initialNow} />
+          </HydrationBoundary>
+        )}
+      </QueryClientProvider>
+    )
+    try {
+      const view = render(shell(false))
+      view.rerender(shell(true))
+      expect(await screen.findByRole('heading', { name: 'Good evening' })).toBeVisible()
+      expect(errors.mock.calls.flat().join(' ')).not.toContain('Cannot update a component')
+    } finally {
+      errors.mockRestore()
+      serverClient.clear()
+    }
+  })
+
   test('a snapshot the server just read renders without a browser read', async () => {
     const api = schedulesApi(initialNow)
     const serverClient = createQueryClient()
