@@ -22,3 +22,5 @@ worker/.dev.vars
 .worker-build/
 
 .cache/
+
+/public/zxing/

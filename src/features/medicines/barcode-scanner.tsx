@@ -11,7 +11,15 @@ import { barcodeValue } from './barcode-value'
 
 // Browser-only, and the decoder must stay out of first load: it loads when the Scanner opens.
 const CameraScanner = dynamic(
-  () => import('@yudiel/react-qr-scanner').then((module) => module.Scanner),
+  async () => {
+    const { Scanner, setZXingModuleOverrides } = await import('@yudiel/react-qr-scanner')
+    // Copied to public/ by next.config.ts, in place of the default jsDelivr URL.
+    setZXingModuleOverrides({
+      locateFile: (path: string, prefix: string) =>
+        path.endsWith('.wasm') ? `/zxing/${path}` : prefix + path,
+    })
+    return Scanner
+  },
   { ssr: false },
 )
 

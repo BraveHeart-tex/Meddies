@@ -1,1 +1,1 @@
-MEDICINES_WORKER_SECRET=replace-with-the-same-random-secret-as-env-local
+MEDICINES_WORKER_SECRET=replace-with-an-independent-random-secret-at-least-32-characters
