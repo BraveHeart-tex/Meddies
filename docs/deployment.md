@@ -42,11 +42,16 @@ main branch protection after its first successful run; verify the actual status 
 in GitHub before configuring it. Repository files alone do not enforce branch protection.
 
 `.github/workflows/release.yml` runs on `main` pushes or manual dispatch on `main`.
+Pushes changing only `docs/` files or `*.md` files at any depth start no Release run.
+Manual dispatch on main still runs, including for a docs-only commit.
 It reruns verification for the event SHA, then enters the `production` environment.
 A newer push cancels an in-progress Verify, and the newer Verify starts without waiting.
 A separate non-canceling concurrency group on the release job covers every mutation:
 
-1. Reject a SHA that is no longer main's head before any mutation.
+1. Before any mutation, require the release SHA to be an ancestor of current main.
+   Allow newer main commits only when every intervening commit changes solely `docs/`
+   files or `*.md` files. Any non-docs change (even if later reverted), missing history
+   or comparison failure rejects the release.
 2. Apply pending remote D1 migrations with Wrangler's migration ledger.
 3. Deploy that SHA's Worker, tagged with the SHA.
 4. Deploy that checkout to Vercel Production with `githubCommitSha` metadata.
@@ -134,8 +139,9 @@ Prefer **Re-run all jobs** on the failed run while its SHA is still main's head.
 This repeats verification and the entire ordered sequence for the same checkout.
 Wrangler skips applied migrations, including releases with no pending migrations.
 Do not use **Re-run failed jobs** as the normal recovery path since it skips checks.
-If main has advanced, release the latest reviewed main commit instead; stale reruns
-are rejected before mutation and would cancel the newer Verify, so do not start them.
+If main has advanced with non-docs changes, release the latest reviewed main commit
+instead; stale reruns are rejected before mutation and would cancel the newer Verify,
+so do not start them. Docs-only advances remain eligible under the guard above.
 Dispatch Release on main to recover a skipped run.
 
 For manual recovery, coordinate with maintainers so no Actions release is active
