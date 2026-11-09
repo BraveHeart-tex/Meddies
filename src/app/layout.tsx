@@ -16,7 +16,18 @@ export const metadata: Metadata = {
   title: 'Meddies',
   description: 'Your private medication routine.',
   manifest: '/manifest.webmanifest',
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Meddies' },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Meddies',
+    startupImage: [
+      {
+        url: '/launch-screen-iphone-17.png',
+        media:
+          '(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)',
+      },
+    ],
+  },
 }
 
 export const viewport = {
