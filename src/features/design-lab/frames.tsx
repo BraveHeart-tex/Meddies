@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 import Loading from '@/app/loading'
+import { intervalFrames } from './interval-frames'
 import { ScannerFrame } from './scanner-frame'
 
-type DesignFrame = {
+export type DesignFrame = {
   slug: `${number}-${Lowercase<string>}`
   title: string
   citation: `${number}·${string}`
@@ -22,4 +23,5 @@ export const designFrames = [
     citation: '745·B·Scanner',
     render: () => <ScannerFrame />,
   },
+  ...intervalFrames,
 ] satisfies readonly DesignFrame[]
