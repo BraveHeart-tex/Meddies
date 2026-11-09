@@ -15,16 +15,16 @@ export function SessionSaveFeedback() {
   const router = useRouter()
   useEffect(() => {
     store.setToastDismiss((id) => toast.close(id))
-    for (const [key, attempt] of store.entries) {
-      const existing = store.toasts.get(key)
-      if (store.observers.get(key)) {
+    for (const attempt of store.feedback()) {
+      const { key, toast: existing } = attempt
+      if (attempt.observed) {
         if (existing) toast.close(existing)
-        store.toasts.delete(key)
+        store.feedbackToast(key)
         continue
       }
-      if (store.notified.get(key) === attempt) continue
-      const pending = attempt.status === 'pending'
-      const saved = attempt.result?.saved as { id: string } | undefined
+      if (attempt.notified) continue
+      const pending = attempt.pending
+      const saved = attempt.saved
       const schedule = attempt.kind === 'schedule'
       const title = pending
         ? `Saving ${schedule ? 'schedule for ' : ''}${attempt.label}…`
@@ -34,7 +34,10 @@ export function SessionSaveFeedback() {
             : `${attempt.label} saved`
           : `${attempt.label}${schedule ? ' schedule' : ''} might not have saved`
       const href = saved
-        ? (attempt.openHref ?? medicationsHref({ mode: 'detail', medicineId: saved.id }))
+        ? (attempt.openHref ??
+          (attempt.savedId
+            ? medicationsHref({ mode: 'detail', medicineId: attempt.savedId })
+            : attempt.href))
         : attempt.href
       const options = {
         title,
@@ -43,9 +46,9 @@ export function SessionSaveFeedback() {
         actionProps: {
           children: saved ? 'Open' : 'Return to form',
           onClick: () => {
-            const id = store.toasts.get(key)
+            const id = store.feedback().find((item) => item.key === key)?.toast
             if (id) toast.close(id)
-            store.toasts.delete(key)
+            store.feedbackToast(key)
             // A view change inside Medications needs no server round trip.
             if (window.location.pathname === '/medications' && href.startsWith('/medications'))
               showMedicationsView(href)
@@ -54,8 +57,8 @@ export function SessionSaveFeedback() {
         },
       }
       if (existing) toast.update(existing, options)
-      else store.toasts.set(key, toast.add(options))
-      if (!pending) store.notified.set(key, attempt)
+      else store.feedbackToast(key, toast.add(options))
+      if (!pending) store.feedbackHandled(key)
       if (saved) store.clear(key)
     }
   }, [router, store, version])

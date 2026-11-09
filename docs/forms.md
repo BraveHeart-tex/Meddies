@@ -43,6 +43,10 @@ Visual rules and copy: [DESIGN.md](../DESIGN.md).
   errors clear on the next submit. After server confirmation, `reset(defaults)` and clear
   the action ID. Known offline (`navigator.onLine` false) disables the primary as
   _Connect to save_ with an Alert, and nothing is queued.
+- **Add medicine:** `useMedicineSave` owns transport, attempt identity, receipt matching,
+  reconciliation, confirmed cache publication and session draft clearing. The form submits
+  validated values and observes readonly save state; reset, navigation and messages stay in
+  the form. Its session store supplies the synchronous duplicate-submit lock.
 - **Intake form exception:** `taken-form.tsx` takes errors and the saving state from
   `useDoseOutcomeMutation`, which observes the session dose save store (`dose-saves.ts`) for
   Taken, Skipped and corrections. The store's pending flag is the duplicate-submit lock; the

@@ -31,6 +31,7 @@ export function useSessionFormDraft<T extends FieldValues, O extends FieldValues
 
   return {
     restored,
+    dismissRestoreNotice: () => setRestored(false),
     discard() {
       if (key !== null) discardSessionFormDraft(client, key)
       setRestored(false)

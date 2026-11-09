@@ -83,6 +83,44 @@ class SessionSaves {
     this.version++
     this.listeners.forEach((listener) => listener())
   }
+  /** Readonly feedback information; Toast bookkeeping stays session-owned. */
+  feedback() {
+    return [...this.entries].map(([key, attempt]) => {
+      const saved = attempt.result?.saved
+      return {
+        key,
+        label: attempt.label,
+        kind: attempt.kind,
+        pending: attempt.status === 'pending',
+        saved: Boolean(saved),
+        savedId:
+          saved && typeof saved === 'object' && 'id' in saved && typeof saved.id === 'string'
+            ? saved.id
+            : undefined,
+        href: attempt.href,
+        openHref: attempt.openHref,
+        observed: Boolean(this.observers.get(key)),
+        notified: this.notified.get(key) === attempt,
+        toast: this.toasts.get(key),
+      } as const
+    })
+  }
+  feedbackToast(key: string, id?: string) {
+    if (id) this.toasts.set(key, id)
+    else this.toasts.delete(key)
+  }
+  feedbackHandled(key: string) {
+    const attempt = this.entries.get(key)
+    if (attempt) this.notified.set(key, attempt)
+  }
+  observe(key: string) {
+    this.observers.set(key, (this.observers.get(key) ?? 0) + 1)
+    this.emit()
+    return () => {
+      this.observers.set(key, (this.observers.get(key) ?? 1) - 1)
+      this.emit()
+    }
+  }
   clear(key: string) {
     if (this.entries.get(key)?.status === 'pending') return
     this.entries.delete(key)

@@ -11,7 +11,12 @@ export async function send<C extends MedicineCommand>(
   try {
     const data = (await sendStorage('/medicines', command)) as { medicines?: unknown }
     if (!Array.isArray(data.medicines)) throw new Error('contract')
-    return data.medicines.map(parseMedicine)
+    try {
+      return data.medicines.map(parseMedicine)
+    } catch (error) {
+      if (command.operation === 'save') throw new Error('save confirmation contract')
+      throw error
+    }
   } catch (error) {
     if (error instanceof ApplicationError) throw error
     console.error('medicine_gateway_failure')

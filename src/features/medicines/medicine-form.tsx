@@ -1,9 +1,7 @@
 'use client'
 
-import { medicationsHref } from './routes'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { ChevronsUpDownIcon, InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import Link from 'next/link'
@@ -29,12 +27,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { MedicationUnitTile } from './medication-tile'
-import { parseMedicine, type Medicine } from './contract'
-import { medicinesQuery, confirmMedicine } from './queries'
+import type { Medicine } from './contract'
 import { saveMessages } from '@/lib/save-messages'
-import { requestSave, type SaveProblem } from '@/lib/session-saves'
-import { useSessionSave } from '@/lib/use-session-save'
-import { discardSessionFormDraft } from '@/lib/session-drafts'
+import type { SaveProblem } from '@/lib/session-saves'
+import { useMedicineSave } from './use-medicine-save'
 import {
   medicineAddKey,
   medicineFormDefaults,
@@ -56,16 +52,6 @@ const rowInput =
 const underGroup = 'px-1 font-extrabold'
 const rowHelp = 'px-1 text-caption nth-last-2:mt-0'
 
-/** Reconciling read: refreshes the cached list and finds the attempted medicine in it. */
-async function findSavedMedicine(client: QueryClient, id: string) {
-  try {
-    const medicines = await client.fetchQuery({ ...medicinesQuery(), staleTime: 0 })
-    return medicines.find((item) => item.id === id) ?? null
-  } catch {
-    return null
-  }
-}
-
 /**
  * Add medicine form: the production reference for React Hook Form (docs/forms.md).
  * Editing values are kept as session drafts; `onSaved` runs only after the server confirms.
@@ -77,42 +63,19 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
   })
   const draft = useSessionFormDraft(medicineAddKey, form)
   const offline = useKnownOffline()
-  const queryClient = useQueryClient()
-  const saveState = useSessionSave<Medicine>(medicineAddKey, (saved) => {
+  const saveState = useMedicineSave((saved) => {
     form.reset(medicineFormDefaults)
-    draft.discard()
+    draft.dismissRestoreNotice()
     onSaved(saved)
   })
   async function save(values: MedicineFormOutput) {
-    await saveState.store.submit(
-      medicineAddKey,
-      {
-        payload: { ...values },
-        label: values.label,
-        kind: 'medicine',
-        href: medicationsHref({ mode: 'add' }),
-      },
-      async (payload, active) => {
-        let result = await requestSave('/api/medicines', payload, (data) =>
-          parseMedicine((data as { medicines: unknown[] }).medicines[0]),
-        )
-        if (result.problem === 'unconfirmed' && active()) {
-          const saved = await findSavedMedicine(queryClient, payload.id as string)
-          if (saved) result = { saved }
-        }
-        if (result.saved && active()) {
-          discardSessionFormDraft(queryClient, medicineAddKey)
-          await confirmMedicine(queryClient, result.saved, active)
-        }
-        return result
-      },
-    )
+    await saveState.submit(values)
   }
 
   const { errors } = form.formState
   const isSubmitting = Boolean(saveState.pending)
   const problem = saveState.problem
-  const problemLabel = saveState.attempt?.label ?? ''
+  const problemLabel = saveState.label
   const locked = isSubmitting || problem === 'conflict'
 
   return (
@@ -132,7 +95,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
             disabled={isSubmitting}
             onClick={() => {
               if (saveState.pending) return
-              saveState.store.clear(medicineAddKey)
+              saveState.clear()
               form.reset(medicineFormDefaults)
               draft.discard()
             }}

@@ -1,4 +1,6 @@
-import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
+import { medicineKeys, medicinesQuery } from '../src/features/medicines/queries'
+import { readSessionDraft } from '../src/lib/session-drafts'
+import { QueryObserver, QueryClientProvider, type QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -296,4 +298,96 @@ test('the Type menu offers tablet and capsule, checks the choice and saves its u
   await user.click(button('Save medication'))
   await waitFor(() => expect(onSaved).toHaveBeenCalledOnce())
   expect(posted[0]).toMatchObject({ label: 'Magnesium', strength: null, unit: 'tablet' })
+})
+
+test.each(['id', 'label', 'strength', 'unit', 'missing', 'malformed'])(
+  'a %s confirmation cannot confirm a different attempt',
+  async (field) => {
+    server.use(
+      http.post('/api/medicines', async ({ request }) => {
+        const payload = (await request.json()) as Medicine
+        const changed = {
+          ...payload,
+          [field]:
+            field === 'id'
+              ? '10000000-0000-4000-8000-000000000001'
+              : field === 'unit'
+                ? 'tablet'
+                : 'different',
+        }
+        return HttpResponse.json({
+          medicines: field === 'missing' ? [] : field === 'malformed' ? [{}] : [changed],
+        })
+      }),
+      http.get('/api/medicines', () => HttpResponse.json({ medicines: [] })),
+    )
+    const { user, onSaved } = openAdd()
+    await fill(user)
+    await user.click(button('Save medication'))
+    expect(await screen.findByRole('alert')).toHaveTextContent('That might not have saved.')
+    expect(onSaved).not.toHaveBeenCalled()
+  },
+)
+
+test.each(['label', 'strength', 'unit'])(
+  'a reconciling read with a different %s remains unconfirmed',
+  async (field) => {
+    let attempted: Medicine
+    server.use(
+      http.post('/api/medicines', async ({ request }) => {
+        attempted = (await request.json()) as Medicine
+        return HttpResponse.error()
+      }),
+      http.get('/api/medicines', () =>
+        HttpResponse.json({
+          medicines: [{ ...attempted, [field]: field === 'unit' ? 'tablet' : 'different' }],
+        }),
+      ),
+    )
+    const { user, onSaved } = openAdd()
+    await fill(user)
+    await user.click(button('Save medication'))
+    expect(await screen.findByRole('alert')).toHaveTextContent('That might not have saved.')
+    expect(onSaved).not.toHaveBeenCalled()
+  },
+)
+
+test('an exact reconciling read confirms a broken receipt and clears the draft before completion', async () => {
+  let attempted: Medicine
+  server.use(
+    http.post('/api/medicines', async ({ request }) => {
+      attempted = (await request.json()) as Medicine
+      return HttpResponse.json({ medicines: [{}] })
+    }),
+    http.get('/api/medicines', () => HttpResponse.json({ medicines: [attempted] })),
+  )
+  const onSaved = vi.fn((saved: Medicine) => {
+    expect(client.getQueryData(medicineKeys.list())).toEqual([saved])
+    expect(readSessionDraft(client, 'medicine:add')).toBeUndefined()
+  })
+  const { user } = openAdd(onSaved)
+  await fill(user)
+  await user.click(button('Save medication'))
+  await waitFor(() => expect(onSaved).toHaveBeenCalledOnce())
+})
+
+test('a failed background refresh cannot undo a confirmed save', async () => {
+  server.use(
+    http.post('/api/medicines', async ({ request }) =>
+      HttpResponse.json({ medicines: [await request.json()] }),
+    ),
+    http.get('/api/medicines', () => new HttpResponse(null, { status: 503 })),
+  )
+  // Keep the list active so confirmation starts a real background refresh.
+  const observer = new QueryObserver(client, { ...medicinesQuery(), enabled: false })
+  const unsubscribe = observer.subscribe(() => {})
+  const { user, onSaved } = openAdd()
+  await fill(user)
+  observer.setOptions({ ...medicinesQuery(), enabled: true })
+  await user.click(button('Save medication'))
+  await waitFor(() => expect(onSaved).toHaveBeenCalledOnce())
+  await waitFor(() => expect(client.getQueryState(medicineKeys.list())?.status).toBe('error'))
+  expect(client.getQueryData(medicineKeys.list())).toEqual([onSaved.mock.calls[0][0]])
+  expect(readSessionDraft(client, 'medicine:add')).toBeUndefined()
+  unsubscribe()
 })

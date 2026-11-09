@@ -429,10 +429,11 @@ describe('Done for now', () => {
   })
 
   test('returns to the list and focuses the saved medicine (647·B1)', async () => {
-    const saved = { ...medicine(1), label: 'Handoff Medicine' }
+    let saved = { ...medicine(1), label: 'Handoff Medicine' }
     const api = medicinesApi([])
     server.use(
-      http.post('/api/medicines', () => {
+      http.post('/api/medicines', async ({ request }) => {
+        saved = (await request.json()) as Medicine
         api.serve([saved])
         return HttpResponse.json({ medicines: [saved] })
       }),

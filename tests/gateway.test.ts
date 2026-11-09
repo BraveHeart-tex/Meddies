@@ -184,3 +184,22 @@ test('transport uses a ten-second deadline and rejects missing or insecure confi
     process.env.MEDICINES_WORKER_URL = 'https://worker.test'
   }
 })
+
+test('malformed Worker save fields are unavailable while genuine rejections remain validation errors', async () => {
+  const command: MedicineCommand = {
+    operation: 'save',
+    ownerId: list.ownerId,
+    medicine: {
+      id: '10000000-0000-4000-8000-000000000001',
+      label: 'Iron',
+      strength: null,
+      unit: 'tablet',
+    },
+  }
+  for (const medicines of [[{}], [{ ...command.medicine, unit: 'invalid' }]]) {
+    globalThis.fetch = async () => Response.json({ medicines })
+    await assert.rejects(() => medicineSend(command), { status: 503, code: 'unavailable' })
+  }
+  globalThis.fetch = async () => new Response('{}', { status: 400 })
+  await assert.rejects(() => medicineSend(command), { status: 400, code: 'validation' })
+})
