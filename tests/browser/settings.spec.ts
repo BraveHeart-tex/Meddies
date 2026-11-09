@@ -62,7 +62,8 @@ test('Settings leaves nav unselected and browser Back restores the History date'
   const before = await scrollPosition(page)
   // Activate the focused header link without scrolling it into view first.
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Settings' })).toHaveCount(0)
   for (const name of ['Today', 'Medications', 'History']) {
     await expect(
       page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name }),

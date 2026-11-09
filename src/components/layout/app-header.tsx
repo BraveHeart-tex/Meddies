@@ -85,12 +85,13 @@ function HeaderFrame({
 
 export function SettingsLink() {
   const pathname = usePathname()
+  // Settings doesn't link to itself. The spacer keeps its title level with the other pages.
+  if (pathname === '/settings') return <span aria-hidden="true" className="size-11 shrink-0" />
   return (
     <Link
       href="/settings"
       aria-label="Settings"
-      aria-current={pathname === '/settings' ? 'page' : undefined}
-      className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border bg-card text-foreground [&>svg]:size-5 aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
+      className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border bg-card text-foreground [&>svg]:size-5"
     >
       <Settings2 aria-hidden="true" />
     </Link>

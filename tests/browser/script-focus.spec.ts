@@ -29,21 +29,21 @@ const solidRing = { focusVisible: true, outline: 'solid' }
 
 // Reuse interactions; only the on-request group asserts appearance.
 function focusScenarios(checkRing: (actual: unknown, expected: unknown) => void) {
-  for (const { path, firstLink } of [
-    { path: '/', firstLink: 'Settings' },
-    { path: '/history', firstLink: 'Settings' },
-    { path: '/medications', firstLink: 'Add a medication' },
-    { path: '/settings', firstLink: 'Settings' },
-  ]) {
+  for (const { path, role, name } of [
+    { path: '/', role: 'link', name: 'Settings' },
+    { path: '/history', role: 'link', name: 'Settings' },
+    { path: '/medications', role: 'link', name: 'Add a medication' },
+    { path: '/settings', role: 'button', name: 'Sign out' },
+  ] as const) {
     test(`first load of ${path} focuses the page title`, async ({ page }) => {
       await page.goto(path)
       const title = page.getByRole('heading', { level: 1 })
       await expect(title).toBeFocused()
       checkRing(await focusRing(title), noRing)
       await page.keyboard.press('Tab')
-      const link = page.getByRole('link', { name: firstLink })
-      await expect(link).toBeFocused()
-      checkRing(await focusRing(link), solidRing)
+      const control = page.getByRole(role, { name })
+      await expect(control).toBeFocused()
+      checkRing(await focusRing(control), solidRing)
     })
   }
 

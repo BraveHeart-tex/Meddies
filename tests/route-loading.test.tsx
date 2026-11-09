@@ -23,7 +23,7 @@ test('Settings fallback selects no tab and makes no claim about the account', ()
 
   expectOneStatus(container, 'Opening Settings')
   expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page')
+  expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument()
   const primary = screen.getByRole('navigation', { name: 'Primary' })
   expect(primary.querySelector('[aria-current="page"]')).toBeNull()
   expect(container).not.toHaveTextContent(/signed in|session ends|sign out/i)

@@ -14,7 +14,7 @@ function Bar({ width }: { width: string }) {
 }
 
 // The session is unknown here, so the account rows and sign-out stay placeholders: no line may
-// claim that anyone is signed in. The URL selects the header's Settings action and no bottom tab.
+// claim that anyone is signed in. The URL hides the header's Settings link and selects no bottom tab.
 // Placeholder widths match the loaded text so rows wrap alike; the caption's container
 // breakpoints follow where its text wraps, measured from 320px to 700px.
 export default function Loading() {
