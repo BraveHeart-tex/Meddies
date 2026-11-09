@@ -47,6 +47,10 @@ Visual rules and copy: [DESIGN.md](../DESIGN.md).
   reconciliation, confirmed cache publication and session draft clearing. The form submits
   validated values and observes readonly save state; reset, navigation and messages stay in
   the form. Its session store supplies the synchronous duplicate-submit lock.
+- **Initial schedule setup:** `useScheduleSave` owns transport, attempt identity, confirmation
+  matching, confirmed cache publication and session draft clearing. The form submits validated
+  values and observes readonly save state. Unconfirmed saves recover through retry of the exact
+  attempt, including its start date; background refresh runs independently of completion.
 - **Intake form exception:** `taken-form.tsx` takes errors and the saving state from
   `useDoseOutcomeMutation`, which observes the session dose save store (`dose-saves.ts`) for
   Taken, Skipped and corrections. The store's pending flag is the duplicate-submit lock; the

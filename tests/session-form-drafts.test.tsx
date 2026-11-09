@@ -43,7 +43,12 @@ test('Add restores editing values across remounts and Clear form discards them',
 test('schedule drafts keep partial rows per medicine across refresh and day rollover', async () => {
   const client = createQueryClient()
   const user = userEvent.setup()
-  const medicine = { id: 'first', label: 'First', strength: null, unit: 'tablet' as const }
+  const medicine = {
+    id: '00000000-0000-4000-8000-000000000001',
+    label: 'First',
+    strength: null,
+    unit: 'tablet' as const,
+  }
   const view = (id: string, today: string) => (
     <QueryClientProvider client={client}>
       <ScheduleForm
@@ -90,13 +95,18 @@ test('schedule drafts keep partial rows per medicine across refresh and day roll
 test('a confirmed schedule save removes the draft before the form is opened again', async () => {
   const client = createQueryClient()
   const user = userEvent.setup()
-  const medicine = { id: 'first', label: 'First', strength: null, unit: 'tablet' as const }
+  const medicine = {
+    id: '00000000-0000-4000-8000-000000000001',
+    label: 'First',
+    strength: null,
+    unit: 'tablet' as const,
+  }
   let saved = false
   server.use(
     http.post('/api/schedules', async ({ request }) => {
       const values = await request.json()
       return HttpResponse.json({
-        schedules: [{ ...(values as object), confirmedAt: '2035-06-15T06:00:00Z' }],
+        schedules: [{ ...(values as object), confirmedAt: '2035-06-15T06:00:00.000Z' }],
       })
     }),
   )

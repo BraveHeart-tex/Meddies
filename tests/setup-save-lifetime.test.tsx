@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { server } from './helpers/msw-server'
 import { MedicineForm } from '../src/features/medicines/medicine-form'
 import { ScheduleForm } from '../src/features/schedules/schedule-form'
@@ -98,24 +98,37 @@ test('a schedule retry after remount and midnight keeps the submitted request', 
   const client = createQueryClient()
   const held = deferred()
   const posts: unknown[] = []
+  let reads = 0
   server.use(
+    http.get('/api/schedules', () => {
+      reads++
+      return HttpResponse.json({ schedules: [] })
+    }),
     http.post('/api/schedules', async ({ request }) => {
       posts.push(await request.json())
       if (posts.length === 1) {
         await held.promise
         return HttpResponse.error()
       }
-      return HttpResponse.json({ schedules: [posts[0]] })
+      return HttpResponse.json({
+        schedules: [{ ...(posts[0] as object), confirmedAt: '2035-06-15T21:00:00.000Z' }],
+      })
     }),
   )
   const user = userEvent.setup()
+  const confirmed = vi.fn()
   const open = (today: string) =>
     render(
       <QueryClientProvider client={client}>
         <ScheduleForm
-          medicine={{ id: 'first', label: 'Magnesium', strength: null, unit: 'tablet' }}
+          medicine={{
+            id: '00000000-0000-4000-8000-000000000001',
+            label: 'Magnesium',
+            strength: null,
+            unit: 'tablet',
+          }}
           today={today}
-          onSaved={() => {}}
+          onSaved={confirmed}
           onConflict={() => {}}
         />
       </QueryClientProvider>,
@@ -133,10 +146,18 @@ test('a schedule retry after remount and midnight keeps the submitted request', 
   await waitFor(() => expect(posts).toHaveLength(1))
   first.unmount()
   await act(async () => held.release())
-  open('2035-06-16')
-  await user.click(await screen.findByRole('button', { name: 'Try saving schedule again' }))
+  const second = open('2035-06-16')
+  const retry = await screen.findByRole('button', { name: 'Try saving schedule again' })
+  expect(reads).toBe(0)
+  await user.click(retry)
   await waitFor(() => expect(posts).toHaveLength(2))
   expect(posts[1]).toEqual(posts[0])
+  await waitFor(() => expect(confirmed).toHaveBeenCalledTimes(1))
+  second.unmount()
+  open('2035-06-16')
+  expect(
+    screen.queryByText('Pick up where you left off. Your details are still here.'),
+  ).not.toBeInTheDocument()
   client.clear()
 })
 

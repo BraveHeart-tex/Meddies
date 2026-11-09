@@ -1,8 +1,7 @@
 'use client'
 
 import { InfoIcon, Plus } from 'lucide-react'
-import { medicationsHref } from '@/features/medicines/routes'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -23,12 +22,9 @@ import { useKnownOffline } from '@/lib/use-known-offline'
 import { useSessionFormDraft } from '@/lib/use-session-form-draft'
 import type { Medicine } from '@/features/medicines/contract'
 import type { DailySchedule } from './contract'
-import { useQueryClient } from '@tanstack/react-query'
 import { saveMessages } from '@/lib/save-messages'
-import { requestSave, type SaveProblem } from '@/lib/session-saves'
-import { useSessionSave } from '@/lib/use-session-save'
-import { discardSessionFormDraft } from '@/lib/session-drafts'
-import { applySchedule } from './queries'
+import type { SaveProblem } from '@/lib/session-saves'
+import { scheduleSetupKey, useScheduleSave } from './use-schedule-save'
 import {
   newTimeRow,
   scheduleFormDefaults,
@@ -58,30 +54,22 @@ export function ScheduleForm({
   onSaved: (schedule: DailySchedule) => void
   onConflict: () => void
 }) {
-  // Start date of an unconfirmed save: its retry keeps the same request after midnight.
-  const queryClient = useQueryClient()
-  const key = `schedule:setup:${medicine.id}`
-  const saveState = useSessionSave<DailySchedule>(key)
-  const retryStartDate =
-    saveState.problem === 'unconfirmed' || saveState.pending
-      ? (saveState.attempt?.payload.startDate as string | undefined)
-      : undefined
+  const saveState = useScheduleSave(medicine, saved)
+  const retryStartDate = saveState.retryStartDate
+  const [defaults] = useState(() => scheduleFormDefaults(medicine.unit, today))
   const form = useForm<ScheduleFormValues, unknown, ScheduleFormOutput>({
     resolver: zodResolver(scheduleFormSchema({ unit: medicine.unit, today, retryStartDate })),
-    defaultValues: scheduleFormDefaults(medicine.unit, today),
+    defaultValues: defaults,
   })
   const rows = useFieldArray({ control: form.control, name: 'times' })
   const weekdays = useWatch({ control: form.control, name: 'weekdays' })
-  const draft = useSessionFormDraft(`schedule:setup:${medicine.id}`, form)
+  const draft = useSessionFormDraft(scheduleSetupKey(medicine.id), form)
   const offline = useKnownOffline()
-  useEffect(() => {
-    const saved = saveState.attempt?.result?.saved as DailySchedule | undefined
-    if (!saved) return
-    form.reset(scheduleFormDefaults(medicine.unit, today))
-    draft.discard()
-    onSaved(saved)
-    saveState.store.clear(key)
-  }, [saveState.attempt, saveState.store, key, form, draft, medicine.unit, today, onSaved])
+  function saved(schedule: DailySchedule) {
+    form.reset(defaults)
+    draft.dismissRestoreNotice()
+    onSaved(schedule)
+  }
   // Focus target after a row is removed, applied once the rows re-render.
   const pendingFocus = useRef<number | 'add' | null>(null)
   const addButton = useRef<HTMLButtonElement>(null)
@@ -93,31 +81,6 @@ export function ScheduleForm({
     else form.setFocus(`times.${target}.time`)
   })
 
-  async function save(values: ScheduleFormOutput) {
-    await saveState.store.submit(
-      key,
-      {
-        payload: { medicineId: medicine.id, ...values },
-        label: medicine.label,
-        kind: 'schedule',
-        href: medicationsHref({ mode: 'setup', medicineId: medicine.id }),
-        openHref: medicationsHref({ mode: 'detail', medicineId: medicine.id }),
-      },
-      async (payload, active) => {
-        const result = await requestSave(
-          '/api/schedules',
-          payload,
-          (data) => (data as { schedules: DailySchedule[] }).schedules[0],
-        )
-        if (result.saved && active()) {
-          discardSessionFormDraft(queryClient, key)
-          await queryClient.cancelQueries({ queryKey: ['schedules'] })
-          if (active()) void applySchedule(queryClient, result.saved)
-        }
-        return result
-      },
-    )
-  }
   useEffect(() => {
     if (saveState.problem === 'conflict') onConflict()
   }, [saveState.problem, onConflict])
@@ -141,7 +104,7 @@ export function ScheduleForm({
     <form
       noValidate
       // Wrapped so building the handler during render never touches the save refs.
-      onSubmit={(event) => void form.handleSubmit(save)(event)}
+      onSubmit={(event) => void form.handleSubmit(saveState.submit)(event)}
       aria-busy={isSubmitting}
       aria-labelledby="schedule-heading"
       className="flex flex-col gap-5"
@@ -155,7 +118,7 @@ export function ScheduleForm({
             disabled={isSubmitting}
             onClick={() => {
               if (saveState.pending) return
-              saveState.store.clear(key)
+              saveState.clear()
               form.reset(scheduleFormDefaults(medicine.unit, today))
               draft.discard()
             }}
