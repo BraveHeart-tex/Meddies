@@ -71,7 +71,8 @@ unowned and gets skipped.
 - For every FE issue, including sub-issues, pass
   `--project "Meddies - Medication Reminder & Tracker"`. Without it the user
   cannot see the issue.
-- Give each ticket one category label and one state label. Use `ready-for-agent`
+- Give each ticket one category label, one state label and at least one area label.
+  A ticket that spans both areas gets `backend` and `frontend`. Use `ready-for-agent`
   only for tickets from a breakdown the user approved. Every other new ticket gets
   `needs-triage`.
 - Set priority: Urgent for the single head of the critical path, High for the rest
