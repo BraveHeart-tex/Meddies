@@ -1,6 +1,6 @@
 import { expect, test } from './fixtures'
 import { datePicker, expectTime, pickDate, pickTime } from './pickers'
-import { focusWindow } from './actions'
+import { focusWindow, waitForClientRouter } from './actions'
 import { doseRow, doseTrigger, historyRow, historyRows, instant, drawer } from './locators'
 import { chooseMedicineType } from './drawers'
 
@@ -38,10 +38,14 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
   await test.step('open signed-in Today and save a medicine', async () => {
     await page.goto('/')
     await expect(nav).toBeVisible()
-    await nav.getByRole('link', { name: 'Medications' }).click()
+    // Hard load: a cold client has no cached list, so its fallback is a skeleton and this empty
+    // state proves the page landed. A cached fallback shows it on a pending route, where Add
+    // intentionally uses router navigation.
+    await page.goto('/medications')
     await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible()
-    // Wait for the streamed list: Add from a pending route intentionally uses router navigation.
     await expect(page.getByRole('heading', { name: 'No medications here yet' })).toBeVisible()
+    // A click before hydration would be a document request.
+    await waitForClientRouter(page)
     pageRequests = 0
     await page.getByRole('link', { name: 'Add a medication' }).click()
     await page.getByLabel('Name', { exact: true }).fill('Routine Medicine')
