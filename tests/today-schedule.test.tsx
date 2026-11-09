@@ -935,15 +935,6 @@ describe('wording', () => {
   const failMedicines = () =>
     server.use(http.get('/api/medicines', () => HttpResponse.json({}, { status: 503 })))
 
-  test('an empty day and the time zone hint read as approved', async () => {
-    schedulesApi(initialNow, [])
-    renderToday()
-    expect(await screen.findByText("Nothing to take today. You're all set.")).toBeVisible()
-    expect(
-      screen.getByText('All dates and times are Istanbul time, wherever you are.'),
-    ).toBeVisible()
-  })
-
   test('medications that never loaded say Today cannot show doses', async () => {
     schedulesApi(initialNow)
     failMedicines()
@@ -1049,21 +1040,93 @@ describe('next actions', () => {
   test('an empty day hides Up next even when a future dose exists', async () => {
     schedulesApi(initialNow, [{ ...scheduleFor('09:00'), startDate: '2026-11-15' }])
     renderToday()
-    expect(await screen.findByText("Nothing to take today. You're all set.")).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Nothing to take today' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Up next' })).not.toBeInTheDocument()
   })
+})
 
-  test('no medications offers a route to Medications', async () => {
+describe('empty states', () => {
+  const otherMedicineId = '00000000-0000-4000-8000-000000000002'
+  const emptyStateIcon = (name: string) =>
+    document.querySelector(`[data-slot="empty-state"] .lucide-${name}`)
+  const serveMedicines = (medicines: Medicine[]) => {
+    client.setQueryData(medicineKeys.list(), medicines)
+    server.use(http.get('/api/medicines', () => HttpResponse.json({ medicines })))
+  }
+
+  test('no medicines goes straight to the add Drawer', async () => {
     schedulesApi(initialNow, [])
-    client.setQueryData(medicineKeys.list(), [])
-    server.use(http.get('/api/medicines', () => HttpResponse.json({ medicines: [] })))
+    serveMedicines([])
     renderToday()
-    expect(await screen.findByRole('link', { name: 'Go to Medications' })).toHaveAttribute(
+    expect(await screen.findByRole('heading', { name: 'No medications here yet' })).toBeVisible()
+    expect(screen.getByText('Add your first one and Today will list its doses.')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Add medication' })).toHaveAttribute(
+      'href',
+      '/medications?add',
+    )
+    expect(emptyStateIcon('pill')).toBeInTheDocument()
+    expect(screen.queryByText(/You're all set/)).not.toBeInTheDocument()
+  })
+
+  test('one medicine with no schedule is named and links to its setup', async () => {
+    schedulesApi(initialNow, [])
+    serveMedicines([medicine])
+    renderToday()
+    expect(await screen.findByRole('heading', { name: 'No doses to show yet' })).toBeVisible()
+    expect(
+      screen.getByText("Today won't list Morning Tablet until it has a schedule."),
+    ).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Set schedule' })).toHaveAttribute(
+      'href',
+      `/medications?schedule=${medicine.id}#schedule-heading`,
+    )
+    expect(emptyStateIcon('clock')).toBeInTheDocument()
+    expect(screen.queryByText(/You're all set/)).not.toBeInTheDocument()
+  })
+
+  test('several medicines with no schedule point to Medications', async () => {
+    schedulesApi(initialNow, [])
+    serveMedicines([medicine, { ...medicine, id: otherMedicineId, label: 'Evening Tablet' }])
+    renderToday()
+    expect(await screen.findByRole('heading', { name: 'No doses to show yet' })).toBeVisible()
+    expect(
+      screen.getByText("Today won't list your medications until they have a schedule."),
+    ).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Open Medications' })).toHaveAttribute(
       'href',
       '/medications',
     )
+    expect(emptyStateIcon('clock')).toBeInTheDocument()
+    expect(screen.queryByText(/You're all set/)).not.toBeInTheDocument()
+  })
+
+  test('a day with no dose says when the next one is, with no action', async () => {
+    schedulesApi(initialNow, [{ ...scheduleFor('09:00'), startDate: '2026-11-15' }])
+    serveMedicines([medicine])
+    renderToday()
+    expect(await screen.findByRole('heading', { name: 'Nothing to take today' })).toBeVisible()
     expect(
-      screen.getByText("No medications here yet. Add your first one whenever you're ready."),
+      screen.getByText("You're all set. Next is Morning Tablet on Sun 15 Nov at 09:00."),
     ).toBeVisible()
+    expect(emptyStateIcon('calendar')).toBeInTheDocument()
+    expect(document.querySelector('[data-slot="empty-state-action"]')).not.toBeInTheDocument()
+  })
+
+  test('a day with no dose and no next dose only says all set', async () => {
+    schedulesApi(initialNow, [{ ...scheduleFor('09:00'), confirmedAt: '2027-01-01T00:00:00.000Z' }])
+    serveMedicines([medicine])
+    renderToday()
+    expect(await screen.findByRole('heading', { name: 'Nothing to take today' })).toBeVisible()
+    expect(screen.getByText("You're all set.")).toBeVisible()
+    expect(screen.queryByText(/Next is/)).not.toBeInTheDocument()
+  })
+
+  test('Today drops the time zone line and keeps Refresh Today', async () => {
+    schedulesApi(initialNow, [])
+    serveMedicines([medicine])
+    renderToday()
+    await screen.findByRole('heading', { name: 'No doses to show yet' })
+    expect(screen.queryByText(/Istanbul time/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Refresh Today' })).toBeVisible()
   })
 })

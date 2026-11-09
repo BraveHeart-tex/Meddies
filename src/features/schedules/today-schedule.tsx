@@ -1,6 +1,6 @@
 'use client'
 
-import { Check } from 'lucide-react'
+import { Calendar, Check, Clock, Pill } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
@@ -9,10 +9,12 @@ import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Card, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
+import type { Medicine } from '@/features/medicines/contract'
 import { useMedicines } from '@/features/medicines/queries'
-import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
+import { medicationSetupHref, medicationsHref } from '@/features/medicines/routes'
+import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord, type Today } from './contract'
 import { DoseStatusBadge } from './dose-status-badge'
 import { DoseActions, type DoseDrawerOpener } from './dose-actions'
 import { NextDose } from './next-dose'
@@ -288,31 +290,80 @@ export function TodaySchedule({
                 </ul>
               </section>
             ) : (
-              <Card variant="dashed">
-                <CardContent>
-                  {medicines.length === 0 ? (
-                    <div className="flex flex-col items-start gap-3">
-                      <p>No medications here yet. Add your first one whenever you&apos;re ready.</p>
-                      <Link href="/medications" className={buttonVariants({ variant: 'outline' })}>
-                        Go to Medications
-                      </Link>
-                    </div>
-                  ) : (
-                    <p>Nothing to take today. You&apos;re all set.</p>
-                  )}
-                </CardContent>
-              </Card>
+              <TodayEmptyState
+                medicines={medicines}
+                hasSchedules={!!snapshot?.schedules.length}
+                today={today}
+                name={name}
+              />
             )}
           </>
         )}
-      <p className="px-6 text-center text-body-sm text-muted-foreground">
-        All dates and times are Istanbul time, wherever you are.
-      </p>
       {!loadError && !refreshFailed && (
         <Button variant="ghost" className="self-center" disabled={refreshing} onClick={retry}>
           {refreshing && !loading ? 'Refreshing…' : 'Refresh Today'}
         </Button>
       )}
     </section>
+  )
+}
+
+function TodayEmptyState({
+  medicines,
+  hasSchedules,
+  today: { next, date },
+  name,
+}: {
+  medicines: Medicine[]
+  hasSchedules: boolean
+  today: Today
+  name: (medicineId: string) => string
+}) {
+  if (medicines.length === 0)
+    return (
+      <EmptyState
+        icon={Pill}
+        title="No medications here yet"
+        body="Add your first one and Today will list its doses."
+        action={
+          <Link href={medicationsHref({ mode: 'add' })} className={buttonVariants({ size: 'lg' })}>
+            Add medication
+          </Link>
+        }
+      />
+    )
+  if (!hasSchedules) {
+    const [only] = medicines
+    const single = medicines.length === 1
+    return (
+      <EmptyState
+        icon={Clock}
+        title="No doses to show yet"
+        body={
+          single
+            ? `Today won't list ${only.label} until it has a schedule.`
+            : "Today won't list your medications until they have a schedule."
+        }
+        action={
+          <Link
+            href={single ? medicationSetupHref(only.id) : medicationsHref({ mode: 'list' })}
+            className={buttonVariants({ size: 'lg' })}
+          >
+            {single ? 'Set schedule' : 'Open Medications'}
+          </Link>
+        }
+      />
+    )
+  }
+  return (
+    <EmptyState
+      icon={Calendar}
+      title="Nothing to take today"
+      body={
+        next
+          ? `You're all set. Next is ${name(next.medicineId)} on ${formatShortDay(next.dueAt, date)} at ${formatTime(next.dueAt)}.`
+          : "You're all set."
+      }
+    />
   )
 }
