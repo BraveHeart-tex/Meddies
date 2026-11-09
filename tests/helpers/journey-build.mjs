@@ -1,4 +1,4 @@
-import { readdir, stat } from 'node:fs/promises'
+import { readFile, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 
 // Files and directories whose changes the production Next.js build depends on.
@@ -51,8 +51,16 @@ async function newestBuildInput(root) {
 
 /** Why the production Next.js build is stale, or undefined when it is fresh. */
 export async function staleBuildReason(root) {
-  const builtAt = await mtime(join(root, '.next/BUILD_ID'))
-  if (builtAt === undefined) return 'no production build'
+  const marker = join(root, '.next/meddies-build-success')
+  const builtAt = await mtime(marker)
+  if (builtAt === undefined) return 'no successful production build'
+  try {
+    if ((await readFile(marker, 'utf8')) !== (await readFile(join(root, '.next/BUILD_ID'), 'utf8')))
+      return 'production build replaced outside the wrapper'
+  } catch (error) {
+    if (error.code === 'ENOENT') return 'no production build'
+    throw error
+  }
   const newest = await newestBuildInput(root)
   if (newest && newest.mtimeMs > builtAt) return `${newest.path} changed after the last build`
 }

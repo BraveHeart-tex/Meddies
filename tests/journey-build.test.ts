@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, test } from 'vitest'
-import { journeySetupError } from './helpers/journey-build.mjs'
+import { journeySetupError, staleBuildReason } from './helpers/journey-build.mjs'
 
 const roots: string[] = []
 afterAll(() => Promise.all(roots.map((root) => rm(root, { recursive: true, force: true }))))
@@ -21,6 +21,8 @@ async function project({ buildAt, worker = true }: { buildAt?: Date; worker?: bo
   if (buildAt) {
     await mkdir(join(root, '.next'))
     await writeFile(join(root, '.next/BUILD_ID'), 'build')
+    await writeFile(join(root, '.next/meddies-build-success'), 'build')
+    await utimes(join(root, '.next/meddies-build-success'), buildAt, buildAt)
     await utimes(join(root, '.next/BUILD_ID'), buildAt, buildAt)
   }
   if (worker) {
@@ -81,4 +83,39 @@ test('only MEDDIES_BROWSER_DEV=1 enables dev mode', async () => {
     (await journeySetupError({ root, env: { MEDDIES_BROWSER_DEV: '0' } }))!,
     /Production build missing/,
   )
+})
+
+test('a partial or hand-run build without a success marker is stale', async () => {
+  const root = await project({ buildAt: minutesAgo(5) })
+  await rm(join(root, '.next/meddies-build-success'))
+  assert.match((await staleBuildReason(root))!, /no successful production build/)
+})
+
+test('a failed rebuild invalidates the previous success before retrying', async () => {
+  const { productionBuild } = await import('../scripts/production-build.mjs')
+  const root = await project({ buildAt: minutesAgo(5) })
+  await writeFile(join(root, 'src/app/page.tsx'), 'changed')
+  await assert.rejects(
+    productionBuild({
+      root,
+      env: {},
+      run: async () => {
+        await writeFile(join(root, '.next/BUILD_ID'), 'partial')
+        throw new Error('static generation failed')
+      },
+    }),
+    /static generation failed/,
+  )
+  assert.match((await staleBuildReason(root))!, /no successful production build/)
+  let builds = 0
+  await productionBuild({
+    root,
+    env: {},
+    run: async () => {
+      builds++
+      await writeFile(join(root, '.next/BUILD_ID'), 'complete')
+    },
+  })
+  assert.equal(builds, 1)
+  assert.equal(await staleBuildReason(root), undefined)
 })

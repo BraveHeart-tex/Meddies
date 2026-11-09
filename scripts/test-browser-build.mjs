@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // Runs browser journeys against fresh builds: always bundles the Worker (~1s), rebuilds
-// Next.js with Webpack only when a build input changed, then runs the phone project.
+// Next.js only when a build input changed, then runs the phone project.
 // Journeys tagged @visual are skipped unless --visual is the first argument.
 // Usage: pnpm test:browser:build [playwright args]
 //        pnpm test:browser:visual [playwright args]
 import { spawnSync } from 'node:child_process'
-import { staleBuildReason } from '../tests/helpers/journey-build.mjs'
+import { productionBuild } from './production-build.mjs'
 
 const visual = process.argv[2] === '--visual'
 const playwrightArgs = process.argv.slice(visual ? 3 : 2)
@@ -19,11 +19,7 @@ function run(label, command, args) {
 }
 
 run('worker:build', 'pnpm', ['worker:build'])
-const stale = await staleBuildReason(process.cwd())
-if (stale) {
-  console.log(`[test:browser:build] Next.js build needed: ${stale}`)
-  run('next build --webpack', 'pnpm', ['exec', 'next', 'build', '--webpack'])
-} else console.log('[test:browser:build] Next.js build fresh, skipped')
+console.log(await productionBuild({ run: (command, args) => run('Next.js', command, args) }))
 run('playwright', 'pnpm', [
   'exec',
   'playwright',
