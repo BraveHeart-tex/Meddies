@@ -191,6 +191,7 @@ const eslintConfig = defineConfig([
   // Override default ignores of eslint-config-next.
   globalIgnores([
     '.worker-build/**',
+    '.cache/**',
     '.browser-artifacts/**',
     '.impeccable',
     // Design references run outside the production application.

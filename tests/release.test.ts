@@ -149,16 +149,19 @@ printf '%s\\n' "$*" >> "$COMMAND_LOG"
 `,
     { mode: 0o755 },
   )
-  const result = spawnSync('bash', [resolve('scripts/verify.sh')], {
+  const result = spawnSync(process.execPath, [resolve('scripts/verify.mjs')], {
     encoding: 'utf8',
     env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, COMMAND_LOG: log },
   })
   assert.notEqual(result.status, 0)
-  assert.deepEqual((await readFile(log, 'utf8')).trim().split('\n'), [
-    'lint',
-    'format:check',
-    'typecheck',
-  ])
+  assert.deepEqual(
+    (await readFile(log, 'utf8'))
+      .trim()
+      .split('\n')
+      .map((line) => line.split(' --')[0])
+      .sort(),
+    ['format:check', 'lint', 'typecheck'],
+  )
 })
 
 for (const [failure, count] of [

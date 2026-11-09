@@ -20,3 +20,5 @@ worker/.dev.vars
 .DS_Store
 
 .worker-build/
+
+.cache/

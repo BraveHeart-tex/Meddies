@@ -18,12 +18,12 @@ pnpm exec playwright test --project=narrow --grep @visual cozy-visual
 
 Locally, name only the journeys the ticket names plus specs you added or changed
 ([verification](../../docs/verification.md#browser-journeys)); the full run is CI's job.
-The wrapper always runs `pnpm worker:build`, runs `next build --webpack` only when the
+The wrapper always runs `pnpm worker:build`, runs the shared production build only when the
 build is stale, then `playwright test --project=phone` with your arguments.
 `pnpm test:browser:build` and `pnpm test:browser` (what CI runs) skip journeys tagged
 `@visual`; `pnpm test:browser:visual` is the same wrapper selecting only them. Outside CI,
-global setup fails fast when a build input is newer than `.next/BUILD_ID`, or when
-`.next/BUILD_ID` or `.worker-build/index.js` is missing; rerun through the wrapper. Run
+global setup fails fast when a build input is newer than the wrapper success marker, or when
+the matching success marker, `.next/BUILD_ID` or `.worker-build/index.js` is missing; rerun through the wrapper. Run
 builds and journeys sequentially when they share `.next` or `.worker-build`.
 
 **Dev mode** for iterating on one journey: `MEDDIES_BROWSER_DEV=1 pnpm test:browser <spec>`

@@ -27,7 +27,7 @@
     "dev": "next dev",
     "dev:stack": "node scripts/dev-stack.mjs",
     "build": "next build",
-    "verify:local": "bash scripts/verify.sh --webpack",
+    "verify:local": "node scripts/verify.mjs",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit && pnpm worker:typecheck",
     "prepare": "husky",

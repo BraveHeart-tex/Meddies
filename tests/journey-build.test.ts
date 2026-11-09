@@ -2,7 +2,8 @@ import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, rm, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterAll, test } from 'vitest'
+import { afterAll, test, vi } from 'vitest'
+import net from 'node:net'
 import { journeySetupError, staleBuildReason } from './helpers/journey-build.mjs'
 
 const roots: string[] = []
@@ -119,3 +120,48 @@ test('a failed rebuild invalidates the previous success before retrying', async 
   assert.equal(builds, 1)
   assert.equal(await staleBuildReason(root), undefined)
 })
+
+for (const portAvailable of [true, false]) {
+  test(`build selects ${portAvailable ? 'Turbopack' : 'Webpack'} from the port probe without retrying errors`, async () => {
+    const { productionBuild } = await import('../scripts/production-build.mjs')
+    let onError: () => void
+    const probe = vi.spyOn(net, 'createServer').mockImplementation(
+      () =>
+        ({
+          once(_event: string, callback: () => void) {
+            onError = callback
+            return this
+          },
+          listen(_options: unknown, callback: () => void) {
+            if (portAvailable) callback()
+            else onError()
+            return this
+          },
+          close(callback: () => void) {
+            callback()
+            return this
+          },
+        }) as unknown as net.Server,
+    )
+    try {
+      const root = await project()
+      let attempts = 0
+      await assert.rejects(
+        productionBuild({
+          root,
+          env: {},
+          run: async (_command, args) => {
+            attempts++
+            assert.deepEqual(args, portAvailable ? ['build'] : ['build', '--webpack'])
+            throw new Error('build failed')
+          },
+        }),
+        /build failed/,
+      )
+      assert.equal(attempts, 1)
+      assert.match((await staleBuildReason(root))!, /no successful production build/)
+    } finally {
+      probe.mockRestore()
+    }
+  })
+}

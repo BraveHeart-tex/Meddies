@@ -37,7 +37,7 @@ commands are for coordinated recovery only.
 production environment or secrets. The `Static`, `Unit` and `Journeys` jobs
 ([layout](verification.md#ci-jobs)) run in parallel, then `Checks` fails unless all three
 succeeded. The `Checks` status context stays the same whichever jobs sit behind it.
-`scripts/verify.sh` is the local and manual-recovery path. Require the `Checks` status in
+`scripts/verify.mjs` is the local and manual-recovery path. Require the `Checks` status in
 main branch protection after its first successful run; verify the actual status context
 in GitHub before configuring it. Repository files alone do not enforce branch protection.
 
@@ -142,7 +142,7 @@ or can begin, then use a clean checkout of the intended reviewed SHA:
 
 ```sh
 pnpm install --frozen-lockfile
-bash scripts/verify.sh
+node scripts/verify.mjs
 export GITHUB_SHA="$(git rev-parse HEAD)"
 # Supply the same scoped secrets/variables as the production environment.
 # RELEASE_SETUP_CONFIRMED=true asserts the same setup review for manual execution.

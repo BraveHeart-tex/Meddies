@@ -114,8 +114,7 @@ test(
   'start, status, repeated start, stop, and repeated stop preserve local D1 state',
   budget({ starts: 2, commands: 4 }),
   async (t) => {
-    if (!(await canBind(3000)) || !(await canBind(8787)))
-      return t.skip('sandbox does not permit binding the fixed local development ports')
+    if (!(await canBind(3000)) || !(await canBind(8787))) return t.skip()
     const { cwd, env } = await fixture(t)
     const started = await run(['start'], cwd, env, startDeadline)
     assert.equal(started.code, 0, started.output)
@@ -145,6 +144,7 @@ test(
   'migration failure reports its stage and leaves no owned runner',
   budget({ commands: 3 }),
   async (t) => {
+    if (!(await canBind(3000)) || !(await canBind(8787))) return t.skip()
     const { cwd, env } = await fixture(t, { TEST_MIGRATION_FAIL: '1' })
     const result = await run(['start'], cwd, env)
     assert.notEqual(result.code, 0)
@@ -158,8 +158,7 @@ test(
   'early Next exit reports its stage and cleans up Worker',
   budget({ starts: 1, commands: 2 }),
   async (t) => {
-    if (!(await canBind(3000)) || !(await canBind(8787)))
-      return t.skip('sandbox does not permit binding the fixed local development ports')
+    if (!(await canBind(3000)) || !(await canBind(8787))) return t.skip()
     const { cwd, env } = await fixture(t, { TEST_APP_EXIT: '1' })
     const result = await run(['start'], cwd, env, startDeadline)
     assert.notEqual(result.code, 0)
@@ -174,8 +173,7 @@ test(
   'exited app wrapper cannot leave its service group behind',
   budget({ starts: 1, commands: 1 }),
   async (t) => {
-    if (!(await canBind(3000)) || !(await canBind(8787)))
-      return t.skip('sandbox does not permit binding the fixed local development ports')
+    if (!(await canBind(3000)) || !(await canBind(8787))) return t.skip()
     const { cwd, env } = await fixture(t, { TEST_APP_WRAPPER_EXIT: '1' })
     const result = await run(['start'], cwd, env, startDeadline)
     assert.notEqual(result.code, 0)
@@ -197,7 +195,7 @@ test(
         server.listen(3000, '127.0.0.1', resolve)
       })
     } catch {
-      t.skip('sandbox does not permit binding the fixed local development port')
+      t.skip()
       return
     }
     t.onTestFinished(() => new Promise<void>((resolve) => server.close(() => resolve())))

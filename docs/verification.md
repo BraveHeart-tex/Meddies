@@ -6,10 +6,18 @@
 pnpm verify:local
 ```
 
-Runs lint, format check, typecheck, a Webpack production build and `pnpm test`, in order.
-Webpack sidesteps the Turbopack CSS worker's local port requirement in restricted agent
-environments; CI and releases use Turbopack. Locally the build is skipped when no build
-input changed. Test commands: [tests/README.md](../tests/README.md).
+Runs lint, format check and typecheck together, then builds and runs integration tests
+alongside unit and component tests. A static-check failure stops before stage 2; stage 2
+checks finish even when another fails. Output is grouped per check, followed by durations,
+failures and a warning when dev stack tests skip because fixed ports are unavailable.
+ESLint and Prettier cache locally in `.cache`; CI uses neither cache.
+
+Local builds use Turbopack when a local port can be opened, otherwise Webpack. Build errors
+never trigger a fallback build. Verify skips the build's repeat typecheck after the static
+typecheck passes; journey builds keep it. Both wrappers reuse only builds with unchanged
+inputs and a matching success marker written after completion. Hand-run `pnpm build` has
+no marker and must be rebuilt by a wrapper. CI always builds.
+Test commands: [tests/README.md](../tests/README.md).
 
 ## CI jobs
 
@@ -22,7 +30,7 @@ The Verify workflow runs three jobs in parallel, then an aggregator:
   fail it. The `Checks` status context stays the same whichever jobs sit behind it.
 
 The build jobs set `CI_SKIP_BUILD_TYPECHECK=1`, so their builds skip the Next.js type check
-that `pnpm typecheck` runs in `Static`. Vercel and local builds keep the check.
+that `pnpm typecheck` runs in `Static`. Vercel and journey builds keep the check.
 
 `Unit` and `Journeys` restore Turbopack's `.next/cache`. Its key is the OS, a hash of
 `pnpm-lock.yaml` and `next.config.ts`, and the commit SHA, with prefix restore keys. Only
