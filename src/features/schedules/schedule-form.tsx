@@ -1,10 +1,9 @@
 'use client'
 
-import { InfoIcon, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import {
@@ -23,8 +22,9 @@ import { useSessionFormDraft } from '@/lib/use-session-form-draft'
 import type { Medicine } from '@/features/medicines/contract'
 import type { DailySchedule } from './contract'
 import { saveMessages } from '@/lib/save-messages'
-import type { SaveProblem } from '@/lib/session-saves'
-import { scheduleSetupKey, useScheduleSave } from './use-schedule-save'
+import { ScheduleSaveFooter } from './schedule-save-footer'
+import { scheduleSetupKey } from './schedule-setup-drafts'
+import { useScheduleSave } from './use-schedule-save'
 import {
   newTimeRow,
   scheduleFormDefaults,
@@ -231,50 +231,13 @@ export function ScheduleForm({
           )}
         </FieldGroup>
       </FieldSet>
-      {offline && !isSubmitting ? (
-        <Alert id="schedule-save-problem">
-          <InfoIcon aria-hidden="true" />
-          <AlertTitle>{saveMessages.offline}</AlertTitle>
-          <AlertDescription>{saveMessages.offlineFormDetails}</AlertDescription>
-        </Alert>
-      ) : problem ? (
-        <SaveProblemAlert problem={problem} label={medicine.label} />
-      ) : null}
-      <Button
-        type="submit"
-        size="lg"
-        disabled={isSubmitting || offline}
-        className="w-full whitespace-normal"
-        aria-describedby={problem || offline ? 'schedule-save-problem' : undefined}
-      >
-        {isSubmitting
-          ? 'Saving schedule...'
-          : offline
-            ? saveMessages.connectToSave
-            : problem === 'unconfirmed'
-              ? 'Try saving schedule again'
-              : 'Save schedule'}
-      </Button>
+      <ScheduleSaveFooter
+        problem={problem}
+        offline={offline}
+        isSubmitting={isSubmitting}
+        label={medicine.label}
+        checkHint="Check the days, times and quantities, then save again."
+      />
     </form>
-  )
-}
-
-function SaveProblemAlert({ problem, label }: { problem: SaveProblem; label: string }) {
-  const copy = {
-    unconfirmed: {
-      title: saveMessages.mightNotHaveSaved,
-      body: `${label} is saved. Its schedule details are still here, and trying again saves them only once.`,
-    },
-    rejected: {
-      title: "Schedule wasn't saved.",
-      body: `${label} is saved without a schedule. Check the days, times and quantities, then save again.`,
-    },
-    conflict: { title: 'A schedule is already saved.', body: 'Open Medications to review it.' },
-  }[problem]
-  return (
-    <Alert id="schedule-save-problem" variant="destructive">
-      <AlertTitle>{copy.title}</AlertTitle>
-      <AlertDescription>{copy.body}</AlertDescription>
-    </Alert>
   )
 }

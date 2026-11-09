@@ -130,7 +130,6 @@ test('setup opens with the medicine, Istanbul time and one row that cannot be re
   api(capsules)
   await openSetup(capsules.id)
   expect(screen.getByRole('heading', { name: 'Omega-3' })).toBeVisible()
-  expect(screen.getByText('1000 mg · capsule')).toBeVisible()
   expect(screen.getByText(/^Times are Istanbul time\./)).toBeVisible()
   expect(startDate()).toHaveTextContent('Today, Fri 15 Jun')
   expect(days()).toHaveAccessibleDescription('Every day')

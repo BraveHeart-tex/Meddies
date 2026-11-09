@@ -16,14 +16,19 @@ export type ScheduleFormOptions = {
   retryStartDate?: string
 }
 
+/** The first date of either schedule kind: today or later, or the date of an unconfirmed save. */
+export function startDateSchema(today: string, retryStartDate?: string) {
+  return z.string().superRefine((value, ctx) => {
+    if (!isScheduleDate(value) || !value.startsWith('20'))
+      ctx.addIssue({ code: 'custom', message: 'Choose a date.' })
+    else if (value < today && value !== retryStartDate)
+      ctx.addIssue({ code: 'custom', message: 'Choose today or a later date.' })
+  })
+}
+
 export function scheduleFormSchema({ unit, today, retryStartDate }: ScheduleFormOptions) {
   return z.object({
-    startDate: z.string().superRefine((value, ctx) => {
-      if (!isScheduleDate(value) || !value.startsWith('20'))
-        ctx.addIssue({ code: 'custom', message: 'Choose a date.' })
-      else if (value < today && value !== retryStartDate)
-        ctx.addIssue({ code: 'custom', message: 'Choose today or a later date.' })
-    }),
+    startDate: startDateSchema(today, retryStartDate),
     weekdays: z
       .array(z.number().int().min(0).max(6))
       .min(1, 'Choose at least one day.')

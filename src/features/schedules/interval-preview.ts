@@ -1,3 +1,7 @@
+import { istanbulHour } from '@/lib/calendar-date'
+import type { DailySchedule } from './contract'
+import { scheduledInstant } from './occurrences'
+
 const HOUR_MS = 3_600_000
 
 /**
@@ -23,7 +27,28 @@ export function nextIntervalDoses({
   )
 }
 
+/** The instant an Interval schedule counts from. */
+export function intervalAnchor(schedule: Pick<DailySchedule, 'startDate' | 'times'>) {
+  return scheduledInstant(schedule.startDate, schedule.times[0].time)
+}
+
 /** 'Every hour' or 'Every 8 hours'. */
 export function intervalLabel(hours: number) {
   return hours === 1 ? 'Every hour' : `Every ${hours} hours`
+}
+
+/** A moon marks a dose from 22:00 through 06:59. */
+export function isOvernightDose(dose: string) {
+  const hour = istanbulHour(dose)
+  return hour >= 22 || hour < 7
+}
+
+/** Checks a full day from the first dose, so a short list can't hide a night dose. */
+export function firstOvernightDose(first: string, hours: number) {
+  return nextIntervalDoses({
+    anchor: first,
+    hours,
+    now: new Date(Date.parse(first) - 1).toISOString(),
+    count: Math.ceil(24 / hours),
+  }).find(isOvernightDose)
 }

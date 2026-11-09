@@ -51,6 +51,8 @@ Visual rules and copy: [DESIGN.md](../DESIGN.md).
   matching, confirmed cache publication and session draft clearing. The form submits validated
   values and observes readonly save state. Unconfirmed saves recover through retry of the exact
   attempt, including its start date; background refresh runs independently of completion.
+  Clock and Interval schedules share that attempt, one form each; the Interval schedule draft
+  and the chosen kind sit beside the Clock schedule draft, and Cancel's Discard clears all three.
 - **Intake form exception:** `taken-form.tsx` takes errors and the saving state from
   `useDoseOutcomeMutation`, which observes the session dose save store (`dose-saves.ts`) for
   Taken, Skipped and corrections. The store's pending flag is the duplicate-submit lock; the

@@ -20,11 +20,14 @@ import type { SchedulesRead } from './queries'
 export function MedicationsList({
   medicinesRead,
   schedulesRead,
+  now,
   focusMedicineId,
   onMedicineFocused,
 }: {
   medicinesRead: MedicinesRead
   schedulesRead: SchedulesRead
+  /** The server scheduling time, for an Interval schedule's next dose. */
+  now: string
   focusMedicineId?: string | null
   onMedicineFocused?: () => void
 }) {
@@ -85,6 +88,7 @@ export function MedicationsList({
             <MedicationRoutineGroups
               medicines={medicinesRead.medicines}
               schedules={schedulesRead.schedules}
+              serverNow={now}
               focusMedicineId={focusMedicineId}
               onMedicineFocused={onMedicineFocused}
             />

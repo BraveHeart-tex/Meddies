@@ -22,7 +22,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="min-w-0 flex-1">{children}</main>
       <nav
         aria-label="Primary"
-        className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom,0px))] z-10 mx-auto max-w-2xl rounded-[2.125rem] border bg-card p-1.5 shadow-nav"
+        // Display none so a full-screen modal also takes the tabs out of the focus order.
+        className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom,0px))] z-10 mx-auto max-w-2xl [body:has([data-covers-tab-bar])_&]:hidden rounded-[2.125rem] border bg-card p-1.5 shadow-nav"
       >
         <ul className="grid grid-cols-3 gap-1">
           {destinations.map(({ href, label, icon: Icon }) => {

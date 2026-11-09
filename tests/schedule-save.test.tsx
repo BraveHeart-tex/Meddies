@@ -3,7 +3,8 @@ import { QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { expect, test, vi } from 'vitest'
-import { useScheduleSave, scheduleSetupKey } from '../src/features/schedules/use-schedule-save'
+import { scheduleSetupKey } from '../src/features/schedules/schedule-setup-drafts'
+import { useScheduleSave } from '../src/features/schedules/use-schedule-save'
 import {
   scheduleKeys,
   scheduleSnapshotQuery,

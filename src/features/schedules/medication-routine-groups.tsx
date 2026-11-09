@@ -2,11 +2,20 @@
 
 import { useEffect, useRef } from 'react'
 import type { Medicine } from '@/features/medicines/contract'
-import type { DailySchedule } from './contract'
+import { istanbulDate, type DailySchedule } from './contract'
+import { intervalRowSummary } from './interval-dose-list'
+import { intervalAnchor, nextIntervalDoses } from './interval-preview'
 import { MedicationRow } from './medication-row'
+import { useScheduleNow } from './use-schedule-now'
 import { ALL_WEEKDAYS, weekdaySummary } from './weekdays'
 
-function routineSummary(schedule: DailySchedule) {
+function routineSummary(schedule: DailySchedule, now: string) {
+  const hours = schedule.intervalHours
+  if (hours != null) {
+    const anchor = intervalAnchor(schedule)
+    const [next] = nextIntervalDoses({ anchor, hours, now, count: 1 })
+    return intervalRowSummary(hours, next, istanbulDate(new Date(now)))
+  }
   return [
     weekdaySummary(schedule.weekdays ?? ALL_WEEKDAYS, 'short'),
     schedule.times.map((slot) => slot.time).join(', '),
@@ -16,15 +25,18 @@ function routineSummary(schedule: DailySchedule) {
 export function MedicationRoutineGroups({
   medicines,
   schedules,
+  serverNow,
   focusMedicineId,
   onMedicineFocused,
 }: {
   medicines: Medicine[]
   schedules: DailySchedule[]
+  serverNow: string
   /** The row to focus once, when the list shows after Done for now (647·B1). */
   focusMedicineId?: string | null
   onMedicineFocused?: () => void
 }) {
+  const now = useScheduleNow(serverNow)
   const focusRow = useRef<HTMLAnchorElement>(null)
   useEffect(() => {
     if (!focusMedicineId || !focusRow.current) return
@@ -52,7 +64,7 @@ export function MedicationRoutineGroups({
               <MedicationRow
                 key={medicine.id}
                 medicine={medicine}
-                scheduleSummary={schedule ? routineSummary(schedule) : null}
+                scheduleSummary={schedule ? routineSummary(schedule, now) : null}
                 linkRef={medicine.id === focusMedicineId ? focusRow : undefined}
               />
             ))}

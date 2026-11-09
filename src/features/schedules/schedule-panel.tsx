@@ -53,6 +53,7 @@ export function SchedulePanel({
           <MedicationsList
             medicinesRead={medicinesRead}
             schedulesRead={schedulesRead}
+            now={now}
             focusMedicineId={focusMedicineId}
             onMedicineFocused={onMedicineFocused}
           />
@@ -73,6 +74,7 @@ export function SchedulePanel({
           <ScheduleSetupForm
             schedulesRead={schedulesRead}
             today={istanbulDate(new Date(now))}
+            now={now}
             medicineId={initialMedicineId}
             onSaved={onScheduleSaved}
             serverEntry={serverEntry}

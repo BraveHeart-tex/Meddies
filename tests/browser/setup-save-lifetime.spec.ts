@@ -115,6 +115,8 @@ for (const viewport of [
       await pickTime(page, 'Time 1', '12:00')
       await page.getByRole('button', { name: 'Save schedule', exact: true }).click()
       await expect(page.getByRole('button', { name: 'Saving schedule...' })).toBeDisabled()
+      // Setup covers the tab bar (764·C0); Cancel leaves without asking while a save is pending.
+      await page.getByRole('button', { name: 'Cancel', exact: true }).click()
       await page.getByRole('link', { name: 'Today', exact: true }).click()
       await expect(page).toHaveURL(app.origin + '/')
       await expect(page.getByText('Saving schedule for Magnesium…', { exact: true })).toBeVisible()

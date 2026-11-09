@@ -2,15 +2,13 @@
 
 import { AppHeader } from '@/components/layout/app-header'
 import { AppShell } from '@/components/layout/app-shell'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Medicine } from '@/features/medicines/contract'
 import { MedicationBackRow, MedicationIdentity } from '@/features/medicines/medication-sub-screen'
 import { medicationsHref } from '@/features/medicines/routes'
-import { IntervalDoseList, intervalRowSummary } from '@/features/schedules/interval-dose-list'
-import { intervalLabel, nextIntervalDoses } from '@/features/schedules/interval-preview'
+import { intervalRowSummary } from '@/features/schedules/interval-dose-list'
+import { nextIntervalDoses } from '@/features/schedules/interval-preview'
+import { IntervalScheduleCard } from '@/features/schedules/interval-schedule-card'
 import { MedicationRow } from '@/features/schedules/medication-row'
-import { formatShortDay, formatTime } from '@/lib/calendar-date'
-import { quantityLabel } from '@/lib/dose-quantity'
 import { magnesium, NOW, TODAY } from './interval-lab-model'
 
 const fixtures: { medicine: Medicine; hours: number; anchor: string }[] = [
@@ -65,7 +63,6 @@ export function IntervalListFrame() {
 }
 
 export function IntervalDetailFrame({ hours, anchor }: { hours: number; anchor: string }) {
-  const started = `${anchor < NOW ? 'Started' : 'Starts'} ${formatShortDay(anchor, TODAY)} at ${formatTime(anchor)}`
   return (
     <AppShell>
       <div className="flex flex-col gap-5 [overflow-wrap:anywhere]">
@@ -75,27 +72,13 @@ export function IntervalDetailFrame({ hours, anchor }: { hours: number; anchor: 
           <h2 id="routine-heading" className="sr-only">
             Schedule
           </h2>
-          <Card>
-            <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2">
-              <CardTitle>Schedule</CardTitle>
-              <CardDescription>{intervalLabel(hours)}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <h3 className="text-body-sm font-extrabold">Next 3 doses</h3>
-              <IntervalDoseList
-                doses={nextIntervalDoses({ anchor, hours, now: NOW })}
-                today={TODAY}
-              />
-              <p className="text-body-sm">{quantityLabel(1, magnesium.unit)} each time</p>
-              <p className="text-body-sm text-muted-foreground">{started}</p>
-              {24 % hours !== 0 && (
-                <p className="text-body-sm text-muted-foreground">
-                  These times move through the day, because {hours} hours doesn&apos;t fit evenly
-                  into 24.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+          <IntervalScheduleCard
+            hours={hours}
+            anchor={anchor}
+            quantity={1}
+            unit={magnesium.unit}
+            now={NOW}
+          />
         </section>
         <p className="text-label text-muted-foreground">
           Details and schedules can&apos;t be changed here yet.

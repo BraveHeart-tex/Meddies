@@ -335,23 +335,23 @@ describe('schedule setup', () => {
     return userEvent.setup()
   }
 
-  test('Back names the medication and returns to its page', async () => {
+  test('764·C0 names the medication in a full-screen header with Cancel', async () => {
     api()
     renderSetup()
     await identity('Magnesium')
     expect(screen.getByText('Set schedule', { selector: 'p' })).toBeVisible()
-    expect(backRow('Magnesium')).toHaveAttribute('href', `/medications?medicine=${magnesium.id}`)
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeVisible()
+    expect(document.querySelector('[data-covers-tab-bar]')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Back' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Medications' })).not.toBeInTheDocument()
     expect(await screen.findByRole('button', { name: 'Save schedule' })).toBeVisible()
   })
 
-  test('a long name stays whole in Back and the heading', async () => {
+  test('a long name stays whole in the heading', async () => {
     const label = 'Levothyroxine sodium extended release 75 micrograms'
     api({ medicines: [{ ...magnesium, label }] })
     renderSetup()
     await identity(label)
-    expect(backRow(label)).toBeVisible()
   })
 
   test('loading reuses the header above a form block, with no generic Back', async () => {
@@ -467,7 +467,7 @@ describe('the mounted screen', () => {
     expect(screen.queryByRole('heading', { name: 'Magnesium' })).not.toBeInTheDocument()
   })
 
-  test('Back from setup and returning restores the session draft', async () => {
+  test('navigating back from setup and returning restores the session draft', async () => {
     api()
     seedCache([magnesium])
     window.history.replaceState(null, '', `/medications?schedule=${magnesium.id}`)
@@ -476,8 +476,8 @@ describe('the mounted screen', () => {
     await identity('Magnesium')
     await pickHour(user, '08')
 
-    await user.click(backRow('Magnesium'))
-    expect(window.location.search).toBe(`?medicine=${magnesium.id}`)
+    // Browser Back: only Cancel asks before leaving.
+    window.history.replaceState(null, '', `/medications?medicine=${magnesium.id}`)
     rerender(screenAt())
     expect(await screen.findByText('No schedule yet')).toBeVisible()
 

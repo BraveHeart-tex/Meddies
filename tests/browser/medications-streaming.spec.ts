@@ -210,11 +210,11 @@ test('view changes make no server request, and Back, Forward and reload restore 
   await page.goForward()
   await expect(page).toHaveURL(/\/medications\?schedule=/)
 
-  // 650 Fix 1: setup's Back row names the medication and returns to its page.
-  await page.getByRole('link', { name: unscheduled, exact: true }).click()
+  // 764·C0: Cancel with no edits leaves for the medication's page in place of setup.
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(page).toHaveURL(/\/medications\?medicine=/)
   await expect(page.getByRole('heading', { level: 1, name: unscheduled })).toBeVisible()
-  await page.goBack()
+  await page.getByRole('link', { name: 'Set schedule', exact: true }).click()
   await expect(page).toHaveURL(/\/medications\?schedule=/)
   await expect(page.getByRole('heading', { level: 1, name: unscheduled })).toBeVisible()
   expect(pageRequests.count(), 'page requests during view changes').toBe(0)
@@ -269,12 +269,6 @@ test.describe('direct links to one medication', () => {
       fallback: medicationFallback,
       backRow: 'Medications',
     },
-    {
-      name: 'schedule setup',
-      path: `/medications?schedule=${linkedId}`,
-      fallback: medicationSetupFallback,
-      backRow: linked,
-    },
   ]
 
   for (const view of views)
@@ -321,6 +315,28 @@ test.describe('direct links to one medication', () => {
       // it reserves each line of a one-line name, as this fixture has, so any shift is a regression.
       expect(result.cumulativeLayoutShift).toBeLessThanOrEqual(layoutShiftBudget)
     })
+
+  test('schedule setup streams its fallback, then the full-screen modal', async ({ page, app }) => {
+    const api = countApiRequests(page, app.origin)
+    for (const route of reads) app.worker.hold(route)
+    await page.goto(`/medications?schedule=${linkedId}`, { waitUntil: 'commit' })
+    await expectReadsOverlap(app.worker, reads)
+    await expect(medicationSetupFallback(page)).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
+    const heading = page.getByRole('heading', { level: 1, name: linked })
+    await expectStreamingOrder(app.worker, {
+      routes: reads,
+      fallback: medicationSetupFallback(page),
+      content: heading,
+    })
+    await expect(heading).toBeFocused()
+    // The modal covers the tab bar (764·C0).
+    await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'Primary' })).toBeHidden()
+    await expect(placeholders(page)).toHaveCount(0)
+    await page.waitForLoadState('load')
+    expectNoRepeatedReads(api)
+  })
 
   test('a link to a medication that is not in the list shows 647·D2', async ({ page, app }) => {
     for (const route of reads) app.worker.hold(route)

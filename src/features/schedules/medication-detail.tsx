@@ -27,7 +27,10 @@ import type { MedicinesRead } from '@/features/medicines/queries'
 import { medicationSetupHref } from '@/features/medicines/routes'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { istanbulDate } from './contract'
+import { intervalAnchor } from './interval-preview'
+import { IntervalScheduleCard } from './interval-schedule-card'
 import type { SchedulesRead } from './queries'
+import { useScheduleNow } from './use-schedule-now'
 import { weekdaySummary } from './weekdays'
 
 /** The `?medicine=ID` page: 650 Fix 1's header above the schedule, and 647·D1 to D3. */
@@ -53,6 +56,7 @@ export function MedicationDetail({
 }) {
   const { medicines, loading: medicinesLoading, loadError: medicinesError } = medicinesRead
   const { schedules, loading, loadError, refreshFailed, refreshing, retry } = schedulesRead
+  const liveNow = useScheduleNow(now)
   if (medicinesLoading) return <MedicationDetailSkeleton />
 
   const medicine = medicines.find((item) => item.id === medicineId)
@@ -129,6 +133,14 @@ export function MedicationDetail({
           </LoadingSection>
         ) : loadError ? (
           <ScheduleUnchecked name={medicine.label} onRetry={retry} />
+        ) : schedule?.intervalHours != null ? (
+          <IntervalScheduleCard
+            hours={schedule.intervalHours}
+            anchor={intervalAnchor(schedule)}
+            quantity={schedule.times[0].quantity}
+            unit={medicine.unit}
+            now={liveNow}
+          />
         ) : schedule ? (
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2">
