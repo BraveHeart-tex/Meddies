@@ -9,6 +9,22 @@ and the signed-in session behave from the user's side.
 Something the user takes and tracks in Meddies, with a label, quantity unit and strength.
 _Avoid_: medicine, in UI copy; write medication there
 
+## Schedules
+
+**Clock schedule**:
+A schedule whose doses fall at set times of day, every day or on selected weekdays.
+_Avoid_: fixed schedule, daily schedule, when weekdays may also apply
+
+**Interval schedule**:
+A schedule whose doses repeat every chosen number of elapsed hours, across midnight, counted from
+its Anchor.
+_Avoid_: hourly schedule, recurring schedule
+
+**Anchor**:
+The date and time an Interval schedule counts from. A dose is expected at the Anchor only if the
+Anchor is later than when the schedule was saved. Recording a dose late never moves it.
+_Avoid_: first dose, in code and tickets; start time
+
 ## Doses
 
 **History date**:
