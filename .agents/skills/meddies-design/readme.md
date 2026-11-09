@@ -18,6 +18,7 @@ This reference kit captures **1a Cozy Care**, the direction chosen in the origin
 - `guidelines/`: foundation specimen cards (colors, type, spacing, radii, elevation, touch targets, status system, voice, wordmark)
 - `ui_kits/meddies-app/`: interactive Today, Medications and Record-dose flow
 - `assets/icons/`: historical SVG references
+- `assets/logo/`: Two capsules master artwork, full-bleed
 - `SKILL.md`: an Agent Skill entry point
 
 **Intentional additions** (these were not in the explored screens):
@@ -87,7 +88,7 @@ The rules for UI wording are in `docs/copy.md`, which wins where this section di
 - Use Check, Clock, Calendar, Plus, Minus, X, TriangleAlert, CircleDotDashed (Not logged), Ban (Skipped), Settings2, CircleDot (Today), Pill (Medications), and List (History).
 - The exported `components/`, `assets/icons/`, specimen cards and UI kit are historical visual references, not production icon APIs. Do not copy their custom glyph implementation or name-based icon props into production. Medication identity tiles remain decorative brand shapes.
 - Never use emoji or unicode symbols as icons.
-- **Logo:** none supplied. Wherever a mark would go, write "Meddies" in Nunito 800 (see `guidelines/wordmark.html`). Do not draw a logo.
+- **Logo:** Two capsules (`assets/logo/two-capsules.svg`), a heart made of two capsules on berry. Use it for app icons and favicons. Keep its vertical centre seam: overlapping whole capsules read as a check mark, which means Taken. In app screens, write "Meddies" in Nunito 800 (see `guidelines/wordmark.html`). Do not draw other marks.
 
 ## Fonts
 The prototype loads Nunito from Google Fonts via `tokens/fonts.css`. The production app bundles Nunito locally in `src/app/fonts/` and serves it through Next.js.
