@@ -15,7 +15,7 @@ import { OutcomeChoice } from './outcome-choice'
 import { outcomeConfirmation } from './dose-confirmation'
 import { ScheduledChip } from './scheduled-chip'
 import { RecordedElsewhere, RecordedOutcome } from './recorded-outcome'
-import type { AttemptForm, RecordCheck } from './dose-saves'
+import type { AttemptForm, DoseCommand } from './dose-saves'
 import { useDoseDrawerDraft } from './use-dose-drawer-draft'
 import { useDoseOutcomeMutation } from './use-dose-outcome-mutation'
 import { useSchedulingClock } from './scheduling-clock'
@@ -26,8 +26,6 @@ export type DoseDrawerOpener = { open: (outcome: Outcome) => void }
 export function DoseActions({
   dose,
   medicine,
-  refresh,
-  checkRecorded,
   onRecorded,
   appearance = 'button',
   opener,
@@ -36,10 +34,7 @@ export function DoseActions({
 }: {
   dose: DoseOccurrence
   medicine: Medicine
-  refresh: () => Promise<boolean>
-  /** Reads the dose's view again after an unconfirmed save. */
-  checkRecorded?: () => Promise<RecordCheck>
-  onRecorded: (record: DoseOutcomeRecord) => boolean | void
+  onRecorded?: (record: DoseOutcomeRecord) => void
   appearance?: 'row' | 'button'
   opener?: Ref<DoseDrawerOpener>
   todayDate?: string
@@ -60,6 +55,7 @@ export function DoseActions({
   const [savingOutcome, setSavingOutcome] = useState<Outcome>('Taken')
   const {
     submit,
+    refresh,
     saving,
     error,
     needsReview,
@@ -76,12 +72,8 @@ export function DoseActions({
     medicine,
     drawerOpen,
     today: () => istanbulDate(clock.now()),
-    refresh,
-    checkRecorded,
-    onRecorded(record) {
-      // Also runs after Today unmounts, so a confirmed save never restores its draft.
-      draft.discard()
-      const superseded = onRecorded(record) === true
+    onRecorded(record, superseded) {
+      onRecorded?.(record)
       // Confirmed by the server: a Toast without Undo (FE-648 F2, C5).
       toast.add({
         title: superseded
@@ -109,9 +101,9 @@ export function DoseActions({
     },
   })
 
-  function save(outcome: Outcome, details: Record<string, unknown>, form?: AttemptForm) {
-    setSavingOutcome(outcome)
-    return submit(outcome, details, form)
+  function save(command: DoseCommand, form?: AttemptForm) {
+    setSavingOutcome(command.outcome)
+    return submit(command, form)
   }
 
   function edit(outcome: Outcome | null) {
@@ -299,7 +291,7 @@ export function DoseActions({
                         setDrawerOpen(false)
                       }
                     }}
-                    onSubmit={(details) => save('Taken', details)}
+                    onSubmit={(details) => save({ outcome: 'Taken', ...details })}
                   />
                 )}
               {editingDose === null && (
@@ -343,7 +335,7 @@ export function DoseActions({
             // An unconfirmed attempt's own values win over any draft (D13).
             draftKey={correcting || attempt?.outcome === 'Taken' ? null : draft.takenKey}
             onOpen={closeEditor}
-            onSubmit={(details, form) => save('Taken', details, form)}
+            onSubmit={(details, form) => save({ outcome: 'Taken', ...details }, form)}
           />
         )}
         {(!recorded || correcting || editor === 'Skipped') && (
@@ -355,7 +347,7 @@ export function DoseActions({
             reviewRequired={needsReview}
             problem={editor === 'Skipped' && attemptMatches('Skipped') ? problem : null}
             onOpen={closeEditor}
-            onSubmit={() => void save('Skipped', {})}
+            onSubmit={() => void save({ outcome: 'Skipped' })}
             refresh={refresh}
           />
         )}

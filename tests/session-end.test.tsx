@@ -289,8 +289,7 @@ const doseRequest: DoseSaveRequest = {
     scheduleId: 's',
     dueAt: '2026-11-14T11:00:00.000Z',
   } as unknown as DoseSaveRequest['dose'],
-  outcome: 'Skipped',
-  details: {},
+  command: { outcome: 'Skipped' },
   correction: null,
   medicine: { label: 'Omega-3', unit: 'capsule' },
   today: () => '2026-11-14',
@@ -298,22 +297,28 @@ const doseRequest: DoseSaveRequest = {
 
 test('a confirmed dose save 401 ends the session with the generic notice', async () => {
   sessionAnswers(signedOut)
-  server.use(http.put('/api/schedules', () => new HttpResponse(null, { status: 401 })))
+  server.use(
+    http.get('/api/schedules', () => HttpResponse.error()),
+    http.put('/api/schedules', () => new HttpResponse(null, { status: 401 })),
+  )
   mount()
   const doses = doseSaves(clientOf())
   await act(() => doses.submit('s|due', doseRequest))
   await screen.findByRole('heading', { name: 'Good to see you' })
   expect(replace.mock.calls[0][0]).toMatch(/&notice=save-in-progress$/)
-  expect(doses.entries.size).toBe(0)
+  expect(doses.outstanding()).toEqual([])
 })
 
 test('a dose save 401 with an active session continues as an unconfirmed save', async () => {
   sessionAnswers(active)
-  server.use(http.put('/api/schedules', () => new HttpResponse(null, { status: 401 })))
+  server.use(
+    http.get('/api/schedules', () => HttpResponse.error()),
+    http.put('/api/schedules', () => new HttpResponse(null, { status: 401 })),
+  )
   mount()
   const doses = doseSaves(clientOf())
   await act(() => doses.submit('s|due', doseRequest))
-  expect(doses.entries.get('s|due')?.problem).toEqual({ kind: 'uncertain', checked: false })
+  expect(doses.get('s|due')?.problem).toEqual({ kind: 'uncertain', checked: false })
   expect(replace).not.toHaveBeenCalled()
 })
 
@@ -337,8 +342,7 @@ test('a dose response whose body arrives after session end reports nothing', asy
   mount()
   const doses = doseSaves(clientOf())
   const onRecorded = vi.fn()
-  doses.effects.set('s|due', { refresh: async () => true, onRecorded })
-  const saved = doses.submit('s|due', doseRequest)
+  const saved = doses.submit('s|due', { ...doseRequest, onRecorded })
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 20))
     await confirmSessionEnd()
@@ -346,7 +350,7 @@ test('a dose response whose body arrives after session end reports nothing', asy
   finishBody()
   await act(() => saved)
   expect(onRecorded).not.toHaveBeenCalled()
-  expect(doses.entries.size).toBe(0)
+  expect(doses.outstanding()).toEqual([])
 })
 
 test('a form still mounted at session end cannot write its draft back', async () => {

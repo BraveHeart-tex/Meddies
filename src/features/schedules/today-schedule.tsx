@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { quantityLabel } from '@/lib/dose-quantity'
-import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -20,9 +19,9 @@ import { DoseActions, type DoseDrawerOpener } from './dose-actions'
 import { NextDose } from './next-dose'
 import { TodayDosesLoading } from './today-skeleton'
 import { scheduleToday } from './occurrences'
-import { applyRecord, currentRecord, readFreshSnapshot, type SchedulesRead } from './queries'
+import type { SchedulesRead } from './queries'
 import { useScheduleNow } from './use-schedule-now'
-import { doseSaveKey, type RecordCheck } from './dose-saves'
+import { doseSaveKey } from './dose-saves'
 import { useDoseSaves } from './use-dose-outcome-mutation'
 
 export function TodaySchedule({
@@ -33,7 +32,6 @@ export function TodaySchedule({
   /** The latest server scheduling time; the clock re-anchors on each new one. */
   serverNow: string
 }) {
-  const queryClient = useQueryClient()
   const {
     medicines,
     loading: medicinesLoading,
@@ -85,26 +83,6 @@ export function TodaySchedule({
     setIntakeMessage(`${description} was already recorded as ${record.outcome.toLowerCase()}.`)
   }
 
-  function showOutcome(dose: DoseOccurrence, record: DoseOutcomeRecord) {
-    const superseded = (currentRecord(queryClient, record)?.revision ?? 0) > (record.revision ?? 0)
-    announceOutcome(dose, record)
-    void applyRecord(queryClient, record)
-    return superseded
-  }
-
-  /**
-   * Reloads Today and returns this dose's record, if any. `announce` reports a found record as
-   * already recorded (409 recovery); the uncertain-save check (FE-648 F4) stays quiet.
-   */
-  async function checkRecorded(dose: DoseOccurrence, announce: boolean): Promise<RecordCheck> {
-    const fresh = await readFreshSnapshot(queryClient).catch(() => null)
-    if (!fresh) return 'unknown'
-    const found = fresh.records.find(
-      (item) => item.scheduleId === dose.scheduleId && item.dueAt === dose.dueAt,
-    )
-    if (found && announce) announceOutcome(dose, found, true)
-    return found ? { record: found } : 'missing'
-  }
   return (
     <section aria-labelledby="today-heading" className="flex flex-col gap-5">
       <h2 id="today-heading" className="sr-only">
@@ -274,11 +252,7 @@ export function TodaySchedule({
                                     todayDate={today.date}
                                     describedBy={`dose-status-${dose.id}`}
                                     opener={dose.id === today.next?.id ? heroOpener : undefined}
-                                    refresh={async () =>
-                                      typeof (await checkRecorded(dose, true)) === 'object'
-                                    }
-                                    checkRecorded={() => checkRecorded(dose, false)}
-                                    onRecorded={(record) => showOutcome(dose, record)}
+                                    onRecorded={(record) => announceOutcome(dose, record)}
                                   />
                                 )}
                               </Item>

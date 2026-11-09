@@ -3,7 +3,6 @@
 import { Calendar, Pill } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useRef, type RefObject } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -21,10 +20,9 @@ import { medicationsHref } from '@/features/medicines/routes'
 import { istanbulDate, type DoseOccurrence } from './contract'
 import { HistoryInvalidDateNotice } from './history-invalid-date-notice'
 import { DoseActions } from './dose-actions'
-import { doseSaveKey, type RecordCheck } from './dose-saves'
+import { doseSaveKey } from './dose-saves'
 import { DoseStatusBadge } from './dose-status-badge'
 import { dayHeadingId, historyHref, useHistoryDayFocus } from './history-date-nav'
-import { applyRecord, currentRecord, readFreshHistoryDay, sameDose } from './queries'
 import { useDoseSaves } from './use-dose-outcome-mutation'
 
 export type HistoryDayResult =
@@ -195,15 +193,7 @@ function HistoryDoseRow({
   today: string
   medicine?: Medicine
 }) {
-  const client = useQueryClient()
   const saves = useDoseSaves()
-  /** Reads this History date again and returns this dose's record, if any (FE-648 F4). */
-  async function checkRecorded(): Promise<RecordCheck> {
-    const doses = await readFreshHistoryDay(client, date).catch(() => null)
-    if (!doses) return 'unknown'
-    const found = doses.find((item) => sameDose(item, dose))
-    return found && 'record' in found ? { record: found.record } : 'missing'
-  }
   const done = recorded(dose)
   const unit = medicine?.unit ?? 'tablet'
   const takenAt = dose.status === 'Taken' ? dose.record.takenAt : ''
@@ -260,14 +250,6 @@ function HistoryDoseRow({
           medicine={medicine}
           appearance="row"
           describedBy={`dose-status-${dose.id}`}
-          refresh={async () => typeof (await checkRecorded()) === 'object'}
-          checkRecorded={checkRecorded}
-          onRecorded={(record) => {
-            const superseded =
-              (currentRecord(client, record)?.revision ?? 0) > (record.revision ?? 0)
-            void applyRecord(client, record)
-            return superseded
-          }}
         />
       )}
     </Item>

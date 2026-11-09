@@ -1,7 +1,7 @@
 import { hashKey, type QueryClient } from '@tanstack/react-query'
+import { discardSessionFormDraft } from '@/lib/session-drafts'
 import { toast } from '@/components/ui/toast'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
-import type { DoseUnit } from '@/lib/dose-quantity'
 import { confirmSessionEnd } from '@/lib/session-check'
 import { sessionSaves, type OutstandingSave } from '@/lib/session-saves'
 import { saveMessages } from '@/lib/save-messages'
@@ -9,6 +9,10 @@ import { parseDoseOutcomeRecord, type DoseOccurrence, type DoseOutcomeRecord } f
 import { reconciledConfirmation } from './dose-confirmation'
 import { matchesDoseReceipt, type DoseAttempt } from './dose-receipt'
 import {
+  applyRecord,
+  currentRecord,
+  readFreshSnapshot,
+  readFreshHistoryDay,
   cachedRecords,
   historyDate,
   historyDayQuery,
@@ -17,51 +21,20 @@ import {
   sameDose,
   scheduleKeys,
   scheduleSnapshotQuery,
-  writeRecord,
   type ScheduleSnapshot,
 } from './queries'
 
-type Outcome = DoseOutcomeRecord['outcome']
-export type PinnedCorrection = { outcome: Outcome; revision: number }
-/** A fresh cache-backed check found a record, no record, or failed. */
-export type RecordCheck = { record: DoseOutcomeRecord } | 'missing' | 'unknown'
-export type SaveProblem = { kind: 'rejected' } | { kind: 'uncertain'; checked: boolean }
-/** What a dose row shows while its save is pending or unconfirmed (FE-650 D21). */
-export type PendingDose = { id: string; outcome: Outcome; unconfirmed?: boolean }
-/** Raw Taken form values at submit and the Now minute they used, to reopen the attempt. */
-export type AttemptForm = { values: unknown; now: string }
-
-/** One occurrence's save, owned by the session so leaving Today or closing the drawer keeps it. */
-export type DoseSave = {
-  /** The exact request a retry resends; null once the attempt is discarded. */
-  attempt: DoseAttempt | null
-  correction: PinnedCorrection | null
-  form?: AttemptForm
-  medicine: { label: string; unit: DoseUnit }
-  /** Istanbul today, read when needed, to name where the dose lives after a day rolls over. */
-  today: () => string
-  pending: boolean
-  problem: SaveProblem | null
-  error: string
-  needsReview: boolean
-}
-
-/** The mounted screen's callbacks; the latest mount's are used, the last ones after unmount. */
-export type DoseSaveEffects = {
-  refresh: () => Promise<boolean>
-  checkRecorded?: () => Promise<RecordCheck>
-  onRecorded: (record: DoseOutcomeRecord) => void
-}
-
-export type DoseSaveRequest = {
-  dose: DoseOccurrence
-  outcome: Outcome
-  details: Record<string, unknown>
-  correction: PinnedCorrection | null
-  form?: AttemptForm
-  medicine: DoseSave['medicine']
-  today: () => string
-}
+import type { DoseSave, DoseSaveRequest, RecordCheck, PendingDose } from './dose-save-state'
+export type {
+  AttemptForm,
+  DoseCommand,
+  DoseSave,
+  DoseSaveRequest,
+  PinnedCorrection,
+  RecordCheck,
+  PendingDose,
+  SaveProblem,
+} from './dose-save-state'
 
 export const doseSaveKey = (dose: Pick<DoseOccurrence, 'scheduleId' | 'dueAt'>) =>
   `${dose.scheduleId}|${dose.dueAt}`
@@ -73,15 +46,15 @@ export const isUnconfirmed = (save: DoseSave | undefined) =>
 const snapshotHash = hashKey(scheduleKeys.snapshot())
 
 class DoseSaves {
-  entries = new Map<string, DoseSave>()
-  observers = new Map<string, number>()
+  private entries = new Map<string, DoseSave>()
+  private presentations = new Map<string, NonNullable<DoseSaveRequest['onRecorded']>>()
+  private observers = new Map<string, number>()
   /** Bumps when a result ends the drawer's work (confirmed or conflict), so an observer closes. */
-  finished = new Map<string, number>()
-  effects = new Map<string, DoseSaveEffects>()
-  openDrawers = new Set<string>()
-  listeners = new Set<() => void>()
-  version = 0
-  active = true
+  private finished = new Map<string, number>()
+  private openDrawers = new Set<string>()
+  private listeners = new Set<() => void>()
+  private version = 0
+  private active = true
   private stop: () => void
 
   constructor(private client: QueryClient) {
@@ -136,17 +109,62 @@ class DoseSaves {
   }
 
   /** Sets an entry, dropping it once nothing is left to show or retry. */
-  set(key: string, save: DoseSave | undefined) {
+  private set(key: string, save: DoseSave | undefined) {
     if (!this.active) return
     if (!save || (!save.attempt && !save.pending && !save.error && !save.needsReview))
       this.entries.delete(key)
     else this.entries.set(key, save)
     this.emit()
   }
-  update(key: string, patch: Partial<DoseSave>) {
+  private update(key: string, patch: Partial<DoseSave>) {
     const save = this.entries.get(key)
     if (save) this.set(key, { ...save, ...patch })
   }
+  get(key: string): Readonly<DoseSave> | undefined {
+    return this.entries.get(key)
+  }
+  present(key: string, callback: NonNullable<DoseSaveRequest['onRecorded']>) {
+    this.presentations.set(key, callback)
+  }
+  completion(key: string) {
+    return this.finished.get(key) ?? 0
+  }
+  clearFeedback(key: string) {
+    this.update(key, { error: '', problem: null, needsReview: false })
+  }
+  clearError(key: string) {
+    this.update(key, { error: '', problem: null })
+  }
+  dismissReview(key: string) {
+    this.update(key, { needsReview: false })
+  }
+  reviewCurrent(key: string) {
+    this.set(key, undefined)
+  }
+
+  /** Checks the dose's own date, even after Today rolls over or its screen unmounts. */
+  async checkRecorded(dose: DoseOccurrence, today: () => string): Promise<RecordCheck> {
+    try {
+      const date = historyDate(dose.dueAt)
+      const records =
+        date === today()
+          ? (await readFreshSnapshot(this.client)).records
+          : historyRecords(await readFreshHistoryDay(this.client, date))
+      if (!this.active) return 'unknown'
+      const record = records.find((item) => sameDose(item, dose))
+      return record ? { record } : 'missing'
+    } catch {
+      return 'unknown'
+    }
+  }
+
+  private publish(doseId: string, record: DoseOutcomeRecord) {
+    discardSessionFormDraft(this.client, `dose-drawer:${doseId}`)
+    discardSessionFormDraft(this.client, `dose-taken:${doseId}`)
+    // applyRecord publishes synchronously; background refresh never delays confirmation.
+    void applyRecord(this.client, record).catch(() => {})
+  }
+
   /** Ends the attempt so the next save starts a new one. */
   discard(key: string) {
     this.update(key, { attempt: null, correction: null, form: undefined })
@@ -208,7 +226,8 @@ class DoseSaves {
   async submit(key: string, request: DoseSaveRequest) {
     const previous = this.entries.get(key)
     if (!this.active || previous?.pending || previous?.needsReview) return
-    const { dose, outcome, details, correction } = request
+    const { dose, command, correction } = request
+    const { outcome, ...details } = command
     const fingerprint = JSON.stringify({ outcome, details, dose: dose.id, correction })
     let attempt = previous?.attempt
     if (!attempt || attempt.fingerprint !== fingerprint) {
@@ -234,6 +253,7 @@ class DoseSaves {
     }
     const sent = attempt
     this.set(key, {
+      doseId: dose.id,
       attempt,
       correction,
       form: request.form,
@@ -244,18 +264,22 @@ class DoseSaves {
       error: '',
       needsReview: false,
     })
-    const effects = () => this.effects.get(key)
     const settle = (patch: Partial<DoseSave>) => {
       this.update(key, { pending: false, ...patch })
       this.notifyAway(key, dose)
     }
     const confirm = (record: DoseOutcomeRecord) => {
-      effects()?.onRecorded(record)
+      this.publish(dose.id, record)
       // A receipt completes only the attempt whose response/check it belongs to.
       if (this.entries.get(key)?.attempt?.id === sent.id) {
         this.set(key, undefined)
         this.finish(key)
       } else this.update(key, { pending: false })
+      const present = this.presentations.get(key) ?? request.onRecorded
+      present?.(
+        record,
+        (currentRecord(this.client, record)?.revision ?? 0) > (record.revision ?? 0),
+      )
     }
     try {
       const response = await fetch('/api/schedules', {
@@ -280,9 +304,8 @@ class DoseSaves {
         if (!this.active) return
         throw new Error('uncertain')
       } else if (response.status === 409) {
-        await effects()
-          ?.refresh()
-          .catch(() => false)
+        await this.checkRecorded(dose, request.today)
+        if (!this.active) return
         settle({
           attempt: null,
           correction: null,
@@ -304,11 +327,7 @@ class DoseSaves {
       }
     } catch {
       if (!this.active) return
-      const checkRecorded = effects()?.checkRecorded
-      const check: RecordCheck =
-        checkRecorded && navigator.onLine
-          ? await checkRecorded().catch((): RecordCheck => 'unknown')
-          : 'unknown'
+      const check = navigator.onLine ? await this.checkRecorded(dose, request.today) : 'unknown'
       if (!this.active) return
       const found = typeof check === 'object' ? check.record : null
       if (found && matchesDoseReceipt(found, sent)) {
@@ -391,10 +410,9 @@ class DoseSaves {
           })
         continue
       }
+      this.publish(save.doseId, found)
       this.set(key, undefined)
       this.finish(key)
-      // The read covered one view; the other view's cache shows the record too.
-      writeRecord(this.client, found)
       toast.add({
         title: reconciledConfirmation({ ...save.medicine, record: found, today: save.today() }),
         type: found.outcome === 'Taken' ? 'success' : 'skipped',
@@ -406,7 +424,7 @@ class DoseSaves {
     this.active = false
     this.stop()
     this.entries.clear()
-    this.effects.clear()
+    this.presentations.clear()
     this.version++
     this.listeners.forEach((listener) => listener())
     this.listeners.clear()

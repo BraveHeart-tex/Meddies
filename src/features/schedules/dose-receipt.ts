@@ -5,11 +5,13 @@ export type DoseAttempt = {
   id: string
   fingerprint: string
   method: 'PUT' | 'PATCH'
-  payload: Record<string, unknown> & {
-    scheduleId: string
-    dueAt: string
-    outcome: DoseOutcomeRecord['outcome']
-  }
+  payload: Readonly<
+    Record<string, unknown> & {
+      scheduleId: string
+      dueAt: string
+      outcome: DoseOutcomeRecord['outcome']
+    }
+  >
 }
 
 /** Receipt evidence is stricter than a matching outcome, including on a successful HTTP reply. */

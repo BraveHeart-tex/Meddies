@@ -32,8 +32,7 @@ const endedSession = () =>
 const dueAt = '2026-11-14T11:00:00.000Z' // 14:00 in Istanbul
 const doseRequest: DoseSaveRequest = {
   dose: { id: 'd', scheduleId: 's', dueAt } as unknown as DoseSaveRequest['dose'],
-  outcome: 'Skipped',
-  details: {},
+  command: { outcome: 'Skipped' },
   correction: null,
   medicine: { label: 'Omega-3', unit: 'capsule' },
   today: () => '2026-11-14',
@@ -170,6 +169,7 @@ test('an unconfirmed dose save names its dose, and reconciling it removes the wa
     http.get('/api/session', () =>
       HttpResponse.json({ id: 'google:test', expires: '2099-01-01T00:00:00Z' }),
     ),
+    http.get('/api/schedules', () => HttpResponse.error()),
     http.put('/api/schedules', () => HttpResponse.error()),
   )
   render(<AuthControl signedIn />)
@@ -179,7 +179,7 @@ test('an unconfirmed dose save names its dose, and reconciling it removes the wa
   expect(screen.getByRole('alert')).toHaveTextContent(
     "A dose save hasn't finished yet.If you sign out now, Meddies can't show whether Omega-3 14:00 was recorded",
   )
-  act(() => doses.set('s|due', undefined))
+  act(() => doses.reviewCurrent('s|due'))
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: 'Stay signed in' })).not.toBeInTheDocument(),
   )
@@ -187,13 +187,16 @@ test('an unconfirmed dose save names its dose, and reconciling it removes the wa
 })
 
 test('Stay signed in leaves an unconfirmed dose save reconciling', async () => {
-  server.use(http.put('/api/schedules', () => HttpResponse.error()))
+  server.use(
+    http.get('/api/schedules', () => HttpResponse.error()),
+    http.put('/api/schedules', () => HttpResponse.error()),
+  )
   render(<AuthControl signedIn />)
   const doses = doseSaves(client)
   await act(() => doses.submit('s|due', doseRequest))
   await userEvent.click(screen.getByRole('button', { name: 'Sign out' }))
   await userEvent.click(screen.getByRole('button', { name: 'Stay signed in' }))
-  expect(doses.entries.has('s|due')).toBe(true)
+  expect(doses.get('s|due')).toBeDefined()
   const record = { scheduleId: 's', dueAt, outcome: 'Skipped', revision: 0 }
   await act(async () => {
     client.setQueryData(scheduleKeys.snapshot(), {
@@ -204,7 +207,7 @@ test('Stay signed in leaves an unconfirmed dose save reconciling', async () => {
     })
     await new Promise((resolve) => setTimeout(resolve, 10))
   })
-  await waitFor(() => expect(doses.entries.has('s|due')).toBe(false))
+  await waitFor(() => expect(doses.get('s|due')).toBeUndefined())
 })
 
 test('several outstanding saves are all named', async () => {

@@ -9,10 +9,8 @@ import {
   type AttemptForm,
   type DoseSave,
   type PinnedCorrection,
-  type RecordCheck,
+  type DoseCommand,
 } from './dose-saves'
-
-type Outcome = DoseOutcomeRecord['outcome']
 
 /** The session's dose saves, re-rendering on every change. */
 export function useDoseSaves() {
@@ -28,10 +26,8 @@ export function useDoseSaves() {
 export function useDoseOutcomeMutation({
   dose,
   medicine,
-  refresh,
   onRecorded,
   onFinished,
-  checkRecorded,
   drawerOpen,
   today,
 }: {
@@ -40,23 +36,21 @@ export function useDoseOutcomeMutation({
   today: () => string
   dose: DoseOccurrence
   medicine: DoseSave['medicine']
-  refresh: () => Promise<boolean>
-  checkRecorded?: () => Promise<RecordCheck>
-  onRecorded: (record: DoseOutcomeRecord) => void
+  onRecorded: (record: DoseOutcomeRecord, superseded: boolean) => void
   onFinished: () => void
 }) {
   const store = useDoseSaves()
   const key = doseSaveKey(dose)
-  const save = store.entries.get(key)
+  const save = store.get(key)
   const pinnedCorrection = useRef<PinnedCorrection | null>(null)
 
   useLayoutEffect(() => {
-    store.effects.set(key, { refresh, checkRecorded, onRecorded })
+    store.present(key, onRecorded)
   })
   useEffect(() => store.observe(key), [store, key])
   useEffect(() => (drawerOpen ? store.openDrawer(key) : undefined), [store, key, drawerOpen])
   // Closes only for results that arrive while this mount watches, never on remount.
-  const finished = store.finished.get(key) ?? 0
+  const finished = store.completion(key)
   const seen = useRef(finished)
   const finish = useRef(onFinished)
   useLayoutEffect(() => {
@@ -73,18 +67,21 @@ export function useDoseOutcomeMutation({
   // An unconfirmed attempt keeps its problem until retried, reconciled or reviewed (D13).
   const uncertain = problem?.kind === 'uncertain' && !!save?.attempt
   return {
-    submit(outcome: Outcome, details: Record<string, unknown>, form?: AttemptForm) {
-      store.effects.set(key, { refresh, checkRecorded, onRecorded })
+    submit(command: DoseCommand, form?: AttemptForm) {
       return store.submit(key, {
         dose,
-        outcome,
-        details,
+        command,
+        onRecorded,
         form,
         medicine,
         today,
         // After a remount, an unconfirmed correction retries with its own preconditions.
         correction: pinnedCorrection.current ?? (uncertain ? (save?.correction ?? null) : null),
       })
+    },
+    async refresh() {
+      const check = await store.checkRecorded(dose, today)
+      return typeof check === 'object'
     },
     saving: save?.pending ?? false,
     error: save?.error ?? '',
@@ -94,19 +91,19 @@ export function useDoseOutcomeMutation({
     attempt: save?.attempt ? { outcome: save.attempt.payload.outcome, form: save.form } : null,
     clearFeedback() {
       if (uncertain) return
-      store.update(key, { error: '', problem: null, needsReview: false })
+      store.clearFeedback(key)
     },
     clearError() {
       if (uncertain) return
-      store.update(key, { error: '', problem: null })
+      store.clearError(key)
     },
     dismissReview() {
-      store.update(key, { needsReview: false })
+      store.dismissReview(key)
     },
     /** Explicit review ends recovery only after the user has seen the current outcome. */
     reviewCurrent() {
       pinnedCorrection.current = null
-      store.set(key, undefined)
+      store.reviewCurrent(key)
       onFinished()
     },
     pinCorrection(correction: PinnedCorrection | null) {
