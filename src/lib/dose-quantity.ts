@@ -3,6 +3,16 @@
 
 export type DoseUnit = 'tablet' | 'capsule'
 
+/** Positive half units must remain exact when represented as an integer count of halves. */
+export function isDoseQuantity(value: unknown): value is number {
+  return typeof value === 'number' && value > 0 && Number.isSafeInteger(value * 2)
+}
+
+/** Apply the owned medication's unit only after looking it up. */
+export function isQuantityForUnit(value: unknown, unit: DoseUnit): value is number {
+  return isDoseQuantity(value) && (unit === 'tablet' || Number.isInteger(value))
+}
+
 /** Step, minimum and new-row text per unit: tablets in halves, capsules whole (FE-647 D3). */
 export function quantityRule(unit: DoseUnit) {
   return unit === 'capsule'
@@ -56,10 +66,11 @@ export function stepQuantity(text: string, unit: DoseUnit, direction: 1 | -1): s
 export function quantityProblem(text: string, unit: DoseUnit): string | null {
   const value = parseQuantity(text)
   if (value === null) return 'Enter a quantity.'
-  const { step, min } = quantityRule(unit)
+  const { min } = quantityRule(unit)
   const tooSmall = unit === 'capsule' ? 'Use 1 capsule or more.' : 'Use ½ tablet or more.'
   if (Number.isNaN(value) || value === 0) return tooSmall
-  if (!Number.isInteger(value / step))
+  if (value * 2 > Number.MAX_SAFE_INTEGER) return 'Enter a smaller quantity.'
+  if (!isQuantityForUnit(value, unit))
     return unit === 'capsule' ? 'Use whole capsules.' : 'Use whole or half tablets.'
   if (value < min) return tooSmall
   return null

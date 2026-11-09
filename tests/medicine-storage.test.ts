@@ -143,6 +143,32 @@ test('daily schedules persist in D1 with owner checks, capsule quantities and sa
     () => operations.save({ ...input, times: [{ time: '09:00', quantity: 0.5 }] }),
     /validation/,
   )
+  // Exercise Worker decoding directly, independent of the Next.js contract adapter.
+  for (const [quantity, valid] of [
+    [4503599627370495, true],
+    [4503599627370495.5, false],
+    [4503599627370496, false],
+  ] as const) {
+    const boundaryCapsule = { ...capsule, id: randomUUID() }
+    const save = () =>
+      send({
+        operation: 'save',
+        ownerId: 'google:quantity-boundary',
+        schedule: {
+          ...input,
+          id: randomUUID(),
+          medicineId: boundaryCapsule.id,
+          times: [{ time: '09:00', quantity }],
+        },
+      })
+    await call({
+      operation: 'save',
+      ownerId: 'google:quantity-boundary',
+      medicine: boundaryCapsule,
+    })
+    if (valid) await save()
+    else await assert.rejects(save, /validation/)
+  }
   const saved = await Promise.all([operations.save(input), operations.save(input)])
   assert.deepEqual(saved[0], saved[1])
   assert.deepEqual((await operations.snapshot()).schedules, saved[0])

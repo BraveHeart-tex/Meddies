@@ -148,3 +148,28 @@ test('client-valid values are accepted by the server parser, and rejected ones a
       )
   }
 })
+
+test('inline quantities share the contract safe half-unit boundary', () => {
+  for (const [text, valid] of [
+    ['4503599627370495', true],
+    ['4503599627370495.5', true],
+    ['4503599627370496', false],
+    ['9007199254740991', false],
+  ] as const) {
+    const input = values({ times: [row('08:00', text)] })
+    assert.equal(
+      scheduleFormSchema({ unit: 'tablet', today }).safeParse(input).success,
+      valid,
+      text,
+    )
+    const parse = () =>
+      parseSchedule({
+        id,
+        medicineId,
+        ...input,
+        times: [{ time: '08:00', quantity: Number(text) }],
+      })
+    if (valid) assert.doesNotThrow(parse)
+    else assert.throws(parse)
+  }
+})

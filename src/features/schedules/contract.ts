@@ -1,3 +1,4 @@
+import { isDoseQuantity } from '../../lib/dose-quantity'
 import { ApplicationError } from '../../lib/application-error'
 import { ALL_WEEKDAYS } from './weekdays'
 
@@ -227,10 +228,6 @@ export function parseDoseOutcomeRecord(value: unknown): DoseOutcomeRecord {
     }
   }
   throw new ApplicationError('validation', 400)
-}
-
-function isDoseQuantity(value: unknown): value is number {
-  return typeof value === 'number' && value > 0 && Number.isSafeInteger(value * 2)
 }
 
 // Browser compatibility: omitted outcome means Taken; Skipped rejects extra fields.

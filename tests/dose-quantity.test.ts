@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { parseQuantity, quantityLabel, quantityRule, stepQuantity } from '../src/lib/dose-quantity'
+import {
+  parseQuantity,
+  quantityLabel,
+  quantityRule,
+  stepQuantity,
+  isDoseQuantity,
+  isQuantityForUnit,
+  quantityProblem,
+} from '../src/lib/dose-quantity'
 
 test('quantity text parses decimals and halves, and keeps blank apart from zero', () => {
   assert.equal(parseQuantity(''), null)
@@ -40,4 +48,18 @@ test('stepping from blank or invalid text starts at the minimum', () => {
   assert.equal(stepQuantity('1.2', 'tablet', 1), '1½')
   assert.equal(stepQuantity('1.2', 'tablet', -1), '1')
   assert.equal(stepQuantity('1.5', 'capsule', 1), '2')
+})
+
+test('numeric policy keeps safe halves and unit rules with useful text errors', () => {
+  for (const value of [null, '1', 0, -1, NaN, Infinity, 0.25, 4503599627370496])
+    assert.equal(isDoseQuantity(value), false)
+  assert.equal(isDoseQuantity(4503599627370495.5), true)
+  assert.equal(isQuantityForUnit(4503599627370495.5, 'capsule'), false)
+  assert.equal(isQuantityForUnit(4503599627370495, 'capsule'), true)
+  for (const text of ['1,5', '1½', '½']) assert.equal(quantityProblem(text, 'tablet'), null)
+  assert.equal(quantityProblem('', 'tablet'), 'Enter a quantity.')
+  assert.equal(quantityProblem('0', 'tablet'), 'Use ½ tablet or more.')
+  assert.equal(quantityProblem('0.25', 'tablet'), 'Use whole or half tablets.')
+  assert.equal(quantityProblem('4503599627370496', 'tablet'), 'Enter a smaller quantity.')
+  assert.equal(quantityProblem('4503599627370496', 'capsule'), 'Enter a smaller quantity.')
 })

@@ -97,3 +97,27 @@ test('defaults: Now for a first recording, the recorded minute for an edit', () 
     quantity: '½',
   })
 })
+
+test('inline quantities share the Taken contract safe half-unit boundary', () => {
+  for (const [text, valid] of [
+    ['4503599627370495', true],
+    ['4503599627370495.5', true],
+    ['4503599627370496', false],
+    ['9007199254740991', false],
+  ] as const) {
+    assert.equal(
+      takenFormSchema(options).safeParse(values({ quantity: text })).success,
+      valid,
+      text,
+    )
+    const parse = () =>
+      parseTakenDose({
+        scheduleId: '6e0b55ee-2e10-4e00-80f2-a736c2f50f95',
+        dueAt: '2035-06-15T05:00:00.000Z',
+        takenAt: '2035-06-15T11:00:00.000Z',
+        quantity: Number(text),
+      })
+    if (valid) assert.doesNotThrow(parse)
+    else assert.throws(parse)
+  }
+})

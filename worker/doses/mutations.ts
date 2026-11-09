@@ -7,6 +7,7 @@
 //   one conditional compare-and-append per correction. Keep those constraints installed.
 import { and, eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
+import { isQuantityForUnit } from '../../src/lib/dose-quantity'
 import { ApplicationError } from '../../src/lib/application-error'
 import type {
   DoseCorrectionInput,
@@ -34,10 +35,11 @@ export async function correctDoseOutcome(
   }
   const schedule = await getOccurrence(db, ownerId, correction.scheduleId)
   if (
+    !schedule ||
     !validOccurrence(schedule, correction, now) ||
     (correction.outcome === 'Taken' &&
       (Date.parse(correction.takenAt!) > now.getTime() ||
-        (schedule?.unit === 'capsule' && !Number.isInteger(correction.quantity))))
+        !isQuantityForUnit(correction.quantity, schedule.unit)))
   )
     throw new ApplicationError('validation', 400)
   const takenAt = correction.outcome === 'Taken' ? correction.takenAt : null
@@ -175,9 +177,10 @@ export async function recordTaken(
     if (await readSkipped()) throw new ApplicationError('conflict', 409)
     const schedule = await getOccurrence(db, ownerId, record.scheduleId)
     if (
+      !schedule ||
       !validOccurrence(schedule, record, now) ||
       Date.parse(record.takenAt) > now.getTime() ||
-      (schedule?.unit === 'capsule' && !Number.isInteger(record.quantity))
+      !isQuantityForUnit(record.quantity, schedule.unit)
     )
       throw new ApplicationError('validation', 400)
 

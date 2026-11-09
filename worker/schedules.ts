@@ -1,3 +1,4 @@
+import { isQuantityForUnit } from '../src/lib/dose-quantity'
 import { and, asc, eq } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import {
@@ -72,10 +73,7 @@ export async function saveSchedule(
     .from(userMedications)
     .where(and(eq(userMedications.ownerId, ownerId), eq(userMedications.id, schedule.medicineId)))
     .get()
-  if (
-    !medicine ||
-    (medicine.unit === 'capsule' && schedule.times.some((slot) => !Number.isInteger(slot.quantity)))
-  )
+  if (!medicine || schedule.times.some((slot) => !isQuantityForUnit(slot.quantity, medicine.unit)))
     throw new ApplicationError('validation', 400)
   const now = clock()
   if (schedule.startDate < istanbulDate(now)) throw new ApplicationError('validation', 400)
