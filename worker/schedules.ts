@@ -1,11 +1,12 @@
 import { isQuantityForUnit } from '../src/lib/dose-quantity'
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import {
   istanbulDate,
   type DailySchedule,
   type ScheduleResponses,
   type parseSchedule,
+  type ScheduleEditInput,
 } from '../src/features/schedules/contract'
 import { ApplicationError } from '../src/lib/application-error'
 import { dailySchedules, userMedications } from './schema'
@@ -20,6 +21,10 @@ const scheduleColumns = {
   weekdays: dailySchedules.weekdays,
   endDate: dailySchedules.endDate,
   intervalHours: dailySchedules.intervalHours,
+  replacedAt: sql<string | null>`(SELECT confirmed_at FROM daily_schedules successor
+    WHERE successor.owner_id = daily_schedules.owner_id AND successor.based_on_id = daily_schedules.id)`.as(
+    'replacedAt',
+  ),
 }
 
 async function listSchedules(db: DrizzleD1Database, ownerId: string): Promise<DailySchedule[]> {
@@ -90,4 +95,67 @@ export async function saveSchedule(
     .get()
   if (!saved || !matches(saved)) throw new ApplicationError('conflict', 409)
   return { schedules: [saved] }
+}
+
+// The unique predecessor key makes compare-and-append atomic. No existing version
+// or dose is mutated; the successor's confirmation time bounds the earlier version.
+export async function editSchedule(
+  db: DrizzleD1Database,
+  ownerId: string,
+  edit: ScheduleEditInput,
+  clock: () => Date,
+): Promise<ScheduleResponses['edit']> {
+  const request = JSON.stringify(edit)
+  const readSaved = () =>
+    db
+      .select({ ...scheduleColumns, editRequest: dailySchedules.editRequest })
+      .from(dailySchedules)
+      .where(and(eq(dailySchedules.ownerId, ownerId), eq(dailySchedules.id, edit.id)))
+      .get()
+  const replay = await readSaved()
+  if (replay) {
+    if (replay.editRequest !== request) throw new ApplicationError('conflict', 409)
+    const { editRequest: _, ...saved } = replay
+    return { schedules: [saved] }
+  }
+  const parent = await db
+    .select({ ...scheduleColumns, unit: userMedications.unit })
+    .from(dailySchedules)
+    .innerJoin(
+      userMedications,
+      and(
+        eq(userMedications.ownerId, dailySchedules.ownerId),
+        eq(userMedications.id, dailySchedules.medicineId),
+      ),
+    )
+    .where(and(eq(dailySchedules.ownerId, ownerId), eq(dailySchedules.id, edit.basedOnId)))
+    .get()
+  if (!parent) throw new ApplicationError('validation', 400)
+  if (parent.replacedAt) throw new ApplicationError('conflict', 409)
+  const now = clock()
+  const today = istanbulDate(now)
+  const interval = edit.intervalHours != null
+  if (
+    edit.times.some((slot) => !isQuantityForUnit(slot.quantity, parent.unit)) ||
+    (edit.anchorDate !== undefined && edit.anchorDate < today) ||
+    (interval && parent.intervalHours == null && !edit.anchorDate) ||
+    (interval &&
+      parent.intervalHours != null &&
+      !edit.anchorDate &&
+      edit.times[0].time !== parent.times[0].time)
+  )
+    throw new ApplicationError('validation', 400)
+  const startDate = interval ? (edit.anchorDate ?? parent.startDate) : today
+  await db.run(sql`
+    INSERT INTO daily_schedules (owner_id, id, medicine_id, start_date, times, confirmed_at,
+      weekdays, end_date, interval_hours, based_on_id, edit_request)
+    SELECT ${ownerId}, ${edit.id}, ${parent.medicineId}, ${startDate}, ${JSON.stringify(edit.times)},
+      ${now.toISOString()}, ${JSON.stringify(edit.weekdays)}, ${parent.endDate}, ${edit.intervalHours ?? null}, ${edit.basedOnId}, ${request}
+    WHERE NOT EXISTS (SELECT 1 FROM daily_schedules WHERE owner_id = ${ownerId} AND based_on_id = ${edit.basedOnId})
+    ON CONFLICT DO NOTHING
+  `)
+  const saved = await readSaved()
+  if (!saved || saved.editRequest !== request) throw new ApplicationError('conflict', 409)
+  const { editRequest: _, ...version } = saved
+  return { schedules: [version] }
 }

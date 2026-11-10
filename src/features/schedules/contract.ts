@@ -13,11 +13,24 @@ export type DailyScheduleInput = {
   intervalHours?: number | null
   endDate?: string | null
 }
-export type DailySchedule = DailyScheduleInput & { confirmedAt: string; weekdays: number[] }
+export type DailySchedule = DailyScheduleInput & {
+  confirmedAt: string
+  weekdays: number[]
+  replacedAt?: string | null
+}
+export type ScheduleEditInput = {
+  id: string
+  basedOnId: string
+  times: DailyScheduleInput['times']
+  weekdays?: number[]
+  intervalHours?: number | null
+  anchorDate?: string
+}
 export type ScheduleCommand =
   | { operation: 'list'; ownerId: string; date?: string }
   | { operation: 'listOutcomes'; ownerId: string; date: string }
   | { operation: 'save'; ownerId: string; schedule: DailyScheduleInput }
+  | { operation: 'edit'; ownerId: string; edit: ScheduleEditInput }
   | { operation: 'recordTaken'; ownerId: string; record: TakenDoseInput }
   | { operation: 'recordSkipped'; ownerId: string; record: SkippedDoseInput }
   | { operation: 'correctOutcome'; ownerId: string; correction: DoseCorrectionInput }
@@ -44,6 +57,7 @@ export type ScheduleResponses = {
   list: { schedules: DailySchedule[]; records?: DoseRecord[] }
   listOutcomes: { schedules: DailySchedule[]; records: DoseOutcomeRecord[] }
   save: { schedules: DailySchedule[] }
+  edit: { schedules: DailySchedule[] }
   recordTaken: { records: DoseRecord[] }
   recordSkipped: { records: SkippedDoseRecord[] }
   correctOutcome: { records: DoseOutcomeRecord[] }
@@ -131,6 +145,37 @@ export function parseSchedule(
     weekdays: intervalHours === null ? [...weekdays].sort((a, b) => a - b) : [...ALL_WEEKDAYS],
     endDate,
     intervalHours,
+  }
+}
+
+// Edits carry no start/end date or medicine identity. The server derives those
+// from the current version and confirmation time; anchorDate is Interval-only.
+export function parseScheduleEdit(value: unknown): ScheduleEditInput {
+  if (!value || typeof value !== 'object') throw new ApplicationError('validation', 400)
+  const input = value as Record<string, unknown>
+  if (
+    Object.keys(input).some(
+      (key) =>
+        !['id', 'basedOnId', 'times', 'weekdays', 'intervalHours', 'anchorDate'].includes(key),
+    ) ||
+    typeof input.basedOnId !== 'string' ||
+    !uuid.test(input.basedOnId) ||
+    (input.anchorDate !== undefined && !isScheduleDate(input.anchorDate))
+  )
+    throw new ApplicationError('validation', 400)
+  const parsed = parseSchedule({ ...input, medicineId: input.basedOnId, startDate: '2026-01-01' })
+  if (
+    parsed.id === input.basedOnId.toLowerCase() ||
+    (input.anchorDate !== undefined && parsed.intervalHours == null)
+  )
+    throw new ApplicationError('validation', 400)
+  return {
+    id: parsed.id,
+    basedOnId: input.basedOnId.toLowerCase(),
+    times: parsed.times,
+    weekdays: parsed.weekdays,
+    intervalHours: parsed.intervalHours,
+    ...(input.anchorDate === undefined ? {} : { anchorDate: input.anchorDate as string }),
   }
 }
 

@@ -2,6 +2,7 @@ import { parseMedicine, type MedicineCommand } from '../src/features/medicines/c
 import {
   isScheduleDate,
   parseSchedule,
+  parseScheduleEdit,
   parseTakenDose,
   parseSkippedDose,
   parseDoseCorrection,
@@ -54,6 +55,8 @@ export function decodeCommand(path: '/medicines' | '/schedules', value: unknown)
         path,
         command: { operation: 'save', ownerId, schedule: parseSchedule(input.schedule) },
       }
+    case 'edit':
+      return { path, command: { operation: 'edit', ownerId, edit: parseScheduleEdit(input.edit) } }
     case 'recordTaken':
       return {
         path,

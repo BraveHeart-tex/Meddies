@@ -85,10 +85,11 @@ export const scheduleSnapshotQuery = () =>
 export function toScheduleSnapshot(data: {
   schedules: DailySchedule[]
   records: DoseOutcomeRecord[]
+  earlierSchedules?: DailySchedule[]
   today: Pick<Today, 'now' | 'date'>
 }): ScheduleSnapshot {
   return {
-    schedules: data.schedules,
+    schedules: [...data.schedules, ...(data.earlierSchedules ?? [])],
     records: data.records,
     now: data.today.now,
     date: data.today.date,
@@ -110,7 +111,7 @@ export function useScheduleSnapshot({ serverEntry = false }: { serverEntry?: boo
   const loadError = !hasSnapshot && read.isError && !read.isFetching
   return {
     snapshot: read.data,
-    schedules: read.data?.schedules ?? [],
+    schedules: read.data?.schedules.filter((schedule) => !schedule.replacedAt) ?? [],
     loading: !hasSnapshot && !loadError,
     loadError,
     /** A refresh failed; the cached snapshot stays on screen. */

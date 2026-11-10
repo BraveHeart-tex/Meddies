@@ -1,14 +1,18 @@
 import { dehydrate, QueryClientProvider } from '@tanstack/react-query'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { PrivateQueryHandoff } from '@/lib/private-query-handoff'
 import { expect, test } from 'vitest'
 import {
   applyRecord,
+  useScheduleSnapshot,
+  toScheduleSnapshot,
   historyDayQuery,
   readFreshSnapshot,
   scheduleKeys,
   type ScheduleSnapshot,
 } from '../src/features/schedules/queries'
+import { scheduleToday } from '../src/features/schedules/occurrences'
+import { parseSchedule } from '../src/features/schedules/contract'
 import type { DoseOccurrence, DoseOutcomeRecord } from '../src/features/schedules/contract'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { http, HttpResponse } from 'msw'
@@ -149,3 +153,56 @@ for (const [screen, key, data] of [
     incoming.clear()
   })
 }
+
+test('Today cache retains earlier-version doses while the medication list exposes only the current schedule', () => {
+  const earlier = {
+    ...parseSchedule({
+      id: original.scheduleId,
+      medicineId: '00000000-0000-4000-8000-000000000002',
+      startDate: '2026-11-03',
+      times: [{ time: '10:00', quantity: 1 }],
+    }),
+    confirmedAt: '2026-11-03T04:00:00.000Z',
+    replacedAt: '2026-11-03T06:00:00.000Z',
+  }
+  const current = {
+    ...earlier,
+    id: '00000000-0000-4000-8000-000000000003',
+    times: [{ time: '11:00', quantity: 1 }],
+    confirmedAt: earlier.replacedAt,
+    replacedAt: null,
+  }
+  const snapshot = toScheduleSnapshot({
+    schedules: [current],
+    earlierSchedules: [earlier],
+    records: [
+      {
+        scheduleId: earlier.id,
+        dueAt: '2026-11-03T07:00:00.000Z',
+        outcome: 'Taken',
+        takenAt: '2026-11-03T05:30:00.000Z',
+        quantity: 1,
+      },
+    ],
+    today: { now: earlier.replacedAt, date: '2026-11-03' },
+  })
+  const client = createQueryClient()
+  client.setQueryData(scheduleKeys.snapshot(), snapshot)
+  function Consumer() {
+    const { schedules, snapshot } = useScheduleSnapshot({ serverEntry: true })
+    const today = scheduleToday(snapshot!.schedules, new Date(snapshot!.now), snapshot!.records)
+    return (
+      <>
+        <p>Current: {schedules.map((s) => s.id).join(',')}</p>
+        <p>Doses: {today.doses.map((d) => d.status).join(',')}</p>
+      </>
+    )
+  }
+  render(
+    <QueryClientProvider client={client}>
+      <Consumer />
+    </QueryClientProvider>,
+  )
+  expect(screen.getByText(`Current: ${current.id}`)).toBeInTheDocument()
+  expect(screen.getByText('Doses: Taken,Upcoming')).toBeInTheDocument()
+})

@@ -7,7 +7,7 @@ import {
   scheduleRunsOn,
 } from './contract'
 
-// Immutable initial schedule versions are the source of occurrence identities.
+// Immutable Schedule versions are the source of occurrence identities.
 // Generation is bounded to Today and the next configured date, never a growing backlog.
 export function scheduledInstant(date: string, time: string) {
   // Istanbul uses UTC+03:00 for the supported schedule dates.
@@ -47,6 +47,7 @@ function occurrenceFor(
   if (dueAt <= schedule.confirmedAt) return null
   const id = `${schedule.id}:${dueAt}`
   const record = outcomes.get(id)
+  if (schedule.replacedAt && dueAt > schedule.replacedAt && !record) return null
   const base = {
     id,
     scheduleId: schedule.id,

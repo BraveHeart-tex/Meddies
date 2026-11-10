@@ -6,6 +6,7 @@ import {
   foreignKey,
   real,
   index,
+  uniqueIndex,
   check,
   integer,
 } from 'drizzle-orm/sqlite-core'
@@ -38,10 +39,15 @@ export const dailySchedules = sqliteTable(
       .default([0, 1, 2, 3, 4, 5, 6]),
     endDate: text('end_date'),
     intervalHours: integer('interval_hours'),
+    basedOnId: text('based_on_id'),
+    editRequest: text('edit_request'),
   },
   (table) => [
     primaryKey({ columns: [table.ownerId, table.id] }),
-    unique().on(table.ownerId, table.medicineId),
+    unique().on(table.ownerId, table.basedOnId),
+    uniqueIndex('daily_schedules_initial')
+      .on(table.ownerId, table.medicineId)
+      .where(sql`${table.basedOnId} IS NULL`),
     foreignKey({
       columns: [table.ownerId, table.medicineId],
       foreignColumns: [userMedications.ownerId, userMedications.id],

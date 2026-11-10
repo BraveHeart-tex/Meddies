@@ -229,3 +229,68 @@ test('schedule gateway preserves Interval hours and normalizes legacy Clock sche
     null,
   )
 })
+
+test('schedule edit HTTP boundary authenticates, guards requests and decodes version metadata', async () => {
+  const { POST } = await import('../src/app/api/schedules/edit/route')
+  const id = '10000000-0000-4000-8000-000000000003'
+  const basedOnId = '10000000-0000-4000-8000-000000000001'
+  const edit = { id, basedOnId, times: [{ time: '10:00', quantity: 1 }] }
+  const schedule = {
+    id,
+    medicineId: '10000000-0000-4000-8000-000000000002',
+    startDate: '2026-11-03',
+    times: edit.times,
+    confirmedAt: '2026-11-03T06:00:00.000Z',
+    replacedAt: null,
+  }
+  let calls = 0
+  globalThis.fetch = async (_url, options) => {
+    calls++
+    const command = JSON.parse(options!.body as string)
+    assert.equal(command.ownerId, 'google:test')
+    assert.equal(command.operation, 'edit')
+    assert.equal(command.edit.basedOnId, basedOnId)
+    return Response.json({ schedules: [schedule] })
+  }
+  const post = (
+    body: unknown,
+    headers: HeadersInit = { origin: 'https://meddies.test', 'content-type': 'application/json' },
+  ) =>
+    POST(
+      new Request('https://meddies.test/api/schedules/edit', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      }),
+    )
+  assert.equal((await post(edit, {})).status, 403)
+  setAuthenticated(false)
+  try {
+    assert.equal((await post(edit)).status, 401)
+  } finally {
+    setAuthenticated(true)
+  }
+  assert.equal(calls, 0)
+  const response = await post(edit)
+  assert.equal(response.status, 200)
+  assert.equal(response.headers.get('cache-control'), 'no-store')
+  const saved = await response.json()
+  assert.equal(saved.schedules[0].id, id)
+  assert.equal(saved.schedules[0].replacedAt, null)
+  globalThis.fetch = async () => new Response('{}', { status: 409 })
+  assert.equal((await post(edit)).status, 409)
+  globalThis.fetch = async () =>
+    Response.json({ schedules: [{ ...schedule, replacedAt: 'invalid' }] })
+  assert.equal((await post(edit)).status, 503)
+  globalThis.fetch = async () =>
+    Response.json({
+      schedules: [{ ...schedule, replacedAt: '2026-11-04T06:00:00.000Z' }],
+      records: [],
+    })
+  const decoded = await scheduleSend({
+    operation: 'listOutcomes',
+    ownerId: 'google:test',
+    date: '2026-11-03',
+  })
+  assert.equal(decoded.schedules[0].replacedAt, '2026-11-04T06:00:00.000Z')
+})

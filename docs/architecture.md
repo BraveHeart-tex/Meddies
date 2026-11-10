@@ -73,7 +73,15 @@ owner.
   with the same retry and conflict behavior. Start dates use Europe/Istanbul and must be
   today or later on first save. Only times strictly after server confirmation produce
   occurrences, and a retry keeps that cutoff across midnight. Schedule-edit work keeps old
-  versions and their occurrence identities.
+  versions and their occurrence identities. `POST /api/schedules/edit` accepts a new version
+  `id` (also the attempt ID), `basedOnId`, `times`, `weekdays` and `intervalHours`.
+  `anchorDate` is required when switching Clock to Interval; omitting it on an Interval
+  edit retains the Anchor date and requires the same Anchor time. Edits accept no start
+  or end date. The Worker derives the medicine and Edit time, and appends one successor
+  atomically. Migration 0008 retains all schedule/outcome IDs while replacing the original
+  uniqueness rule with one initial version per medicine and one successor per version.
+  Snapshots list current schedules separately from `earlierSchedules`; the Query cache
+  combines both for Today projection and filters earlier versions from medication lists.
 - **Occurrences:** identity is the immutable schedule UUID plus its UTC due instant, so
   reloads and device travel leave it unchanged. Clock conversion uses Istanbul's UTC+03:00
   rules, never the device timezone.

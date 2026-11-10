@@ -2,7 +2,7 @@ import { drizzle } from 'drizzle-orm/d1'
 import { decodeCommand } from './commands'
 import { authenticateService, commandPath, failure, json, readJsonRequest } from './http'
 import { listMedicines, saveMedicine } from './medicines'
-import { listLegacySnapshot, listOutcomeSnapshot, saveSchedule } from './schedules'
+import { listLegacySnapshot, listOutcomeSnapshot, saveSchedule, editSchedule } from './schedules'
 import { correctDoseOutcome, recordSkipped, recordTaken } from './doses/mutations'
 
 type Env = { DB: D1Database; MEDICINES_WORKER_SECRET: string }
@@ -33,6 +33,8 @@ export function createWorker(clock: () => Date = () => new Date()) {
             return json(await listOutcomeSnapshot(db, command.ownerId, command.date))
           case 'save':
             return json(await saveSchedule(db, command.ownerId, command.schedule, clock))
+          case 'edit':
+            return json(await editSchedule(db, command.ownerId, command.edit, clock))
           case 'recordTaken':
             return json({
               records: [await recordTaken(db, command.ownerId, command.record, clock())],

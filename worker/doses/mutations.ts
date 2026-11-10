@@ -4,7 +4,8 @@
 // - Original Taken/Skipped rows are immutable; initial writes reject corrected occurrences.
 // - Races are arbitrated by the database, not preflight reads: migration 0004's
 //   cross-outcome triggers, 0005's unique occurrence/revision and owner/action keys, and
-//   one conditional compare-and-append per correction. Keep those constraints installed.
+//   one conditional compare-and-append per correction. Migration 0008 retains those
+//   constraints and rejects new outcomes on replaced doses at insertion time.
 import { and, eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import { isQuantityForUnit } from '../../src/lib/dose-quantity'
@@ -33,7 +34,7 @@ export async function correctDoseOutcome(
     if (!sameCorrection(prior, correction)) throw new ApplicationError('conflict', 409)
     return correctionRecord(prior)
   }
-  const schedule = await getOccurrence(db, ownerId, correction.scheduleId)
+  const schedule = await getOccurrence(db, ownerId, correction.scheduleId, correction.dueAt)
   if (
     !schedule ||
     !validOccurrence(schedule, correction, now) ||
@@ -175,7 +176,7 @@ export async function recordTaken(
   let saved = await readTaken()
   if (!saved) {
     if (await readSkipped()) throw new ApplicationError('conflict', 409)
-    const schedule = await getOccurrence(db, ownerId, record.scheduleId)
+    const schedule = await getOccurrence(db, ownerId, record.scheduleId, record.dueAt)
     if (
       !schedule ||
       !validOccurrence(schedule, record, now) ||
@@ -184,7 +185,7 @@ export async function recordTaken(
     )
       throw new ApplicationError('validation', 400)
 
-    // Migration 0004's cross-outcome triggers RAISE(IGNORE) when Skipped wins.
+    // Cross-outcome and Schedule version triggers RAISE(IGNORE) when a competing write wins.
     // Re-read below reconciles that race and identical concurrent Taken retries.
     await db
       .insert(doseRecords)
@@ -230,10 +231,10 @@ export async function recordSkipped(
   let saved = await readSkipped()
   if (!saved) {
     if (await readTaken()) throw new ApplicationError('conflict', 409)
-    const schedule = await getOccurrence(db, ownerId, record.scheduleId)
+    const schedule = await getOccurrence(db, ownerId, record.scheduleId, record.dueAt)
     if (!validOccurrence(schedule, record, now)) throw new ApplicationError('validation', 400)
 
-    // Migration 0004's cross-outcome triggers RAISE(IGNORE) when Taken wins.
+    // Cross-outcome and Schedule version triggers RAISE(IGNORE) when a competing write wins.
     // Re-read below distinguishes an identical retry from the opposite outcome.
     await db
       .insert(skippedDoseRecords)
@@ -247,10 +248,7 @@ export async function recordSkipped(
       })
     saved = await readSkipped()
   }
-  if (!saved) {
-    if (await readTaken()) throw new ApplicationError('conflict', 409)
-    throw new ApplicationError('unavailable', 503)
-  }
+  if (!saved) throw new ApplicationError('conflict', 409)
   return {
     scheduleId: saved.scheduleId,
     dueAt: saved.dueAt,

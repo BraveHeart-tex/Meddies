@@ -3,6 +3,7 @@ import {
   istanbulDate,
   isScheduleDate,
   parseSchedule,
+  parseScheduleEdit,
   parseDoseOutcome,
   parseDoseCorrection,
   parseSkippedDose,
@@ -22,6 +23,18 @@ export function createScheduleOperations(dependencies: {
       const schedule = parseSchedule(input)
       const response = await dependencies.send({ operation: 'save', ownerId: user.id, schedule })
       if (!response.schedules) throw new ApplicationError('unavailable', 503)
+      return response.schedules
+    },
+    async edit(input: unknown) {
+      const user = await dependencies.requireUser()
+      const edit = parseScheduleEdit(input)
+      const response = await dependencies.send({ operation: 'edit', ownerId: user.id, edit })
+      if (
+        !response.schedules ||
+        response.schedules.length !== 1 ||
+        response.schedules[0].id !== edit.id
+      )
+        throw new ApplicationError('unavailable', 503)
       return response.schedules
     },
     async recordOutcome(input: unknown) {
@@ -99,7 +112,12 @@ export function createScheduleOperations(dependencies: {
         date: istanbulDate(now),
       })
       if (!schedules || !records) throw new ApplicationError('unavailable', 503)
-      return { schedules, records, today: scheduleToday(schedules, now, records) }
+      return {
+        schedules: schedules.filter((schedule) => !schedule.replacedAt),
+        earlierSchedules: schedules.filter((schedule) => schedule.replacedAt),
+        records,
+        today: scheduleToday(schedules, now, records),
+      }
     },
     async history(date: unknown) {
       const user = await dependencies.requireUser()
