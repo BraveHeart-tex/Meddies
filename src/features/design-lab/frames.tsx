@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import Loading from '@/app/loading'
 import { editFrames } from './edit-frames'
 import { intervalFrames } from './interval-frames'
+import { lastDayFrames } from './last-day-frames'
 import { ScannerFrame } from './scanner-frame'
 
 export type DesignFrame = {
@@ -26,4 +27,5 @@ export const designFrames = [
   },
   ...intervalFrames,
   ...editFrames,
+  ...lastDayFrames,
 ] satisfies readonly DesignFrame[]

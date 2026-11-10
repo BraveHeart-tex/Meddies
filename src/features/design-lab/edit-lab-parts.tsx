@@ -83,10 +83,13 @@ export function ClockEditFields({
   value,
   onChange,
   disabled = false,
+  afterDays,
 }: {
   value: ClockValues
   onChange: (next: ClockValues) => void
   disabled?: boolean
+  /** Fields between Days and the times, such as setup's Start date. */
+  afterDays?: ReactNode
 }) {
   const form = useForm<ScheduleFormValues, unknown, ScheduleFormOutput>({
     defaultValues: { startDate: TODAY, weekdays: value.weekdays, times: value.times },
@@ -142,6 +145,7 @@ export function ClockEditFields({
           </Field>
         )}
       />
+      {afterDays}
       <FieldDescription id="quantity-help">
         Quantity is how much you take each time, not the strength on the pack.
       </FieldDescription>
