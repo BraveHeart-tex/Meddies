@@ -122,6 +122,10 @@ export const medicationFallback = (page: Page) =>
 export const medicationSetupFallback = (page: Page) =>
   page.getByRole('status').filter({ hasText: /^Loading schedule setup$/ })
 
+/** Any loading fallback's status, such as `Loading medications`. */
+export const loadingStatus = (page: Page) =>
+  page.getByRole('status').filter({ hasText: /^Loading/ })
+
 /** The loaded Medications list section. */
 export const medicationsList = (page: Page) =>
   page.getByRole('region', { name: 'Your medications' })

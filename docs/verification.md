@@ -17,6 +17,14 @@ never trigger a fallback build. Verify skips the build's repeat typecheck after 
 typecheck passes; journey builds keep it. Both wrappers reuse only builds with unchanged
 inputs and a matching success marker written after completion. Hand-run `pnpm build` has
 no marker and must be rebuilt by a wrapper. CI always builds.
+
+While iterating, run the unit and component tests that import the changed files, rather
+than a guessed list; `pnpm verify:local` stays the done gate:
+
+```sh
+pnpm test:related src/features/schedules/schedule-setup-form.tsx
+```
+
 Test commands: [tests/README.md](../tests/README.md).
 
 ## CI jobs
@@ -112,8 +120,17 @@ covers every journey that runs in CI; on-request `@visual` journeys sit outside 
 
 For meaningful UI changes (visible content, layout, typography, controls, feedback or
 motion), inspect the affected screens at 402×874 CSS px, including loading, empty,
-populated, validation, saving and recovery states where the change affects them. Add
-focused checks by risk:
+populated, validation, saving and recovery states where the change affects them. Capture
+signed-in Today and Medications screens at 402×874 against a fresh build, seeded with one
+scheduled medicine; the run fails on horizontal overflow
+([paths and seeded IDs](../tests/browser/README.md#screen-captures)). Lab frames use
+`pnpm lab:capture <slug-prefix>` instead.
+
+```sh
+MEDDIES_VISUAL_OUT=/tmp/meddies-screens MEDDIES_SCREENS=/,/medications pnpm test:browser:visual screen-capture
+```
+
+Add focused checks by risk:
 
 - **320px:** widths, spacing, wrapping, responsive layout, navigation, drawers, popups or
   action placement. Include long names where they stress the layout.

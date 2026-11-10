@@ -12,9 +12,9 @@ export async function insertScheduledMedicine(
     startDate,
     times,
     scheduleId = randomUUID(),
-  }: { label: string; startDate: string; times: Slot[]; scheduleId?: string },
+    medicineId = randomUUID(),
+  }: { label: string; startDate: string; times: Slot[]; scheduleId?: string; medicineId?: string },
 ) {
-  const medicineId = randomUUID()
   await db
     .prepare('INSERT INTO user_medications(owner_id,id,label,strength,unit) VALUES(?,?,?,?,?)')
     .bind(ownerId, medicineId, label, '10 mg', 'tablet')

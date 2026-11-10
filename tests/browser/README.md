@@ -137,7 +137,7 @@ follow the [viewport rule](../../docs/verification.md#writing-a-journey). Limits
 ## Loading captures
 
 Visual journeys are tagged `@visual` and run only through `pnpm test:browser:visual`:
-`history-spacing`, `cozy-visual` and `loading-capture`.
+`history-spacing`, `cozy-visual`, `loading-capture` and `screen-capture`.
 
 [`capture.ts`](capture.ts) produces opt-in review artifacts, never a CI baseline.
 `loading-capture.spec.ts` registers routes (name, path, fallback and content locators). The
@@ -154,6 +154,17 @@ a typed `CaptureCase[]` for a specific risk. Omitting `MEDDIES_CAPTURE_ROUTES` s
 registered routes; unknown or empty selections fail. Viewport resizing is not text
 enlargement or zoom. A route that loads in the client uses its client loading status as
 the fallback.
+
+## Screen captures
+
+`screen-capture.spec.ts` signs in, seeds one medicine (`…0d0001`) with a daily 08:00
+schedule (`…0d0002`) at 09:00 on 15 June 2035, and screenshots each path in
+`MEDDIES_SCREENS` at 402x874 once loading fallbacks are gone. Paths must be Today (`/`) or
+Medications (`/medications…`); the run fails on horizontal overflow.
+
+```sh
+MEDDIES_VISUAL_OUT=/tmp/meddies-screens MEDDIES_SCREENS='/,/medications,/medications?medicine=00000000-0000-4000-8000-0000000d0001' pnpm test:browser:visual screen-capture
+```
 
 `cozy-visual` saves design-review screenshots at the running project's viewport; set
 `MEDDIES_VISUAL_OUT` to keep them outside `.browser-artifacts/`.

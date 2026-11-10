@@ -47,9 +47,9 @@ Medicine Add, schedule setup and the dose drawer keep raw editing values in an i
 store scoped to the session Query client, keyed by form and medicine ID. A schedule change
 is keyed by the Schedule version it edits, so a newer version opens without an older draft.
 
-- Returning restores values through React Hook Form `reset`, with "Unsaved details from
-  earlier." and a ghost "Clear form". The dose drawer reopens itself with its chosen
-  outcome and Taken values; explicit dismissal is its Clear form. Add's Drawer works the same way:
+- Returning restores values through React Hook Form `reset`, with the
+  `saveMessages.draftRestored` notice and a ghost "Clear form". The dose drawer reopens
+  itself with its chosen outcome and Taken values; explicit dismissal is its Clear form. Add's Drawer works the same way:
   swipe, Close, backdrop and Escape are its Clear form and also drop a failed save.
 - A confirmed save or Clear form discards the draft; Clear form also resets defaults.
   Navigation, refresh and clock rollover keep it.

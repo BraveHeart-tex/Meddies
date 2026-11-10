@@ -2,7 +2,20 @@ import { render, screen } from '@testing-library/react'
 import { expect, test, vi } from 'vitest'
 import { designFrames } from '../src/features/design-lab/frames'
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/lab/649-l1' }))
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/lab/649-l1',
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), refresh: vi.fn() }),
+}))
+
+// Every registered frame renders in jsdom, so a frame needing a browser API jsdom lacks fails
+// in the design ticket that adds it, not in the build ticket that reuses its parts.
+test.each(designFrames.map((frame) => [frame.citation, frame] as const))(
+  '%s renders',
+  (_citation, frame) => {
+    render(frame.render())
+    expect(document.body).not.toBeEmptyDOMElement()
+  },
+)
 
 test('649·L1 renders the cold launch with one status and the real navigation', () => {
   const frame = designFrames.find((entry) => entry.slug === '649-l1')!
