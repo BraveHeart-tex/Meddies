@@ -41,20 +41,24 @@ production build, Worker build and every non-`@visual` journey
 `scripts/verify.mjs` is the local and manual-recovery path.
 
 `.github/workflows/release.yml` runs on `main` pushes or manual dispatch on `main`.
-Pushes changing only `docs/` files or `*.md` files at any depth start no Release run.
-Manual dispatch on main still runs, including for a docs-only commit.
+Pushes changing only `docs/**`, `**/*.md` or `.agents/skills/meddies-design/**`
+start no Release run. The design skill is a reference export: no application or Worker
+imports it; TypeScript and Vitest input lists exclude it, production CSS explicitly
+excludes it from Tailwind scanning, and ESLint and Prettier explicitly ignore it. Other `.agents` scripts
+remain CI inputs. Tests pin the workflow patterns and prove release-guard parity.
+Manual dispatch on main still runs, including for a non-runtime-only commit.
 It calls the single Verify job for the event SHA, then enters the `production` environment.
-Before dependency setup, Verify checks current main using the release guard's docs-only
-rule. A SHA superseded by any non-docs commit succeeds early without journeys, and its
-release job is skipped. Head and docs-only advances proceed; lookup or history errors fail
+Before dependency setup, Verify checks current main using the release guard's non-runtime-only
+rule. A SHA superseded by any runtime commit succeeds early without journeys, and its
+release job is skipped. Head and non-runtime-only advances proceed; lookup or history errors fail
 closed. The release job directly requires Verify success and its eligible output.
 A newer push cancels an in-progress Verify, and the newer Verify starts without waiting.
 A separate non-canceling concurrency group on the release job covers every mutation:
 
 1. Before any mutation, require the release SHA to be an ancestor of current main.
    Allow newer main commits only when every intervening commit changes solely `docs/`
-   files or `*.md` files. Any non-docs change (even if later reverted), missing history
-   or comparison failure rejects the release.
+   files, `*.md` files or `.agents/skills/meddies-design/` files. Any runtime change
+   (even if later reverted), missing history or comparison failure rejects the release.
 2. Apply pending remote D1 migrations with Wrangler's migration ledger.
 3. Deploy that SHA's Worker, tagged with the SHA.
 4. Deploy that checkout to Vercel Production with `githubCommitSha` metadata.
@@ -142,9 +146,9 @@ Prefer **Re-run all jobs** on the failed run while its SHA is still main's head.
 This repeats verification and the entire ordered sequence for the same checkout.
 Wrangler skips applied migrations, including releases with no pending migrations.
 Do not use **Re-run failed jobs** as the normal recovery path since it skips checks.
-If main has advanced with non-docs changes, release the latest reviewed main commit
+If main has advanced with runtime changes, release the latest reviewed main commit
 instead; stale reruns are rejected before mutation and would cancel the newer Verify,
-so do not start them. Docs-only advances remain eligible under the guard above.
+so do not start them. Non-runtime-only advances remain eligible under the guard above.
 Dispatch Release on main to recover a skipped run.
 
 For manual recovery, coordinate with maintainers so no Actions release is active

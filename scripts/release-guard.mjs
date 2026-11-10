@@ -24,8 +24,15 @@ try {
     )
       .split('\0')
       .filter(Boolean)
-    if (paths.some((path) => !path.startsWith('docs/') && !path.endsWith('.md'))) {
-      if (mode !== '--early') throw new Error(`Non-docs changes in ${commit}`)
+    if (
+      paths.some(
+        (path) =>
+          !path.startsWith('docs/') &&
+          !path.endsWith('.md') &&
+          !path.startsWith('.agents/skills/meddies-design/'),
+      )
+    ) {
+      if (mode !== '--early') throw new Error(`Runtime changes in ${commit}`)
       eligible = false
       break
     }
@@ -37,7 +44,7 @@ try {
     )
   } else
     console.log(
-      `Release ${released} allowed at main ${current}: only docs changed since release SHA.`,
+      `Release ${released} allowed at main ${current}: only non-runtime files changed since release SHA.`,
     )
 } catch (error) {
   console.error(`Release refused: ${error.message}`)

@@ -30,9 +30,9 @@ Test commands: [tests/README.md](../tests/README.md).
 ## CI jobs
 
 The Verify workflow runs one job, also called by Release before production mutations.
-It checks release eligibility before dependency setup: head and docs-only advances proceed;
-a SHA superseded by any non-docs commit succeeds without running the remaining steps, and
-Release skips production. Unknown or unrelated history fails closed. The same docs-only
+It checks release eligibility before dependency setup: head and non-runtime-only advances proceed;
+a SHA superseded by any runtime commit succeeds without running the remaining steps, and
+Release skips production. Unknown or unrelated history fails closed. The same non-runtime-only
 rule guards production mutations.
 
 The job sets up dependencies once, then runs lint, format check, typecheck, production

@@ -1,7 +1,9 @@
 import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { resolve, join } from 'node:path'
+import { resolve, join, matchesGlob, relative } from 'node:path'
+import postcss, { type AcceptedPlugin } from 'postcss'
+import tailwind from '@tailwindcss/postcss'
 import { afterEach, expect, test } from 'vitest'
 
 const script = resolve('scripts/release-guard.mjs')
@@ -77,10 +79,72 @@ test('early check verifies head and docs-only advances, but skips superseded cod
     return readFileSync(output, 'utf8')
   }
   expect(check()).toBe('eligible=true\n')
+  commit('.agents/skills/meddies-design/tokens/colors.css')
+  expect(check()).toBe('eligible=true\n')
   commit('docs/setup.txt')
   expect(check()).toBe('eligible=true\n')
   commit('app.ts', 'new code')
   expect(check()).toBe('eligible=false\n')
   commit('app.ts', 'content')
   expect(check()).toBe('eligible=false\n')
+})
+
+// These are the complete push exclusions, not a sample: additions must prove guard parity.
+const ignoredPaths = ['docs/**', '**/*.md', '.agents/skills/meddies-design/**']
+
+test('Release push exclusions match the audited non-runtime paths', () => {
+  const workflow = readFileSync(resolve('.github/workflows/release.yml'), 'utf8')
+  const block = workflow.match(/    paths-ignore:\n((?:      - .*\n)+)/)?.[1]
+  expect(
+    block
+      ?.trim()
+      .split('\n')
+      .map((line) => line.trim().slice(2).replace(/^'|'$/g, '')),
+  ).toEqual(ignoredPaths)
+})
+
+test.each<[string, boolean]>([
+  ['docs/design/frame.html', true],
+  ['README.md', true],
+  ['nested/notes.md', true],
+  ['.agents/skills/meddies-design/tokens/colors.css', true],
+  ['.agents/skills/meddies-design/components/DoseCard.jsx', true],
+  ['.agents/skills/meddies-design/assets/font.woff2', true],
+  ['.agents/skills/design-ticket/embed-captures.mjs', false],
+  ['.agents/skills/meddies-design-extra/code.js', false],
+  ['src/app.ts', false],
+  ['worker/http.ts', false],
+  ['tests/browser/example.spec.ts', false],
+  ['scripts/release-guard.mjs', false],
+  ['.github/workflows/release.yml', false],
+  ['package.json', false],
+])('push filter and guard agree for %s', (path, nonRuntime) => {
+  expect(ignoredPaths.some((pattern) => matchesGlob(path, pattern))).toBe(nonRuntime)
+  const { commit, guard } = history()
+  commit(path)
+  expect(guard()).toBe(nonRuntime ? 0 : 1)
+})
+
+test('runtime changes beside a design reference still require a release', () => {
+  const { commit, guard, git } = history()
+  const cwd = git('rev-parse', '--show-toplevel')
+  mkdirSync(join(cwd, '.agents/skills/meddies-design'), { recursive: true })
+  writeFileSync(join(cwd, '.agents/skills/meddies-design/reference.css'), 'reference')
+  commit('app.ts', 'runtime change')
+  expect(guard()).toBe(1)
+})
+
+test('production CSS does not read skipped design references', async () => {
+  // Tailwind pins older PostCSS types; the production plugin API is compatible.
+  const result = await postcss([tailwind() as unknown as AcceptedPlugin]).process(
+    readFileSync('src/global.css', 'utf8'),
+    {
+      from: 'src/global.css',
+    },
+  )
+  const references = result.messages
+    .filter((message) => message.type === 'dependency' && typeof message.file === 'string')
+    .map((message) => relative(process.cwd(), message.file as string))
+    .filter((path) => path.startsWith('.agents/skills/meddies-design/'))
+  expect(references).toEqual([])
 })

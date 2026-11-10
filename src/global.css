@@ -2,6 +2,9 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
+/* Design references are not production CSS inputs. Keep aligned with Release exclusions. */
+@source not '../.agents/skills/meddies-design';
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
