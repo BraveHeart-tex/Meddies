@@ -1,19 +1,10 @@
 import { useState } from 'react'
-import type { Medicine } from '@/features/medicines/contract'
 import { nextIntervalDoses } from '@/features/schedules/interval-preview'
 import { scheduledInstant } from '@/features/schedules/occurrences'
 import { isTimeOfDay } from '@/lib/time-of-day'
+import { NOW, TODAY } from './lab-fixtures'
 
-/** Saved at 10:00 Istanbul on Monday 9 November, the worked example in FE-764. */
-export const NOW = '2026-11-09T07:00:00.000Z'
-export const TODAY = '2026-11-09'
-
-export const magnesium: Medicine = {
-  id: '11111111-1111-4111-8111-111111111111',
-  label: 'Magnesium',
-  strength: '400 mg',
-  unit: 'tablet',
-}
+export { magnesium, NOW, TODAY } from './lab-fixtures'
 
 export type IntervalValues = { hours: string; date: string; time: string; quantity: string }
 export type IntervalField = 'hours' | 'date' | 'time'

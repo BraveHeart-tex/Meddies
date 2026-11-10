@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import Loading from '@/app/loading'
+import { editFrames } from './edit-frames'
 import { intervalFrames } from './interval-frames'
 import { ScannerFrame } from './scanner-frame'
 
@@ -24,4 +25,5 @@ export const designFrames = [
     render: () => <ScannerFrame />,
   },
   ...intervalFrames,
+  ...editFrames,
 ] satisfies readonly DesignFrame[]

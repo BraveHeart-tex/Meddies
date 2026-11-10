@@ -3,9 +3,7 @@
 import type { ReactNode, Ref } from 'react'
 import { Clock } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
-import { quantityLabel } from '@/lib/dose-quantity'
 import { scheduleToday } from './occurrences'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { LoadingSection } from '@/components/ui/skeleton'
@@ -27,11 +25,11 @@ import type { MedicinesRead } from '@/features/medicines/queries'
 import { medicationSetupHref } from '@/features/medicines/routes'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { istanbulDate } from './contract'
+import { ClockScheduleCard } from './clock-schedule-card'
 import { intervalAnchor } from './interval-preview'
 import { IntervalScheduleCard } from './interval-schedule-card'
 import type { SchedulesRead } from './queries'
 import { useScheduleNow } from './use-schedule-now'
-import { weekdaySummary } from './weekdays'
 
 /** The `?medicine=ID` page: 650 Fix 1's header above the schedule, and 647·D1 to D3. */
 export function MedicationDetail({
@@ -142,28 +140,7 @@ export function MedicationDetail({
             now={liveNow}
           />
         ) : schedule ? (
-          <Card>
-            <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2">
-              <CardTitle>Schedule</CardTitle>
-              <CardDescription>{weekdaySummary(schedule.weekdays, 'long')}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <ul className="divide-y">
-                {schedule.times.map((slot) => (
-                  <li key={slot.time} className="flex flex-wrap justify-between gap-2 py-3">
-                    <span className="text-heading font-extrabold">{slot.time}</span>
-                    <span className="text-body-sm">
-                      {quantityLabel(slot.quantity, medicine.unit)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-body-sm text-muted-foreground">
-                {schedule.startDate > today ? 'Starts' : 'Started'}{' '}
-                {formatShortDay(schedule.startDate, today)}
-              </p>
-            </CardContent>
-          </Card>
+          <ClockScheduleCard schedule={schedule} unit={medicine.unit} today={today} />
         ) : (
           <EmptyState
             icon={Clock}

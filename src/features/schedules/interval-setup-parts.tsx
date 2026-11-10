@@ -23,7 +23,15 @@ export function intervalStartsAnswer(date: string, time: string, today: string) 
 }
 
 /** Full-screen setup header (764·C0): Cancel, then the medication and "Set schedule" centered. */
-export function ScheduleSetupHeader({ label, onCancel }: { label: string; onCancel: () => void }) {
+export function ScheduleSetupHeader({
+  label,
+  subtitle = 'Set schedule',
+  onCancel,
+}: {
+  label: string
+  subtitle?: string
+  onCancel: () => void
+}) {
   return (
     <header className="sticky top-[env(safe-area-inset-top,0px)] z-10 -mx-5 grid grid-cols-[5.5rem_minmax(0,1fr)_5.5rem] items-center bg-background px-3 py-2">
       <Button
@@ -42,7 +50,7 @@ export function ScheduleSetupHeader({ label, onCancel }: { label: string; onCanc
         >
           {label}
         </h1>
-        <p className="text-label font-bold text-muted-foreground">Set schedule</p>
+        <p className="text-label font-bold text-muted-foreground">{subtitle}</p>
       </div>
     </header>
   )
