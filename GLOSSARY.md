@@ -36,9 +36,14 @@ none after it. Earlier doses and their outcomes stay.
 _Avoid_: end date, in UI copy and tickets; course end
 
 **Ended schedule**:
-A schedule whose Last day has passed. It expects no more doses; its earlier doses and their
-outcomes stay.
+A schedule whose Last day has passed, or that was stopped. It expects no more doses; its earlier
+doses and their outcomes stay.
 _Avoid_: finished, completed, inactive schedule
+
+**Stop a schedule**:
+End a schedule at its Edit time instead of at a Last day. Doses due by then stay; none after.
+The schedule becomes an Ended schedule.
+_Avoid_: remove, delete, cancel a schedule
 
 **Edit time**:
 The moment the server confirms a schedule edit. Doses due at or before it, and any dose already
