@@ -25,6 +25,16 @@ The date and time an Interval schedule counts from. A dose is expected at the An
 Anchor is later than when the schedule was saved. Recording a dose late never moves it.
 _Avoid_: first dose, in code and tickets; start time
 
+**Schedule version**:
+A medicine's schedule as saved at one point in time. An edit saves a new Schedule version; the
+earlier one keeps its doses and their outcomes.
+_Avoid_: schedule revision, old schedule
+
+**Edit time**:
+The moment the server confirms a schedule edit. Doses due at or before it, and any dose already
+recorded, stay with the earlier Schedule version; only later doses follow the new one.
+_Avoid_: cutoff, effective instant, in UI copy and tickets
+
 ## Doses
 
 **History date**:
