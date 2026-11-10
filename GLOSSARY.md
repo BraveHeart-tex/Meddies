@@ -30,6 +30,16 @@ A medicine's schedule as saved at one point in time. An edit saves a new Schedul
 earlier one keeps its doses and their outcomes.
 _Avoid_: schedule revision, old schedule
 
+**Last day**:
+The optional final day of a schedule, in Istanbul time. Doses on that day are still expected;
+none after it. Earlier doses and their outcomes stay.
+_Avoid_: end date, in UI copy and tickets; course end
+
+**Ended schedule**:
+A schedule whose Last day has passed. It expects no more doses; its earlier doses and their
+outcomes stay.
+_Avoid_: finished, completed, inactive schedule
+
 **Edit time**:
 The moment the server confirms a schedule edit. Doses due at or before it, and any dose already
 recorded, stay with the earlier Schedule version; only later doses follow the new one.
