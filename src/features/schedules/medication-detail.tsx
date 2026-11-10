@@ -31,7 +31,10 @@ import { IntervalScheduleCard } from './interval-schedule-card'
 import type { SchedulesRead } from './queries'
 import { useScheduleNow } from './use-schedule-now'
 
-/** The `?medicine=ID` page: 650 Fix 1's header above the schedule, and 647·D1 to D3. */
+/**
+ * The `?medicine=ID` page: 650 Fix 1's header above the schedule, 647·D1 to D3, and Change
+ * schedule under it (767·A1, S3, S4).
+ */
 export function MedicationDetail({
   medicineId,
   medicinesRead,
@@ -109,7 +112,7 @@ export function MedicationDetail({
           </AlertTitle>
           {first && (
             <AlertDescription>
-              First dose:{' '}
+              {schedule?.basedOnId ? 'Next dose' : 'First dose'}:{' '}
               {istanbulDate(new Date(first.dueAt)) === today
                 ? 'today'
                 : formatShortDay(first.dueAt, today)}{' '}
@@ -131,16 +134,26 @@ export function MedicationDetail({
           </LoadingSection>
         ) : loadError ? (
           <ScheduleUnchecked name={medicine.label} onRetry={retry} />
-        ) : schedule?.intervalHours != null ? (
-          <IntervalScheduleCard
-            hours={schedule.intervalHours}
-            anchor={intervalAnchor(schedule)}
-            quantity={schedule.times[0].quantity}
-            unit={medicine.unit}
-            now={liveNow}
-          />
         ) : schedule ? (
-          <ClockScheduleCard schedule={schedule} unit={medicine.unit} today={today} />
+          <>
+            {schedule.intervalHours != null ? (
+              <IntervalScheduleCard
+                hours={schedule.intervalHours}
+                anchor={intervalAnchor(schedule)}
+                quantity={schedule.times[0].quantity}
+                unit={medicine.unit}
+                now={liveNow}
+              />
+            ) : (
+              <ClockScheduleCard schedule={schedule} unit={medicine.unit} today={today} />
+            )}
+            <MedicationsLink
+              className={buttonVariants({ variant: 'outline', size: 'lg' })}
+              href={medicationSetupHref(medicineId)}
+            >
+              Change schedule
+            </MedicationsLink>
+          </>
         ) : (
           <EmptyState
             icon={Clock}
@@ -165,9 +178,7 @@ export function MedicationDetail({
           />
         )}
       </section>
-      <p className="text-label text-muted-foreground">
-        Details and schedules can&apos;t be changed here yet.
-      </p>
+      <p className="text-label text-muted-foreground">Details can&apos;t be changed here yet.</p>
     </div>
   )
 }

@@ -282,9 +282,11 @@ test('schedule edit HTTP boundary authenticates, guards requests and decodes ver
   globalThis.fetch = async () =>
     Response.json({ schedules: [{ ...schedule, replacedAt: 'invalid' }] })
   assert.equal((await post(edit)).status, 503)
+  globalThis.fetch = async () => Response.json({ schedules: [{ ...schedule, basedOnId: 42 }] })
+  assert.equal((await post(edit)).status, 503)
   globalThis.fetch = async () =>
     Response.json({
-      schedules: [{ ...schedule, replacedAt: '2026-11-04T06:00:00.000Z' }],
+      schedules: [{ ...schedule, basedOnId: id, replacedAt: '2026-11-04T06:00:00.000Z' }],
       records: [],
     })
   const decoded = await scheduleSend({
@@ -293,4 +295,5 @@ test('schedule edit HTTP boundary authenticates, guards requests and decodes ver
     date: '2026-11-03',
   })
   assert.equal(decoded.schedules[0].replacedAt, '2026-11-04T06:00:00.000Z')
+  assert.equal(decoded.schedules[0].basedOnId, id)
 })

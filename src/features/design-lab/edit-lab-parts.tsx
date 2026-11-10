@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MoonIcon, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldTitle } from '@/components/ui/field'
@@ -14,7 +14,6 @@ import {
   IntervalHoursField,
   IntervalQuantityField,
 } from '@/features/schedules/interval-fields'
-import { isOvernightDose } from '@/features/schedules/interval-preview'
 import {
   intervalHoursAnswer,
   IntervalRow,
@@ -32,7 +31,6 @@ import {
   WEEKDAY_NAMES,
   weekdaySummary,
 } from '@/features/schedules/weekdays'
-import { formatShortDay, formatTime, istanbulDate } from '@/lib/calendar-date'
 import { quantityLabel } from '@/lib/dose-quantity'
 import { magnesium, NOW, TODAY } from './interval-lab-model'
 import type { ClockValues, ScheduleKind } from './edit-lab-model'
@@ -263,48 +261,6 @@ export function IntervalEditRows({
         )}
       </IntervalSheet>
     </>
-  )
-}
-
-const dayLabel = (dose: string) =>
-  istanbulDate(new Date(dose)) === TODAY ? 'Today' : formatShortDay(dose, TODAY)
-
-function DoseTime({ dose }: { dose: string }) {
-  return (
-    <span className="flex items-center gap-1.5 text-heading font-extrabold tabular-nums">
-      {formatTime(dose)}
-      {isOvernightDose(dose) && (
-        <MoonIcon aria-label="Overnight" className="size-4 text-muted-foreground" />
-      )}
-    </span>
-  )
-}
-
-export const PREVIEW_HEADING = `Next 3 doses after ${formatTime(NOW)}`
-export const KEEPS_EARLIER =
-  "Changes start when you save. Doses before then, and any you've logged, stay as they are."
-
-/** The next 3 doses under the edited schedule, counted from now (767·A3, A5). */
-export function AfterPreview({ doses }: { doses: string[] | null }) {
-  return (
-    <section aria-labelledby="after-heading" aria-live="polite" className="flex flex-col px-1">
-      <h2 id="after-heading" className="text-body-sm font-extrabold text-muted-foreground">
-        {PREVIEW_HEADING}
-      </h2>
-      {doses ? (
-        <ul className="divide-y">
-          {doses.map((dose) => (
-            <li key={dose} className="flex items-center justify-between gap-2 py-2.5">
-              <DoseTime dose={dose} />
-              <span className="text-body-sm">{dayLabel(dose)}</span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="pt-2 text-body-sm text-muted-foreground">They&apos;ll show here.</p>
-      )}
-      <p className="pt-2 text-body-sm text-muted-foreground">{KEEPS_EARLIER}</p>
-    </section>
   )
 }
 

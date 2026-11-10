@@ -1,6 +1,13 @@
 import { z } from 'zod'
 import { isTimeOfDay } from '@/lib/time-of-day'
-import { parseQuantity, quantityProblem, quantityRule, type DoseUnit } from '@/lib/dose-quantity'
+import {
+  formatQuantity,
+  parseQuantity,
+  quantityProblem,
+  quantityRule,
+  type DoseUnit,
+} from '@/lib/dose-quantity'
+import type { DailySchedule } from './contract'
 import { startDateSchema, type ScheduleFormOptions } from './schedule-form-schema'
 import { ALL_WEEKDAYS } from './weekdays'
 
@@ -13,19 +20,26 @@ function hoursProblem(text: string) {
 }
 
 /** Client mirror of parseSchedule for an Interval schedule; the server parser stays authoritative. */
-export function intervalFormSchema({ unit, today, retryStartDate }: ScheduleFormOptions) {
+export function intervalFormSchema({ unit, today, retryStartDate, current }: ScheduleFormOptions) {
+  // Editing an Interval schedule keeps its Anchor, however long ago it was (767·A5).
+  const kept = current?.intervalHours != null ? current : undefined
   return z
     .object({
       hours: z.string().superRefine((value, ctx) => {
         const problem = hoursProblem(value)
         if (problem) ctx.addIssue({ code: 'custom', message: problem })
       }),
-      date: startDateSchema(today, retryStartDate),
+      date: startDateSchema(today, retryStartDate, kept?.startDate),
       time: z.string().refine(isTimeOfDay, 'Choose a time.'),
       quantity: z.string().superRefine((value, ctx) => {
         const problem = quantityProblem(value, unit)
         if (problem) ctx.addIssue({ code: 'custom', message: problem })
       }),
+    })
+    .superRefine(({ date, time }, ctx) => {
+      // A new Anchor starts today or later; only the kept one may be earlier.
+      if (kept && date < today && date !== retryStartDate && time !== kept.times[0].time)
+        ctx.addIssue({ code: 'custom', message: 'Choose today or a later date.', path: ['date'] })
     })
     .transform(({ hours, date, time, quantity }) => ({
       startDate: date,
@@ -42,4 +56,27 @@ export type IntervalFormOutput = z.output<ReturnType<typeof intervalFormSchema>>
 /** New setup: today and one tablet or capsule are preselected (FE-764 Rules). */
 export function intervalFormDefaults(unit: DoseUnit, today: string): IntervalFormValues {
   return { hours: '', date: today, time: '', quantity: quantityRule(unit).initial }
+}
+
+/**
+ * A change opens on the current Interval schedule version and its Anchor, or, switching from set
+ * times, asks for Every and Starts again with the quantity carried over (767·A4, A6).
+ */
+export function intervalChangeDefaults(current: DailySchedule, today: string): IntervalFormValues {
+  const quantity = formatQuantity(current.times[0].quantity)
+  return current.intervalHours == null
+    ? { hours: '', date: today, time: '', quantity }
+    : {
+        hours: String(current.intervalHours),
+        date: current.startDate,
+        time: current.times[0].time,
+        quantity,
+      }
+}
+
+/** Whether Interval schedule values differ from `before`. */
+export function intervalValuesDiffer(values: IntervalFormValues, before: IntervalFormValues) {
+  const comparable = ({ hours, date, time, quantity }: IntervalFormValues) =>
+    JSON.stringify([hours.trim(), date, time, parseQuantity(quantity)])
+  return comparable(values) !== comparable(before)
 }

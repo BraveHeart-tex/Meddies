@@ -377,7 +377,7 @@ describe('a medication detail', () => {
     expect(await screen.findByText('No schedule yet')).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Schedule', level: 2 })).toBeVisible()
     expect(screen.getByText('tablet')).toBeVisible()
-    expect(screen.getByText("Details and schedules can't be changed here yet.")).toBeVisible()
+    expect(screen.getByText("Details can't be changed here yet.")).toBeVisible()
   })
 
   test('says when the medication is not in the list', async () => {

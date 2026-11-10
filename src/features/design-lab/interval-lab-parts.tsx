@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Field, FieldTitle } from '@/components/ui/field'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ScheduleForm } from '@/features/schedules/schedule-form'
-import { magnesium, TODAY } from './interval-lab-model'
+import { magnesium, TODAY, NOW } from './interval-lab-model'
 
 /** The set-up screen for one medication, a full-screen modal that covers the tabs. */
 export function SetupFrame({
@@ -54,7 +54,13 @@ export function SetupFrame({
         </ToggleGroup>
       </Field>
       {current === 'times' ? (
-        <ScheduleForm medicine={magnesium} today={TODAY} onSaved={() => {}} onConflict={() => {}} />
+        <ScheduleForm
+          medicine={magnesium}
+          today={TODAY}
+          serverNow={NOW}
+          onSaved={() => {}}
+          onConflict={() => {}}
+        />
       ) : (
         children
       )}

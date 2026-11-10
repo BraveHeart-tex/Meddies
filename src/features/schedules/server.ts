@@ -39,9 +39,12 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
         if (!isInstant(confirmedAt)) throw new Error('contract')
         const replacedAt = (value as Record<string, unknown>).replacedAt
         if (replacedAt != null && !isInstant(replacedAt)) throw new Error('contract')
+        const basedOnId = (value as Record<string, unknown>).basedOnId
+        if (basedOnId != null && typeof basedOnId !== 'string') throw new Error('contract')
         return {
           ...schedule,
           confirmedAt,
+          ...(basedOnId === undefined ? {} : { basedOnId: basedOnId as string | null }),
           ...(replacedAt === undefined ? {} : { replacedAt: replacedAt as string | null }),
         }
       })

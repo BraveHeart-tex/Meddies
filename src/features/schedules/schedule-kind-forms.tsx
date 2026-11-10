@@ -7,13 +7,20 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Medicine } from '@/features/medicines/contract'
 import type { DailySchedule } from './contract'
 import { IntervalScheduleForm } from './interval-schedule-form'
-import { ScheduleForm } from './schedule-form'
-import { readScheduleKind, writeScheduleKind, type ScheduleKind } from './schedule-setup-drafts'
+import { ScheduleForm, type ScheduleChange } from './schedule-form'
+import {
+  readScheduleKind,
+  scheduleDraftBase,
+  scheduleKindOf,
+  writeScheduleKind,
+  type ScheduleKind,
+} from './schedule-setup-drafts'
 import { useScheduleAttempt } from './use-schedule-save'
 
 /**
- * "When do you take it?" and the form for that answer (764·C0, C1). Opens on Set times unless a
- * save or a draft from this session is for an Interval schedule.
+ * "When do you take it?" and the form for that answer (764·C0, C1). Opens on Set times, or a
+ * change on the current Schedule version's kind (767·A2, A4), unless a save or a draft from this
+ * session is for the other kind.
  */
 export function ScheduleKindForms({
   medicine,
@@ -21,21 +28,26 @@ export function ScheduleKindForms({
   serverNow,
   onSaved,
   onConflict,
+  change,
 }: {
   medicine: Medicine
   today: string
   serverNow: string
   onSaved: (schedule: DailySchedule) => void
   onConflict: () => void
+  change?: ScheduleChange
 }) {
   const client = useQueryClient()
-  const attempt = useScheduleAttempt(medicine.id)
+  const current = change?.current
+  const attempt = useScheduleAttempt(medicine.id, current)
+  const base = scheduleDraftBase(medicine.id, current)
+  const fallback = scheduleKindOf(current)
   const [kind, setKind] = useState<ScheduleKind>(
-    () => attempt.kind ?? readScheduleKind(client, medicine.id),
+    () => attempt.kind ?? readScheduleKind(client, base, fallback),
   )
   return (
     <>
-      {kind === 'times' && (
+      {kind === 'times' && !change && (
         <p className="text-body-sm text-muted-foreground">
           Times are Istanbul time. Doses start from the next time after you save. Earlier times
           today aren&apos;t added.
@@ -59,7 +71,7 @@ export function ScheduleKindForms({
             const choice = next[0] as ScheduleKind | undefined
             if (!choice) return
             setKind(choice)
-            writeScheduleKind(client, medicine.id, choice)
+            writeScheduleKind(client, base, choice, fallback)
           }}
         >
           <ToggleGroupItem value="times">Set times</ToggleGroupItem>
@@ -67,7 +79,14 @@ export function ScheduleKindForms({
         </ToggleGroup>
       </Field>
       {kind === 'times' ? (
-        <ScheduleForm medicine={medicine} today={today} onSaved={onSaved} onConflict={onConflict} />
+        <ScheduleForm
+          medicine={medicine}
+          today={today}
+          serverNow={serverNow}
+          onSaved={onSaved}
+          onConflict={onConflict}
+          change={change}
+        />
       ) : (
         <IntervalScheduleForm
           medicine={medicine}
@@ -75,6 +94,7 @@ export function ScheduleKindForms({
           serverNow={serverNow}
           onSaved={onSaved}
           onConflict={onConflict}
+          change={change}
         />
       )}
     </>

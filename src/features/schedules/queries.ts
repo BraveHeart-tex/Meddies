@@ -235,14 +235,24 @@ export function applyRecord(client: QueryClient, record: DoseOutcomeRecord) {
   ).then(() => undefined)
 }
 
-/** A confirmed schedule replaces or appends that schedule, then a fresh read reconciles. */
+/**
+ * A confirmed schedule replaces or appends that schedule, and a confirmed change ends the version
+ * it edits at its Edit time. Then a fresh read reconciles.
+ */
 export function applySchedule(client: QueryClient, schedule: DailySchedule) {
   client.setQueryData<ScheduleSnapshot>(
     scheduleKeys.snapshot(),
     (current) =>
       current && {
         ...current,
-        schedules: [...current.schedules.filter((item) => item.id !== schedule.id), schedule],
+        schedules: [
+          ...current.schedules
+            .filter((item) => item.id !== schedule.id)
+            .map((item) =>
+              item.id === schedule.basedOnId ? { ...item, replacedAt: schedule.confirmedAt } : item,
+            ),
+          schedule,
+        ],
       },
   )
   return client.invalidateQueries({ queryKey: scheduleKeys.all })

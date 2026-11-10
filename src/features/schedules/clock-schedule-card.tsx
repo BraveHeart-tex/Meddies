@@ -1,16 +1,20 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatShortDay } from '@/lib/calendar-date'
 import { quantityLabel, type DoseUnit } from '@/lib/dose-quantity'
-import type { DailySchedule } from './contract'
+import { istanbulDate, type DailySchedule } from './contract'
 import { weekdaySummary } from './weekdays'
 
-/** A medication's Clock schedule (647·D1): its days, each time with its quantity, and its start. */
+/**
+ * A medication's Clock schedule (647·D1): its days, each time with its quantity, and its start,
+ * or, for a changed Schedule version, the day it changed.
+ */
 export function ClockScheduleCard({
   schedule,
   unit,
   today,
 }: {
-  schedule: Pick<DailySchedule, 'weekdays' | 'times' | 'startDate'>
+  schedule: Pick<DailySchedule, 'weekdays' | 'times' | 'startDate'> &
+    Partial<Pick<DailySchedule, 'basedOnId' | 'confirmedAt'>>
   unit: DoseUnit
   today: string
 }) {
@@ -30,8 +34,9 @@ export function ClockScheduleCard({
           ))}
         </ul>
         <p className="text-body-sm text-muted-foreground">
-          {schedule.startDate > today ? 'Starts' : 'Started'}{' '}
-          {formatShortDay(schedule.startDate, today)}
+          {schedule.basedOnId && schedule.confirmedAt
+            ? `Changed ${formatShortDay(istanbulDate(new Date(schedule.confirmedAt)), today)}`
+            : `${schedule.startDate > today ? 'Starts' : 'Started'} ${formatShortDay(schedule.startDate, today)}`}
         </p>
       </CardContent>
     </Card>

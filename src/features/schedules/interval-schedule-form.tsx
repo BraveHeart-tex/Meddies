@@ -18,21 +18,24 @@ import {
   IntervalQuantityField,
 } from './interval-fields'
 import {
+  intervalChangeDefaults,
   intervalFormDefaults,
   intervalFormSchema,
+  intervalValuesDiffer,
   type IntervalFormOutput,
   type IntervalFormValues,
 } from './interval-form-schema'
 import { intervalAnchor, nextIntervalDoses } from './interval-preview'
 import {
   intervalHoursAnswer,
-  IntervalNextDoses,
+  NextDoses,
   IntervalRow,
   IntervalSheet,
   intervalStartsAnswer,
 } from './interval-setup-parts'
 import { ScheduleSaveFooter } from './schedule-save-footer'
-import { intervalSetupKey } from './schedule-setup-drafts'
+import type { ScheduleChange } from './schedule-form'
+import { intervalDraftKey, scheduleDraftBase } from './schedule-setup-drafts'
 import { useScheduleNow } from './use-schedule-now'
 import { useScheduleSave } from './use-schedule-save'
 
@@ -48,7 +51,9 @@ const SHEET_FIELDS: Record<Sheet, FieldName[]> = {
 
 /**
  * An Interval schedule for one saved medicine (764·C1 to C16): three answers, each edited alone
- * in a sheet, and the doses they produce. Saves through the same attempt as a Clock schedule.
+ * in a sheet, and the doses they produce. Saves through the same attempt as a Clock schedule. A
+ * `change` opens on the current Schedule version and keeps its Anchor unless Starts changes
+ * (767·A4 to A8).
  */
 export function IntervalScheduleForm({
   medicine,
@@ -56,6 +61,7 @@ export function IntervalScheduleForm({
   serverNow,
   onSaved,
   onConflict,
+  change,
 }: {
   medicine: Medicine
   /** Istanbul today from the scheduling clock. */
@@ -63,11 +69,15 @@ export function IntervalScheduleForm({
   serverNow: string
   onSaved: (schedule: DailySchedule) => void
   onConflict: () => void
+  change?: ScheduleChange
 }) {
-  const saveState = useScheduleSave(medicine, saved)
+  const current = change?.current
+  const saveState = useScheduleSave(medicine, saved, current)
   const { retryStartDate, problem } = saveState
-  const [defaults] = useState(() => intervalFormDefaults(medicine.unit, today))
-  const schema = intervalFormSchema({ unit: medicine.unit, today, retryStartDate })
+  const [defaults] = useState(() =>
+    current ? intervalChangeDefaults(current, today) : intervalFormDefaults(medicine.unit, today),
+  )
+  const schema = intervalFormSchema({ unit: medicine.unit, today, retryStartDate, current })
   const form = useForm<IntervalFormValues, unknown, IntervalFormOutput>({
     resolver: zodResolver(schema),
     defaultValues: defaults,
@@ -75,7 +85,7 @@ export function IntervalScheduleForm({
     shouldFocusError: false,
   })
   const { errors, isSubmitted } = form.formState
-  const draft = useSessionFormDraft(intervalSetupKey(medicine.id), form)
+  const draft = useSessionFormDraft(intervalDraftKey(scheduleDraftBase(medicine.id, current)), form)
   const offline = useKnownOffline()
   const now = useScheduleNow(serverNow)
   const [hours, date, time, quantity] = useWatch({
@@ -97,8 +107,9 @@ export function IntervalScheduleForm({
   }
 
   useEffect(() => {
-    if (problem === 'conflict') onConflict()
-  }, [problem, onConflict])
+    // A change shows its own conflict recovery (767·S2).
+    if (problem === 'conflict' && !current) onConflict()
+  }, [problem, onConflict, current])
 
   function openSheet(next: Sheet) {
     beforeSheet.current = form.getValues()
@@ -125,7 +136,7 @@ export function IntervalScheduleForm({
   }
 
   /** Before a save an error stays until its field changes; after one RHF revalidates it. */
-  function change(name: FieldName, onChange: (value: string) => void) {
+  function onFieldChange(name: FieldName, onChange: (value: string) => void) {
     return (value: string) => {
       form.clearErrors(name)
       onChange(value)
@@ -133,7 +144,11 @@ export function IntervalScheduleForm({
   }
 
   const isSubmitting = saveState.pending
-  const minDate = retryStartDate && retryStartDate < today ? retryStartDate : today
+  const keptDate = current?.intervalHours != null ? current.startDate : undefined
+  const minDate = [retryStartDate, keptDate].reduce<string>(
+    (earliest, date) => (date && date < earliest ? date : earliest),
+    today,
+  )
   // Quantity doesn't move the doses, so a half-typed one can't blank the preview.
   const timing = schema.safeParse({
     hours,
@@ -168,7 +183,11 @@ export function IntervalScheduleForm({
             onClick={() => {
               if (saveState.pending) return
               saveState.clear()
-              form.reset(intervalFormDefaults(medicine.unit, today))
+              form.reset(
+                current
+                  ? intervalChangeDefaults(current, today)
+                  : intervalFormDefaults(medicine.unit, today),
+              )
               draft.discard()
             }}
           >
@@ -205,20 +224,28 @@ export function IntervalScheduleForm({
           onClick={() => openSheet('take')}
         />
       </ul>
-      <IntervalNextDoses
+      <NextDoses
         doses={doses}
-        hours={timing.success ? timing.data.intervalHours : 1}
+        // The approved change preview has no overnight note (767·A5).
+        hours={current || !timing.success ? undefined : timing.data.intervalHours}
         today={istanbulDate(new Date(now))}
+        after={current ? now : undefined}
       />
-      <div className="mt-auto flex flex-col gap-5">
-        <ScheduleSaveFooter
-          problem={problem}
-          offline={offline}
-          isSubmitting={isSubmitting}
-          label={medicine.label}
-          checkHint="Check the hours, first time and quantity, then save again."
-        />
-      </div>
+      <ScheduleSaveFooter
+        problem={problem}
+        offline={offline}
+        isSubmitting={isSubmitting}
+        label={medicine.label}
+        checkHint="Check the hours, first time and quantity, then save again."
+        change={
+          change && {
+            changed:
+              current?.intervalHours == null ||
+              intervalValuesDiffer({ hours, date, time, quantity }, defaults),
+            onReview: change.onReview,
+          }
+        }
+      />
       <IntervalSheet
         open={sheet !== null}
         title={SHEET_TITLES[lastSheet]}
@@ -235,7 +262,7 @@ export function IntervalScheduleForm({
                   inputRef={field.ref}
                   value={field.value}
                   error={fieldState.error?.message}
-                  onChange={change('hours', field.onChange)}
+                  onChange={onFieldChange('hours', field.onChange)}
                   onBlur={field.onBlur}
                 />
               )}
@@ -257,7 +284,7 @@ export function IntervalScheduleForm({
                   min={minDate}
                   value={field.value}
                   error={fieldState.error?.message}
-                  onChange={change('date', field.onChange)}
+                  onChange={onFieldChange('date', field.onChange)}
                   onBlur={field.onBlur}
                 />
               )}
@@ -270,7 +297,7 @@ export function IntervalScheduleForm({
                   inputRef={field.ref}
                   value={field.value}
                   error={fieldState.error?.message}
-                  onChange={change('time', field.onChange)}
+                  onChange={onFieldChange('time', field.onChange)}
                   onBlur={field.onBlur}
                 />
               )}
@@ -287,7 +314,7 @@ export function IntervalScheduleForm({
                 unit={medicine.unit}
                 value={field.value}
                 error={fieldState.error?.message}
-                onChange={change('quantity', field.onChange)}
+                onChange={onFieldChange('quantity', field.onChange)}
                 onBlur={field.onBlur}
               />
             )}

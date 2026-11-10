@@ -135,21 +135,32 @@ export function IntervalSheet({
   )
 }
 
-/** "Next 3 doses" while setting up, with night doses marked (764·C1, C2, C8, C15, C16). */
-export function IntervalNextDoses({
+/** Under a change's preview: what an Edit time keeps (767·A3, A5). */
+export const CHANGE_KEEPS_EARLIER =
+  "Changes start when you save. Doses before then, and any you've logged, stay as they are."
+
+/**
+ * "Next 3 doses" while setting up, with night doses marked (764·C1, C2, C8, C15, C16). A change
+ * counts them from now and says what it keeps (767·A3, A5).
+ */
+export function NextDoses({
   doses,
   hours,
   today,
+  after,
 }: {
   doses: string[] | null
-  hours: number
+  /** An Interval schedule's hours, which mark its first overnight dose. */
+  hours?: number
   today: string
+  /** For a change: the live time the doses count from. */
+  after?: string
 }) {
-  const night = doses ? firstOvernightDose(doses[0], hours) : undefined
+  const night = doses && hours ? firstOvernightDose(doses[0], hours) : undefined
   return (
     <section aria-labelledby="next-doses-heading" aria-live="polite" className="flex flex-col px-1">
       <h2 id="next-doses-heading" className="text-body-sm font-extrabold text-muted-foreground">
-        Next 3 doses
+        {after ? `Next 3 doses after ${formatTime(after)}` : 'Next 3 doses'}
       </h2>
       {doses ? (
         <ul className="divide-y">
@@ -175,6 +186,7 @@ export function IntervalNextDoses({
           Includes a dose overnight, at {formatTime(night)}.
         </p>
       )}
+      {after && <p className="pt-2 text-body-sm text-muted-foreground">{CHANGE_KEEPS_EARLIER}</p>}
     </section>
   )
 }
@@ -182,10 +194,13 @@ export function IntervalNextDoses({
 /** Cancel with edits asks first (764·C7). */
 export function ScheduleDiscardDrawer({
   open,
+  change = false,
   onKeepEditing,
   onDiscard,
 }: {
   open: boolean
+  /** Changes to the current Schedule version, which stays as it is (767). */
+  change?: boolean
   onKeepEditing: () => void
   onDiscard: () => void
 }) {
@@ -194,10 +209,12 @@ export function ScheduleDiscardDrawer({
       <DrawerContent>
         <div className="-mt-2 flex flex-col gap-3">
           <DrawerHeader className="text-center">
-            <DrawerTitle className="text-heading">Discard this schedule?</DrawerTitle>
+            <DrawerTitle className="text-heading">
+              {change ? 'Discard these changes?' : 'Discard this schedule?'}
+            </DrawerTitle>
           </DrawerHeader>
           <p className="text-center text-body-sm text-muted-foreground">
-            The details you entered won&apos;t be saved.
+            {change ? 'Your schedule stays as it is.' : "The details you entered won't be saved."}
           </p>
           <Button
             type="button"

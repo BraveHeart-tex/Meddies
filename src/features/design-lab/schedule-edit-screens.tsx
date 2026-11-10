@@ -11,7 +11,7 @@ import { MedicationBackRow, MedicationIdentity } from '@/features/medicines/medi
 import { medicationsHref } from '@/features/medicines/routes'
 import { ClockScheduleCard } from '@/features/schedules/clock-schedule-card'
 import { IntervalScheduleCard } from '@/features/schedules/interval-schedule-card'
-import { ScheduleSetupHeader } from '@/features/schedules/interval-setup-parts'
+import { NextDoses, ScheduleSetupHeader } from '@/features/schedules/interval-setup-parts'
 import {
   CLOCK_STARTED,
   intervalAnchor,
@@ -22,7 +22,6 @@ import {
 } from './edit-lab-model'
 import { useScheduleEdit } from './use-schedule-edit'
 import {
-  AfterPreview,
   ClockEditFields,
   EditFooter,
   IntervalEditRows,
@@ -150,7 +149,7 @@ export function FullScreenEdit({
           ) : (
             <IntervalEditRows edit={edit} disabled={disabled} error={startsError} />
           )}
-          <AfterPreview doses={edit.doses} />
+          <NextDoses doses={edit.doses} today={TODAY} after={NOW} />
           <StickyActions>
             <EditFooter changed={edit.changed} state={state} onReview={() => router.push(back)} />
           </StickyActions>

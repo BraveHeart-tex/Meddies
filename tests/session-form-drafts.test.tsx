@@ -55,6 +55,7 @@ test('schedule drafts keep partial rows per medicine across refresh and day roll
         key={id}
         medicine={{ ...medicine, id }}
         today={today}
+        serverNow={`${today}T07:00:00.000Z`}
         onSaved={() => {}}
         onConflict={() => {}}
       />
@@ -116,6 +117,7 @@ test('a confirmed schedule save removes the draft before the form is opened agai
         <ScheduleForm
           medicine={medicine}
           today="2035-06-15"
+          serverNow="2035-06-15T07:00:00.000Z"
           onSaved={() => {
             saved = true
           }}

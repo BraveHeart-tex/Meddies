@@ -1,7 +1,13 @@
 import { z } from 'zod'
 import { isTimeOfDay } from '@/lib/time-of-day'
-import { parseQuantity, quantityProblem, quantityRule, type DoseUnit } from '@/lib/dose-quantity'
-import { isScheduleDate } from './contract'
+import {
+  formatQuantity,
+  parseQuantity,
+  quantityProblem,
+  quantityRule,
+  type DoseUnit,
+} from '@/lib/dose-quantity'
+import { isScheduleDate, type DailySchedule } from './contract'
 import { ALL_WEEKDAYS } from './weekdays'
 
 // Client-side mirror of parseSchedule in contract.ts for inline feedback. The server parser stays
@@ -14,21 +20,27 @@ export type ScheduleFormOptions = {
   today: string
   /** Start date of an unconfirmed save; its retry stays valid after midnight. */
   retryStartDate?: string
+  /** The current Schedule version a change edits. */
+  current?: DailySchedule
 }
 
-/** The first date of either schedule kind: today or later, or the date of an unconfirmed save. */
-export function startDateSchema(today: string, retryStartDate?: string) {
+/**
+ * The first date of either schedule kind: today or later, or an earlier date that is still
+ * allowed, such as an unconfirmed save's.
+ */
+export function startDateSchema(today: string, ...allowed: (string | undefined)[]) {
   return z.string().superRefine((value, ctx) => {
     if (!isScheduleDate(value) || !value.startsWith('20'))
       ctx.addIssue({ code: 'custom', message: 'Choose a date.' })
-    else if (value < today && value !== retryStartDate)
+    else if (value < today && !allowed.includes(value))
       ctx.addIssue({ code: 'custom', message: 'Choose today or a later date.' })
   })
 }
 
-export function scheduleFormSchema({ unit, today, retryStartDate }: ScheduleFormOptions) {
+export function scheduleFormSchema({ unit, today, retryStartDate, current }: ScheduleFormOptions) {
   return z.object({
-    startDate: startDateSchema(today, retryStartDate),
+    // A change has no Start date: it starts at its Edit time (767·A2).
+    startDate: current ? z.string() : startDateSchema(today, retryStartDate),
     weekdays: z
       .array(z.number().int().min(0).max(6))
       .min(1, 'Choose at least one day.')
@@ -72,6 +84,39 @@ export function scheduleFormDefaults(unit: DoseUnit, today: string): ScheduleFor
     weekdays: [...ALL_WEEKDAYS],
     times: [newTimeRow(unit)],
   }
+}
+
+/**
+ * A change opens on the current Clock schedule version, or, switching from an Interval schedule,
+ * every day with one empty time and its quantity carried over (767·A2, A9).
+ */
+export function scheduleChangeDefaults(current: DailySchedule, today: string): ScheduleFormValues {
+  return current.intervalHours == null
+    ? {
+        startDate: today,
+        weekdays: [...current.weekdays],
+        times: current.times.map((slot) => ({
+          time: slot.time,
+          quantity: formatQuantity(slot.quantity),
+        })),
+      }
+    : {
+        startDate: today,
+        weekdays: [...ALL_WEEKDAYS],
+        times: [{ time: '', quantity: formatQuantity(current.times[0].quantity) }],
+      }
+}
+
+/** Whether Clock schedule values differ from `before`, ignoring day and time order. */
+export function clockValuesDiffer(values: ScheduleFormValues, before: ScheduleFormValues) {
+  const comparable = ({ weekdays, times }: ScheduleFormValues) =>
+    JSON.stringify({
+      weekdays: [...new Set(weekdays)].sort((a, b) => a - b),
+      times: times
+        .map((slot) => ({ time: slot.time, quantity: parseQuantity(slot.quantity) }))
+        .sort((a, b) => a.time.localeCompare(b.time)),
+    })
+  return comparable(values) !== comparable(before)
 }
 
 export function newTimeRow(unit: DoseUnit) {

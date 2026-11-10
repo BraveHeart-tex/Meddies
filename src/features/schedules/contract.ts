@@ -16,6 +16,8 @@ export type DailyScheduleInput = {
 export type DailySchedule = DailyScheduleInput & {
   confirmedAt: string
   weekdays: number[]
+  /** The Schedule version this one replaced at its Edit time; null for a first schedule. */
+  basedOnId?: string | null
   replacedAt?: string | null
 }
 export type ScheduleEditInput = {

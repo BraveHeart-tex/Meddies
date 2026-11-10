@@ -128,6 +128,7 @@ test('a schedule retry after remount and midnight keeps the submitted request', 
             unit: 'tablet',
           }}
           today={today}
+          serverNow={`${today}T07:00:00.000Z`}
           onSaved={confirmed}
           onConflict={() => {}}
         />

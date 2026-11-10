@@ -254,7 +254,7 @@ test('a rejected save keeps the medicine and the details, and can be saved again
   expect(posted).toHaveLength(2)
 })
 
-test('a medicine that already has a schedule shows no form and links to it', async () => {
+test('a medicine that already has a schedule opens a change to it (767·A2)', async () => {
   api(capsules, [
     {
       id: scheduleId,
@@ -266,12 +266,9 @@ test('a medicine that already has a schedule shows no form and links to it', asy
     },
   ])
   await openSetup(capsules.id)
-  expect(await screen.findByText('Omega-3 already has a schedule.')).toBeVisible()
+  expect(await screen.findByRole('button', { name: 'Save changes' })).toBeDisabled()
+  expect(screen.getByText('Change schedule')).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Save schedule' })).not.toBeInTheDocument()
-  expect(screen.getByRole('link', { name: 'View schedule' })).toHaveAttribute(
-    'href',
-    `/medications?medicine=${capsules.id}`,
-  )
 })
 
 test('an unknown medicine is not in the list and links back to Medications', async () => {

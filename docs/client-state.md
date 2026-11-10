@@ -44,7 +44,8 @@ scope.
 ## Session drafts
 
 Medicine Add, schedule setup and the dose drawer keep raw editing values in an in-memory
-store scoped to the session Query client, keyed by form and medicine ID.
+store scoped to the session Query client, keyed by form and medicine ID. A schedule change
+is keyed by the Schedule version it edits, so a newer version opens without an older draft.
 
 - Returning restores values through React Hook Form `reset`, with "Unsaved details from
   earlier." and a ghost "Clear form". The dose drawer reopens itself with its chosen

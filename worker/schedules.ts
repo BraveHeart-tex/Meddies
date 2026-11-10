@@ -21,6 +21,7 @@ const scheduleColumns = {
   weekdays: dailySchedules.weekdays,
   endDate: dailySchedules.endDate,
   intervalHours: dailySchedules.intervalHours,
+  basedOnId: dailySchedules.basedOnId,
   replacedAt: sql<string | null>`(SELECT confirmed_at FROM daily_schedules successor
     WHERE successor.owner_id = daily_schedules.owner_id AND successor.based_on_id = daily_schedules.id)`.as(
     'replacedAt',

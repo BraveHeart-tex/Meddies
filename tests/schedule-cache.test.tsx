@@ -4,6 +4,7 @@ import { PrivateQueryHandoff } from '@/lib/private-query-handoff'
 import { expect, test } from 'vitest'
 import {
   applyRecord,
+  applySchedule,
   useScheduleSnapshot,
   toScheduleSnapshot,
   historyDayQuery,
@@ -205,4 +206,38 @@ test('Today cache retains earlier-version doses while the medication list expose
   )
   expect(screen.getByText(`Current: ${current.id}`)).toBeInTheDocument()
   expect(screen.getByText('Doses: Taken,Upcoming')).toBeInTheDocument()
+})
+
+test('a confirmed change ends the version it edits in the cached snapshot at its Edit time', () => {
+  const earlier = {
+    ...parseSchedule({
+      id: original.scheduleId,
+      medicineId: '00000000-0000-4000-8000-000000000002',
+      startDate: '2026-11-03',
+      times: [{ time: '10:00', quantity: 1 }],
+    }),
+    confirmedAt: '2026-11-03T04:00:00.000Z',
+  }
+  const changed = {
+    ...earlier,
+    id: '00000000-0000-4000-8000-000000000003',
+    times: [{ time: '11:00', quantity: 1 }],
+    confirmedAt: '2026-11-03T06:00:00.000Z',
+    basedOnId: earlier.id,
+    replacedAt: null,
+  }
+  const client = createQueryClient()
+  client.setQueryData(
+    scheduleKeys.snapshot(),
+    toScheduleSnapshot({
+      schedules: [earlier],
+      records: [],
+      today: { now: earlier.confirmedAt, date: '2026-11-03' },
+    }),
+  )
+  server.use(http.get('/api/schedules', () => new HttpResponse(null, { status: 503 })))
+  void applySchedule(client, changed).catch(() => {})
+  const { schedules } = client.getQueryData<ScheduleSnapshot>(scheduleKeys.snapshot())!
+  expect(schedules).toEqual([{ ...earlier, replacedAt: changed.confirmedAt }, changed])
+  client.clear()
 })

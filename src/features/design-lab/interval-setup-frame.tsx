@@ -10,7 +10,7 @@ import {
 } from '@/features/schedules/interval-fields'
 import {
   intervalHoursAnswer,
-  IntervalNextDoses,
+  NextDoses,
   IntervalRow,
   IntervalSheet,
   intervalStartsAnswer,
@@ -88,7 +88,7 @@ export function IntervalSetupFrame({
           onClick={() => open('take')}
         />
       </ul>
-      <IntervalNextDoses doses={draft.doses} hours={Number(hours)} today={TODAY} />
+      <NextDoses doses={draft.doses} hours={Number(hours)} today={TODAY} />
       <Button
         type="button"
         size="lg"

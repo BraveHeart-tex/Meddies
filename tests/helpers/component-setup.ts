@@ -3,6 +3,18 @@ import { cleanup } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, vi } from 'vitest'
 import { server } from './msw-server'
 
+// jsdom has no layout, so nothing ever scrolls beneath pinned actions.
+class NoLayoutIntersectionObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords() {
+    return []
+  }
+}
+globalThis.IntersectionObserver ??=
+  NoLayoutIntersectionObserver as unknown as typeof IntersectionObserver
+
 // A request no handler answers rejects in the app, and screens catch fetch failures, so
 // also fail the test that made it.
 let unhandled: string[] = []
