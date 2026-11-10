@@ -247,7 +247,7 @@ td strong { font-weight: 800; }
   <h1>Today, dose recording, correction and History</h1>
   <p class="lede">The daily routine as one connected flow: Today shows what to do next, one shared drawer records, reviews and corrects a dose, and History shows each past day with the same row anatomy. Built on the approved FE-646 map (D1 to D6) and FE-647. Synthetic data, Fri 6 Nov 2026, Istanbul time.</p>
   <div class="meta">
-    <span class="chip status" style="background:var(--sage-bg);color:var(--sage)">Approved by Bora · D10 to D14 accepted</span>
+    <span class="chip status" style="background:var(--sage-bg);color:var(--sage)">Approved by the maintainer · D10 to D14 accepted</span>
     <span class="chip">402 × 874 primary · 320 checked</span>
     <span class="chip">No production code changed</span>
   </div>
@@ -255,8 +255,8 @@ td strong { font-weight: 800; }
 </header>
 
 <section id="decisions">
-  <h2>Decisions for Bora</h2>
-  <p class="prose">Four choices go beyond the FE-646 map and one proposed exception to FE-631 is listed separately. Bora accepted all five as recommended on 6 Nov 2026, including the D14 exception, which is also recorded in FE-631. The screens below show them.</p>
+  <h2>Decisions for the maintainer</h2>
+  <p class="prose">Four choices go beyond the FE-646 map and one proposed exception to FE-631 is listed separately. The maintainer accepted all five as recommended on 6 Nov 2026, including the D14 exception, which is also recorded in FE-631. The screens below show them.</p>
   <div class="decs">
     <div class="dec"><span class="id">D10</span><h3>Group Today's rows by what she needs to do</h3>
       <p>Today has one list sorted by priority under "Today's doses · 3 of 7 logged". Split it into three headed groups: <b>To log</b> (Due now and Not logged), <b>Later today</b> (Scheduled) and <b>Logged</b> (Taken and Skipped), each with a count. The order stays the same as today. The headings explain why an 08:00 dose sits above a 07:00 one. Empty groups are hidden.</p>
@@ -272,7 +272,7 @@ td strong { font-weight: 800; }
       <p><b>Alternative:</b> discard the attempt on close and rely on refresh alone. She may then save the same dose twice with different details.</p></div>
     <div class="dec exc"><span class="id">D14 · exception</span><h3>Swipes that start on a form control don't close the drawer</h3>
       <p>Carried over from FE-631, where this was left open. Base UI dismisses the drawer when a downward drag starts on any element, including Amount, the pickers and the outcome choice. A small slip while adjusting the amount then discards the draft. Proposal: mark interactive controls <code>data-base-ui-swipe-ignore="y"</code>. Swipes on the handle, header, summary and empty space still close the drawer, and Close, backdrop and Escape are unchanged.</p>
-      <p><b>This changes FE-631's approved behavior.</b> Accepted by Bora on 6 Nov 2026 and recorded in FE-631. The drawer keeps the current behavior until FE-644 builds it.</p></div>
+      <p><b>This changes FE-631's approved behavior.</b> Accepted by the maintainer on 6 Nov 2026 and recorded in FE-631. The drawer keeps the current behavior until FE-644 builds it.</p></div>
   </div>
   <div class="notebox"><b>Superseded wording in the FE-648 brief:</b> it lists "confirmed success/Undo". D2 (accepted in FE-646) removed Undo: a confirmed dose shows a factual Toast with no Undo, and Correct outcome handles mistakes. These screens follow D2. The DESIGN.md wording update for D2 is still a separate follow-up.</div>
 </section>
@@ -536,12 +536,12 @@ td strong { font-weight: 800; }
     <li><span class="box done">✓</span><span>Actual time and quantity are explicit; correction never moves the schedule or infers intake.</span></li>
     <li><span class="box done">✓</span><span>Uncertainty, conflict, rollover, refresh, session and keyboard states are shown.</span></li>
     <li><span class="box done">✓</span><span>Control mapping, exception D14 and evidence limits recorded.</span></li>
-    <li><span class="box done">✓</span><span>D10 to D14 accepted by Bora and recorded in FE-648; D14 also recorded in FE-631.</span></li>
-    <li><span class="box done">✓</span><span>Bora's approval of the screens recorded in FE-648.</span></li>
+    <li><span class="box done">✓</span><span>D10 to D14 accepted by the maintainer and recorded in FE-648; D14 also recorded in FE-631.</span></li>
+    <li><span class="box done">✓</span><span>The maintainer's approval of the screens recorded in FE-648.</span></li>
   </ul>
   <div class="approve" style="background:var(--sage-bg)">
     <h2 style="color:var(--sage)">Approved</h2>
-    <p class="prose">Bora approved these screens and accepted D10 to D14 on 6 Nov 2026. Approval unblocks the FE-644 intake form and the next design, FE-649. It does not complete code or device verification in FE-624, FE-627 or FE-644.</p>
+    <p class="prose">The maintainer approved these screens and accepted D10 to D14 on 6 Nov 2026. Approval unblocks the FE-644 intake form and the next design, FE-649. It does not complete code or device verification in FE-624, FE-627 or FE-644.</p>
   </div>
 </section>
 

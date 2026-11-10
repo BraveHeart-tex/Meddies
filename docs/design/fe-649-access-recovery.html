@@ -263,21 +263,21 @@ td strong { font-weight: 800; }
   <h1>Settings, sign-in and session recovery</h1>
   <p class="lede">The edges of the private app: getting in with the approved Google account, Settings and sign-out, and what happens when a session ends in the middle of a flow. Built on the approved FE-646 map (D1 to D6), FE-647 (D7 to D9) and FE-648 (D10 to D14). Synthetic data, Fri 6 Nov 2026, Istanbul time.</p>
   <div class="meta">
-    <span class="chip status" style="background:var(--sage-bg);color:var(--sage)">Approved by Bora · D15, D17 to D19 accepted · D16 declined</span>
+    <span class="chip status" style="background:var(--sage-bg);color:var(--sage)">Approved by the maintainer · D15, D17 to D19 accepted · D16 declined</span>
     <span class="chip">402 × 874 primary · 320 checked</span>
     <span class="chip">No production code changed</span>
   </div>
 </header>
 
 <section id="decisions">
-  <h2>Decisions for Bora</h2>
-  <p class="prose">Five choices went beyond the earlier maps. On 6 Nov 2026 Bora accepted D15, D17, D18 and D19 as recommended and declined D16. D17 changes two approved screens (FE-647 "session ended" in the form, FE-648 F7 in the drawer); that change is recorded in both issues.</p>
+  <h2>Decisions for the maintainer</h2>
+  <p class="prose">Five choices went beyond the earlier maps. On 6 Nov 2026 the maintainer accepted D15, D17, D18 and D19 as recommended and declined D16. D17 changes two approved screens (FE-647 "session ended" in the form, FE-648 F7 in the drawer); that change is recorded in both issues.</p>
   <div class="decs">
     <div class="dec"><span class="id">D15</span><h3>Settings is a header page with no Back link</h3>
       <p>Settings opens from the header on every page, so it has no single parent and a "Back to Today" would be wrong half the time. Rule: <b>a visible Back row appears only on sub-screens with one fixed parent</b> (Add medicine, medicine detail, schedule setup). Settings keeps the bottom nav with no tab selected, and the header Settings button shows as current. Browser Back and the iOS edge swipe return to wherever she came from.</p>
       <p><b>Alternative:</b> a Back row on Settings that calls history back. It falls back to Today on a cold launch into <code>/settings</code>, which is the ambiguity this removes.</p></div>
     <div class="dec" style="opacity:.7"><span class="id">D16 · declined</span><h3>No destination line on sign-in</h3>
-      <p><b>Declined by Bora on 6 Nov 2026:</b> the line adds little. Sign-in still returns to the intended page, including the History date, through <code>returnTo</code>; it just doesn't say so on screen.</p></div>
+      <p><b>Declined by the maintainer on 6 Nov 2026:</b> the line adds little. Sign-in still returns to the intended page, including the History date, through <code>returnTo</code>; it just doesn't say so on screen.</p></div>
     <div class="dec conf"><span class="id">D17 · conflict</span><h3>One path for every session end</h3>
       <p>Expiry timer, a 401 from the session check on focus, or a 401 from any save all lead to the same place. Meddies confirms with <code>/api/session</code>, then clears private cache, drafts and pending attempts (FE-638), and replaces the page with sign-in "Your session ended" plus the return page. <b>Private content and unsaved details are not shown after that.</b></p>
       <p><b>Accepted. This changes approved screens:</b> FE-647 "session ended" and FE-648 F7 kept the form details visible with "Sign in again". Under D17 those states last only as long as the session check (no extra screen). <b>Alternative:</b> keep the in-form alert until she taps Sign in again. It shows private content after the session has ended, which the FE-649 acceptance rules out.</p></div>
@@ -286,7 +286,7 @@ td strong { font-weight: 800; }
       <p><b>Alternative:</b> block sign-out until saves settle. An uncertain save may never settle in this session, so she could be stuck.</p></div>
     <div class="dec"><span class="id">D19</span><h3>Settings shows the session end, not the email</h3>
       <p>The session deliberately exposes no email or Google profile to the browser (docs/authentication.md). Settings says <b>"Signed in with your approved Google account"</b> and <b>"Session ends Fri 13 Nov at 14:02"</b>, from the seven-day absolute deadline. That tells her when she will be asked again, which explains a sign-in a week later.</p>
-      <p><b>Alternative:</b> expose the email to show "karaca…@gmail.com". That adds personal data to the client session for little gain.</p></div>
+      <p><b>Alternative:</b> expose the email to show "person…@example.test". That adds personal data to the client session for little gain.</p></div>
   </div>
   <div class="notebox"><b>Not added in this wave:</b> reminder preferences (FE-566 push, FE-572 quiet hours, FE-573 snooze, FE-574 notification privacy), stock settings (FE-583, FE-589), export (FE-592), history deletion (FE-593) and account deletion (FE-594). Settings gets no placeholders for them; each backlog item designs its own entry later.</div>
 </section>
@@ -524,11 +524,11 @@ td strong { font-weight: 800; }
     <li><span class="box done">✓</span><span>States, mobile and focus notes, control mapping and evidence limits recorded.</span></li>
     <li><span class="box done">✓</span><span>No reminder, stock, export or deletion screens; backlog items linked.</span></li>
     <li><span class="box done">✓</span><span>D15, D17, D18 and D19 accepted, D16 declined; D17 recorded in FE-647 and FE-648.</span></li>
-    <li><span class="box done">✓</span><span>Bora's approval of the screens recorded in FE-649.</span></li>
+    <li><span class="box done">✓</span><span>The maintainer's approval of the screens recorded in FE-649.</span></li>
   </ul>
   <div class="approve" style="background:var(--sage-bg)">
     <h2 style="color:var(--sage)">Approved</h2>
-    <p class="prose">Bora approved these screens on 6 Nov 2026, accepting D15, D17, D18 and D19 and declining D16. Approval unblocks the FE-627 Settings and access audit and the final design, FE-650. It does not complete code or device verification.</p>
+    <p class="prose">The maintainer approved these screens on 6 Nov 2026, accepting D15, D17, D18 and D19 and declining D16. Approval unblocks the FE-627 Settings and access audit and the final design, FE-650. It does not complete code or device verification.</p>
   </div>
 </section>
 

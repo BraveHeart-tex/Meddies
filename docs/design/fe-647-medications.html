@@ -204,7 +204,7 @@ td strong { font-weight: 800; }
   <h1>Medications, new medicine and first schedule</h1>
   <p class="lede">Every screen and state from the Medications list to a saved medicine with its first daily or selected-weekday schedule, for both "Set schedule" now and "Done for now". Built on the approved FE-646 map (D1 to D6). Synthetic data, Thu 6 Nov 2026, 14:02 Istanbul.</p>
   <div class="meta">
-    <span class="chip status" style="background:var(--sage-bg);color:var(--sage)">Approved by Bora · D7 to D9 accepted</span>
+    <span class="chip status" style="background:var(--sage-bg);color:var(--sage)">Approved by the maintainer · D7 to D9 accepted</span>
     <span class="chip">402 × 874 primary · 320 checked</span>
     <span class="chip">No production code changed</span>
   </div>
@@ -213,7 +213,7 @@ td strong { font-weight: 800; }
 
 <section id="decisions">
   <h2>Decisions</h2>
-  <p class="prose">Three choices go beyond the FE-646 map. Bora accepted all three as recommended on 6 Nov 2026, and asked for each time row to put Time and Quantity on separate lines; the screens below show both.</p>
+  <p class="prose">Three choices go beyond the FE-646 map. The maintainer accepted all three as recommended on 6 Nov 2026, and asked for each time row to put Time and Quantity on separate lines; the screens below show both.</p>
   <div class="decs">
     <div class="dec"><span class="id">D7</span><h3>The saved handoff is the medicine's own page</h3>
       <p>After the server confirms a new medicine, replace <code>?add</code> with <code>?medicine=ID</code>. The page shows "Magnesium saved." with <b>Set schedule</b> and <b>Done for now</b>. Back from there goes to the list, never to a filled form, so a second save of the same medicine cannot start from history. Reload keeps her on the medicine, which still offers Set schedule.</p>
@@ -434,12 +434,12 @@ td strong { font-weight: 800; }
     <li><span class="box done">✓</span><span>Both forms use the FE-646 mapping: Field hierarchy, errors under controls, one save alert above one full-width primary.</span></li>
     <li><span class="box done">✓</span><span>State variants: loading, empty, validation with first-invalid focus, saving, confirmed, definite failure, uncertain receipt and retry, conflict, session expiry, interruption, schedule failure after medicine success, unavailable data. Mobile and keyboard behavior annotated.</span></li>
     <li><span class="box done">✓</span><span>Supported quantities and Istanbul rules stated; no interval, edit, pause or end-date UI.</span></li>
-    <li><span class="box done">✓</span><span>D7 to D9 accepted by Bora and recorded in FE-647.</span></li>
-    <li><span class="box done">✓</span><span>Bora's final approval of the screens recorded in FE-647.</span></li>
+    <li><span class="box done">✓</span><span>D7 to D9 accepted by the maintainer and recorded in FE-647.</span></li>
+    <li><span class="box done">✓</span><span>The maintainer's final approval of the screens recorded in FE-647.</span></li>
   </ul>
   <div class="approve" style="background:var(--sage-bg)">
     <h2 style="color:var(--sage)">Approved</h2>
-    <p class="prose">Bora approved these screens and accepted D7 to D9 on 6 Nov 2026. Other medicine forms (liquids, drops and similar) stay out of the MVP and need their own product decision later. Approval unblocks the visible form work in FE-641 and FE-643 and the next design, FE-648. It does not complete their code or verification.</p>
+    <p class="prose">The maintainer approved these screens and accepted D7 to D9 on 6 Nov 2026. Other medicine forms (liquids, drops and similar) stay out of the MVP and need their own product decision later. Approval unblocks the visible form work in FE-641 and FE-643 and the next design, FE-648. It does not complete their code or verification.</p>
   </div>
 </section>
 

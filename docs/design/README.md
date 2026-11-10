@@ -23,6 +23,9 @@ happen. After a design changes there, refresh the copy here.
   from [DESIGN.md](../../DESIGN.md).
 - **Wording:** [docs/copy.md](../copy.md) overrides the wording in these snapshots.
 
+Keep committed snapshots and captures synthetic: use example addresses and role names
+for approval notes. Keep personal approval attribution in the linked Linear evidence.
+
 ## Design lab
 
 Use the lab for new frames that should hand off as real production components. Run
