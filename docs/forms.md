@@ -53,6 +53,12 @@ Visual rules and copy: [DESIGN.md](../DESIGN.md).
   attempt, including its start date; background refresh runs independently of completion.
   Clock and Interval schedules share that attempt, one form each; the Interval schedule draft
   and the chosen kind sit beside the Clock schedule draft, and Cancel's Discard clears all three.
+  Both forms carry the optional Last day as `lastDay`, sent as the contract's `endDate`; its
+  earliest day rule lives in `last-day.ts`.
+- **Stop schedule:** `useScheduleStop` saves through the same session store, keyed by medicine
+  because the confirmed stop replaces the version it names before the save settles. Its confirm
+  drawer holds while stopping, retries the same stop after an unknown result, and treats a
+  rejection as the stale-change recovery.
 - **Intake form exception:** `taken-form.tsx` takes errors and the saving state from
   `useDoseOutcomeMutation`, which observes the session dose save store (`dose-saves.ts`) for
   Taken, Skipped and corrections. The store's pending flag is the duplicate-submit lock; the
