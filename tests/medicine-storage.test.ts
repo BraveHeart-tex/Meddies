@@ -1087,6 +1087,7 @@ test('Schedule versions preserve the D3 Edit time boundary and list only the cur
     await f.operations.edit({
       id: editedId,
       basedOnId: id,
+      endDate: null,
       times: [{ time: newTime, quantity: 1 }],
     })
     const snapshot = await f.operations.snapshot()
@@ -1124,6 +1125,7 @@ test('Schedule versions retain early Taken outcomes, prior History and earlier-v
   await f.operations.edit({
     id: randomUUID(),
     basedOnId: id,
+    endDate: null,
     times: [{ time: '11:00', quantity: 1 }],
   })
   assert.deepEqual(
@@ -1168,6 +1170,7 @@ test('Schedule versions switch Clock and Interval and preserve an Interval Ancho
   const switchInput = {
     id: intervalId,
     basedOnId: clockId,
+    endDate: null,
     intervalHours: 8,
     times: [{ time: '08:00', quantity: 1 }],
   }
@@ -1185,6 +1188,7 @@ test('Schedule versions switch Clock and Interval and preserve an Interval Ancho
   const [hours] = await f.operations.edit({
     id: hoursId,
     basedOnId: intervalId,
+    endDate: null,
     intervalHours: 6,
     times: [{ time: '08:00', quantity: 1 }],
   })
@@ -1200,6 +1204,7 @@ test('Schedule versions switch Clock and Interval and preserve an Interval Ancho
   await f.operations.edit({
     id: randomUUID(),
     basedOnId: hoursId,
+    endDate: null,
     times: [{ time: '15:00', quantity: 2 }],
   })
   assert.deepEqual(
@@ -1223,7 +1228,12 @@ test('Schedule version edits reject stale or changed attempts and other owners; 
     times: [{ time: '09:00', quantity: 1 }],
   })
   f.setNow('2026-11-03T06:00:00.000Z')
-  const edit = { id: randomUUID(), basedOnId: id, times: [{ time: '10:00', quantity: 1 }] }
+  const edit = {
+    id: randomUUID(),
+    basedOnId: id,
+    endDate: null,
+    times: [{ time: '10:00', quantity: 1 }],
+  }
   const outsider = createScheduleOperations({
     requireUser: async () => ({ id: 'google:outsider' }),
     send: f.send,
@@ -1244,13 +1254,14 @@ test('Schedule version edits reject stale or changed attempts and other owners; 
     { status: 409 },
   )
   await assert.rejects(() => f.operations.edit({ ...edit, id: randomUUID() }), { status: 409 })
-  for (const extra of [
-    { startDate: '2026-11-05' },
-    { endDate: '2026-11-05' },
-    { medicineId: f.medicineId },
-  ])
+  for (const extra of [{ startDate: '2026-11-05' }, { medicineId: f.medicineId }])
     await assert.rejects(() => f.operations.edit({ ...edit, ...extra }), /validation/)
-  const next = { id: randomUUID(), basedOnId: edit.id, times: [{ time: '12:00', quantity: 1 }] }
+  const next = {
+    id: randomUUID(),
+    basedOnId: edit.id,
+    endDate: null,
+    times: [{ time: '12:00', quantity: 1 }],
+  }
   const races = await Promise.allSettled([
     f.operations.edit(next),
     f.operations.edit({ ...next, id: randomUUID() }),
@@ -1304,7 +1315,12 @@ test('an early recording racing an edit is either retained or rejected without r
   f.setNow('2026-11-03T06:00:00.000Z')
   const [recorded, edited] = await Promise.allSettled([
     f.operations.recordSkipped({ scheduleId: id, dueAt: '2026-11-03T07:00:00.000Z' }),
-    f.operations.edit({ id: randomUUID(), basedOnId: id, times: [{ time: '11:00', quantity: 1 }] }),
+    f.operations.edit({
+      id: randomUUID(),
+      basedOnId: id,
+      endDate: null,
+      times: [{ time: '11:00', quantity: 1 }],
+    }),
   ])
   assert.equal(edited.status, 'fulfilled')
   const doses = (await f.operations.snapshot()).today.doses
@@ -1314,4 +1330,162 @@ test('an early recording racing an edit is either retained or rejected without r
   )
   if (recorded.status === 'rejected') assert.ok([400, 409].includes(recorded.reason.status))
   else assert.equal(doses[0].status, 'Skipped')
+})
+
+test('Last day today keeps earlier doses and includes the final evening only', async () => {
+  const f = await versionFixture()
+  const id = randomUUID()
+  const times = [
+    { time: '09:00', quantity: 1 },
+    { time: '21:00', quantity: 1 },
+  ]
+  await f.operations.save({ id, medicineId: f.medicineId, startDate: '2026-11-02', times })
+  f.setNow('2026-11-03T07:00:00.000Z')
+  const edit = { id: randomUUID(), basedOnId: id, times, endDate: '2026-11-03' }
+  await assert.rejects(() => f.operations.edit({ ...edit, endDate: '2026-11-02' }), /validation/)
+  const [saved] = await f.operations.edit(edit)
+  assert.equal(saved.endDate, '2026-11-03')
+  assert.deepEqual(
+    (await f.operations.snapshot()).today.doses.map((d) => [d.scheduleId, d.dueAt]),
+    [
+      [id, '2026-11-03T06:00:00.000Z'],
+      [edit.id, '2026-11-03T18:00:00.000Z'],
+    ],
+  )
+  f.setNow('2026-11-04T07:00:00.000Z')
+  const snapshot = await f.operations.snapshot()
+  assert.deepEqual(snapshot.today.doses, [])
+  assert.equal(snapshot.today.next, null)
+  assert.equal((await f.operations.history('2026-11-03')).length, 2)
+  const key = { scheduleId: id, dueAt: '2026-11-03T06:00:00.000Z' }
+  await f.operations.recordSkipped(key)
+  await f.operations.correctOutcome({
+    ...key,
+    actionId: randomUUID(),
+    expectedRevision: 0,
+    expectedOutcome: 'Skipped',
+    outcome: 'Taken',
+    takenAt: '2026-11-04T07:00:00.000Z',
+    quantity: 1,
+  })
+  assert.equal((await f.operations.history('2026-11-03'))[0].status, 'Taken')
+})
+
+test('Last day changes require an explicit valid day and retain the day sent with a time change', async () => {
+  const f = await versionFixture()
+  const id = randomUUID()
+  const input = {
+    id,
+    medicineId: f.medicineId,
+    startDate: '2026-11-05',
+    times: [{ time: '09:00', quantity: 1 }],
+    intervalHours: 8,
+    endDate: '2026-11-06',
+  }
+  for (const intervalHours of [null, 8])
+    await assert.rejects(
+      () => f.operations.save({ ...input, intervalHours, endDate: '2026-11-04' }),
+      /validation/,
+    )
+  const saved = await f.operations.save(input)
+  f.setNow('2026-11-03T07:00:00.000Z')
+  const edit = {
+    id: randomUUID(),
+    basedOnId: id,
+    times: input.times,
+    intervalHours: 6,
+    endDate: '2026-11-06',
+  }
+  for (const endDate of [undefined, '', '2026-02-30', '2026-11-02', '2026-11-04']) {
+    await assert.rejects(() => f.operations.edit({ ...edit, endDate }), /validation/)
+  }
+  await assert.rejects(() => f.operations.edit({ ...edit, anchorDate: '2026-11-07' }), /validation/)
+  const [changed] = await f.operations.edit(edit)
+  assert.equal(changed.endDate, '2026-11-06')
+  assert.equal(changed.startDate, '2026-11-05')
+  f.setNow('2026-11-08T07:00:00.000Z')
+  assert.deepEqual(await f.operations.save(input), [
+    { ...saved[0], replacedAt: '2026-11-03T07:00:00.000Z' },
+  ])
+  assert.deepEqual(await f.operations.edit(edit), [changed])
+  await assert.rejects(() => f.operations.edit({ ...edit, endDate: null }), { status: 409 })
+  await assert.rejects(() => f.operations.edit({ ...edit, id: randomUUID(), endDate: null }), {
+    status: 409,
+  })
+  const outsider = createScheduleOperations({
+    requireUser: async () => ({ id: 'google:outsider' }),
+    send: f.send,
+  })
+  await assert.rejects(
+    () => outsider.edit({ ...edit, id: randomUUID(), basedOnId: changed.id, endDate: null }),
+    { status: 400 },
+  )
+})
+
+test('Ended schedules restart after the Edit time without restoring doses in the gap', async () => {
+  for (const intervalHours of [null, 12]) {
+    for (const endDate of ['2026-11-06', null]) {
+      const f = await versionFixture()
+      const id = randomUUID()
+      const times = intervalHours
+        ? [{ time: '09:00', quantity: 1 }]
+        : [
+            { time: '09:00', quantity: 1 },
+            { time: '21:00', quantity: 1 },
+          ]
+      await f.operations.save({
+        id,
+        medicineId: f.medicineId,
+        startDate: '2026-11-02',
+        times,
+        intervalHours,
+        endDate: '2026-11-03',
+      })
+      f.setNow('2026-11-05T07:00:00.000Z')
+      assert.equal((await f.operations.snapshot()).today.next, null)
+      const past = await f.operations.history('2026-11-03')
+      const edit = { id: randomUUID(), basedOnId: id, times, intervalHours, endDate }
+      await f.operations.edit(edit)
+      assert.deepEqual(
+        (await f.operations.snapshot()).today.doses.map((d) => [d.scheduleId, d.dueAt]),
+        [[edit.id, '2026-11-05T18:00:00.000Z']],
+      )
+      assert.deepEqual(await f.operations.history('2026-11-04'), [])
+      assert.deepEqual(await f.operations.history('2026-11-05'), [])
+      assert.deepEqual(await f.operations.history('2026-11-03'), past)
+    }
+  }
+})
+
+test('Final day and End preserves history keep the 23:30 dose recordable and correctable', async () => {
+  const f = await versionFixture()
+  const id = randomUUID()
+  await f.operations.save({
+    id,
+    medicineId: f.medicineId,
+    startDate: '2026-11-02',
+    times: [{ time: '23:30', quantity: 1 }],
+    endDate: '2026-11-03',
+  })
+  f.setNow('2026-11-03T20:00:00.000Z')
+  assert.equal((await f.operations.snapshot()).today.next?.dueAt, '2026-11-03T20:30:00.000Z')
+  f.setNow('2026-11-04T07:00:00.000Z')
+  assert.equal((await f.operations.snapshot()).today.next, null)
+  assert.deepEqual(
+    (await f.operations.history('2026-11-03')).map((d) => [d.dueAt, d.status]),
+    [['2026-11-03T20:30:00.000Z', 'Not logged']],
+  )
+  assert.deepEqual(await f.operations.history('2026-11-04'), [])
+  const key = { scheduleId: id, dueAt: '2026-11-03T20:30:00.000Z' }
+  await f.operations.recordSkipped(key)
+  await f.operations.correctOutcome({
+    ...key,
+    actionId: randomUUID(),
+    expectedRevision: 0,
+    expectedOutcome: 'Skipped',
+    outcome: 'Taken',
+    takenAt: '2026-11-04T07:00:00.000Z',
+    quantity: 1,
+  })
+  assert.equal((await f.operations.history('2026-11-03'))[0].status, 'Taken')
 })

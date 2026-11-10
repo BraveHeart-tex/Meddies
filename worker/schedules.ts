@@ -84,7 +84,11 @@ export async function saveSchedule(
   if (!medicine || schedule.times.some((slot) => !isQuantityForUnit(slot.quantity, medicine.unit)))
     throw new ApplicationError('validation', 400)
   const now = clock()
-  if (schedule.startDate < istanbulDate(now)) throw new ApplicationError('validation', 400)
+  if (
+    schedule.startDate < istanbulDate(now) ||
+    (schedule.endDate !== null && schedule.endDate < istanbulDate(now))
+  )
+    throw new ApplicationError('validation', 400)
   await db
     .insert(dailySchedules)
     .values({ ...schedule, ownerId, confirmedAt: now.toISOString() })
@@ -147,11 +151,13 @@ export async function editSchedule(
   )
     throw new ApplicationError('validation', 400)
   const startDate = interval ? (edit.anchorDate ?? parent.startDate) : today
+  if (edit.endDate !== null && (edit.endDate < today || edit.endDate < startDate))
+    throw new ApplicationError('validation', 400)
   await db.run(sql`
     INSERT INTO daily_schedules (owner_id, id, medicine_id, start_date, times, confirmed_at,
       weekdays, end_date, interval_hours, based_on_id, edit_request)
     SELECT ${ownerId}, ${edit.id}, ${parent.medicineId}, ${startDate}, ${JSON.stringify(edit.times)},
-      ${now.toISOString()}, ${JSON.stringify(edit.weekdays)}, ${parent.endDate}, ${edit.intervalHours ?? null}, ${edit.basedOnId}, ${request}
+      ${now.toISOString()}, ${JSON.stringify(edit.weekdays)}, ${edit.endDate}, ${edit.intervalHours ?? null}, ${edit.basedOnId}, ${request}
     WHERE NOT EXISTS (SELECT 1 FROM daily_schedules WHERE owner_id = ${ownerId} AND based_on_id = ${edit.basedOnId})
     ON CONFLICT DO NOTHING
   `)

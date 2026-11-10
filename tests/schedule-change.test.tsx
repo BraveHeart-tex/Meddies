@@ -90,7 +90,7 @@ function api(initial: DailySchedule[], respond?: Respond) {
         startDate: interval ? (payload.anchorDate ?? parent.startDate) : '2026-11-09',
         times: payload.times,
         weekdays: interval ? [...ALL_WEEKDAYS] : payload.weekdays,
-        endDate: null,
+        endDate: payload.endDate,
         intervalHours: payload.intervalHours,
         confirmedAt: initialNow,
         basedOnId: parent.id,
@@ -215,6 +215,15 @@ describe('Medication detail', () => {
 })
 
 describe('changing a Clock schedule', () => {
+  test('a time-only change explicitly sends and confirms the current Last day', async () => {
+    const { edits } = api([{ ...clockVersion, endDate: '2026-11-10' }])
+    const { user, onSaved } = await openChange()
+    await addTime(user, '14:00')
+    await user.click(saveChanges())
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(edits[0].endDate).toBe('2026-11-10')
+  })
+
   test('767·A2 opens prefilled without a Start date, and Save changes waits for a change', async () => {
     api([clockVersion])
     await openChange()
@@ -253,6 +262,7 @@ describe('changing a Clock schedule', () => {
       {
         id: expect.any(String),
         basedOnId: clockVersion.id,
+        endDate: null,
         weekdays: [...ALL_WEEKDAYS],
         times: [
           { time: '08:00', quantity: 1 },
@@ -295,6 +305,7 @@ describe('changing an Interval schedule', () => {
     expect(edits[0]).toEqual({
       id: expect.any(String),
       basedOnId: intervalVersion.id,
+      endDate: null,
       weekdays: [...ALL_WEEKDAYS],
       times: [{ time: '08:00', quantity: 1 }],
       intervalHours: 6,
@@ -337,6 +348,27 @@ describe('changing an Interval schedule', () => {
 })
 
 describe('recovery', () => {
+  test('a response with a different Last day leaves the change unconfirmed', async () => {
+    api([clockVersion], (payload) =>
+      HttpResponse.json({
+        schedules: [
+          {
+            ...clockVersion,
+            ...payload,
+            startDate: '2026-11-09',
+            endDate: '2026-11-10',
+            confirmedAt: initialNow,
+          },
+        ],
+      }),
+    )
+    const { user, onSaved } = await openChange()
+    await addTime(user, '14:00')
+    await user.click(saveChanges())
+    expect(await screen.findByText('That might not have saved.')).toBeVisible()
+    expect(onSaved).not.toHaveBeenCalled()
+  })
+
   test('767·S2 a stale conflict applies nothing and offers the current schedule', async () => {
     api([clockVersion], () => HttpResponse.json({ error: 'conflict' }, { status: 409 }))
     const { user, onSaved, unmount } = await openChange()

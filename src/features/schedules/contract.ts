@@ -23,6 +23,7 @@ export type DailySchedule = DailyScheduleInput & {
 export type ScheduleEditInput = {
   id: string
   basedOnId: string
+  endDate: string | null
   times: DailyScheduleInput['times']
   weekdays?: number[]
   intervalHours?: number | null
@@ -150,7 +151,7 @@ export function parseSchedule(
   }
 }
 
-// Edits carry no start/end date or medicine identity. The server derives those
+// Edits explicitly state the Last day. The server derives the start date and medicine
 // from the current version and confirmation time; anchorDate is Interval-only.
 export function parseScheduleEdit(value: unknown): ScheduleEditInput {
   if (!value || typeof value !== 'object') throw new ApplicationError('validation', 400)
@@ -158,14 +159,29 @@ export function parseScheduleEdit(value: unknown): ScheduleEditInput {
   if (
     Object.keys(input).some(
       (key) =>
-        !['id', 'basedOnId', 'times', 'weekdays', 'intervalHours', 'anchorDate'].includes(key),
+        ![
+          'id',
+          'basedOnId',
+          'times',
+          'weekdays',
+          'intervalHours',
+          'anchorDate',
+          'endDate',
+        ].includes(key),
     ) ||
     typeof input.basedOnId !== 'string' ||
     !uuid.test(input.basedOnId) ||
+    (input.endDate !== null && !isScheduleDate(input.endDate)) ||
     (input.anchorDate !== undefined && !isScheduleDate(input.anchorDate))
   )
     throw new ApplicationError('validation', 400)
-  const parsed = parseSchedule({ ...input, medicineId: input.basedOnId, startDate: '2026-01-01' })
+  // The Worker validates the Last day against the real start date and Edit time.
+  const parsed = parseSchedule({
+    ...input,
+    medicineId: input.basedOnId,
+    startDate: '2026-01-01',
+    endDate: null,
+  })
   if (
     parsed.id === input.basedOnId.toLowerCase() ||
     (input.anchorDate !== undefined && parsed.intervalHours == null)
@@ -174,6 +190,7 @@ export function parseScheduleEdit(value: unknown): ScheduleEditInput {
   return {
     id: parsed.id,
     basedOnId: input.basedOnId.toLowerCase(),
+    endDate: input.endDate,
     times: parsed.times,
     weekdays: parsed.weekdays,
     intervalHours: parsed.intervalHours,

@@ -77,7 +77,9 @@ owner.
   `id` (also the attempt ID), `basedOnId`, `times`, `weekdays` and `intervalHours`.
   `anchorDate` is required when switching Clock to Interval; omitting it on an Interval
   edit retains the Anchor date and requires the same Anchor time. Edits accept no start
-  or end date. The Worker derives the medicine and Edit time, and appends one successor
+  date and explicitly send `endDate` (the Last day), with null meaning none. The Last day
+  must be today or later in Istanbul and on or after the new start or Anchor date.
+  The Worker derives the medicine and Edit time, and appends one successor
   atomically. Migration 0008 retains all schedule/outcome IDs while replacing the original
   uniqueness rule with one initial version per medicine and one successor per version.
   Snapshots list current schedules separately from `earlierSchedules`; the Query cache

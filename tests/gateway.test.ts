@@ -234,7 +234,7 @@ test('schedule edit HTTP boundary authenticates, guards requests and decodes ver
   const { POST } = await import('../src/app/api/schedules/edit/route')
   const id = '10000000-0000-4000-8000-000000000003'
   const basedOnId = '10000000-0000-4000-8000-000000000001'
-  const edit = { id, basedOnId, times: [{ time: '10:00', quantity: 1 }] }
+  const edit = { id, basedOnId, endDate: null, times: [{ time: '10:00', quantity: 1 }] }
   const schedule = {
     id,
     medicineId: '10000000-0000-4000-8000-000000000002',

@@ -36,6 +36,7 @@ function matchingChange(value: unknown, payload: Record<string, unknown>): Daily
     !same(saved.times, attempted.times) ||
     !same(saved.weekdays, attempted.weekdays) ||
     saved.intervalHours !== attempted.intervalHours ||
+    saved.endDate !== attempted.endDate ||
     (attempted.anchorDate !== undefined && saved.startDate !== attempted.anchorDate)
   )
     throw new Error('Schedule confirmation does not match attempt')
@@ -57,6 +58,7 @@ export function scheduleChangePayload(current: DailySchedule, values: ScheduleVa
       values.times[0].time !== current.times[0].time)
   return {
     basedOnId: current.id,
+    endDate: current.endDate ?? null,
     times: values.times,
     weekdays: values.weekdays,
     intervalHours,
