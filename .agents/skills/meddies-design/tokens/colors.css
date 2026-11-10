@@ -1,3 +1,5 @@
+/* Design reference only. Production tokens live in src/global.css;
+   this export is excluded from production Tailwind scanning and Release inputs. */
 :root {
   /* ---- Base palette ---- */
   --cream-50: #FBF5EE;   /* app background */
