@@ -34,17 +34,20 @@ commands are for coordinated recovery only.
 
 `.github/workflows/verify.yml` runs on pull requests, using `.node-version`,
 `packageManager` and a frozen install. It has read-only repository access and no
-production environment or secrets. The `Unit` and `Journeys` jobs
-([layout](verification.md#ci-jobs)) run in parallel, then `Checks` fails unless both
-succeeded. The `Checks` status context stays the same whichever jobs sit behind it.
-`scripts/verify.mjs` is the local and manual-recovery path. Require the `Checks` status in
-main branch protection after its first successful run; verify the actual status context
-in GitHub before configuring it. Repository files alone do not enforce branch protection.
+production environment or secrets. One `Verify` job runs lint, format check, typecheck,
+production build, Worker build and every non-`@visual` journey
+([layout](verification.md#ci-jobs)). Vitest stays in `pnpm verify:local`; there is no
+`Checks` aggregator. No branch protection uses the removed aggregator.
+`scripts/verify.mjs` is the local and manual-recovery path.
 
 `.github/workflows/release.yml` runs on `main` pushes or manual dispatch on `main`.
 Pushes changing only `docs/` files or `*.md` files at any depth start no Release run.
 Manual dispatch on main still runs, including for a docs-only commit.
-It reruns verification for the event SHA, then enters the `production` environment.
+It calls the single Verify job for the event SHA, then enters the `production` environment.
+Before dependency setup, Verify checks current main using the release guard's docs-only
+rule. A SHA superseded by any non-docs commit succeeds early without journeys, and its
+release job is skipped. Head and docs-only advances proceed; lookup or history errors fail
+closed. The release job directly requires Verify success and its eligible output.
 A newer push cancels an in-progress Verify, and the newer Verify starts without waiting.
 A separate non-canceling concurrency group on the release job covers every mutation:
 
@@ -128,7 +131,7 @@ CLI deployments follow [Vercel deploy](https://vercel.com/docs/cli/deploy).
 
 ### Failure and recovery
 
-Checks failing prevents the release job from starting. A missing setup variable or
+Verify failing prevents the release job from starting. A missing setup variable or
 credential stops preflight. Migration failure stops Worker and app; Worker failure
 stops app; app or smoke failure leaves already completed stages in production.
 Inspect the run's SHA and stage before retrying. A smoke failure may mean the app

@@ -26,6 +26,7 @@ jobs:
   release:
     name: Ordered production release
     needs: verify
+    if: needs.verify.outputs.eligible == 'true'
     concurrency:
       group: production-release
       cancel-in-progress: false

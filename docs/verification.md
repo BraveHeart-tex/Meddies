@@ -29,22 +29,25 @@ Test commands: [tests/README.md](../tests/README.md).
 
 ## CI jobs
 
-The Verify workflow runs two jobs in parallel, then an aggregator:
+The Verify workflow runs one job, also called by Release before production mutations.
+It checks release eligibility before dependency setup: head and docs-only advances proceed;
+a SHA superseded by any non-docs commit succeeds without running the remaining steps, and
+Release skips production. Unknown or unrelated history fails closed. The same docs-only
+rule guards production mutations.
 
-- **`Unit`:** lint, format check, typecheck, production build, then `pnpm test`.
-- **`Journeys`:** production build, Worker build, then every journey except `@visual`.
-- **`Checks`:** fails unless both succeeded, so failed, cancelled and skipped jobs all
-  fail it. The `Checks` status context stays the same whichever jobs sit behind it.
+The job sets up dependencies once, then runs lint, format check, typecheck, production
+build, Worker build and every non-`@visual` journey. Any failing step blocks release.
+There is no Checks aggregator. Vitest runs through `pnpm verify:local`, not in CI.
 
-The build jobs set `CI_SKIP_BUILD_TYPECHECK=1`, so their builds skip the Next.js type check
-that `pnpm typecheck` runs in `Unit`. Vercel and journey builds keep the check.
+The production build sets `CI_SKIP_BUILD_TYPECHECK=1` after the explicit typecheck.
+Vercel and local journey builds keep the check.
 
 Verify and Release restore installed `node_modules` using an exact cache key containing
 OS, architecture, resolved Node version, and hashes of the lockfile, package manifest
 and pnpm install policy. A miss runs a frozen install; there are no prefix restores.
 Only main runs save the dependency cache, immediately after a successful install.
 
-`Unit` and `Journeys` restore Turbopack's `.next/cache`. Its key is the OS, a hash of
+Verify restores Turbopack's `.next/cache`. Its key is the OS, a hash of
 `pnpm-lock.yaml` and `next.config.ts`, and the commit SHA, with prefix restore keys. Only
 main runs save it, so pull requests cannot poison or evict it. To clear it:
 

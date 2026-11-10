@@ -3,6 +3,10 @@ name: Verify
 on:
   pull_request:
   workflow_call:
+    outputs:
+      eligible:
+        description: Whether this SHA still qualifies for release
+        value: ${{ jobs.verify.outputs.eligible }}
 
 permissions:
   contents: read
@@ -13,19 +17,39 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  unit:
-    name: Unit
+  verify:
+    name: Verify
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      eligible: ${{ steps.early.outputs.eligible }}
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
+      - name: Check release eligibility before verification
+        id: early
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$GITHUB_REF" != refs/heads/main ]]; then
+            echo "eligible=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          git -c credential.helper= -c 'credential.helper=!gh auth git-credential' fetch --no-tags origin "$current"
+          node scripts/release-guard.mjs "$GITHUB_SHA" "$current" --early
       - uses: ./.github/actions/setup-dependencies
+        if: steps.early.outputs.eligible == 'true'
       - run: pnpm lint
+        if: steps.early.outputs.eligible == 'true'
       - run: pnpm format:check
+        if: steps.early.outputs.eligible == 'true'
       - run: pnpm typecheck
+        if: steps.early.outputs.eligible == 'true'
       - name: Restore Next.js build cache
+        if: steps.early.outputs.eligible == 'true'
         id: next-cache
         uses: actions/cache/restore@v4
         with:
@@ -35,75 +59,50 @@ jobs:
             ${{ runner.os }}-next-cache-${{ hashFiles('pnpm-lock.yaml', 'next.config.ts') }}-
             ${{ runner.os }}-next-cache-
       - name: Production build
+        if: steps.early.outputs.eligible == 'true'
         env:
           CI_SKIP_BUILD_TYPECHECK: '1'
         run: pnpm build
       # Only main saves, so pull requests cannot poison or evict its cache.
       - name: Save Next.js build cache
-        if: github.ref == 'refs/heads/main' && steps.next-cache.outputs.cache-hit != 'true'
+        if: steps.early.outputs.eligible == 'true' && (github.ref == 'refs/heads/main' && steps.next-cache.outputs.cache-hit != 'true')
         uses: actions/cache/save@v4
         with:
           path: .next/cache
           key: ${{ steps.next-cache.outputs.cache-primary-key }}
-      - run: pnpm test
 
-  journeys:
-    name: Journeys
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup-dependencies
-      - name: Restore Next.js build cache
-        id: next-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: .next/cache
-          key: ${{ runner.os }}-next-cache-${{ hashFiles('pnpm-lock.yaml', 'next.config.ts') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-next-cache-${{ hashFiles('pnpm-lock.yaml', 'next.config.ts') }}-
-            ${{ runner.os }}-next-cache-
-      - name: Production build
-        env:
-          CI_SKIP_BUILD_TYPECHECK: '1'
-        run: pnpm build
-      # Only main saves, so pull requests cannot poison or evict its cache.
-      - name: Save Next.js build cache
-        if: github.ref == 'refs/heads/main' && steps.next-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: .next/cache
-          key: ${{ steps.next-cache.outputs.cache-primary-key }}
       - name: Worker build
+        if: steps.early.outputs.eligible == 'true'
         run: pnpm worker:build
       - name: Playwright version
+        if: steps.early.outputs.eligible == 'true'
         id: playwright
         run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
       # Restore and save separately so a failing journey still saves a fresh browser cache.
       - name: Restore Playwright browsers
+        if: steps.early.outputs.eligible == 'true'
         id: playwright-cache
         uses: actions/cache/restore@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
       - name: Install Chromium
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        if: steps.early.outputs.eligible == 'true' && (steps.playwright-cache.outputs.cache-hit != 'true')
         run: pnpm exec playwright install --with-deps chromium
       - name: Save Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        if: steps.early.outputs.eligible == 'true' && (steps.playwright-cache.outputs.cache-hit != 'true')
         uses: actions/cache/save@v4
         with:
           path: ~/.cache/ms-playwright
           key: ${{ steps.playwright-cache.outputs.cache-primary-key }}
       - name: Install Chromium system dependencies
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        if: steps.early.outputs.eligible == 'true' && (steps.playwright-cache.outputs.cache-hit == 'true')
         run: pnpm exec playwright install-deps chromium
       - name: Browser journeys
+        if: steps.early.outputs.eligible == 'true'
         run: pnpm test:browser
       - name: Upload browser artifacts
-        if: failure()
+        if: steps.early.outputs.eligible == 'true' && (failure())
         uses: actions/upload-artifact@v4
         with:
           name: browser-artifacts-${{ github.run_attempt }}
@@ -112,21 +111,3 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 14
-
-  # Branch protection is configured against the `Checks` status context. Keep this name.
-  checks:
-    name: Checks
-    needs: [unit, journeys]
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Verification result
-        env:
-          COMMIT: ${{ github.sha }}
-          UNIT: ${{ needs.unit.result }}
-          JOURNEYS: ${{ needs.journeys.result }}
-        # Failed, cancelled and skipped needs all fail this job.
-        run: |
-          echo "Verification for $COMMIT - Unit $UNIT, Journeys $JOURNEYS" >> "$GITHUB_STEP_SUMMARY"
-          [[ "$UNIT" == success && "$JOURNEYS" == success ]]

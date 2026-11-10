@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve, join } from 'node:path'
 import { afterEach, expect, test } from 'vitest'
@@ -62,4 +62,25 @@ test('refuses a code rename into docs', () => {
   git('mv', 'app.ts', 'app.md')
   git('commit', '-qm', 'rename')
   expect(guard()).toBe(1)
+})
+
+test('early check verifies head and docs-only advances, but skips superseded code', () => {
+  const { commit, git, sha } = history()
+  const output = join(directories.at(-1)!, '.git', 'decision')
+  const check = () => {
+    writeFileSync(output, '')
+    const result = spawnSync(process.execPath, [script, sha, git('rev-parse', 'HEAD'), '--early'], {
+      cwd: directories.at(-1),
+      env: { ...process.env, GITHUB_OUTPUT: output },
+    })
+    expect(result.status).toBe(0)
+    return readFileSync(output, 'utf8')
+  }
+  expect(check()).toBe('eligible=true\n')
+  commit('docs/setup.txt')
+  expect(check()).toBe('eligible=true\n')
+  commit('app.ts', 'new code')
+  expect(check()).toBe('eligible=false\n')
+  commit('app.ts', 'content')
+  expect(check()).toBe('eligible=false\n')
 })
