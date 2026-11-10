@@ -260,7 +260,9 @@ export function IntervalScheduleForm({
         checkHint="Check the hours, first time and quantity, then save again."
         change={
           change && {
+            // Saving a stopped schedule restarts it, unchanged or not (FE-785).
             changed:
+              Boolean(current?.stoppedAt) ||
               current?.intervalHours == null ||
               intervalValuesDiffer({ hours, date, time, quantity, lastDay }, defaults),
             onReview: change.onReview,

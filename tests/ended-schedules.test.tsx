@@ -1,7 +1,8 @@
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Medicine } from '../src/features/medicines/contract'
 import type { DailySchedule } from '../src/features/schedules/contract'
 import { scheduleToday } from '../src/features/schedules/occurrences'
@@ -53,27 +54,59 @@ beforeEach(() => {
 })
 afterEach(() => client.clear())
 
-function api(medicines: Medicine[], schedules: DailySchedule[]) {
+type Respond = (
+  payload: Record<string, unknown>,
+) => Response | undefined | Promise<Response | undefined>
+
+/** The Worker's stop rules in miniature: the successor is stopped at its Edit time. */
+function api(medicines: Medicine[], initial: DailySchedule[], respond?: Respond) {
+  let schedules = initial
+  const stops: Record<string, unknown>[] = []
   server.use(
+    http.post('/api/schedules/stop', async ({ request }) => {
+      const payload = (await request.json()) as Record<string, unknown>
+      stops.push(payload)
+      const response = await respond?.(payload)
+      if (response) return response
+      const parent = schedules.find((item) => item.id === payload.basedOnId) as DailySchedule
+      const stopped: DailySchedule = {
+        ...parent,
+        id: payload.id as string,
+        endDate: null,
+        confirmedAt: initialNow,
+        basedOnId: parent.id,
+        stoppedAt: initialNow,
+        replacedAt: null,
+      }
+      schedules = [
+        ...schedules.map((item) =>
+          item.id === parent.id ? { ...item, replacedAt: initialNow } : item,
+        ),
+        stopped,
+      ]
+      return HttpResponse.json({ schedules: [stopped] })
+    }),
     http.get('/api/medicines', () => HttpResponse.json({ medicines })),
     http.get('/api/schedules', () =>
       HttpResponse.json({
-        schedules,
-        earlierSchedules: [],
+        schedules: schedules.filter((item) => !item.replacedAt),
+        earlierSchedules: schedules.filter((item) => item.replacedAt),
         records: [],
         today: scheduleToday(schedules, new Date(initialNow), []),
       }),
     ),
   )
+  return { stops }
 }
 
-function renderList() {
-  render(
+function renderPanel(mode: 'list' | 'detail' | 'setup' | 'today') {
+  return render(
     <QueryClientProvider client={client}>
-      <SchedulePanel mode="list" initialNow={initialNow} />
+      <SchedulePanel mode={mode} initialMedicineId={magnesium.id} initialNow={initialNow} />
     </QueryClientProvider>,
   )
 }
+const renderList = () => renderPanel('list')
 
 const rows = (group: string) =>
   within(screen.getByRole('region', { name: group }))
@@ -126,4 +159,151 @@ test('779·A20 an Interval row never shows a next dose after its Last day', asyn
   expect(await screen.findByRole('region', { name: 'On a schedule' })).toBeVisible()
   expect(rows('On a schedule')).toEqual([expect.stringMatching(/Iron.*Every 24 hours/)])
   expect(rows('On a schedule')[0]).not.toMatch(/Next/)
+})
+
+describe('Stop schedule', () => {
+  const running = version(1, magnesium.id, { endDate: '2026-11-10' })
+  const button = (name: string | RegExp) => screen.getByRole('button', { name })
+  const drawer = () => screen.findByRole('dialog', { name: 'Stop this schedule?' })
+  const drawerClosed = () =>
+    waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Stop this schedule?' })).not.toBeInTheDocument(),
+    )
+
+  async function openDetail(schedules: DailySchedule[], respond?: Respond) {
+    window.history.replaceState(null, '', `/medications?medicine=${magnesium.id}`)
+    const { stops } = api([magnesium], schedules, respond)
+    const view = renderPanel('detail')
+    await screen.findByRole('link', { name: 'Change schedule' })
+    return { ...view, stops, user: userEvent.setup() }
+  }
+
+  test('779·A13, A14 sits beside Change schedule on a running or not-yet-started schedule', async () => {
+    await openDetail([version(1, magnesium.id, { startDate: '2026-11-12' })])
+    const stop = button('Stop schedule')
+    expect(stop).toHaveClass('text-destructive')
+    expect(stop.parentElement).toContainElement(
+      screen.getByRole('link', { name: 'Change schedule' }),
+    )
+  })
+
+  test('779·A17 is hidden on an Ended schedule', async () => {
+    await openDetail([version(1, magnesium.id, { endDate: '2026-11-03' })])
+    expect(screen.queryByRole('button', { name: 'Stop schedule' })).not.toBeInTheDocument()
+  })
+
+  test('779·A15 the confirm step saves nothing, and Keep schedule or Escape dismiss it', async () => {
+    const { user, stops } = await openDetail([running])
+    await user.click(button('Stop schedule'))
+    const dialog = await drawer()
+    expect(
+      within(dialog).getByText("Doses due so far, and any you've logged, stay as they are."),
+    ).toBeVisible()
+    expect(
+      within(dialog).getByText("Meddies won't expect any more doses of Magnesium."),
+    ).toBeVisible()
+    expect(within(dialog).getByText('To start again, use Change schedule.')).toBeVisible()
+    await user.click(within(dialog).getByRole('button', { name: 'Keep schedule' }))
+    await drawerClosed()
+    expect(button('Stop schedule')).toHaveFocus()
+    await user.click(button('Stop schedule'))
+    await drawer()
+    await user.keyboard('{Escape}')
+    await drawerClosed()
+    expect(stops).toEqual([])
+  })
+
+  test('779·S1, A16 holds while stopping, then reads Ended today with only Change schedule', async () => {
+    let release = () => {}
+    const held = new Promise<void>((resolve) => (release = resolve))
+    const { user, stops } = await openDetail([running], async () => {
+      await held
+      return undefined
+    })
+    await user.click(button('Stop schedule'))
+    const dialog = await drawer()
+    await user.click(within(dialog).getByRole('button', { name: 'Stop schedule' }))
+    expect(await within(dialog).findByRole('button', { name: 'Stopping…' })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'Keep schedule' })).toBeDisabled()
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('dialog', { name: 'Stop this schedule?' })).toBeVisible()
+    release()
+    await drawerClosed()
+    const alert = await screen.findByRole('status', { name: 'Stopped schedule' })
+    expect(alert).toHaveTextContent('Schedule stopped for Magnesium.')
+    expect(alert).toHaveTextContent('No more doses after 10:00 today.')
+    expect(screen.getByText('Ended Mon 9 Nov')).toBeVisible()
+    expect(screen.queryByText(/^Last day/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Stop schedule' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Change schedule' })).toHaveFocus()
+    expect(stops).toEqual([{ id: expect.any(String), basedOnId: running.id }])
+  })
+
+  test('779·S2 an unknown result offers Retry of the same stop', async () => {
+    let fail = true
+    const { user, stops } = await openDetail([running], () =>
+      fail ? new HttpResponse(null, { status: 503 }) : undefined,
+    )
+    await user.click(button('Stop schedule'))
+    const dialog = await drawer()
+    await user.click(within(dialog).getByRole('button', { name: 'Stop schedule' }))
+    expect(
+      await within(dialog).findByText(
+        'That might not have saved. Check your connection and try again.',
+      ),
+    ).toBeVisible()
+    fail = false
+    await user.click(within(dialog).getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByRole('status', { name: 'Stopped schedule' })).toBeVisible()
+    expect(stops).toHaveLength(2)
+    expect(stops[1]).toEqual(stops[0])
+  })
+
+  test('a stale stop shows the 767·S2 recovery and saves nothing', async () => {
+    const { user } = await openDetail([running], () =>
+      HttpResponse.json({ error: 'conflict' }, { status: 409 }),
+    )
+    await user.click(button('Stop schedule'))
+    const dialog = await drawer()
+    await user.click(within(dialog).getByRole('button', { name: 'Stop schedule' }))
+    expect(
+      await within(dialog).findByText('This schedule changed while you were editing.'),
+    ).toBeVisible()
+    await user.click(within(dialog).getByRole('button', { name: 'Review current schedule' }))
+    await drawerClosed()
+    expect(screen.queryByRole('status', { name: 'Stopped schedule' })).not.toBeInTheDocument()
+    expect(screen.getByText('Last day Tue 10 Nov')).toBeVisible()
+  })
+
+  test('779·A20 a stopped schedule sits in the Ended group on its stop day', async () => {
+    const { user, unmount } = await openDetail([running])
+    await user.click(button('Stop schedule'))
+    await user.click(within(await drawer()).getByRole('button', { name: 'Stop schedule' }))
+    await screen.findByRole('status', { name: 'Stopped schedule' })
+    unmount()
+    renderList()
+    expect(await screen.findByRole('region', { name: 'Ended' })).toBeVisible()
+    expect(rows('Ended')).toEqual([expect.stringMatching(/Magnesium.*Ended Mon 9 Nov/)])
+  })
+
+  test('Change schedule on a stopped schedule opens with no Last day and can restart it', async () => {
+    window.history.replaceState(null, '', `/medications?schedule=${magnesium.id}`)
+    api([magnesium], [version(1, magnesium.id, { stoppedAt: initialNow, basedOnId: running.id })])
+    renderPanel('setup')
+    const save = await screen.findByRole('button', { name: 'Save changes' })
+    expect(screen.getByRole('button', { name: /^Last day, / })).toHaveAccessibleName(
+      'Last day, not set',
+    )
+    expect(save).toBeEnabled()
+  })
+
+  test('Today shows no dose after the stop and no setup nudge', async () => {
+    api([magnesium], [version(1, magnesium.id, { stoppedAt: initialNow })])
+    renderPanel('today')
+    await waitFor(() =>
+      expect(document.querySelector('[data-slot="skeleton"]')).not.toBeInTheDocument(),
+    )
+    expect(screen.queryByText('20:00')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Set schedule' })).not.toBeInTheDocument()
+  })
 })

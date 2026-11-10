@@ -29,9 +29,8 @@ export function SessionSaveFeedback() {
       const title = pending
         ? `Saving ${schedule ? 'schedule for ' : ''}${attempt.label}…`
         : saved
-          ? schedule
-            ? `Schedule saved for ${attempt.label}`
-            : `${attempt.label} saved`
+          ? (attempt.savedTitle ??
+            (schedule ? `Schedule saved for ${attempt.label}` : `${attempt.label} saved`))
           : `${attempt.label}${schedule ? ' schedule' : ''} might not have saved`
       const href = saved
         ? (attempt.openHref ??

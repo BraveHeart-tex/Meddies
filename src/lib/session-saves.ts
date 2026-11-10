@@ -13,6 +13,8 @@ export type SaveAttempt = {
   status: 'pending' | 'settled'
   result?: SaveResult<unknown>
   openHref?: string
+  /** The confirmation Toast's title, when the save's kind doesn't say what was saved. */
+  savedTitle?: string
 }
 /** A pending or unconfirmed save, named for the sign-out warning (D18). */
 export type OutstandingSave = { kind: 'medicine' | 'schedule' | 'dose'; label: string }
@@ -99,6 +101,7 @@ class SessionSaves {
             : undefined,
         href: attempt.href,
         openHref: attempt.openHref,
+        savedTitle: attempt.savedTitle,
         observed: Boolean(this.observers.get(key)),
         notified: this.notified.get(key) === attempt,
         toast: this.toasts.get(key),

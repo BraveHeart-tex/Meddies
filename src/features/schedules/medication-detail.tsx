@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode, Ref } from 'react'
+import { useState, type ReactNode, type Ref } from 'react'
 import { Clock } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -24,17 +24,18 @@ import { MedicationsLink } from '@/features/medicines/medications-nav'
 import type { MedicinesRead } from '@/features/medicines/queries'
 import { medicationSetupHref } from '@/features/medicines/routes'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
-import { istanbulDate } from './contract'
+import { istanbulDate, type DailySchedule } from './contract'
 import { ClockScheduleCard } from './clock-schedule-card'
 import { intervalAnchor } from './interval-preview'
 import { IntervalScheduleCard } from './interval-schedule-card'
+import { ScheduleActions } from './schedule-actions'
 import { endedOn } from './last-day'
 import type { SchedulesRead } from './queries'
 import { useScheduleNow } from './use-schedule-now'
 
 /**
  * The `?medicine=ID` page: 650 Fix 1's header above the schedule, 647·D1 to D3, and Change
- * schedule under it (767·A1, S3, S4). A running schedule shows its Last day, an Ended one the day
+ * schedule and Stop schedule under it (767·A1, S3, S4; 779·A13 to A16). A running schedule shows its Last day, an Ended one the day
  * it ended (779·A13, A14, A17).
  */
 export function MedicationDetail({
@@ -60,6 +61,8 @@ export function MedicationDetail({
   const { medicines, loading: medicinesLoading, loadError: medicinesError } = medicinesRead
   const { schedules, loading, loadError, refreshFailed, refreshing, retry } = schedulesRead
   const liveNow = useScheduleNow(now)
+  // The stop this screen confirmed, until the schedule changes again (779·A16).
+  const [stopped, setStopped] = useState<DailySchedule | null>(null)
   if (medicinesLoading) return <MedicationDetailSkeleton />
 
   const medicine = medicines.find((item) => item.id === medicineId)
@@ -126,6 +129,14 @@ export function MedicationDetail({
           )}
         </Alert>
       )}
+      {stopped?.stoppedAt && schedule?.id === stopped.id && (
+        <Alert variant="confirmation" role="status" aria-label="Stopped schedule">
+          <AlertTitle>Schedule stopped for {medicine.label}.</AlertTitle>
+          <AlertDescription>
+            No more doses after {formatTime(stopped.stoppedAt)} today.
+          </AlertDescription>
+        </Alert>
+      )}
       <section
         aria-labelledby="routine-heading"
         className="flex flex-col gap-3 [overflow-wrap:anywhere]"
@@ -154,12 +165,12 @@ export function MedicationDetail({
             ) : (
               <ClockScheduleCard schedule={schedule} unit={medicine.unit} today={liveToday} />
             )}
-            <MedicationsLink
-              className={buttonVariants({ variant: 'outline', size: 'lg' })}
-              href={medicationSetupHref(medicineId)}
-            >
-              Change schedule
-            </MedicationsLink>
+            <ScheduleActions
+              medicine={medicine}
+              schedule={schedule}
+              ended={Boolean(ended)}
+              onStopped={setStopped}
+            />
           </>
         ) : (
           <EmptyState

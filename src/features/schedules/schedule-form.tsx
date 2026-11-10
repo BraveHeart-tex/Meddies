@@ -297,7 +297,9 @@ export function ScheduleForm({
         checkHint="Check the days, times and quantities, then save again."
         change={
           change && {
+            // Saving a stopped schedule restarts it, unchanged or not (FE-785).
             changed:
+              Boolean(current?.stoppedAt) ||
               current?.intervalHours != null ||
               clockValuesDiffer({ ...defaults, weekdays, times, lastDay }, defaults),
             onReview: change.onReview,
