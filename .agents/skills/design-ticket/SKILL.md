@@ -60,7 +60,17 @@ Write `<n>` for the design ticket's number, such as `767`.
    criteria the frames meet.
    _Done when_ the read-back description lists every approved frame with its slug.
 
-10. **Rewrite the build ticket** from [templates/build-ticket.md](templates/build-ticket.md):
+10. **List backend needs.** For every frame rule and every decision made after approval,
+    write what the API must accept or return, such as "Clock edit: optional start date
+    before the version starts". Check each need against the parsers in the feature's
+    `contract.ts` and the Worker's validation, or against the backend ticket's criteria if
+    it isn't built yet. A missing need becomes a backend ticket criterion, its own ticket,
+    or goes back to Bora. Decisions made once the backend ticket has started become
+    their own ticket (FE-769's Start date gap came from one).
+    _Done when_ every need is met by the contract, cited by a backend ticket criterion,
+    or dropped by Bora.
+
+11. **Rewrite the build ticket** from [templates/build-ticket.md](templates/build-ticket.md):
     rules grouped by frame, open questions turned into decisions or named owners, and every
     criterion citing frame IDs as `767·A3`.
     _Done when_ the read-back build ticket has no criterion without a frame ID and no
