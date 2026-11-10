@@ -200,3 +200,14 @@ export function rowHeadingFocus(page: Page) {
 export async function clearFocus(page: Page) {
   await page.evaluate(() => (document.activeElement as HTMLElement).blur())
 }
+
+/**
+ * React hydration has no accessible signal: it attaches its fiber to the server-rendered DOM.
+ * Hydration and mount-time console errors are logged by the time this holds.
+ */
+export async function hydrated(page: Page) {
+  return page.evaluate(() => {
+    const element = document.body.querySelector('*')
+    return !!element && Object.keys(element).some((key) => key.startsWith('__reactFiber'))
+  })
+}

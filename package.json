@@ -32,7 +32,8 @@
     "typecheck": "next typegen && tsc --noEmit && pnpm worker:typecheck",
     "prepare": "husky",
     "worker:build": "wrangler deploy --config worker/wrangler.jsonc --dry-run --outdir ../.worker-build",
-    "worker:typecheck": "tsc -p worker/tsconfig.json"
+    "worker:typecheck": "tsc -p worker/tsconfig.json",
+    "lab:capture": "node scripts/lab-capture.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

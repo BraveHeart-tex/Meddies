@@ -3,6 +3,7 @@ import { once } from 'node:events'
 import { createServer, type AddressInfo } from 'node:net'
 import { setTimeout as delay } from 'node:timers/promises'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { designFrames } from '../src/features/design-lab/frames'
 
 // HTTP integration: status must be decided before a loading boundary can flush HTTP 200.
 for (const mode of ['dev', 'start'] as const) {
@@ -60,23 +61,43 @@ for (const mode of ['dev', 'start'] as const) {
       }
     }, 60_000)
 
-    test('registered frames and index are available only in dev', async () => {
-      for (const path of ['/lab', '/lab/649-l1']) {
-        const response = await fetch(`${origin}${path}`)
-        const html = await response.text()
-        expect(response.status, path).toBe(mode === 'dev' ? 200 : 404)
-        if (mode === 'start') {
-          expect(html).toContain('This page isn')
-          expect(html).not.toContain('Cold launch')
-        } else if (path === '/lab') {
-          expect(html).toContain('649·L1')
-          expect(html).toContain('Cold launch')
-          expect(html).toContain('href="/lab/649-l1"')
-        } else {
-          expect(html).toContain('Opening Meddies')
-          expect(html).toContain('aria-label="Primary"')
-        }
+    test('the index lists every registered frame only in dev', async () => {
+      const response = await fetch(`${origin}/lab`)
+      const html = await response.text()
+      expect(response.status).toBe(mode === 'dev' ? 200 : 404)
+      if (mode === 'start') {
+        expect(html).toContain('This page isn')
+        expect(html).not.toContain('Cold launch')
+        return
       }
+      expect(html).toContain('649·L1')
+      expect(html).toContain('Cold launch')
+      // lab:capture discovers frames from these links.
+      for (const { slug } of designFrames) expect(html).toContain(`href="/lab/${slug}"`)
     }, 60_000)
+
+    // Every frame, so a server/client boundary break (a hook module imported into the server
+    // registry) fails here, not only in a capture. Typecheck, lint and the build all pass it.
+    test('every registered frame renders only in dev', async () => {
+      for (const { slug } of designFrames) {
+        const response = await fetch(`${origin}/lab/${slug}`)
+        const html = await response.text()
+        if (mode === 'start') {
+          expect(response.status, slug).toBe(404)
+          expect(html, slug).toContain('This page isn')
+          continue
+        }
+        expect(response.status, slug).toBe(200)
+        // A render error still streams 200 once the loading boundary flushed; React then marks
+        // the fallback to client rendering, which the dev error overlay reports.
+        expect(html, slug).not.toContain('<!--$!-->')
+        expect(html, slug).not.toContain('data-dgst=')
+      }
+      if (mode === 'dev') {
+        const cold = await (await fetch(`${origin}/lab/649-l1`)).text()
+        expect(cold).toContain('Opening Meddies')
+        expect(cold).toContain('aria-label="Primary"')
+      }
+    }, 180_000)
   })
 }

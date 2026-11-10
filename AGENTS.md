@@ -21,6 +21,7 @@ Read the matching doc before starting the work.
 | UI: screens, components                           | [DESIGN](DESIGN.md), [PRODUCT](PRODUCT.md), visual source `.agents/skills/meddies-design/` |
 | UI copy: labels, messages, push reminders         | [copy](docs/copy.md)                                                                       |
 | Design frames and lab such as `649·L1`            | [design snapshots](docs/design/README.md)                                                  |
+| Design tickets: directions, approval, hand-off    | [design-ticket skill](.agents/skills/design-ticket/SKILL.md)                               |
 | Forms                                             | [forms](docs/forms.md)                                                                     |
 | Routes, rendering, data loading, TanStack Query   | [Next.js](docs/nextjs.md)                                                                  |
 | Saves, drafts, retries, session end               | [client state](docs/client-state.md)                                                       |

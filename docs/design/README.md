@@ -40,19 +40,30 @@ Synthetic fixtures must be typed against feature contracts and seeded into a per
 Query client, with no data network reads. Cold launch needs no data wrapper. The first
 data-driven frame's owner implements that wrapper.
 
-Capture persistent frames with the shared stylesheet/font readiness, screenshot and
-summary measurements:
+Lab rules that the checks enforce or that bit before:
+
+- **Registry imports stay hook-free.** `frames.tsx` is a server module, so frame files it
+  imports render client screens marked `'use client'` and hold no hooks themselves. The
+  lab HTTP test renders every registered frame, so a break fails `pnpm verify:local`.
+- **Shared example data lives in `lab-fixtures.ts`**, typed against feature contracts, so
+  frames show the same medicine, clock and schedules.
+- **Server-rendered ids are stable.** Frames render on the server first, so ids come from
+  fixtures or `useId`, never from random values such as `useFieldArray`'s row ids, which
+  break hydration.
+
+Capture frames for review by slug prefix, with `pnpm dev` stopped:
 
 ```sh
-MEDDIES_BROWSER_DEV=1 MEDDIES_VISUAL_OUT=/tmp/meddies-lab \
-  pnpm exec playwright test design-lab-capture --project=phone --grep=@visual
+pnpm lab:capture 767-            # or --out <dir>; prints the capture folder
 ```
 
-This opt-in visual check uses 402×874 with normal motion, asserts one loading status,
-no horizontal overflow and production shell geometry, and writes PNG and JSON evidence.
-It neither holds Worker reads nor waits for the persistent status to disappear. Existing
-fallback/loaded capture remains available through `loading-capture.spec.ts`. Choose
-additional checks by risk under [verification](../verification.md#visual-verification).
+It writes `<slug>-402x874.png` (screen-size), `<slug>-320x740.png` and `<slug>.json` per
+frame, hides the Next dev overlay, and exits non-zero on horizontal overflow or a console
+error. The design-ticket skill (`.agents/skills/design-ticket/`) runs the full process.
+The deeper `649·L1` shell geometry check stays opt-in:
+`MEDDIES_BROWSER_DEV=1 MEDDIES_VISUAL_OUT=/tmp/meddies-lab pnpm exec playwright test design-lab-capture --project=phone --grep=@visual`.
+Choose additional
+checks by risk under [verification](../verification.md#visual-verification).
 
 Attach screenshots and JSON to the owning Linear issue, record design review and approval
 there, and link the same evidence in the implementation handoff. Commit no binary artifacts.

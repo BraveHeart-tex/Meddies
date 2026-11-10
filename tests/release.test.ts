@@ -149,7 +149,10 @@ printf '%s\\n' "$*" >> "$COMMAND_LOG"
 `,
     { mode: 0o755 },
   )
+  // Its own directory: verify stops when this checkout's .next/dev lock is held, as it is
+  // while verify:local runs the lab HTTP test alongside this one.
   const result = spawnSync(process.execPath, [resolve('scripts/verify.mjs')], {
+    cwd: dir,
     encoding: 'utf8',
     env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, COMMAND_LOG: log },
   })

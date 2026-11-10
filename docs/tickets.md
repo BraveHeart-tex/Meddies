@@ -46,6 +46,9 @@ the ticket that owns each nearby item.
 - For lab frames, hand off the lab slug (for example `/lab/649-l1`), frame citation
   and linked Linear capture evidence with design approval. Reuse the same production
   components and evidence; HTML snapshots remain supported (see [design guide](design/README.md)).
+- After design approval, the design ticket's description gets an "Approved design" frame
+  table (frame, slug, what it shows), and the build ticket's rules and criteria cite those
+  frame IDs, never "the approved frames".
 - Set blockers as native Linear relations. Add a "Blocked by" section only when a
   blocker cannot be linked.
 - Describe behaviour, not file paths. Link stable docs and design artifacts.

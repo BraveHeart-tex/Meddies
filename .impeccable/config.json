@@ -4,6 +4,25 @@
     "ignoreFiles": [
       "docs/design/*.html"
     ],
-    "ignoreValues": []
+    "ignoreValues": [
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          ".agents/skills/design-ticket/templates/comparison.html"
+        ],
+        "createdAt": "2026-11-10T10:56:02.963Z",
+        "reason": "Claude: computed pairs >=5.2:1 (soft on bg, white on rose, on-blush on blush); CSS copied from the approved FE-767 comparison page"
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          ".agents/skills/design-ticket/templates/comparison.html"
+        ],
+        "createdAt": "2026-11-10T10:56:02.983Z",
+        "reason": "Claude: soft gray only sits on --bg, not on colored fills; CSS copied from the approved FE-767 comparison page"
+      }
+    ]
   }
 }

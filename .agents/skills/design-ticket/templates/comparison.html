@@ -1,0 +1,289 @@
+<title>{{Short name, such as Changing a Schedule}}</title>
+<meta name="claude:viewport-fit-sides" content="cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap"
+/>
+<!--
+  Comparison page for a design ticket, from FE-764 and FE-767. Fill every {{...}}.
+  Before approval: the recommended direction first with class="rec" "Recommended", then the
+  other two, the shared frames, then "Decide". After approval: keep only the approved
+  direction ("Approved"), the shared frames, "Decisions" and "Still open for FE-<build>".
+  Each figure names its capture file, such as 767-a1-402x874.png; embed-captures.mjs
+  inlines them.
+-->
+<style>
+  /* One reading column of three directions, each a contact sheet of real lab screens,
+     recommendation first. Cozy Care tokens from the app. */
+  :root {
+    --bg: #fbf5ee;
+    --ink: #3b2a2f;
+    --soft: #7a6266;
+    --card: #fff;
+    --line: #eedfd4;
+    --rose: #b23a66;
+    --on-rose: #fff;
+    --blush: #f7dce3;
+    --on-blush: #8e2c52;
+    --ui: 'Nunito', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+    --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --bg: #231a1d;
+      --ink: #f6ebe6;
+      --soft: #c4adb0;
+      --card: #2f2428;
+      --line: #46363b;
+      --rose: #e0739a;
+      --on-rose: #2a1219;
+      --blush: #4d2536;
+      --on-blush: #f7c6d6;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme='dark'] {
+    --bg: #231a1d;
+    --ink: #f6ebe6;
+    --soft: #c4adb0;
+    --card: #2f2428;
+    --line: #46363b;
+    --rose: #e0739a;
+    --on-rose: #2a1219;
+    --blush: #4d2536;
+    --on-blush: #f7c6d6;
+    color-scheme: dark;
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 500 16px/1.5 var(--ui);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  main {
+    max-width: 1040px;
+    margin-inline: auto;
+    padding-block: 40px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 56px;
+  }
+  .intro {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 64ch;
+  }
+  h1 {
+    font-size: clamp(30px, 5vw, 42px);
+    line-height: 1.1;
+    font-weight: 900;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .intro p {
+    margin: 0;
+    color: var(--soft);
+  }
+  .pick {
+    background: var(--blush);
+    color: var(--on-blush);
+    border-radius: 18px;
+    padding: 16px 18px;
+    font-weight: 700;
+  }
+  .pick strong {
+    font-weight: 900;
+  }
+  .dir,
+  .shared {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .dir header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2px 12px;
+    align-items: baseline;
+  }
+  .letter {
+    margin: 0;
+    grid-column: 1/-1;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--soft);
+  }
+  h2 {
+    margin: 0;
+    font-size: 26px;
+    line-height: 1.2;
+    font-weight: 900;
+    text-wrap: balance;
+  }
+  .rec {
+    background: var(--rose);
+    color: var(--on-rose);
+    font-size: 13px;
+    font-weight: 800;
+    padding: 4px 12px;
+    border-radius: 999px;
+  }
+  .pitch {
+    grid-column: 1/-1;
+    margin: 4px 0 0;
+    color: var(--soft);
+    max-width: 64ch;
+  }
+  .shared > p {
+    margin: 0;
+    color: var(--soft);
+    max-width: 64ch;
+  }
+  .strip {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    overflow-x: auto;
+    padding-block: 4px 10px;
+    scroll-snap-type: x proximity;
+  }
+  .strip:focus-visible {
+    outline: 2px solid var(--rose);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+  figure {
+    margin: 0;
+    flex: 0 0 min(290px, 74vw);
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  figure img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    border-radius: 30px;
+    border: 1px solid var(--line);
+  }
+  figcaption {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  code {
+    font: 600 12px var(--mono);
+    color: var(--soft);
+    display: block;
+  }
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 40px;
+    margin: 0;
+  }
+  .facts dt {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--soft);
+  }
+  .facts dd {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 900;
+  }
+  .trade {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 8px 32px;
+  }
+  .trade p {
+    margin: 0;
+  }
+  .trade strong {
+    font-weight: 800;
+  }
+  .next {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 64ch;
+  }
+  .next ul {
+    margin: 0;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .next p {
+    margin: 0;
+    color: var(--soft);
+  }
+</style>
+<main>
+  <div class="intro">
+    <h1>{{Title in sentence case}}</h1>
+    <p>
+      Every screen below is the real app, rendered from the FE-{{n}} lab frames. {{The worked
+      example: medicine, time, schedule.}}
+    </p>
+    <p class="pick"><strong>{{I recommend Direction A,}}</strong> {{because ...}}</p>
+  </div>
+
+  <!-- One section per direction, recommended first. -->
+  <section class="dir" aria-labelledby="dA">
+    <header>
+      <p class="letter">Direction {{A}}</p>
+      <h2 id="dA">{{Direction name}}</h2>
+      <span class="rec">Recommended</span>
+      <p class="pitch">{{What the person does and sees, in two or three sentences.}}</p>
+    </header>
+    <div class="strip" tabindex="0" role="group" aria-label="Direction {{A}} screens">
+      <!-- One figure per frame. -->
+      <figure>
+        <img src="{{n}}-a1-402x874.png" alt="{{What the screen shows}}" width="402" />
+        <figcaption><code>{{n}}·A1</code> {{Frame title}}</figcaption>
+      </figure>
+    </div>
+    <dl class="facts">
+      <div>
+        <dt>New pieces</dt>
+        <dd>{{...}}</dd>
+      </div>
+      <div>
+        <dt>Screen</dt>
+        <dd>{{...}}</dd>
+      </div>
+    </dl>
+    <div class="trade">
+      <p><strong>{{Strength}}</strong> {{...}}</p>
+      <p><strong>{{Cost}}</strong> {{...}}</p>
+    </div>
+  </section>
+
+  <section class="shared" aria-labelledby="sh">
+    <h2 id="sh">{{Shared states, such as Saving and after}}</h2>
+    <p>{{What every direction shares.}}</p>
+    <div class="strip" tabindex="0" role="group" aria-label="Shared screens">
+      <figure>
+        <img src="{{n}}-s1-402x874.png" alt="{{...}}" width="402" />
+        <figcaption><code>{{n}}·S1</code> {{Frame title}}</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <div class="next">
+    <h2>Decide</h2>
+    <ul>
+      <li>Which direction to approve.</li>
+      <li>{{Each open question, with the option you would pick.}}</li>
+    </ul>
+  </div>
+</main>

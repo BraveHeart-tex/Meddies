@@ -3,7 +3,15 @@ import { spawn } from 'node:child_process'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { devServerError } from './dev-server.mjs'
 import { productionBuild } from './production-build.mjs'
+
+// The lab HTTP test starts its own next dev, which a running one blocks with a vague fetch error.
+const devServer = await devServerError(process.cwd())
+if (devServer) {
+  console.error(`[verify] ${devServer}`)
+  process.exit(1)
+}
 
 const results = []
 let skippedDevStack = false
