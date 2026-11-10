@@ -16,6 +16,7 @@ export async function getOccurrence(
         WHERE successor.owner_id = daily_schedules.owner_id AND successor.based_on_id = daily_schedules.id)`,
       retainedOutcome: sql<number>`EXISTS (SELECT 1 FROM dose_records WHERE owner_id = ${ownerId} AND schedule_id = ${scheduleId} AND due_at = ${dueAt}
         UNION ALL SELECT 1 FROM skipped_dose_records WHERE owner_id = ${ownerId} AND schedule_id = ${scheduleId} AND due_at = ${dueAt})`,
+      stoppedAt: dailySchedules.stoppedAt,
       startDate: dailySchedules.startDate,
       weekdays: dailySchedules.weekdays,
       endDate: dailySchedules.endDate,

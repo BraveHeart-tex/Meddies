@@ -16,7 +16,10 @@ export function scheduledInstant(date: string, time: string) {
 
 // Both projections and recording validation use this bounded sequence.
 export function scheduleSlotsOn(
-  schedule: Pick<DailySchedule, 'startDate' | 'endDate' | 'weekdays' | 'times' | 'intervalHours'>,
+  schedule: Pick<
+    DailySchedule,
+    'startDate' | 'endDate' | 'weekdays' | 'times' | 'intervalHours' | 'stoppedAt'
+  >,
   date: string,
 ) {
   if (!scheduleRunsOn(schedule, date)) return []

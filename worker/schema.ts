@@ -41,6 +41,7 @@ export const dailySchedules = sqliteTable(
     intervalHours: integer('interval_hours'),
     basedOnId: text('based_on_id'),
     editRequest: text('edit_request'),
+    stoppedAt: text('stopped_at'),
   },
   (table) => [
     primaryKey({ columns: [table.ownerId, table.id] }),

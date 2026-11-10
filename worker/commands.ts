@@ -3,6 +3,7 @@ import {
   isScheduleDate,
   parseSchedule,
   parseScheduleEdit,
+  parseScheduleStop,
   parseTakenDose,
   parseSkippedDose,
   parseDoseCorrection,
@@ -55,6 +56,8 @@ export function decodeCommand(path: '/medicines' | '/schedules', value: unknown)
         path,
         command: { operation: 'save', ownerId, schedule: parseSchedule(input.schedule) },
       }
+    case 'stop':
+      return { path, command: { operation: 'stop', ownerId, stop: parseScheduleStop(input.stop) } }
     case 'edit':
       return { path, command: { operation: 'edit', ownerId, edit: parseScheduleEdit(input.edit) } }
     case 'recordTaken':

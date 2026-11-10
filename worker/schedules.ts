@@ -7,6 +7,7 @@ import {
   type ScheduleResponses,
   type parseSchedule,
   type ScheduleEditInput,
+  type ScheduleStopInput,
 } from '../src/features/schedules/contract'
 import { ApplicationError } from '../src/lib/application-error'
 import { dailySchedules, userMedications } from './schema'
@@ -22,6 +23,7 @@ const scheduleColumns = {
   endDate: dailySchedules.endDate,
   intervalHours: dailySchedules.intervalHours,
   basedOnId: dailySchedules.basedOnId,
+  stoppedAt: dailySchedules.stoppedAt,
   replacedAt: sql<string | null>`(SELECT confirmed_at FROM daily_schedules successor
     WHERE successor.owner_id = daily_schedules.owner_id AND successor.based_on_id = daily_schedules.id)`.as(
     'replacedAt',
@@ -107,9 +109,10 @@ export async function saveSchedule(
 export async function editSchedule(
   db: DrizzleD1Database,
   ownerId: string,
-  edit: ScheduleEditInput,
+  edit: ScheduleEditInput | ScheduleStopInput,
   clock: () => Date,
 ): Promise<ScheduleResponses['edit']> {
+  const stopping = !('times' in edit)
   const request = JSON.stringify(edit)
   const readSaved = () =>
     db
@@ -139,25 +142,41 @@ export async function editSchedule(
   if (parent.replacedAt) throw new ApplicationError('conflict', 409)
   const now = clock()
   const today = istanbulDate(now)
-  const interval = edit.intervalHours != null
+  if (stopping && (parent.stoppedAt || (parent.endDate && parent.endDate < today)))
+    throw new ApplicationError('validation', 400)
+  const change: ScheduleEditInput =
+    'times' in edit
+      ? edit
+      : {
+          ...edit,
+          times: parent.times,
+          weekdays: parent.weekdays,
+          intervalHours: parent.intervalHours,
+          endDate: null,
+        }
+  const interval = change.intervalHours != null
   if (
-    edit.times.some((slot) => !isQuantityForUnit(slot.quantity, parent.unit)) ||
-    (edit.anchorDate !== undefined && edit.anchorDate < today) ||
-    (interval && parent.intervalHours == null && !edit.anchorDate) ||
+    change.times.some((slot) => !isQuantityForUnit(slot.quantity, parent.unit)) ||
+    (change.anchorDate !== undefined && change.anchorDate < today) ||
+    (interval && parent.intervalHours == null && !change.anchorDate) ||
     (interval &&
       parent.intervalHours != null &&
-      !edit.anchorDate &&
-      edit.times[0].time !== parent.times[0].time)
+      !change.anchorDate &&
+      change.times[0].time !== parent.times[0].time)
   )
     throw new ApplicationError('validation', 400)
-  const startDate = interval ? (edit.anchorDate ?? parent.startDate) : today
-  if (edit.endDate !== null && (edit.endDate < today || edit.endDate < startDate))
+  const startDate = stopping
+    ? parent.startDate
+    : interval
+      ? (change.anchorDate ?? parent.startDate)
+      : today
+  if (change.endDate !== null && (change.endDate < today || change.endDate < startDate))
     throw new ApplicationError('validation', 400)
   await db.run(sql`
     INSERT INTO daily_schedules (owner_id, id, medicine_id, start_date, times, confirmed_at,
-      weekdays, end_date, interval_hours, based_on_id, edit_request)
-    SELECT ${ownerId}, ${edit.id}, ${parent.medicineId}, ${startDate}, ${JSON.stringify(edit.times)},
-      ${now.toISOString()}, ${JSON.stringify(edit.weekdays)}, ${edit.endDate}, ${edit.intervalHours ?? null}, ${edit.basedOnId}, ${request}
+      weekdays, end_date, interval_hours, based_on_id, edit_request, stopped_at)
+    SELECT ${ownerId}, ${edit.id}, ${parent.medicineId}, ${startDate}, ${JSON.stringify(change.times)},
+      ${now.toISOString()}, ${JSON.stringify(change.weekdays)}, ${change.endDate}, ${change.intervalHours ?? null}, ${edit.basedOnId}, ${request}, ${stopping ? now.toISOString() : null}
     WHERE NOT EXISTS (SELECT 1 FROM daily_schedules WHERE owner_id = ${ownerId} AND based_on_id = ${edit.basedOnId})
     ON CONFLICT DO NOTHING
   `)

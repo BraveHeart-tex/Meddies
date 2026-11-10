@@ -18,8 +18,11 @@ export type DailySchedule = DailyScheduleInput & {
   weekdays: number[]
   /** The Schedule version this one replaced at its Edit time; null for a first schedule. */
   basedOnId?: string | null
+  /** Stop Edit time; its Istanbul date is the stop day. This version expects no doses. */
+  stoppedAt?: string | null
   replacedAt?: string | null
 }
+export type ScheduleStopInput = { id: string; basedOnId: string }
 export type ScheduleEditInput = {
   id: string
   basedOnId: string
@@ -33,6 +36,7 @@ export type ScheduleCommand =
   | { operation: 'list'; ownerId: string; date?: string }
   | { operation: 'listOutcomes'; ownerId: string; date: string }
   | { operation: 'save'; ownerId: string; schedule: DailyScheduleInput }
+  | { operation: 'stop'; ownerId: string; stop: ScheduleStopInput }
   | { operation: 'edit'; ownerId: string; edit: ScheduleEditInput }
   | { operation: 'recordTaken'; ownerId: string; record: TakenDoseInput }
   | { operation: 'recordSkipped'; ownerId: string; record: SkippedDoseInput }
@@ -61,6 +65,7 @@ export type ScheduleResponses = {
   listOutcomes: { schedules: DailySchedule[]; records: DoseOutcomeRecord[] }
   save: { schedules: DailySchedule[] }
   edit: { schedules: DailySchedule[] }
+  stop: { schedules: DailySchedule[] }
   recordTaken: { records: DoseRecord[] }
   recordSkipped: { records: SkippedDoseRecord[] }
   correctOutcome: { records: DoseOutcomeRecord[] }
@@ -198,6 +203,21 @@ export function parseScheduleEdit(value: unknown): ScheduleEditInput {
   }
 }
 
+export function parseScheduleStop(value: unknown): ScheduleStopInput {
+  if (!value || typeof value !== 'object') throw new ApplicationError('validation', 400)
+  const input = value as Record<string, unknown>
+  if (
+    Object.keys(input).some((key) => !['id', 'basedOnId'].includes(key)) ||
+    typeof input.id !== 'string' ||
+    !uuid.test(input.id) ||
+    typeof input.basedOnId !== 'string' ||
+    !uuid.test(input.basedOnId) ||
+    input.id.toLowerCase() === input.basedOnId.toLowerCase()
+  )
+    throw new ApplicationError('validation', 400)
+  return { id: input.id.toLowerCase(), basedOnId: input.basedOnId.toLowerCase() }
+}
+
 export function isScheduleDate(value: unknown): value is string {
   return (
     typeof value === 'string' &&
@@ -207,9 +227,10 @@ export function isScheduleDate(value: unknown): value is string {
 }
 
 export function scheduleRunsOn(
-  schedule: Pick<DailySchedule, 'startDate' | 'endDate' | 'weekdays'>,
+  schedule: Pick<DailySchedule, 'startDate' | 'endDate' | 'weekdays' | 'stoppedAt'>,
   date: string,
 ): boolean {
+  if (schedule.stoppedAt) return false
   if (date < schedule.startDate || (schedule.endDate && date > schedule.endDate)) return false
   const [year, month, day] = date.split('-').map(Number)
   const weekday = new Date(Date.UTC(year, month - 1, day, 12)).getUTCDay()

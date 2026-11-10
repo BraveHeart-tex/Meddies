@@ -84,6 +84,14 @@ owner.
   uniqueness rule with one initial version per medicine and one successor per version.
   Snapshots list current schedules separately from `earlierSchedules`; the Query cache
   combines both for Today projection and filters earlier versions from medication lists.
+  `POST /api/schedules/stop` accepts only a new version `id` and `basedOnId`.
+  It appends a stopped version through the same atomic predecessor rule, retaining the
+  recurrence for restart but setting no Last day. Reads include `stoppedAt` (null for
+  running versions); its Istanbul date is the stop day. Stopped versions generate no
+  occurrences. Earlier versions retain doses due by the Edit time and later recorded
+  outcomes. A stop rejects an already Ended schedule; a restart uses the normal edit
+  contract and never restores doses from the stopped period. Migration 0009 adds nullable
+  stop metadata without changing existing versions or outcomes.
 - **Occurrences:** identity is the immutable schedule UUID plus its UTC due instant, so
   reloads and device travel leave it unchanged. Clock conversion uses Istanbul's UTC+03:00
   rules, never the device timezone.
