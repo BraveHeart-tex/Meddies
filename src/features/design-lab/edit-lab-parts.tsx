@@ -150,7 +150,6 @@ export function ClockEditFields({
           key={row.id}
           control={form.control}
           index={index}
-          rowId={`edit-${index}`}
           unit={magnesium.unit}
           disabled={disabled}
           onTimeChange={() => {}}

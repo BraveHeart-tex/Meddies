@@ -236,7 +236,6 @@ export function ScheduleForm({
               key={row.id}
               control={form.control}
               index={index}
-              rowId={row.id}
               unit={medicine.unit}
               disabled={isSubmitting}
               onTimeChange={revalidateRows}

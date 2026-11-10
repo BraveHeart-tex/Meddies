@@ -2,10 +2,12 @@ import { QueryClientProvider, onlineManager, type QueryClient } from '@tanstack/
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
+import { renderToString } from 'react-dom/server'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import type { Medicine } from '../src/features/medicines/contract'
 import type { DailySchedule } from '../src/features/schedules/contract'
 import { scheduleToday } from '../src/features/schedules/occurrences'
+import { ScheduleForm } from '../src/features/schedules/schedule-form'
 import { SchedulePanel } from '../src/features/schedules/schedule-panel'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
@@ -170,6 +172,36 @@ test('tablets step by half, stop at half and name the unit', async () => {
   expect(posted).toEqual([])
 })
 
+test('time row ids are the same on every render with the same data', () => {
+  const html = () =>
+    renderToString(
+      <QueryClientProvider client={client}>
+        <ScheduleForm
+          medicine={capsules}
+          today="2035-06-15"
+          serverNow={initialNow}
+          onSaved={() => {}}
+          onConflict={() => {}}
+        />
+      </QueryClientProvider>,
+    )
+  const ids = (markup: string) => [...markup.matchAll(/id="([^"]*dose-[^"]*)"/g)].map((m) => m[1])
+  const first = html()
+  expect(ids(first)).not.toEqual([])
+  expect(ids(html())).toEqual(ids(first))
+})
+
+/** Every Time and Quantity label targets its own row's input, and no id repeats. */
+function expectRowsLinked(count: number) {
+  for (let row = 1; row <= count; row++) {
+    const time = screen.getByText(`Time ${row}`, { selector: 'label' }) as HTMLLabelElement
+    expect(document.getElementById(time.htmlFor)).toBe(hour(row))
+    expect(screen.getByLabelText(`Quantity for time ${row}`)).toBe(quantity(row))
+  }
+  const ids = [...document.querySelectorAll('[id]')].map((element) => element.id)
+  expect(new Set(ids).size).toBe(ids.length)
+}
+
 test('new rows take focus, and errors and focus follow their rows through removals', async () => {
   const { posted } = api(capsules)
   const { user } = await openSetup(capsules.id)
@@ -179,6 +211,7 @@ test('new rows take focus, and errors and focus follow their rows through remova
   await user.click(addTime())
   await waitFor(() => expect(hour(3)).toHaveFocus())
   expect(button('Remove time 3')).toBeVisible()
+  expectRowsLinked(3)
 
   await pickTime(user, 2, '08:00')
   await typeQuantity(user, 2, '')
@@ -201,6 +234,7 @@ test('new rows take focus, and errors and focus follow their rows through remova
   expect(screen.queryByText('Enter a quantity.')).not.toBeInTheDocument()
   expect(quantity(2)).toHaveValue('1.5')
   expect(quantity(2)).toHaveAccessibleDescription(/Use whole capsules\./)
+  expectRowsLinked(2)
 
   await user.click(step(2, 'More'))
   expect(quantity(2)).toHaveValue('2')

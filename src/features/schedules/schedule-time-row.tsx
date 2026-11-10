@@ -1,5 +1,6 @@
 'use client'
 
+import { useId } from 'react'
 import { Controller, type Control } from 'react-hook-form'
 import { QuantityStepper } from '@/components/quantity-stepper'
 import { Button } from '@/components/ui/button'
@@ -10,12 +11,12 @@ import type { ScheduleFormOutput, ScheduleFormValues } from './schedule-form-sch
 
 /**
  * One "Time N" row: time on its own line, quantity below it at every width (647·A7). Each row
- * owns its errors and border; ids use the field array's stable row id, labels its position.
+ * owns its errors and border. Ids come from `useId`, so they match on the server and follow the
+ * row through removals while the parent keys rows by field id; labels use its position.
  */
 export function ScheduleTimeRow({
   control,
   index,
-  rowId,
   unit,
   disabled,
   onTimeChange,
@@ -23,7 +24,6 @@ export function ScheduleTimeRow({
 }: {
   control: Control<ScheduleFormValues, unknown, ScheduleFormOutput>
   index: number
-  rowId: string
   unit: DoseUnit
   disabled: boolean
   onTimeChange: () => void
@@ -31,6 +31,7 @@ export function ScheduleTimeRow({
   onRemove?: () => void
 }) {
   const label = `Time ${index + 1}`
+  const rowId = useId()
   const timeId = `dose-time-${rowId}`
   const quantityId = `dose-quantity-${rowId}`
   return (
