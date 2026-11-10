@@ -433,3 +433,169 @@ describe('recovery', () => {
     expect(window.location.search).toBe(detailSearch)
   })
 })
+
+describe('the Last day', () => {
+  const lastDayField = () => button(/^Last day, /)
+  const lastDayRow = () => button(/^Last day:/)
+  const toTuesday = (version: DailySchedule): DailySchedule => ({
+    ...version,
+    endDate: '2026-11-10',
+  })
+
+  async function pickLastDay(user: User, date: string) {
+    await user.click(lastDayField())
+    const calendar = await screen.findByRole('dialog', { name: 'Last day' })
+    await user.click(calendar.querySelector(`button[data-day="${date}"]`)!)
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Last day' })).not.toBeInTheDocument(),
+    )
+  }
+
+  test('779·A7, A8 set times prefills it, and moving it saves with a shorter preview', async () => {
+    const { edits } = api([toTuesday(clockVersion)])
+    const { user, onSaved } = await openChange()
+    expect(lastDayField()).toHaveAccessibleName(/Tue 10 Nov$/)
+    expect(preview()).toHaveTextContent('No doses after Tue 10 Nov.')
+    expect(doseLines()).toEqual(['20:00Today', '08:00Tue 10 Nov', '20:00Tue 10 Nov'])
+    expect(saveChanges()).toBeDisabled()
+    await pickLastDay(user, '2026-11-09')
+    const shorter = screen.getByRole('region', { name: 'Next dose after 10:00' })
+    expect(
+      within(shorter)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['20:00Today'])
+    expect(shorter).toHaveTextContent('No doses after Mon 9 Nov.')
+    await user.click(saveChanges())
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(edits[0]).toMatchObject({ endDate: '2026-11-09', times: clockVersion.times })
+  })
+
+  test('779·A9 set times removes it, and moving it back disables Save changes again', async () => {
+    const { edits } = api([toTuesday(clockVersion)])
+    const { user, onSaved } = await openChange()
+    await user.click(button('Remove last day'))
+    expect(lastDayField()).toHaveAccessibleName('Last day, not set')
+    expect(screen.queryByText(/^No doses after/)).not.toBeInTheDocument()
+    expect(saveChanges()).toBeEnabled()
+    await pickLastDay(user, '2026-11-10')
+    expect(saveChanges()).toBeDisabled()
+    await user.click(button('Remove last day'))
+    await user.click(saveChanges())
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(edits[0].endDate).toBeNull()
+  })
+
+  test('779·A10 to A12 every few hours prefills the row and No last day removes it', async () => {
+    const { edits } = api([toTuesday(intervalVersion)])
+    const { user, onSaved } = await openChange()
+    expect(lastDayRow()).toHaveAccessibleName('Last day: Tue 10 Nov')
+    expect(preview()).toHaveTextContent('No doses after Tue 10 Nov.')
+    expect(saveChanges()).toBeDisabled()
+    await user.click(lastDayRow())
+    const dialog = await sheet('Last day')
+    await user.click(within(dialog).getByRole('button', { name: 'No last day' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Done' }))
+    await sheetClosed('Last day')
+    expect(lastDayRow()).toHaveAccessibleName('Last day: None')
+    await user.click(saveChanges())
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(edits[0]).toMatchObject({ endDate: null, intervalHours: 8 })
+    expect(edits[0]).not.toHaveProperty('anchorDate')
+  })
+
+  test('a moved Last day survives leaving as a Session draft and retries unchanged', async () => {
+    let fail = true
+    const { edits } = api([toTuesday(clockVersion)], () =>
+      fail ? new HttpResponse(null, { status: 503 }) : undefined,
+    )
+    const first = await openChange()
+    await pickLastDay(first.user, '2026-11-09')
+    first.unmount()
+    const { user, onSaved } = await openChange()
+    expect(lastDayField()).toHaveAccessibleName(/Mon 9 Nov$/)
+    await user.click(saveChanges())
+    expect(await screen.findByText('That might not have saved.')).toBeVisible()
+    fail = false
+    await user.click(button('Try saving changes again'))
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(edits).toHaveLength(2)
+    expect(edits[1]).toEqual(edits[0])
+    expect(edits[0].endDate).toBe('2026-11-09')
+  })
+
+  test('779·A18, A19 an Ended schedule needs a later Last day before it restarts', async () => {
+    const { edits } = api([{ ...clockVersion, endDate: '2026-11-03' }])
+    const { user, onSaved } = await openChange()
+    expect(lastDayField()).toHaveAccessibleName(/Tue 3 Nov$/)
+    expect(screen.getByRole('region', { name: 'Next doses' })).toHaveTextContent(
+      'No doses after Tue 3 Nov.',
+    )
+    await addTime(user, '14:00')
+    await user.click(saveChanges())
+    expect(await screen.findByText('Choose today or a later date.')).toBeVisible()
+    expect(lastDayField()).toHaveFocus()
+    expect(edits).toEqual([])
+    await user.click(button('Remove last day'))
+    await user.click(saveChanges())
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(edits[0]).toMatchObject({ endDate: null })
+  })
+})
+
+describe('Medication detail with a Last day', () => {
+  function renderDetail(schedules: DailySchedule[], justScheduled = false) {
+    window.history.replaceState(null, '', `/medications${detailSearch}`)
+    api(schedules)
+    render(panel('detail', vi.fn(), justScheduled))
+  }
+
+  test('779·A13 a running Clock schedule shows its Last day under Started', async () => {
+    renderDetail([{ ...clockVersion, endDate: '2026-11-10' }])
+    expect(await screen.findByText('Started Mon 2 Nov')).toBeVisible()
+    expect(screen.getByText('Last day Tue 10 Nov')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Change schedule' })).toBeVisible()
+  })
+
+  test('779·A14 an Interval schedule lists only the doses up to its Last day', async () => {
+    renderDetail([{ ...intervalVersion, endDate: '2026-11-09' }])
+    expect(await screen.findByText('Next dose')).toBeVisible()
+    expect(screen.getByText('16:00')).toBeVisible()
+    expect(screen.queryByText('00:00')).not.toBeInTheDocument()
+    expect(screen.getByText('Last day Mon 9 Nov')).toBeVisible()
+  })
+
+  test('779·A17 an Ended schedule keeps its times with one Ended line and Change schedule', async () => {
+    renderDetail([{ ...clockVersion, endDate: '2026-11-03' }])
+    expect(await screen.findByText('Ended Tue 3 Nov')).toBeVisible()
+    expect(screen.getByText('08:00')).toBeVisible()
+    expect(screen.queryByText(/^Started/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Last day/)).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Change schedule' })).toBeVisible()
+  })
+
+  test('779·A17 an Ended Interval schedule lists no next doses', async () => {
+    renderDetail([{ ...intervalVersion, endDate: '2026-11-03' }])
+    expect(await screen.findByText('Ended Tue 3 Nov')).toBeVisible()
+    expect(screen.queryByText(/^Next/)).not.toBeInTheDocument()
+    expect(screen.getByText('1 tablet each time')).toBeVisible()
+  })
+
+  test('779·A19 a restarted schedule reads Changed with its next dose', async () => {
+    const restarted: DailySchedule = {
+      ...clockVersion,
+      id: '00000000-0000-4000-8000-0000000000a2',
+      startDate: '2026-11-09',
+      confirmedAt: initialNow,
+      basedOnId: clockVersion.id,
+    }
+    renderDetail(
+      [{ ...clockVersion, endDate: '2026-11-03', replacedAt: initialNow }, restarted],
+      true,
+    )
+    const saved = await screen.findByRole('status', { name: 'Saved schedule' })
+    expect(saved).toHaveTextContent('Next dose: today at 20:00.')
+    expect(screen.getByText('Changed Mon 9 Nov')).toBeVisible()
+    expect(screen.queryByText(/^Ended/)).not.toBeInTheDocument()
+  })
+})

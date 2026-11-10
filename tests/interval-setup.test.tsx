@@ -450,3 +450,79 @@ describe('showing an Interval schedule', () => {
     ).toBeVisible()
   })
 })
+
+describe('the Last day', () => {
+  const lastDayRow = () => button(/^Last day:/)
+  async function chooseLastDay(user: User, date: string | null) {
+    await user.click(lastDayRow())
+    const dialog = await sheet('Last day')
+    if (date) await user.click(dialog.querySelector(`button[data-day="${date}"]`)!)
+    else await user.click(within(dialog).getByRole('button', { name: 'No last day' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Done' }))
+    await sheetClosed('Last day')
+  }
+
+  test('779·A4, A6 the sheet sets it, the preview stops at it, and it saves', async () => {
+    const { posted } = api()
+    const { user, onSaved } = await openSetup()
+    await fillIn(user)
+    expect(lastDayRow()).toHaveAccessibleName('Last day: None')
+    await user.click(lastDayRow())
+    const dialog = await sheet('Last day')
+    expect(
+      within(dialog).getByText('No last day. It keeps going until you change it.'),
+    ).toBeVisible()
+    expect(within(dialog).getByRole('button', { name: 'No last day' })).toBeDisabled()
+    await user.click(dialog.querySelector('button[data-day="2026-11-10"]')!)
+    expect(
+      within(dialog).getByText('Doses on Tue 10 Nov still count. None after it.'),
+    ).toBeVisible()
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    await sheetClosed('Last day')
+    expect(lastDayRow()).toHaveAccessibleName('Last day: None')
+
+    await chooseLastDay(user, '2026-11-09')
+    expect(lastDayRow()).toHaveAccessibleName('Last day: Mon 9 Nov')
+    const preview = screen.getByRole('region', { name: 'Next dose' })
+    expect(
+      within(preview)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['16:00Today'])
+    expect(within(preview).getByText('No doses after Mon 9 Nov.')).toBeVisible()
+    await user.click(button('Save schedule'))
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(posted[0]).toMatchObject({ startDate: '2026-11-09', endDate: '2026-11-09' })
+  })
+
+  test('No last day clears it', async () => {
+    api()
+    const { user } = await openSetup()
+    await fillIn(user)
+    await chooseLastDay(user, '2026-11-10')
+    expect(screen.getByRole('region', { name: 'Next 3 doses' })).toHaveTextContent(
+      'No doses after Tue 10 Nov.',
+    )
+    await chooseLastDay(user, null)
+    expect(lastDayRow()).toHaveAccessibleName('Last day: None')
+    expect(screen.queryByText(/^No doses after/)).not.toBeInTheDocument()
+  })
+
+  test('779·A5 a Last day before a later first date shows its error on the row', async () => {
+    const { posted } = api()
+    const { user } = await openSetup()
+    await fillIn(user)
+    await chooseLastDay(user, '2026-11-09')
+    await user.click(startsRow())
+    const dialog = await sheet('Starts')
+    await user.click(within(dialog).getByRole('button', { name: 'Tomorrow' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Done' }))
+    await sheetClosed('Starts')
+    expect(screen.getByRole('region', { name: 'Next doses' })).toBeVisible()
+    await user.click(button('Save schedule'))
+    expect(await screen.findByText('Choose Tue 10 Nov or a later date.')).toBeVisible()
+    expect(lastDayRow()).toHaveFocus()
+    expect(lastDayRow()).toHaveAccessibleDescription('Choose Tue 10 Nov or a later date.')
+    expect(posted).toEqual([])
+  })
+})

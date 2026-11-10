@@ -39,6 +39,8 @@ import {
   type ScheduleFormValues,
 } from './schedule-form-schema'
 import { ScheduleTimeRow } from './schedule-time-row'
+import { earliestLastDay } from './last-day'
+import { LastDayField } from './last-day-controls'
 import { SHORT_WEEKDAYS, WEEK_ORDER, WEEKDAY_NAMES, weekdaySummary } from './weekdays'
 
 const MAX_TIMES = 24
@@ -85,7 +87,10 @@ export function ScheduleForm({
     defaultValues: defaults,
   })
   const rows = useFieldArray({ control: form.control, name: 'times' })
-  const [weekdays, times] = useWatch({ control: form.control, name: ['weekdays', 'times'] })
+  const [weekdays, times, startDate, lastDay] = useWatch({
+    control: form.control,
+    name: ['weekdays', 'times', 'startDate', 'lastDay'],
+  })
   const draft = useSessionFormDraft(scheduleDraftBase(medicine.id, current), form)
   const offline = useKnownOffline()
   function saved(schedule: DailySchedule) {
@@ -228,6 +233,22 @@ export function ScheduleForm({
               )}
             />
           )}
+          <Controller
+            name="lastDay"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <LastDayField
+                ref={field.ref}
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                today={today}
+                min={earliestLastDay(today, current ? today : startDate)}
+                error={fieldState.error?.message}
+                disabled={isSubmitting}
+              />
+            )}
+          />
           <FieldDescription id="quantity-help">
             Quantity is how much you take each time, not the strength on the pack.
           </FieldDescription>
@@ -264,6 +285,7 @@ export function ScheduleForm({
         <ClockChangePreview
           weekdays={weekdays}
           times={times.map((slot) => slot.time)}
+          lastDay={lastDay}
           serverNow={serverNow}
         />
       )}
@@ -277,7 +299,7 @@ export function ScheduleForm({
           change && {
             changed:
               current?.intervalHours != null ||
-              clockValuesDiffer({ ...defaults, weekdays, times }, defaults),
+              clockValuesDiffer({ ...defaults, weekdays, times, lastDay }, defaults),
             onReview: change.onReview,
           }
         }
@@ -290,15 +312,19 @@ export function ScheduleForm({
 function ClockChangePreview({
   weekdays,
   times,
+  lastDay,
   serverNow,
 }: {
   weekdays: number[]
   times: string[]
+  lastDay: string | null
   serverNow: string
 }) {
   const now = useScheduleNow(serverNow)
   const chosen = [...new Set(times.filter(isTimeOfDay))]
   const doses =
     weekdays.length && chosen.length ? nextClockDoses({ weekdays, times: chosen, now }) : null
-  return <NextDoses doses={doses} today={istanbulDate(new Date(now))} after={now} />
+  return (
+    <NextDoses doses={doses} lastDay={lastDay} today={istanbulDate(new Date(now))} after={now} />
+  )
 }

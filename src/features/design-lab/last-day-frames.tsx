@@ -91,7 +91,7 @@ export const lastDayFrames: readonly DesignFrame[] = [
       change={at(7)}
       stop={at(15)}
       alert={<RestartedAlert />}
-      started={`Changed ${shortDay(TODAY)}`}
+      changed
     />
   )),
   frame(20, 'Medications, Ended group', () => <EndedListFrame />),

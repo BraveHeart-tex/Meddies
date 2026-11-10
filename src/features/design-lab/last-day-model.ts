@@ -1,4 +1,4 @@
-import { istanbulDate } from '@/features/schedules/contract'
+import { lastDayProblem as lastDayRule } from '@/features/schedules/last-day'
 import { formatShortDay } from '@/lib/calendar-date'
 import { TODAY } from './lab-fixtures'
 import { clockSchedule, intervalSchedule, type CurrentSchedule } from './edit-lab-model'
@@ -17,18 +17,6 @@ export const clockEnded: LastDaySchedule = { ...clockSchedule, lastDay: ENDED_ON
 
 export const shortDay = (date: string) => formatShortDay(date, TODAY)
 
-/** The doses on or before the Last day; all of them without one. */
-export function untilLastDay(doses: string[] | null, lastDay: string | null) {
-  if (!doses || !lastDay) return doses
-  return doses.filter((dose) => istanbulDate(new Date(dose)) <= lastDay)
-}
-
-/** The earliest Last day: today, or a later start date or Anchor date. */
-export function lastDayProblem(lastDay: string | null, start: string = TODAY) {
-  if (!lastDay) return undefined
-  const earliest = start > TODAY ? start : TODAY
-  if (lastDay >= earliest) return undefined
-  return earliest === TODAY
-    ? 'Choose today or a later date.'
-    : `Choose ${shortDay(earliest)} or a later date.`
-}
+/** The production field error, on the lab's clock. */
+export const lastDayProblem = (lastDay: string | null, start: string = TODAY) =>
+  lastDayRule(lastDay, TODAY, start)

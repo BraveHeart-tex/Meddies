@@ -25,6 +25,7 @@ const medicine = {
   unit: 'tablet' as const,
 }
 const values = {
+  lastDay: null,
   startDate: '2035-06-15',
   weekdays: [5, 1],
   times: [

@@ -58,12 +58,17 @@ export function scheduleChangePayload(current: DailySchedule, values: ScheduleVa
       values.times[0].time !== current.times[0].time)
   return {
     basedOnId: current.id,
-    endDate: current.endDate ?? null,
+    endDate: values.lastDay,
     times: values.times,
     weekdays: values.weekdays,
     intervalHours,
     ...(newAnchor ? { anchorDate: values.startDate } : {}),
   }
+}
+
+/** A first schedule's request: the values with their Last day as the contract's `endDate`. */
+function setupPayload(medicineId: string, { lastDay, ...values }: ScheduleValues) {
+  return { medicineId, ...values, endDate: lastDay }
 }
 
 const attemptDate = (payload: Record<string, unknown>) =>
@@ -127,7 +132,7 @@ export function useScheduleSave(
         {
           payload: current
             ? scheduleChangePayload(current, values)
-            : { medicineId: medicine.id, ...values },
+            : setupPayload(medicine.id, values),
           label: medicine.label,
           kind: 'schedule',
           href: medicationsHref({ mode: 'setup', medicineId: medicine.id }),

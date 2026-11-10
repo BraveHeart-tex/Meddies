@@ -9,16 +9,55 @@ import { buttonVariants } from '@/components/ui/button'
 import type { Medicine } from '@/features/medicines/contract'
 import { MedicationBackRow, MedicationIdentity } from '@/features/medicines/medication-sub-screen'
 import { medicationsHref } from '@/features/medicines/routes'
-import { intervalRowSummary } from '@/features/schedules/interval-dose-list'
-import { nextIntervalDoses } from '@/features/schedules/interval-preview'
-import { MedicationRow } from '@/features/schedules/medication-row'
+import { ClockScheduleCard } from '@/features/schedules/clock-schedule-card'
+import type { DailySchedule } from '@/features/schedules/contract'
+import { intervalAnchor } from '@/features/schedules/interval-preview'
+import { IntervalScheduleCard } from '@/features/schedules/interval-schedule-card'
+import { endedOn as endedDay } from '@/features/schedules/last-day'
+import { MedicationRoutineGroups } from '@/features/schedules/medication-routine-groups'
+import { SchedulingClockProvider } from '@/features/schedules/scheduling-clock'
 import { formatTime } from '@/lib/calendar-date'
 import { cn } from '@/lib/utils'
-import { CLOCK_STARTED, intervalAnchor } from './edit-lab-model'
+import { CLOCK_STARTED, EVERY_DAY } from './edit-lab-model'
 import { magnesium, NOW, TODAY } from './lab-fixtures'
-import { LastDayClockCard, LastDayIntervalCard } from './last-day-cards'
-import { ENDED_ON, shortDay, untilLastDay, type LastDaySchedule } from './last-day-model'
+import { ENDED_ON, type LastDaySchedule } from './last-day-model'
 import { StopScheduleDrawer, type StopState } from './last-day-parts'
+
+/**
+ * The lab schedule as a Schedule version: stopped at NOW when it ended today, or Changed today
+ * when restarted.
+ */
+function labVersion(
+  schedule: LastDaySchedule,
+  { endedOn, changed = false }: { endedOn?: string; changed?: boolean },
+): DailySchedule {
+  const shape =
+    schedule.kind === 'times'
+      ? {
+          startDate: CLOCK_STARTED,
+          weekdays: schedule.clock.weekdays,
+          times: schedule.clock.times.map((slot) => ({
+            time: slot.time,
+            quantity: Number(slot.quantity),
+          })),
+          intervalHours: null,
+        }
+      : {
+          startDate: schedule.interval.date,
+          weekdays: EVERY_DAY,
+          times: [{ time: schedule.interval.time, quantity: Number(schedule.interval.quantity) }],
+          intervalHours: Number(schedule.interval.hours),
+        }
+  return {
+    id: '11111111-1111-4111-8111-1111111111a1',
+    medicineId: magnesium.id,
+    ...shape,
+    ...(changed ? { startDate: TODAY, basedOnId: '11111111-1111-4111-8111-1111111111a0' } : {}),
+    endDate: schedule.lastDay,
+    confirmedAt: changed ? NOW : '2026-11-01T18:00:00.000Z',
+    stoppedAt: endedOn === TODAY ? NOW : null,
+  }
+}
 
 /** Change schedule and Stop schedule side by side; an Ended schedule keeps only Change. */
 function ScheduleActions({
@@ -48,8 +87,6 @@ function ScheduleActions({
   )
 }
 
-const clockStarted = `Started ${shortDay(CLOCK_STARTED)}`
-
 /** Medication detail with a running schedule's Last day, or an Ended schedule. */
 export function LastDayDetail({
   schedule,
@@ -58,7 +95,7 @@ export function LastDayDetail({
   stop,
   alert,
   stopState,
-  started = clockStarted,
+  changed = false,
 }: {
   schedule: LastDaySchedule
   /** Shows an Ended schedule dated this day. */
@@ -68,13 +105,11 @@ export function LastDayDetail({
   alert?: ReactNode
   /** Opens Stop schedule's confirm step in this state. */
   stopState?: StopState
-  /** The Clock card's first date line. */
-  started?: string
+  /** Restarted today through Change schedule. */
+  changed?: boolean
 }) {
-  const ended = Boolean(endedOn)
-  const state = endedOn
-    ? ({ status: 'ended', endedOn } as const)
-    : ({ status: 'running', lastDay: schedule.lastDay } as const)
+  const version = labVersion(schedule, { endedOn, changed })
+  const ended = endedDay(version, TODAY)
   return (
     <AppShell>
       <div className="flex flex-col gap-5 [overflow-wrap:anywhere]">
@@ -85,26 +120,20 @@ export function LastDayDetail({
           <h2 id="routine-heading" className="sr-only">
             Schedule
           </h2>
-          {schedule.kind === 'times' ? (
-            <LastDayClockCard clock={schedule.clock} started={started} state={state} />
-          ) : (
-            <LastDayIntervalCard
-              interval={schedule.interval}
-              doses={
-                untilLastDay(
-                  nextIntervalDoses({
-                    anchor: intervalAnchor(schedule.interval),
-                    hours: Number(schedule.interval.hours),
-                    now: NOW,
-                  }),
-                  schedule.lastDay,
-                ) ?? []
-              }
-              started={`Started ${shortDay(schedule.interval.date)} at ${schedule.interval.time}`}
-              state={state}
+          {version.intervalHours != null ? (
+            <IntervalScheduleCard
+              hours={version.intervalHours}
+              anchor={intervalAnchor(version)}
+              quantity={version.times[0].quantity}
+              unit={magnesium.unit}
+              now={NOW}
+              lastDay={version.endDate}
+              ended={ended}
             />
+          ) : (
+            <ClockScheduleCard schedule={version} unit={magnesium.unit} today={TODAY} />
           )}
-          <ScheduleActions ended={ended} change={change} stop={stop} />
+          <ScheduleActions ended={Boolean(ended)} change={change} stop={stop} />
         </section>
         <p className="text-label text-muted-foreground">Details can&apos;t be changed here yet.</p>
       </div>
@@ -147,48 +176,42 @@ const omega: Medicine = {
   unit: 'capsule',
 }
 
-function Group({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <section aria-label={label} className="flex flex-col gap-2.5">
-      <h3 className="px-1 pt-1 text-label leading-none font-extrabold tracking-eyebrow text-muted-foreground uppercase">
-        {label}
-      </h3>
-      <ul className="flex flex-col gap-2.5">{children}</ul>
-    </section>
-  )
-}
+const running = (medicine: Medicine, extra: Partial<DailySchedule>): DailySchedule => ({
+  ...labVersion({ kind: 'times', clock: { weekdays: EVERY_DAY, times: [] }, lastDay: null }, {}),
+  id: medicine.id.replace(/.$/, 'a'),
+  medicineId: medicine.id,
+  times: [
+    { time: '08:00', quantity: 1 },
+    { time: '20:00', quantity: 1 },
+  ],
+  ...extra,
+})
 
 /**
  * Medications with an Ended group below the others. Magnesium runs to its Last day and its row
- * stays as it is.
+ * stays as it is; Vitamin D was stopped today.
  */
 export function EndedListFrame() {
-  const ironNext = nextIntervalDoses({
-    anchor: '2026-11-03T19:00:00.000Z',
-    hours: 7,
-    now: NOW,
-    count: 1,
-  })[0]
   return (
     <AppShell>
       <div className="flex flex-col gap-5">
         <AppHeader title="Medications" />
-        <Group label="On a schedule">
-          <MedicationRow medicine={magnesium} scheduleSummary="Every day · 08:00, 20:00" />
-          <MedicationRow medicine={iron} scheduleSummary={intervalRowSummary(7, ironNext, TODAY)} />
-        </Group>
-        <Group label="No schedule">
-          <MedicationRow medicine={omega} scheduleSummary={null} />
-        </Group>
-        <section aria-label="Ended" className="flex flex-col gap-2.5">
-          <h3 className="px-1 pt-1 text-label leading-none font-extrabold tracking-eyebrow text-muted-foreground uppercase">
-            Ended
-          </h3>
-          <ul className="flex flex-col gap-2.5">
-            <MedicationRow medicine={vitaminD} scheduleSummary={`Ended ${shortDay(TODAY)}`} />
-            <MedicationRow medicine={zinc} scheduleSummary={`Ended ${shortDay(ENDED_ON)}`} />
-          </ul>
-        </section>
+        <SchedulingClockProvider serverNow={NOW}>
+          <MedicationRoutineGroups
+            medicines={[magnesium, iron, omega, vitaminD, zinc]}
+            schedules={[
+              running(magnesium, { endDate: '2026-11-10' }),
+              running(iron, {
+                startDate: '2026-11-03',
+                times: [{ time: '22:00', quantity: 1 }],
+                intervalHours: 7,
+              }),
+              running(vitaminD, { stoppedAt: NOW }),
+              running(zinc, { endDate: ENDED_ON }),
+            ]}
+            serverNow={NOW}
+          />
+        </SchedulingClockProvider>
       </div>
     </AppShell>
   )

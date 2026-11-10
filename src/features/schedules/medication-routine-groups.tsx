@@ -2,19 +2,26 @@
 
 import { useEffect, useRef } from 'react'
 import type { Medicine } from '@/features/medicines/contract'
+import { formatShortDay } from '@/lib/calendar-date'
 import { istanbulDate, type DailySchedule } from './contract'
 import { intervalRowSummary } from './interval-dose-list'
-import { intervalAnchor, nextIntervalDoses } from './interval-preview'
+import { intervalAnchor, intervalLabel, nextIntervalDoses } from './interval-preview'
+import { endedOn, untilLastDay } from './last-day'
 import { MedicationRow } from './medication-row'
 import { useScheduleNow } from './use-schedule-now'
 import { ALL_WEEKDAYS, weekdaySummary } from './weekdays'
 
 function routineSummary(schedule: DailySchedule, now: string) {
+  const today = istanbulDate(new Date(now))
+  const ended = endedOn(schedule, today)
+  if (ended) return `Ended ${formatShortDay(ended, today)}`
   const hours = schedule.intervalHours
   if (hours != null) {
     const anchor = intervalAnchor(schedule)
-    const [next] = nextIntervalDoses({ anchor, hours, now, count: 1 })
-    return intervalRowSummary(hours, next, istanbulDate(new Date(now)))
+    const next = nextIntervalDoses({ anchor, hours, now, count: 1 })
+    // No next dose after the Last day (779·A20).
+    const [due] = untilLastDay(next, schedule.endDate ?? null)
+    return due ? intervalRowSummary(hours, due, today) : intervalLabel(hours)
   }
   return [
     weekdaySummary(schedule.weekdays ?? ALL_WEEKDAYS, 'short'),
@@ -47,9 +54,19 @@ export function MedicationRoutineGroups({
     medicine,
     schedule: schedules.find((item) => item.medicineId === medicine.id),
   }))
+  const today = istanbulDate(new Date(now))
+  const isEnded = (schedule: DailySchedule) => Boolean(endedOn(schedule, today))
+  // Ended schedules sit below the others (779·A20).
   const routineGroups = [
-    { label: 'On a schedule', entries: routines.filter(({ schedule }) => schedule) },
+    {
+      label: 'On a schedule',
+      entries: routines.filter(({ schedule }) => schedule && !isEnded(schedule)),
+    },
     { label: 'No schedule', entries: routines.filter(({ schedule }) => !schedule) },
+    {
+      label: 'Ended',
+      entries: routines.filter(({ schedule }) => schedule && isEnded(schedule)),
+    },
   ]
 
   return routineGroups.map(

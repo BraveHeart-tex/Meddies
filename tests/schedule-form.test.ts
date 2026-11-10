@@ -25,6 +25,7 @@ const values = (overrides: Partial<ScheduleFormValues>): ScheduleFormValues => (
   startDate: today,
   weekdays: [0, 1, 2, 3, 4, 5, 6],
   times: [row('08:00')],
+  lastDay: null,
   ...overrides,
 })
 
@@ -33,6 +34,7 @@ test('defaults: every day from today, one empty time taking one of the unit', ()
     startDate: today,
     weekdays: [0, 1, 2, 3, 4, 5, 6],
     times: [{ time: '', quantity: '1' }],
+    lastDay: null,
   })
   assert.deepEqual(errorsOf(scheduleFormDefaults('tablet', today)), {
     'times.0.time': 'Choose a time.',
@@ -51,6 +53,7 @@ test('valid values convert quantities to numbers and sort weekdays', () => {
         { time: '20:00', quantity: 1.5 },
         { time: '08:00', quantity: 0.5 },
       ],
+      lastDay: null,
     },
   )
 })

@@ -398,6 +398,7 @@ test('every dose time needs both parts, pickers lock while saving and values sav
         { time: '23:45', quantity: 1 },
         { time: '00:15', quantity: 0.5 },
       ],
+      endDate: null,
     },
   ])
 })
@@ -487,4 +488,46 @@ test('editing an unconfirmed schedule starts a new attempt', async () => {
   await waitFor(() => expect(posted).toHaveLength(2))
   expect(posted[1]).toMatchObject({ times: [{ time: '08:00', quantity: 2 }] })
   expect((posted[1] as { id: string }).id).not.toBe((posted[0] as { id: string }).id)
+})
+
+const lastDay = () => button(/^Last day, /)
+async function pickLastDay(user: User, date: string) {
+  await user.click(lastDay())
+  const calendar = await screen.findByRole('dialog', { name: 'Last day' })
+  await user.click(calendar.querySelector(`button[data-day="${date}"]`)!)
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'Last day' })).not.toBeInTheDocument(),
+  )
+}
+
+test('779·A1, A2 the optional Last day saves with the schedule and can be removed', async () => {
+  const { posted } = api(capsules)
+  const { user, onSaved } = await openSetup(capsules.id)
+  expect(screen.getByText('Last day (optional)')).toBeVisible()
+  expect(lastDay()).toHaveAccessibleName('Last day, not set')
+  expect(lastDay()).toHaveAccessibleDescription('Leave it empty to keep going.')
+  await pickLastDay(user, '2035-06-20')
+  expect(lastDay()).toHaveAccessibleDescription('Doses on this day still count.')
+  await user.click(button('Remove last day'))
+  expect(lastDay()).toHaveAccessibleName('Last day, not set')
+  expect(lastDay()).toHaveFocus()
+  await pickLastDay(user, '2035-06-20')
+  await pickTime(user, 1, '20:00')
+  await user.click(save())
+  await waitFor(() => expect(onSaved).toHaveBeenCalled())
+  expect(posted[0]).toMatchObject({ startDate: '2035-06-15', endDate: '2035-06-20' })
+})
+
+test('779·A3 a Last day before a later Start date shows its error after Save', async () => {
+  const { posted } = api(capsules)
+  const { user } = await openSetup(capsules.id)
+  await pickTime(user, 1, '20:00')
+  await pickLastDay(user, '2035-06-16')
+  await pickDate(user, '2035-06-17')
+  expect(screen.queryByText('Choose Sun 17 Jun or a later date.')).not.toBeInTheDocument()
+  await user.click(save())
+  expect(await screen.findByText('Choose Sun 17 Jun or a later date.')).toBeVisible()
+  expect(lastDay()).toHaveAttribute('aria-invalid', 'true')
+  expect(lastDay()).toHaveFocus()
+  expect(posted).toEqual([])
 })

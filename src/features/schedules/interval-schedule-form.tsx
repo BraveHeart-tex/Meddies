@@ -33,6 +33,8 @@ import {
   IntervalSheet,
   intervalStartsAnswer,
 } from './interval-setup-parts'
+import { earliestLastDay } from './last-day'
+import { LastDayRow } from './last-day-controls'
 import { ScheduleSaveFooter } from './schedule-save-footer'
 import type { ScheduleChange } from './schedule-form'
 import { intervalDraftKey, scheduleDraftBase } from './schedule-setup-drafts'
@@ -88,9 +90,9 @@ export function IntervalScheduleForm({
   const draft = useSessionFormDraft(intervalDraftKey(scheduleDraftBase(medicine.id, current)), form)
   const offline = useKnownOffline()
   const now = useScheduleNow(serverNow)
-  const [hours, date, time, quantity] = useWatch({
+  const [hours, date, time, quantity, lastDay] = useWatch({
     control: form.control,
-    name: ['hours', 'date', 'time', 'quantity'],
+    name: ['hours', 'date', 'time', 'quantity', 'lastDay'],
   })
   const [sheet, setSheet] = useState<Sheet | null>(null)
   // Keeps the sheet's content in place while it animates closed.
@@ -99,6 +101,7 @@ export function IntervalScheduleForm({
   const everyRow = useRef<HTMLButtonElement>(null)
   const startsRow = useRef<HTMLButtonElement>(null)
   const takeRow = useRef<HTMLButtonElement>(null)
+  const lastDayRow = useRef<HTMLButtonElement>(null)
 
   function saved(schedule: DailySchedule) {
     form.reset(defaults)
@@ -133,11 +136,12 @@ export function IntervalScheduleForm({
     if (invalid.hours) everyRow.current?.focus()
     else if (invalid.date || invalid.time) startsRow.current?.focus()
     else if (invalid.quantity) takeRow.current?.focus()
+    else if (invalid.lastDay) lastDayRow.current?.focus()
   }
 
   /** Before a save an error stays until its field changes; after one RHF revalidates it. */
-  function onFieldChange(name: FieldName, onChange: (value: string) => void) {
-    return (value: string) => {
+  function onFieldChange<V>(name: FieldName, onChange: (value: V) => void) {
+    return (value: V) => {
       form.clearErrors(name)
       onChange(value)
     }
@@ -155,6 +159,7 @@ export function IntervalScheduleForm({
     date,
     time,
     quantity: quantityRule(medicine.unit).initial,
+    lastDay: null,
   })
   const doses = timing.success
     ? nextIntervalDoses({
@@ -224,8 +229,24 @@ export function IntervalScheduleForm({
           onClick={() => openSheet('take')}
         />
       </ul>
+      <Controller
+        name="lastDay"
+        control={form.control}
+        render={({ field, fieldState }) => (
+          <LastDayRow
+            rowRef={lastDayRow}
+            value={field.value}
+            onChange={onFieldChange('lastDay', field.onChange)}
+            today={today}
+            min={earliestLastDay(today, date)}
+            error={fieldState.error?.message}
+            disabled={isSubmitting}
+          />
+        )}
+      />
       <NextDoses
         doses={doses}
+        lastDay={lastDay}
         // The approved change preview has no overnight note (767·A5).
         hours={current || !timing.success ? undefined : timing.data.intervalHours}
         today={istanbulDate(new Date(now))}
@@ -241,7 +262,7 @@ export function IntervalScheduleForm({
           change && {
             changed:
               current?.intervalHours == null ||
-              intervalValuesDiffer({ hours, date, time, quantity }, defaults),
+              intervalValuesDiffer({ hours, date, time, quantity, lastDay }, defaults),
             onReview: change.onReview,
           }
         }

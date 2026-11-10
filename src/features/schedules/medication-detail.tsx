@@ -28,12 +28,14 @@ import { istanbulDate } from './contract'
 import { ClockScheduleCard } from './clock-schedule-card'
 import { intervalAnchor } from './interval-preview'
 import { IntervalScheduleCard } from './interval-schedule-card'
+import { endedOn } from './last-day'
 import type { SchedulesRead } from './queries'
 import { useScheduleNow } from './use-schedule-now'
 
 /**
  * The `?medicine=ID` page: 650 Fix 1's header above the schedule, 647·D1 to D3, and Change
- * schedule under it (767·A1, S3, S4).
+ * schedule under it (767·A1, S3, S4). A running schedule shows its Last day, an Ended one the day
+ * it ended (779·A13, A14, A17).
  */
 export function MedicationDetail({
   medicineId,
@@ -81,6 +83,9 @@ export function MedicationDetail({
 
   const schedule = schedules.find((item) => item.medicineId === medicineId)
   const today = istanbulDate(new Date(now))
+  // A Last day passes at midnight on the live clock.
+  const liveToday = istanbulDate(new Date(liveNow))
+  const ended = schedule ? endedOn(schedule, liveToday) : null
   // Anchor to the server's save instant, so earlier times today never become the first dose.
   const first =
     schedule && justScheduled
@@ -143,9 +148,11 @@ export function MedicationDetail({
                 quantity={schedule.times[0].quantity}
                 unit={medicine.unit}
                 now={liveNow}
+                lastDay={schedule.endDate}
+                ended={ended}
               />
             ) : (
-              <ClockScheduleCard schedule={schedule} unit={medicine.unit} today={today} />
+              <ClockScheduleCard schedule={schedule} unit={medicine.unit} today={liveToday} />
             )}
             <MedicationsLink
               className={buttonVariants({ variant: 'outline', size: 'lg' })}

@@ -6,7 +6,7 @@ import { StickyActions } from '@/components/layout/sticky-actions'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
-import { ScheduleSetupHeader } from '@/features/schedules/interval-setup-parts'
+import { NextDoses, ScheduleSetupHeader } from '@/features/schedules/interval-setup-parts'
 import {
   ClockEditFields,
   EditFooter,
@@ -23,8 +23,8 @@ import {
   type ScheduleKind,
 } from './edit-lab-model'
 import { magnesium, NOW, TODAY } from './lab-fixtures'
-import { lastDayProblem, untilLastDay, type LastDaySchedule } from './last-day-model'
-import { LastDayControl, LastDayDoses } from './last-day-parts'
+import { lastDayProblem, type LastDaySchedule } from './last-day-model'
+import { LastDayControl } from './last-day-parts'
 import { useScheduleEdit } from './use-schedule-edit'
 
 type SetupProps = {
@@ -68,7 +68,6 @@ export function LastDaySetup({
       open={sheet}
     />
   )
-  const doses = kind === 'interval' ? untilLastDay(intervalDoses(edit.interval), lastDay) : null
   return (
     <LabData>
       <main className="mx-auto flex min-h-svh max-w-2xl flex-col px-5 pt-[calc(0.875rem+env(safe-area-inset-top,0px))]">
@@ -111,7 +110,9 @@ export function LastDaySetup({
             <IntervalEditRows edit={edit} />
           )}
           {kind === 'interval' && control}
-          {kind === 'interval' && <LastDayDoses doses={doses} lastDay={lastDay} />}
+          {kind === 'interval' && (
+            <NextDoses doses={intervalDoses(edit.interval)} lastDay={lastDay} today={TODAY} />
+          )}
           <StickyActions>
             <Button type="button" size="lg" className="w-full whitespace-normal">
               Save schedule
@@ -161,10 +162,7 @@ export function LastDayChange({
       open={sheet}
     />
   )
-  const doses = untilLastDay(
-    edit.kind === 'times' ? clockDoses(edit.clock) : intervalDoses(edit.interval),
-    lastDay,
-  )
+  const doses = edit.kind === 'times' ? clockDoses(edit.clock) : intervalDoses(edit.interval)
   return (
     <LabData>
       <main className="mx-auto flex min-h-svh max-w-2xl flex-col px-5 pt-[calc(0.875rem+env(safe-area-inset-top,0px))]">
@@ -190,7 +188,7 @@ export function LastDayChange({
             <IntervalEditRows edit={edit} disabled={disabled} />
           )}
           {edit.kind === 'interval' && control}
-          <LastDayDoses doses={doses} lastDay={lastDay} after={NOW} />
+          <NextDoses doses={doses} lastDay={lastDay} today={TODAY} after={NOW} />
           <StickyActions>
             <EditFooter
               changed={edit.changed || lastDay !== current.lastDay}

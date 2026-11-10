@@ -9,7 +9,7 @@ import { firstOvernightDose } from '../src/features/schedules/interval-preview'
 const today = '2026-11-09'
 const id = '6e0b55ee-2e10-4e00-80f2-a736c2f50f95'
 const medicineId = '0b7c6a52-8b1e-4d9e-9e0f-2f51a0c3d111'
-const valid = { hours: '8', date: today, time: '08:00', quantity: '1' }
+const valid = { hours: '8', date: today, time: '08:00', quantity: '1', lastDay: null }
 
 const errorsOf = (
   values: Partial<typeof valid>,
@@ -31,6 +31,7 @@ describe('interval form defaults', () => {
       date: today,
       time: '',
       quantity: '1',
+      lastDay: null,
     })
   })
 })
@@ -95,8 +96,10 @@ describe('interval form validation', () => {
       weekdays: [0, 1, 2, 3, 4, 5, 6],
       times: [{ time: '08:00', quantity: 1.5 }],
       intervalHours: 7,
+      lastDay: null,
     })
-    expect(parseSchedule({ id, medicineId, ...output })).toMatchObject(output)
+    const { lastDay, ...request } = output
+    expect(parseSchedule({ id, medicineId, ...request, endDate: lastDay })).toMatchObject(request)
   })
 })
 

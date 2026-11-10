@@ -8,6 +8,7 @@ import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { cn } from '@/lib/utils'
 import { istanbulDate } from './contract'
 import { firstOvernightDose, intervalLabel, isOvernightDose } from './interval-preview'
+import { nextDosesLabel, untilLastDay } from './last-day'
 
 /** The Every row's answer: '8 hours' or 'hour', or null until the text is a count of hours. */
 export function intervalHoursAnswer(hours: string) {
@@ -144,42 +145,56 @@ export const CHANGE_KEEPS_EARLIER =
  * counts them from now and says what it keeps (767·A3, A5).
  */
 export function NextDoses({
-  doses,
+  doses: upcoming,
   hours,
+  lastDay = null,
   today,
   after,
 }: {
   doses: string[] | null
   /** An Interval schedule's hours, which mark its first overnight dose. */
   hours?: number
+  /** Only doses on or before it show, then the day they stop (779·A4, A8, A11). */
+  lastDay?: string | null
   today: string
   /** For a change: the live time the doses count from. */
   after?: string
 }) {
-  const night = doses && hours ? firstOvernightDose(doses[0], hours) : undefined
+  const doses = untilLastDay(upcoming, lastDay)
+  const label = nextDosesLabel(doses?.length ?? 0, lastDay)
+  const firstNight = doses?.length && hours ? firstOvernightDose(doses[0], hours) : undefined
+  // A night dose after the Last day never happens.
+  const night = firstNight && untilLastDay([firstNight], lastDay)[0]
   return (
     <section aria-labelledby="next-doses-heading" aria-live="polite" className="flex flex-col px-1">
       <h2 id="next-doses-heading" className="text-body-sm font-extrabold text-muted-foreground">
-        {after ? `Next 3 doses after ${formatTime(after)}` : 'Next 3 doses'}
+        {after && (doses?.length || !lastDay) ? `${label} after ${formatTime(after)}` : label}
       </h2>
       {doses ? (
-        <ul className="divide-y">
-          {doses.map((dose) => (
-            <li key={dose} className="flex items-center justify-between gap-2 py-2.5">
-              <span className="flex items-center gap-1.5 text-heading font-extrabold tabular-nums">
-                {formatTime(dose)}
-                {isOvernightDose(dose) && (
-                  <MoonIcon aria-label="Overnight" className="size-4 text-muted-foreground" />
-                )}
-              </span>
-              <span className="text-body-sm">
-                {istanbulDate(new Date(dose)) === today ? 'Today' : formatShortDay(dose, today)}
-              </span>
-            </li>
-          ))}
-        </ul>
+        doses.length > 0 && (
+          <ul className="divide-y">
+            {doses.map((dose) => (
+              <li key={dose} className="flex items-center justify-between gap-2 py-2.5">
+                <span className="flex items-center gap-1.5 text-heading font-extrabold tabular-nums">
+                  {formatTime(dose)}
+                  {isOvernightDose(dose) && (
+                    <MoonIcon aria-label="Overnight" className="size-4 text-muted-foreground" />
+                  )}
+                </span>
+                <span className="text-body-sm">
+                  {istanbulDate(new Date(dose)) === today ? 'Today' : formatShortDay(dose, today)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )
       ) : (
         <p className="pt-2 text-body-sm text-muted-foreground">They&apos;ll show here.</p>
+      )}
+      {lastDay && (
+        <p className="pt-2 text-body-sm font-bold">
+          No doses after {formatShortDay(lastDay, today)}.
+        </p>
       )}
       {night && (
         <p className="pt-2 text-body-sm text-muted-foreground">

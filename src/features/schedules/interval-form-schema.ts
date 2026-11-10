@@ -8,7 +8,8 @@ import {
   type DoseUnit,
 } from '@/lib/dose-quantity'
 import type { DailySchedule } from './contract'
-import { startDateSchema, type ScheduleFormOptions } from './schedule-form-schema'
+import { lastDayProblem } from './last-day'
+import { lastDaySchema, startDateSchema, type ScheduleFormOptions } from './schedule-form-schema'
 import { ALL_WEEKDAYS } from './weekdays'
 
 function hoursProblem(text: string) {
@@ -35,17 +36,22 @@ export function intervalFormSchema({ unit, today, retryStartDate, current }: Sch
         const problem = quantityProblem(value, unit)
         if (problem) ctx.addIssue({ code: 'custom', message: problem })
       }),
+      lastDay: lastDaySchema,
     })
-    .superRefine(({ date, time }, ctx) => {
+    .superRefine(({ date, time, lastDay }, ctx) => {
+      // The Anchor date is the first date (779·A5).
+      const problem = lastDayProblem(lastDay, today, date)
+      if (problem) ctx.addIssue({ code: 'custom', message: problem, path: ['lastDay'] })
       // A new Anchor starts today or later; only the kept one may be earlier.
       if (kept && date < today && date !== retryStartDate && time !== kept.times[0].time)
         ctx.addIssue({ code: 'custom', message: 'Choose today or a later date.', path: ['date'] })
     })
-    .transform(({ hours, date, time, quantity }) => ({
+    .transform(({ hours, date, time, quantity, lastDay }) => ({
       startDate: date,
       weekdays: [...ALL_WEEKDAYS],
       times: [{ time, quantity: parseQuantity(quantity) as number }],
       intervalHours: Number(hours.trim()),
+      lastDay,
     }))
 }
 
@@ -55,7 +61,7 @@ export type IntervalFormOutput = z.output<ReturnType<typeof intervalFormSchema>>
 
 /** New setup: today and one tablet or capsule are preselected (FE-764 Rules). */
 export function intervalFormDefaults(unit: DoseUnit, today: string): IntervalFormValues {
-  return { hours: '', date: today, time: '', quantity: quantityRule(unit).initial }
+  return { hours: '', date: today, time: '', quantity: quantityRule(unit).initial, lastDay: null }
 }
 
 /**
@@ -64,19 +70,21 @@ export function intervalFormDefaults(unit: DoseUnit, today: string): IntervalFor
  */
 export function intervalChangeDefaults(current: DailySchedule, today: string): IntervalFormValues {
   const quantity = formatQuantity(current.times[0].quantity)
+  const lastDay = current.endDate ?? null
   return current.intervalHours == null
-    ? { hours: '', date: today, time: '', quantity }
+    ? { hours: '', date: today, time: '', quantity, lastDay }
     : {
         hours: String(current.intervalHours),
         date: current.startDate,
         time: current.times[0].time,
         quantity,
+        lastDay,
       }
 }
 
 /** Whether Interval schedule values differ from `before`. */
 export function intervalValuesDiffer(values: IntervalFormValues, before: IntervalFormValues) {
-  const comparable = ({ hours, date, time, quantity }: IntervalFormValues) =>
-    JSON.stringify([hours.trim(), date, time, parseQuantity(quantity)])
+  const comparable = ({ hours, date, time, quantity, lastDay }: IntervalFormValues) =>
+    JSON.stringify([hours.trim(), date, time, parseQuantity(quantity), lastDay])
   return comparable(values) !== comparable(before)
 }
