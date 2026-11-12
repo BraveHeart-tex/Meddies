@@ -30,17 +30,12 @@ This reference kit captures **1a Cozy Care**, the direction chosen in the origin
 ---
 
 ## CONTENT FUNDAMENTALS
-The rules for UI wording are in `docs/copy.md`, which wins where this section differs.
+Voice, speaker, status words and banned words are in `docs/copy.md`, which wins where this section differs. Kit conventions it doesn't cover:
 
-- **Voice:** a calm friend who keeps your pill box tidy. Warm and brief, never clinical, never cutesy.
-- **Person:** address her as **you** and by first name in the greeting ("Good afternoon, Mia"). Meddies never says "I". Choices she makes in the sheet use first person: "I took it" / "I skipped it".
-- **Casing:** sentence case everywhere ("Today's doses", "Add schedule"). Uppercase is only for small eyebrows ("UP NEXT", "ON A SCHEDULE").
-- **Numbers:** 24-hour `HH:MM`, units with a space (`200 mg`, `1000 IU`), quantities spelled out with a unit ("1 tablet", "8 left"). Use a middle dot `·` as the separator.
-- **Status words are fixed:** *Taken*, *Not logged*, *Scheduled*, *Skipped*. Never write "Missed" or "Overdue", and never imply intake that wasn't recorded.
-- **No guilt, no pressure:** no streaks, no "you forgot", no exclamation marks. Reassure through facts: "After Magnesium, nothing else until this evening."
+- **Casing:** uppercase is only for small eyebrows ("UP NEXT", "ON A SCHEDULE").
+- **Numbers:** units with a space (`200 mg`, `1000 IU`), quantities spelled out with a unit ("1 tablet", "8 left"). Use a middle dot `·` as the separator.
 - **Confirmations say exactly what was saved:** "Magnesium logged · taken at 14:38". Dose outcomes have no Undo; they are changed through the dose drawer.
 - **Buttons describe the outcome:** "Save as taken", not "OK".
-- **Emoji:** never.
 
 ## VISUAL FOUNDATIONS
 - **Color:** a warm cream background (`#FBF5EE`) with white cards and a 1px warm border (`#EEDFD4`).

@@ -37,7 +37,7 @@ These are conceptual modules, not a finalized table schema.
 - Explicit privacy/security review: this involves personal medication information.
 - Device-realistic iOS/Android installation, permissions and push tests.
 - Observability sufficient to distinguish scheduled delivery, provider acceptance, user receipt and explicit intake.
-- Require online writes, optimistic dose feedback and in-memory session recovery. Persistent offline availability and queued writes are [deferred](./deferred.md). Installable PWA and closed-app push stay in scope.
+- Online writes and in-memory session recovery follow the topic 02 [session contract](./ux-journeys.md#session-contract).
 
 ## Feasibility evidence and remaining gates
 
@@ -49,7 +49,7 @@ These are conceptual modules, not a finalized table schema.
 | #7       | Synthetic encrypted D1 → private R2 → isolated D1 restore and independent key-recovery round trip                                             | Automated daily schedule, independent key custody, live restore and deleted-account safety |
 | #6       | **Not completed**                                                                                                                             | Installed/closed/locked real-iPhone FCM delivery, token lifecycle and deep links           |
 
-Selected runtime: Vercel-hosted Next.js with a narrow authenticated Worker D1 boundary. Keep shared application behavior independent of invocation transport; avoid generic multi-provider frameworks without a measured need. Cloudflare Cron is the first scheduler candidate. Standard Web Push, Neon/PostgreSQL, and an authenticated external scheduler are conditional fallbacks, not parallel MVP deployments.
+Keep shared application behavior independent of invocation transport; avoid generic multi-provider frameworks without a measured need. Standard Web Push, Neon/PostgreSQL and an authenticated external scheduler are conditional fallbacks, not parallel MVP deployments.
 
 ## Approved operations, privacy and recovery requirements
 

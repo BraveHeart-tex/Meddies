@@ -16,5 +16,3 @@ Write commits without trailers. Before committing, validate the exact message:
 ```sh
 printf '%s\n' "$msg" | pnpm exec commitlint
 ```
-
-Use the repository-installed commitlint so validation matches the pinned config.

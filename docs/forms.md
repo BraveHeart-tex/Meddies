@@ -35,16 +35,15 @@ Visual rules and copy: [DESIGN.md](../DESIGN.md).
   `handleSubmit`'s invalid callback, as `taken-form.tsx` does.
 - **Submission:** `handleSubmit` awaits the real save, reconciliation included. A
   synchronous ref lock is the duplicate-submit guard; `isSubmitting` only drives the
-  disabled fieldset and _Saving…_ label. Reuse the action ID while the validated values are
-  unchanged so retrying an unconfirmed save writes once; edits start a new one
-  ([client state](client-state.md#saves)).
+  disabled fieldset and _Saving…_ label.
 - **Errors and reset:** report request failures with `setError('root.server', { type })`
   and render one form-level Alert above the primary action; values are always kept. Root
-  errors clear on the next submit. After server confirmation, `reset(defaults)` and clear
-  the action ID. Known offline (`navigator.onLine` false) disables the primary as
-  _Connect to save_ with an Alert, and nothing is queued.
+  errors clear on the next submit. After server confirmation, `reset(defaults)`. Known
+  offline (`navigator.onLine` false) shows the [_Connect to save_ state](../DESIGN.md#forms),
+  and nothing is queued.
 - **Save hooks:** each save hook (`useMedicineSave`, `useScheduleSave`, `useScheduleStop`)
-  owns transport, attempt identity, confirmation matching, confirmed cache publication and
+  owns transport, attempt identity ([one action ID per attempt](client-state.md#saves)),
+  confirmation matching, confirmed cache publication and
   session draft clearing, and its session store supplies the synchronous duplicate-submit
   lock. The form submits validated values, observes readonly save state, and keeps reset,
   navigation and messages. Feature specifics live in each hook's comments.

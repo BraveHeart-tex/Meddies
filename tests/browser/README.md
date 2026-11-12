@@ -16,15 +16,12 @@ pnpm test:browser:visual                # only the @visual journeys, on phone
 pnpm exec playwright test --project=narrow --grep @visual cozy-visual
 ```
 
-Locally, name only the journeys the ticket names plus specs you added or changed
-([verification](../../docs/verification.md#browser-journeys)); the full run is CI's job.
 The wrapper always runs `pnpm worker:build`, runs the shared production build only when the
-build is stale, then `playwright test --project=phone` with your arguments.
-`pnpm test:browser:build` and `pnpm test:browser` (what CI runs) skip journeys tagged
-`@visual`; `pnpm test:browser:visual` is the same wrapper selecting only them. Outside CI,
+build is stale, then `playwright test --project=phone` with your arguments. `pnpm test:browser` (what CI
+runs) also skips `@visual`. Outside CI,
 global setup fails fast when a build input is newer than the wrapper success marker, or when
-the matching success marker, `.next/BUILD_ID` or `.worker-build/index.js` is missing; rerun through the wrapper. Run
-builds and journeys sequentially when they share `.next` or `.worker-build`.
+the matching success marker, `.next/BUILD_ID` or `.worker-build/index.js` is missing; rerun
+through the wrapper. Run builds and journeys sequentially when they share `.next` or `.worker-build`.
 
 **Dev mode** for iterating on one journey: `MEDDIES_BROWSER_DEV=1 pnpm test:browser <spec>`
 starts `next dev --webpack` per test with no production build. Stop any running
@@ -50,8 +47,8 @@ git worktree remove ../meddies-base
 ## Projects
 
 `phone` is Chromium at the iPhone 17 CSS size (402x874, portrait), not WebKit, iOS or an
-installed PWA, and what `pnpm test:browser` selects; a bare `pnpm exec playwright test` runs every project. `narrow` (320x740) is an
-opt-in stress check. Safari toolbars and safe areas shrink the usable height below 874px,
+installed PWA, and what `pnpm test:browser` selects; a bare `pnpm exec playwright test` runs
+every project. `narrow` (320x740) is an opt-in stress check. Safari toolbars and safe areas shrink the usable height below 874px,
 so assert that content scrolls rather than relying on the full height.
 
 ## Fixtures
@@ -136,13 +133,13 @@ follow the [viewport rule](../../docs/verification.md#writing-a-journey). Limits
 
 ## Loading captures
 
-Visual journeys are tagged `@visual` and run only through `pnpm test:browser:visual`:
-`history-spacing`, `cozy-visual`, `loading-capture` and `screen-capture`.
+The `@visual` journeys are `history-spacing`, `cozy-visual`, `loading-capture` and
+`screen-capture`.
 
 [`capture.ts`](capture.ts) produces opt-in review artifacts, never a CI baseline.
 `loading-capture.spec.ts` registers routes (name, path, fallback and content locators). The
-helper holds every Worker read (or the route's `hold`, for a route fallback), saves the fallback, releases and saves the loaded page,
-and writes `loading-capture.json` (case, status labels, overflow, shell boxes).
+helper holds every Worker read (or the route's `hold`, for a route fallback), saves the
+fallback, releases and saves the loaded page, and writes `loading-capture.json` (case, status labels, overflow, shell boxes).
 
 ```sh
 MEDDIES_VISUAL_OUT=/tmp/meddies-capture pnpm test:browser:visual loading-capture
@@ -151,8 +148,7 @@ MEDDIES_VISUAL_OUT=/tmp/meddies-capture MEDDIES_CAPTURE_ROUTES=today MEDDIES_CAP
 
 Cases: `phone` (402x874, the default), `narrow` (320x740) and `reduced-motion` (402x874), or
 a typed `CaptureCase[]` for a specific risk. Omitting `MEDDIES_CAPTURE_ROUTES` selects all
-registered routes; unknown or empty selections fail. Viewport resizing is not text
-enlargement or zoom. A route that loads in the client uses its client loading status as
+registered routes; unknown or empty selections fail. A route that loads in the client uses its client loading status as
 the fallback.
 
 ## Screen captures

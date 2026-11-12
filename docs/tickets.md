@@ -2,7 +2,7 @@
 
 How to write GitHub issues so an agent can finish them without guessing. The
 `/to-tickets` and `/triage` skills follow these rules. Labels are defined in
-[triage labels](triage-labels.md), terms in [GLOSSARY.md](../GLOSSARY.md). Product
+[triage labels](triage-labels.md). Product
 behavior lives in [docs/product](product/README.md); an issue cites and narrows it, never
 restates or changes it. A behavior change lands as a doc edit in the same change set.
 
@@ -52,11 +52,10 @@ and an "Out of scope:" line naming the issue that owns each nearby item.
 ```
 
 - The parent is a native sub-issue link, not a body section.
-- A design hands off as approved lab frames plus the approval comment with their captures
-  ([design-ticket skill](../.agents/skills/design-ticket/SKILL.md)); new designs commit no
-  HTML snapshot. The design ticket's description gets an "Approved design" frame table
-  (frame, slug, what it shows), and the build ticket's rules and criteria cite those frame
-  IDs with key copy in quotes, never "the approved frames".
+- A design hands off through the
+  [design-ticket skill](../.agents/skills/design-ticket/SKILL.md): approved lab frames, the
+  approval comment and an "Approved design" frame table. The build ticket's rules and
+  criteria cite those frame IDs with key copy in quotes, never "the approved frames".
 - Set blockers as native blocked-by relationships. Add a "Blocked by" section only when a
   blocker cannot be linked.
 - Describe behaviour, not file paths. Link stable docs and design artifacts.
@@ -120,6 +119,5 @@ ticket's description in the same change, then comments on both tickets.
 
 Close a ticket once it is done ([AGENTS.md](../AGENTS.md)). Post the
 [evidence](verification.md#evidence) with `gh issue comment <n> --body-file <file>`, read it
-back, then `gh issue close <n> --reason completed`. Commits never close issues.
-For any criterion that will not be finished, create a follow-up ticket with a single
+back, then `gh issue close <n> --reason completed`. For any criterion that will not be finished, create a follow-up ticket with a single
 owner, link it from this ticket, and remove the item here.

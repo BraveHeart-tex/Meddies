@@ -13,11 +13,10 @@ issues.
 | 03    | [Medication & Dose Domain](./medication-domain.md)           | Medicines, schedules, dose outcomes, stock                    |
 | 04    | [Notifications & Reminder Delivery](./reminders.md)          | Push, follow-ups, snooze, quiet hours, food and refill alerts |
 | 05    | [Turkish Medication Catalog & Barcode](./catalog-barcode.md) | Catalog and barcode lookup, later scope                       |
-| 06    | [Architecture, Storage & Integration](./platform.md)         | Hosting, persistence, operations, backups                     |
-| 07    | [Delivery Slices, Feasibility & Decisions](./decisions.md)   | Slices, feasibility gates, decision register                  |
+| 06    | [Architecture, Storage & Integration](./platform.md)         | Hosting, persistence, operations, backups, feasibility gates  |
+| 07    | [Delivery Slices](./decisions.md)                            | Delivery principles and vertical slices                       |
 | -     | [Deferred scope](./deferred.md)                              | Approved rules deferred beyond MVP, such as offline use       |
 
 Issues cite topics by number ("topic 03"). Visual and interaction design lives in
 [DESIGN.md](../../DESIGN.md) and [PRODUCT.md](../../PRODUCT.md). When an issue contradicts a topic,
-flag it to the maintainer before building. A newly approved product rule lands in its topic in the
-same change set.
+flag it to the maintainer before building.

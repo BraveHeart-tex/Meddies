@@ -65,12 +65,14 @@ pnpm lab:capture 215-            # or --out <dir>; prints the capture folder
 
 It writes `<slug>-402x874.png` (screen-size), `<slug>-320x740.png` and `<slug>.json` per
 frame, hides the Next dev overlay, and exits non-zero on horizontal overflow or a console
-error. The design-ticket skill (`.agents/skills/design-ticket/`) runs the full process.
-The deeper `109·L1` shell geometry check stays opt-in:
-`MEDDIES_BROWSER_DEV=1 MEDDIES_VISUAL_OUT=/tmp/meddies-lab pnpm exec playwright test design-lab-capture --project=phone --grep=@visual`.
-Choose additional
-checks by risk under [verification](../verification.md#visual-verification).
+error. The design-ticket skill (`.agents/skills/design-ticket/`) runs the full process,
+including attaching captures to the issue. Choose additional checks by risk under
+[verification](../verification.md#visual-verification). The deeper `109·L1` shell geometry
+check stays opt-in:
 
-Attach screenshots to the owning GitHub issue with `gh issue comment <n> --attach <png>`
-(images and video only; link JSON from the CI run or paste it in a collapsed block), record
-design review and approval there, and link the same evidence in the implementation handoff. Commit no binary artifacts.
+```sh
+MEDDIES_BROWSER_DEV=1 MEDDIES_VISUAL_OUT=/tmp/meddies-lab pnpm exec playwright test design-lab-capture --project=phone --grep=@visual
+```
+
+`gh issue comment --attach` takes images and video only; link JSON from the CI run or paste
+it in a collapsed block. Commit no binary artifacts.

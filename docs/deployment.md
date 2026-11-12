@@ -10,8 +10,7 @@ The production D1 binding is `meddies` in `worker/wrangler.jsonc`. Set
 Worker origin as Vercel Production variables; redeploy Vercel after changing them.
 Cloudflare management credentials stay in the protected release environment or on the
 maintainer machine. Keep synthetic feasibility databases separate from production.
-Releases apply `worker/migrations` before deploying the Worker (below); manual Wrangler
-commands are for coordinated recovery only.
+Manual Wrangler commands are for [coordinated recovery](#failure-and-recovery) only.
 
 ## Verify workflow
 
@@ -41,25 +40,25 @@ gh cache list --key Linux-next-cache- --limit 1000 --json id --jq '.[].id' \
 
 ## Ordered releases
 
-`.github/workflows/release.yml` runs on `main` pushes or manual dispatch on `main`.
-Pushes changing only `docs/**`, `**/*.md` or `.agents/skills/meddies-design/**`
-start no Release run. The design skill is a reference export: no application or Worker
-imports it; TypeScript and Vitest input lists exclude it, production CSS explicitly
-excludes it from Tailwind scanning, and ESLint and Prettier explicitly ignore it. Other `.agents` scripts
-remain CI inputs. Tests pin the workflow patterns and prove release-guard parity.
-Manual dispatch on main still runs, including for a non-runtime-only commit.
-It calls the single Verify job for the event SHA, then enters the `production` environment.
-Before dependency setup, Verify checks current main using the release guard's non-runtime-only
-rule. A SHA superseded by any runtime commit succeeds early without journeys, and its
-release job is skipped. Head and non-runtime-only advances proceed; lookup or history errors fail
+A **non-runtime-only** commit changes only `docs/**`, `**/*.md` or
+`.agents/skills/meddies-design/**`. The design skill is a reference export: no application or
+Worker imports it; TypeScript and Vitest input lists exclude it, production CSS excludes it
+from Tailwind scanning, and ESLint and Prettier ignore it. Other `.agents` scripts remain CI
+inputs. Tests pin the workflow patterns and prove release-guard parity.
+
+`.github/workflows/release.yml` runs on `main` pushes, except non-runtime-only ones, and on
+manual dispatch on `main`, which always runs. It calls the single Verify job for the event
+SHA, then enters the `production` environment. Before dependency setup, Verify checks current
+main: a SHA superseded by any runtime commit succeeds early without journeys, and its release
+job is skipped. Head and non-runtime-only advances proceed; lookup or history errors fail
 closed. The release job directly requires Verify success and its eligible output.
 A newer push cancels an in-progress Verify, and the newer Verify starts without waiting.
 A separate non-canceling concurrency group on the release job covers every mutation:
 
 1. Before any mutation, require the release SHA to be an ancestor of current main.
-   Allow newer main commits only when every intervening commit changes solely `docs/`
-   files, `*.md` files or `.agents/skills/meddies-design/` files. Any runtime change
-   (even if later reverted), missing history or comparison failure rejects the release.
+   Allow newer main commits only when every intervening commit is non-runtime-only. Any
+   runtime change (even if later reverted), missing history or comparison failure rejects
+   the release.
 2. Apply pending remote D1 migrations with Wrangler's migration ledger.
 3. Deploy that SHA's Worker, tagged with the SHA.
 4. Deploy that checkout to Vercel Production with `githubCommitSha` metadata.
@@ -124,8 +123,7 @@ Wrangler skips applied migrations, including releases with no pending migrations
 Do not use **Re-run failed jobs** as the normal recovery path since it skips checks.
 If main has advanced with runtime changes, release the latest reviewed main commit
 instead; stale reruns are rejected before mutation and would cancel the newer Verify,
-so do not start them. Non-runtime-only advances remain eligible under the guard above.
-Dispatch Release on main to recover a skipped run.
+so do not start them. Dispatch Release on main to recover a skipped run.
 
 For manual recovery, coordinate with maintainers so no Actions release is active
 or can begin, then use a clean checkout of the intended reviewed SHA:
@@ -154,7 +152,6 @@ origin. Keep credentials out of shell tracing, command logs, issue comments and
 artifacts. Never use `set -x` with release commands.
 
 D1 migrations, Worker deployment and Vercel deployment are separate operations, so
-migrations follow the [schema change rules](architecture.md#persistence-rules).
-Do not automatically reverse schema changes or roll an old Worker over a schema
-it cannot read. Repair forward with a reviewed additive migration or a compatible
-Worker/app version.
+migrations follow the [schema change rules](architecture.md#persistence-rules). Never roll
+an old Worker over a schema it cannot read; repair forward with a reviewed additive
+migration or a compatible Worker/app version.

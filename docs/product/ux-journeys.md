@@ -41,7 +41,7 @@ Barcode scanning and inventory/refills are later enhancements, not blockers for 
 - Launch is private, English-language and mobile-first, with an approved Google-account allowlist and no public registration. Today, Medications and History are the primary navigation destinations, with Settings in the header (#74). Visuals follow Cozy Care in repo `DESIGN.md`.
 - Show scheduled, explicitly **Taken**, explicitly **Skipped**, and past **Not logged** distinctly. A past unconfirmed occurrence is never automatically described as missed intake. Reminder delivery or acknowledgment does not prove intake.
 - Actual taken time and quantity are user-reported and distinct from planned due time. Provide correction flows without rewriting past scheduled expectations; see [03 - Medication & Dose Domain](./medication-domain.md).
-- Setup and schedule changes require online server confirmation. Dose recording/correction may appear optimistically with a visible saving/unconfirmed state; never announce server success before acknowledgement. Persistent offline viewing and offline writes are deferred; see the current session contract below.
+- Setup and schedule changes require online server confirmation; dose recording and correction follow the [session contract](#session-contract) below. Never announce server success before acknowledgement.
 - History export, selective deletion, account deletion and post-deletion expectations follow #12 below. History deletion must not silently reverse stock consumption.
 - Use accessible semantic controls, non-color status indicators, reassuring copy and explicit privacy/permission limitations. Do not offer clinical advice or guilt-based motivation.
 
@@ -56,15 +56,11 @@ Barcode scanning and inventory/refills are later enhancements, not blockers for 
 - Keep History date in the URL and preserve navigation context. Unfinished medicine/schedule and dose drafts survive app navigation in session memory; successful submission or explicit discard clears them. #92 explicit drawer dismissal rules still apply, including pending-save dismissal guards. Navigation never cancels a submitted save.
 - No persistent device cache/queue or recovery promise after reload/app closure. A stable cold-launch skeleton is acceptable; skeletons otherwise appear only when no usable content exists. Available in-memory data is a possibly stale snapshot, not a promise of complete offline coverage.
 - Sign-out/expiry clears private cached data, drafts and mutation state; prevent late requests repopulating them. Network loss alone is not sign-out.
-- Cross-device synchronization and persistent offline viewing/writes are deferred. Server retry/revision/conflict safeguards remain. Installable PWA and closed-app push requirements are unchanged. Architecture: topic 06.
+- Cross-device synchronization and persistent offline viewing/writes are [deferred](./deferred.md). Server retry/revision/conflict safeguards remain. Installable PWA and closed-app push requirements are unchanged. Architecture: topic 06.
 
 ## Open UX decisions
 
-Still open: onboarding presentation, remaining copy, permission education and screen-reader journey verification. Settled: recurrence and edit semantics and Not logged versus Skipped (topic 03), the session contract above, and export and deletion (#12 below). Visual references show layout, never new behavior.
-
-## #11 - Approved offline availability boundaries (November 3, 2026)
-
-Deferred beyond MVP. The rules and examples live in [deferred scope](./deferred.md).
+Still open: onboarding presentation, remaining copy, permission education and screen-reader journey verification. Visual references show layout, never new behavior.
 
 ## #12 - Approved export and deletion scope (November 3, 2026)
 

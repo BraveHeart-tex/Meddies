@@ -1,25 +1,16 @@
 # 03 - Medication & Dose Domain
 
-## Concepts
-
-- **Medication definition:** A medicine the user manages, with its visible name and associated regimen information.
-- **Schedule / regimen:** User-configured recurrence and expected times. One medication can lead to many scheduled occurrences.
-- **Scheduled dose:** One expected occurrence at a particular time.
-- **Dose outcome:** Explicit taken or skipped confirmation; Not logged is an unresolved past occurrence, not proof of intake or a skip.
-- **Inventory:** A user-managed stock count used to support refill warnings.
-- **Catalog entry:** External product-name identity or barcode mapping; separate from a user's medication and schedule.
-
-These are conceptual distinctions, not an approved database schema.
-
 ## Domain and Dose Logging - Approved Contract
+
+The entities below are conceptual distinctions, not an approved database schema.
 
 - **UserMedication** is the personal medication record, independent of a later **CatalogProduct**. It may have no catalog reference and no recurring schedule.
 - **MedicationSchedule** defines recurrence, effective dates and versioned expectations. **DoseOccurrence** identifies one expected dose; **DoseRecord** holds an explicit outcome, actual taken time, quantity and corrections. Unscheduled intake does not require an occurrence.
 - **StockMovement** represents intake consumption, refill and count reconciliation independently of reminder delivery. Medication strength (e.g., mg) and recorded quantity are different fields.
-- Only user confirmation establishes **Taken** or **Skipped**; past unconfirmed occurrences are **Not logged**, not automatically missed or skipped. Actual intake time is distinct from scheduled due time.
+- Only user confirmation establishes **Taken** or **Skipped**, attributed to the intended occurrence; a reminder being delivered, acknowledged or opened never does. Past unconfirmed occurrences are **Not logged**, not automatically missed or skipped. Actual intake time is distinct from scheduled due time.
 - Supported quantities are whole or half **tablets**, or whole **capsules**. Unsupported forms and fractional capsules are outside this MVP.
 - Taken consumes the explicitly recorded quantity; Skipped consumes nothing. Corrections, refills and retries reconcile stock once. A zero/insufficient count never blocks truthful intake; displayed stock is non-negative with a correction prompt.
-- Optimistic dose outcomes are unconfirmed presentation only. Server records remain authoritative; success announcements, reminder cancellation and confirmed stock require server receipt. Definite rejection rolls back; uncertain receipt preserves action identity and session recovery per topic 02.
+- Optimistic dose outcomes are unconfirmed presentation only. Server records remain authoritative; success announcements, reminder cancellation and confirmed stock require server receipt. Rejection and uncertain receipt follow the topic 02 [session contract](./ux-journeys.md#session-contract).
 - Stable occurrence IDs, schedule versions, client action IDs and revisions preserve history, prevent duplicate effects and support conflict resolution. Online stale revisions/conflicting outcomes require explicit recovery, not silent last-write-wins; preserve existing evidence, idempotency and server correctness. Stock is uncertain and affected reminders stop when a genuine unresolved conflict is known to the server. Offline queue and expanded multi-device UX delivery are deferred.
 - Unscheduled intake does not reschedule future expected doses. Server history remains until deliberate history/account deletion; deleting history does not reverse past inventory consumption. Full deletion and current online/session scope (including deferred offline capability) belong to [02 - UX & User Journeys](./ux-journeys.md).
 
@@ -34,16 +25,7 @@ Low-stock thresholds, re-arming, uncertain stock and refill pushes follow #10 be
 5. The product can display Not logged doses and feed reminder/follow-up logic.
 6. Optional per-medicine inventory tracking is part of the approved MVP; it belongs to the user's medication record, not a mutable catalog record.
 
-## Invariants to preserve during design
-
-- A scheduled dose must not silently become **taken** just because a reminder was delivered, acknowledged or opened.
-- Do not conflate medication catalog identity with a user's personal medication instance.
-- A user action that confirms intake must be attributable to the intended scheduled dose.
-- The system should distinguish unknown/unconfirmed from explicitly skipped.
-
 ## Remaining technical and interaction decisions
-
-Settled below or in the contract above: recurrence forms, timezone, cutoff equality, interval values, Not logged semantics, course end, pause/resume and stock thresholds.
 
 Still open, as implementation choices: exact schema, APIs, concurrency and locking, migration format, conflict-resolution presentation and cross-platform accessibility. Raise a missing product rule for approval rather than choosing a default. Reminder slots and snooze: [04 - Notifications & Reminder Delivery](./reminders.md). Session and export/deletion: topic 02.
 
@@ -64,19 +46,6 @@ Schedule versions and stable occurrence identities preserve already-due expectat
 An optional Last day includes its final Istanbul calendar day. No new occurrences or unsent dose-related sends remain at 00:00 the following day; historical occurrences and records remain. Paused periods produce no occurrences/backlog; clock schedules resume at the next configured time and interval schedules require an explicit new anchor. Pending sends also obey outcome, conflict, quiet-hour and next-occurrence suppression rules from topic 04.
 
 ### #8 - Approved scheduling boundaries (November 3, 2026)
-
-#### Preserved approved rules
-
-- All examples use Europe/Istanbul, including when the device travels.
-- Daily and selected-weekday schedules use local clock times. Intervals use
-  elapsed hours from an explicit first date/time, continuing across midnight.
-- Actual intake time is separate from due time. Late logging never moves recurrence.
-- Edits preserve earlier expectations and records; corrections are separate.
-- Paused periods produce no expected doses or backlog. Clock resume uses the next
-  configured time; interval resume requires a new anchor.
-- An end date includes its final local calendar day for occurrence generation.
-- Quiet hours, outcome cancellation, next-occurrence supersession and bounded
-  follow-ups retain their #2 behavior. Submitted pushes cannot be retracted.
 
 #### Approved decisions
 
@@ -176,10 +145,8 @@ The in-app low notice persists while certain stock is low even after its push.
 Uncertain stock is presented as uncertain rather than a confident low/sufficient
 count. No submission while uncertain consumes the push budget. Closing an episode
 cancels unsent work; already submitted notifications cannot be retracted.
-Thresholds and counts retain the supported whole/half-tablet and whole-capsule
-units. Taken consumes quantity, Skipped consumes nothing, and zero stock never
-blocks intake. Displayed counts stay non-negative and discrepancies prompt
-correction. These decisions do not change dose pause, resume or course-end rules.
+Thresholds and counts use the supported units, and stock consumption follows the
+contract above. These decisions do not change dose pause, resume or course-end rules.
 
 ### Acceptance examples
 

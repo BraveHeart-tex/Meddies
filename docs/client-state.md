@@ -2,16 +2,12 @@
 
 What the browser keeps between screens: pending saves, unconfirmed saves, session drafts
 and the Query cache, and how session end clears them. What the user sees is the
-[session contract](product/ux-journeys.md#session-contract) in topic 02; this doc is how the browser
-implements it. Terms follow
-[GLOSSARY.md](../GLOSSARY.md); screen states and copy follow
-[DESIGN.md](../DESIGN.md#loading-and-saving).
+[session contract](product/ux-journeys.md#session-contract) in topic 02; this doc is how the
+browser implements it. Screen states follow [DESIGN.md](../DESIGN.md#loading-and-saving).
 
 All private client state lives in memory, in one browser Query client per authenticated
 session (`src/lib/session-query-client.ts`, [Next.js](nextjs.md#query-ownership)). No
-browser storage is used. Losing it on reload, app closure or browser eviction is accepted;
-offline viewing, queued offline writes, cross-device sync and background sync are out of
-scope.
+browser storage is used. Losing it on reload, app closure or browser eviction is accepted.
 
 ## Saves
 
@@ -51,14 +47,15 @@ is keyed by the Schedule version it edits, so a newer version opens without an o
 
 - Returning restores values through React Hook Form `reset`, with the
   `saveMessages.draftRestored` notice and a ghost "Clear form". The dose drawer reopens
-  itself with its chosen outcome and Taken values; explicit dismissal is its Clear form. Add's Drawer works the same way:
-  swipe, Close, backdrop and Escape are its Clear form and also drop a failed save.
+  itself with its chosen outcome and Taken values; explicit dismissal is its Clear form.
+  Add's Drawer works the same way: swipe, Close, backdrop and Escape are its Clear form and
+  also drop a failed save.
 - A confirmed save or Clear form discards the draft; Clear form also resets defaults.
   Navigation, refresh and clock rollover keep it.
 - `/medications` query states (`?add`, `?medicine`, `?schedule`) share one mounted
-  `MedicinePanel`, so reset per-screen state when the screen changes. Changes between them use
-  the native History API (`medications-nav.tsx`), so they read the Query cache without a server
-  round trip; `features/medicines/routes.ts` owns view parsing and hrefs.
+  `MedicinePanel`, so reset per-screen state when the screen changes. Changes between them
+  use the native History API (`medications-nav.tsx`), so they read the Query cache without a
+  server round trip; `features/medicines/routes.ts` owns view parsing and hrefs.
 - The selected History date lives in the URL.
 
 ## Session end

@@ -28,9 +28,9 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
    starts its own `next dev` and `next start`, so stop `pnpm dev` and keep a `pnpm build`
    output in `.next` first.
 
-3. **Capture.** Stop `pnpm dev`, then run `pnpm lab:capture <n>-`. It writes
-   `<slug>-402x874.png`, `<slug>-320x740.png` and `<slug>.json` per frame and prints the
-   folder. Open every 402x874 PNG and fix what looks wrong.
+3. **Capture.** Stop `pnpm dev`, then run `pnpm lab:capture <n>-`
+   ([outputs](../../../docs/design/README.md#design-lab)); it prints the capture folder.
+   Open every 402x874 PNG and fix what looks wrong.
    _Done when_ it exits 0 and you have looked at every frame.
 
 4. **Publish the comparison page.** Copy [templates/comparison.html](templates/comparison.html),

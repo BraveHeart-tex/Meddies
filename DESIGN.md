@@ -5,9 +5,9 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 ## Foundations
 
 - **Color:** cream canvas, flat white cards, and cocoa text. Berry is for primary actions. Blush is for selected surfaces, the next-dose hero, and the sign-in welcome. Use the Tailwind semantic roles in [the global theme](src/global.css). Pale card borders are decorative; controls use the stronger input border and solid focus ring. This is a light theme.
-- **Type:** Nunito is served through Next.js. Use the theme's type roles (`text-display`, `text-title`, `text-heading`, `text-body-lg`, `text-body-sm`, `text-caption`, `text-label`, `text-micro`), heavy headings and action labels, readable supporting text, and tabular numerals. Keep times in 24-hour Istanbul time and show the actual date when it differs from the scheduled date.
+- **Type:** Nunito is served through Next.js. Use the theme's type roles (`text-display`, `text-title`, `text-heading`, `text-body-lg`, `text-body-sm`, `text-caption`, `text-label`, `text-micro`), heavy headings and action labels, readable supporting text, and tabular numerals. Show the actual date when it differs from the scheduled date; formats follow [copy](docs/copy.md#dates-and-times).
 - **Spacing:** start with 20px page and section spacing, 10px list gaps, and 16px card padding. Use the theme's larger radii for cards, the hero, and the drawer. Reserve shadows for floating surfaces.
-- **Reach:** use a 44px minimum control target. Let text wrap and layout grow. Respect keyboard focus, system safe areas, and reduced motion.
+- **Reach:** let text wrap and layout grow. Targets, focus, safe areas and motion follow the [accessibility safeguards](PRODUCT.md#accessibility--inclusion).
 
 ## Components
 
@@ -63,8 +63,8 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 - Refreshing keeps content and shows progress only on the refresh control. A failed refresh keeps content and adds a recoverable alert.
 - Saving disables the form and gives the primary action a saving label. Dose recording and correction show the chosen outcome on affected rows as a pending outline badge until the server confirms; setup and schedule edits never show optimistic state.
 - A definite failure clears only that save's pending state, keeps the entered values, and shows an alert above the primary action. An unconfirmed save keeps the values and turns the primary action into a retry of the same attempt. A conflict applies nothing and offers a way to review what is saved now.
-- Wording for these states follows [copy](docs/copy.md#errors); messages repeated across saves live in `src/lib/save-messages.ts`.
-- Pending saves and their failures stay visible after navigating away. Review affected loading, refreshing, saving and failure states under the [visual verification policy](docs/verification.md#visual-verification).
+- Wording for these states follows [copy](docs/copy.md#errors).
+- Pending saves and their failures stay visible after navigating away.
 
 ## Reference screens
 

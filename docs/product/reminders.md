@@ -53,30 +53,13 @@ Separate the **scheduled dose**, **delivery attempt**, **provider acknowledgemen
 - Use generic lock-screen notification text by default; displaying medicine names (including refill alerts) requires explicit user opt-in.
 - Recheck expiration, cancellation, preferences and eligibility before submission. Record intended sends and delivery attempts separately. Do not claim exactly-once push receipt, silent iOS background execution or Focus bypass.
 
-Email delivery/fallback is **outside the approved MVP**; it is not a mandatory push alternative.
-
 ## Remaining delivery and integration decisions
 
 **Still unverified:** real installed/closed/locked iPhone Home Screen PWA delivery with FCM (#6), token lifecycle, reinstallation/revocation, device navigation, Focus/OS limitations, exact production provider credentials and operational monitoring. Standard Web Push is an approved fallback candidate if real-device FCM evidence requires it.
 
-**Settled:** original/+40/+80 cadence, two-slot snooze and delayed-job behavior (#9 below), privacy-default notification content, quiet-hour treatment and the per-medicine food reminder lead range (#8 in topic 03). The precise copy and device-settings UX remain design work within these rules.
+The precise copy and device-settings UX remain design work within these rules.
 
 ## #9 - Approved snooze and delayed-reminder boundaries (November 3, 2026)
-
-These rules override earlier proposals in this topic for cadence, snooze and delayed jobs.
-
-### Preserved rules
-
-- Two follow-up slots per occurrence, initially due at +40 and +80 minutes.
-- Snooze is online, server-confirmed and targets confirmation time +40 minutes.
-- Only an explicit snooze may extend the ordinary +80-minute expiry.
-- Quiet hours are optional, 23:00 inclusive to 08:00 exclusive Europe/Istanbul.
-  Originals remain; follow-ups, snoozes and food targets inside quiet hours drop.
-  Dropped slots never replenish.
-- Server-received Taken/Skipped, conflict, pause and the next same-medicine occurrence
-  suppress pending sends. #8's course-end cutoff also applies to snoozes.
-- Provider acceptance is neither guaranteed receipt nor intake. Submitted pushes
-  cannot be retracted. Logging and recurrence remain independent of reminders.
 
 ### Approved decisions
 

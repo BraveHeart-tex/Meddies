@@ -8,7 +8,7 @@
 
 **Core promise:** Never forget a dose. Medication organization and proactive reminders take priority over gamification or secondary wellness features.
 
-The expected initial audience is a single private user (the creator's girlfriend), but the product should be engineered to production standards rather than as a disposable prototype.
+The expected initial audience is a single private user, but the product should be engineered to production standards rather than as a disposable prototype.
 
 ## Product pillars
 

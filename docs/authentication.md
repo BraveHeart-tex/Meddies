@@ -37,8 +37,7 @@ not revoke copied cookies on other devices or sign out of Google.
 state and PKCE protections. Provider profiles, tokens and error causes are not logged.
 
 Session end clears all private browser state; [client state](client-state.md#session-end)
-lists what it covers. Hydrated payloads carry display data only, never secrets or the
-Worker capability.
+lists what it covers.
 
 ## Deployment verification
 

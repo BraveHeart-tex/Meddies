@@ -9,6 +9,8 @@ pnpm verify:local
 Runs lint, format check and typecheck, then the build, integration, unit and component
 tests. A static-check failure stops before the second stage; second-stage checks all finish
 even when one fails. A warning names dev-stack tests skipped because fixed ports were busy.
+CI skips Vitest ([Verify workflow](deployment.md#verify-workflow)), so this is the only run of
+the unit, component and integration tests.
 
 The verify and journey wrappers reuse a build only when its inputs are unchanged and their
 success marker exists, so a hand-run `pnpm build` is always rebuilt.
@@ -21,12 +23,6 @@ pnpm test:related src/features/schedules/schedule-setup-form.tsx
 ```
 
 Test commands: [tests/README.md](../tests/README.md).
-
-## CI
-
-CI runs lint, format check, typecheck, both builds and every non-`@visual` journey; Vitest
-runs only in `pnpm verify:local`. Workflow, caches and release gating:
-[deployment](deployment.md#verify-workflow).
 
 ## Cheapest proof
 
@@ -50,7 +46,8 @@ behavior rather than counting Suspense boundaries.
 ## Browser journeys
 
 Journeys run outside `pnpm verify:local`. CI runs every journey except `@visual`, and a
-failure blocks Release.
+failure blocks Release. `@visual` journeys run only on request with
+`pnpm test:browser:visual`, with no CI or scheduled run.
 
 ### When a journey is allowed
 
@@ -64,8 +61,8 @@ A journey is allowed only when it proves one of these reasons:
 - data consistency across routes
 
 These never earn a journey: alignment, spacing, form validation, copy, tap-target size and
-width variants. Everything else is proven at a [cheaper level](#cheapest-proof). This rule
-covers every journey that runs in CI; on-request `@visual` journeys sit outside it.
+width variants. Everything else is proven at a [cheaper level](#cheapest-proof). `@visual`
+journeys sit outside this rule.
 
 ### Writing a journey
 
@@ -88,22 +85,14 @@ covers every journey that runs in CI; on-request `@visual` journeys sit outside 
 - **Unrelated CI failure:** check whether it also fails on the commit before the change
   ([how](../tests/browser/README.md#running)). If yes, file a `bug` + `needs-triage`
   ticket and do not fix it in scope. If no, the change caused it: fix it.
-- **Visual journeys** are tagged `@visual`, run only on request with
-  `pnpm test:browser:visual`, and are excluded from CI with no scheduled run.
 
 ## Visual verification
 
 For meaningful UI changes (visible content, layout, typography, controls, feedback or
 motion), inspect the affected screens at 402×874 CSS px, including loading, empty,
 populated, validation, saving and recovery states where the change affects them. Capture
-signed-in Today and Medications screens at 402×874 against a fresh build, seeded with one
-scheduled medicine; the run fails on horizontal overflow
-([paths and seeded IDs](../tests/browser/README.md#screen-captures)). Lab frames use
-`pnpm lab:capture <slug-prefix>` instead.
-
-```sh
-MEDDIES_VISUAL_OUT=/tmp/meddies-screens MEDDIES_SCREENS=/,/medications pnpm test:browser:visual screen-capture
-```
+Today and Medications with the [screen-capture journey](../tests/browser/README.md#screen-captures);
+lab frames use `pnpm lab:capture <slug-prefix>` instead.
 
 Add focused checks by risk:
 
@@ -113,8 +102,7 @@ Add focused checks by risk:
   that may clip text or hide actions. Target 200% and record the setting and method.
   Viewport resizing is not text enlargement; a CSS font-size probe is labelled synthetic.
 - **Reduced motion:** animation, transitions, gestures or motion preferences. Verify the
-  interaction at normal and reduced motion; stills do not prove motion. Skeletons stay
-  static at every setting.
+  interaction at normal and reduced motion; stills do not prove motion.
 - **Keyboard and focus:** controls, forms, dialogs, popups or navigation.
 - **Synthetic vs device:** the `phone` project is Chromium at 402×874 and is never iPhone
   evidence. Device checks (installed-PWA behavior, safe areas, the software keyboard,
@@ -154,6 +142,3 @@ changed (by file), visual and manual checks performed, limitations, unverified d
 behavior and outstanding device checks. The assertions are the evidence: link them and
 existing evidence rather than copying measurements, results or another issue's evidence.
 Record a failed or blocked check explicitly; it keeps the work open.
-
-Done is defined in [AGENTS.md](../AGENTS.md). A Verify canceled by a newer push is not a
-failure.

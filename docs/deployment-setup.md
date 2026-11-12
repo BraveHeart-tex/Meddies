@@ -21,13 +21,11 @@ With Corepack enabled, Vercel selects the exact pnpm version from `packageManage
 ([Vercel guidance](https://vercel.com/docs/builds/configure-a-build#corepack)). Local production serving
 uses `pnpm start`; Vercel uses its Next.js integration.
 
-Use `.node-version` for the local Node version.
-
 Configure private authentication variables and callbacks using [Authentication](authentication.md).
 
 ## Initial release setup
 
-One-time setup by an authorized maintainer. As inspected on 2026-11-03, GitHub `BraveHeart-tex/Meddies` defaults to `main`;
+As inspected on 2026-11-03, GitHub `BraveHeart-tex/Meddies` defaults to `main`;
 Vercel project `meddies` is linked to that repository with production branch `main`
 and no deploy hooks. Auth and Worker capability variables are Production-only.
 Vercel authentication protects generated deployment URLs (`all_except_custom_domains`);
