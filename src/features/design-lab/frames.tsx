@@ -3,6 +3,7 @@ import Loading from '@/app/loading'
 import { editFrames } from './edit-frames'
 import { intervalFrames } from './interval-frames'
 import { lastDayFrames } from './last-day-frames'
+import { pauseFrames } from './pause-frames'
 import { ScannerFrame } from './scanner-frame'
 
 export type DesignFrame = {
@@ -28,4 +29,5 @@ export const designFrames = [
   ...intervalFrames,
   ...editFrames,
   ...lastDayFrames,
+  ...pauseFrames,
 ] satisfies readonly DesignFrame[]
