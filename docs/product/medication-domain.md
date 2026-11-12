@@ -1,13 +1,11 @@
 # 03 - Medication & Dose Domain
 
-> **Status:** Approved medication, scheduling, dose and inventory product behavior, including [FE-545](https://github.com/BraveHeart-tex/Meddies/issues/8) and [FE-547](https://github.com/BraveHeart-tex/Meddies/issues/10). This is the behavioral authority, not a finalized database schema or event contract. Start at the relevant headings below.
-
 ## Concepts
 
 - **Medication definition:** A medicine the user manages, with its visible name and associated regimen information.
 - **Schedule / regimen:** User-configured recurrence and expected times. One medication can lead to many scheduled occurrences.
 - **Scheduled dose:** One expected occurrence at a particular time.
-- **Dose outcome:** Explicit taken or skipped confirmation; overdue is an unresolved scheduling state, not proof of intake.
+- **Dose outcome:** Explicit taken or skipped confirmation; Not logged is an unresolved past occurrence, not proof of intake or a skip.
 - **Inventory:** A user-managed stock count used to support refill warnings.
 - **Catalog entry:** External product-name identity or barcode mapping; separate from a user's medication and schedule.
 
@@ -25,7 +23,7 @@ These are conceptual distinctions, not an approved database schema.
 - Stable occurrence IDs, schedule versions, client action IDs and revisions preserve history, prevent duplicate effects and support conflict resolution. Online stale revisions/conflicting outcomes require explicit recovery, not silent last-write-wins; preserve existing evidence, idempotency and server correctness. Stock is uncertain and affected reminders stop when a genuine unresolved conflict is known to the server. Offline queue and expanded multi-device UX delivery are deferred.
 - Unscheduled intake does not reschedule future expected doses. Server history remains until deliberate history/account deletion; deleting history does not reverse past inventory consumption. Full deletion and current online/session scope (including deferred offline capability) belong to [02 - UX & User Journeys](./ux-journeys.md).
 
-Low-stock thresholds, re-arming, uncertain stock and refill pushes follow the existing [FE-547](https://github.com/BraveHeart-tex/Meddies/issues/10) decisions and 23 examples below.
+Low-stock thresholds, re-arming, uncertain stock and refill pushes follow [FE-547](https://github.com/BraveHeart-tex/Meddies/issues/10) below.
 
 ## Required product behavior
 
@@ -33,7 +31,7 @@ Low-stock thresholds, re-arming, uncertain stock and refill pushes follow the ex
 2. A recurring schedule populates Today with expected doses.
 3. Taken and skipped are deliberate, distinct outcomes.
 4. History reflects the confirmed outcome of each dose, not just the current schedule.
-5. The product can display overdue doses and feed reminder/follow-up logic.
+5. The product can display Not logged doses and feed reminder/follow-up logic.
 6. Optional per-medicine inventory tracking is part of the approved MVP; it belongs to the user's medication record, not a mutable catalog record.
 
 ## Invariants to preserve during design
@@ -45,27 +43,13 @@ Low-stock thresholds, re-arming, uncertain stock and refill pushes follow the ex
 
 ## Remaining technical and interaction decisions
 
-Recurrence forms, timezone, cutoff equality, allowed interval values, overdue/Not logged semantics, course-end cancellation, pause/resume and stock thresholds **have approved rules** below ([FE-545](https://github.com/BraveHeart-tex/Meddies/issues/8) and [FE-547](https://github.com/BraveHeart-tex/Meddies/issues/10)) or in the domain contract above; do not reopen them by treating the pre-approval discovery list as current.
+Settled below or in the contract above: recurrence forms, timezone, cutoff equality, interval values, Not logged semantics, course end, pause/resume and stock thresholds.
 
-Still requiring implementation-specific choices and verification: exact schema, APIs, concurrency/locking strategies, migration format, presentation of user conflict resolution, and cross-platform accessibility/device behavior. Where a consequential product semantic is genuinely absent, raise it for approval rather than inventing a default. Notification slot and snooze semantics belong to [04 - Notifications & Reminder Delivery](./reminders.md); online/session and export/delete behavior belongs to topic 02; its retained FE-548 offline examples are deferred future scope.
-
-## Related reading
-
-- 02 - UX & User Journeys
-- 04 - Notifications & Reminder Delivery
-- 05 - Turkish Medication Catalog & Barcode
-- 06 - Architecture, Storage & Integration
-- Documentation index: [Meddies 00 - Agent Guide & Documentation Index](./README.md)
-
----
-
-[Back to Meddies - Agent Guide & Documentation Index](./README.md)
-
----
+Still open, as implementation choices: exact schema, APIs, concurrency and locking, migration format, conflict-resolution presentation and cross-platform accessibility. Raise a missing product rule for approval rather than choosing a default. Reminder slots and snooze: [04 - Notifications & Reminder Delivery](./reminders.md). Session and export/deletion: topic 02.
 
 ## Scheduling - Approved Contract
 
-The approved baseline originates in [FE-539](https://github.com/BraveHeart-tex/Meddies/issues/2) and is refined by [FE-545](https://github.com/BraveHeart-tex/Meddies/issues/8) on November 3, 2026. The [FE-545](https://github.com/BraveHeart-tex/Meddies/issues/8) decision table and 15 acceptance examples below are normative. The original approval heading is preserved for existing deep links.
+The [FE-545](https://github.com/BraveHeart-tex/Meddies/issues/8) decision table and the acceptance examples below are normative.
 
 ### Recurrence and timezone
 
@@ -77,17 +61,9 @@ Schedule versions and stable occurrence identities preserve already-due expectat
 
 ### End dates, pause and resume
 
-An optional end date includes its final Istanbul calendar day. No new occurrences or unsent dose-related sends remain at 00:00 the following day; historical occurrences and records remain. Paused periods produce no occurrences/backlog; clock schedules resume at the next configured time and interval schedules require an explicit new anchor. Pending sends also obey outcome, conflict, quiet-hour and next-occurrence suppression rules from topic 04.
+An optional Last day includes its final Istanbul calendar day. No new occurrences or unsent dose-related sends remain at 00:00 the following day; historical occurrences and records remain. Paused periods produce no occurrences/backlog; clock schedules resume at the next configured time and interval schedules require an explicit new anchor. Pending sends also obey outcome, conflict, quiet-hour and next-occurrence suppression rules from topic 04.
 
 ### [FE-545](https://github.com/BraveHeart-tex/Meddies/issues/8) - Approved scheduling boundaries (November 3, 2026)
-
-Status: approved by Bora on November 3, 2026 in the implementation chat.
-Approval: "I accept your recomemndations" in response to D1-D4 and the linked
-rules/example draft. These decisions refine [FE-539](https://github.com/BraveHeart-tex/Meddies/issues/2)'s explicit scheduling gaps.
-
-Sources: [FE-545](https://github.com/BraveHeart-tex/Meddies/issues/8),
-[FE-539](https://github.com/BraveHeart-tex/Meddies/issues/2),
-and canonical wiki topic 03 - Medication & Dose Domain.
 
 #### Preserved approved rules
 
@@ -113,17 +89,16 @@ and canonical wiki topic 03 - Medication & Dose Domain.
 
 An occurrence due after C that already has a Taken or Skipped outcome (recorded early on its
 day) is not replaced: it stays with the earlier schedule version, keeping its identity and record,
-alongside the new version's occurrences. Approved November 10, 2026 in [FE-561](https://github.com/BraveHeart-tex/Meddies/issues/24) triage.
+alongside the new version's occurrences.
 
 An edit changing the end date still follows D3: it cannot erase an already-due
 occurrence. D4 suppresses its remaining sends if the new end boundary has passed.
 Food reminders already submitted for a replaced future occurrence cannot be
-retracted. Delayed-job coalescing, snooze timing details and other [FE-539](https://github.com/BraveHeart-tex/Meddies/issues/2) gaps
-outside D1-D4 have since been resolved in their owning clarification tickets ([FE-546](https://github.com/BraveHeart-tex/Meddies/issues/9) through [FE-549](https://github.com/BraveHeart-tex/Meddies/issues/12)). Topic 04 governs notification submission, snooze and food reminder delivery behavior.
+retracted. Topic 04 governs notification submission, snooze and food reminder delivery.
 
 #### [FE-562](https://github.com/BraveHeart-tex/Meddies/issues/25) - Approved Last day rules (November 10, 2026)
 
-Approved by Bora on November 10, 2026 in FE-562 triage. The end date is called the **Last day** (GLOSSARY.md).
+The end date is called the **Last day** (GLOSSARY.md).
 
 - The Last day is optional and included: its doses are expected; none from 00:00 the next day (D4).
 - It can be set in first-time setup and in a schedule change, for Clock and Interval schedules. Setting, moving or removing it is a schedule change: a new Schedule version at the Edit time (D3). A change always states the Last day it wants; it is never copied over silently.
@@ -133,7 +108,7 @@ Approved by Bora on November 10, 2026 in FE-562 triage. The end date is called t
 
 #### [FE-770](https://github.com/BraveHeart-tex/Meddies/issues/218) - Approved stop rules (November 10, 2026)
 
-Approved by Bora on November 10, 2026 in FE-770 triage. See **Stop a schedule** (GLOSSARY.md).
+See **Stop a schedule** (GLOSSARY.md).
 
 - Stopping a schedule is a schedule change: a new Schedule version at the Edit time (D3). Occurrences due at or before it, and any later occurrence that already has an outcome, stay with the earlier version and can still be logged and corrected. None after it are expected.
 - The stopped schedule is an **Ended schedule** dated the stop day (Istanbul). It restarts only through a schedule change with no Last day; occurrences return only after that change's Edit time.
@@ -143,7 +118,7 @@ Approved by Bora on November 10, 2026 in FE-770 triage. See **Stop a schedule** 
 
 #### [#26](https://github.com/BraveHeart-tex/Meddies/issues/26) - Approved pause and resume rules (November 12, 2026)
 
-Approved by Bora on November 12, 2026 in #26 triage. See **Pause a schedule** and **Resume a schedule** (GLOSSARY.md).
+See **Pause a schedule** and **Resume a schedule** (GLOSSARY.md).
 
 - Pausing a schedule is a schedule change: a new Schedule version at the Edit time (D3). Occurrences due at or before it, and any later occurrence that already has an outcome, stay with the earlier version and can still be logged and corrected. None are expected while paused, and none are made up later; paused days never show Not logged.
 - Pause is open-ended until the user resumes. Any schedule not Ended or paused can be paused, including one with a later Last day or one not yet started. A paused schedule can be stopped ([FE-770](https://github.com/BraveHeart-tex/Meddies/issues/218)) but not changed. If its Last day passes while paused, it becomes an Ended schedule and can no longer be resumed.
@@ -155,39 +130,36 @@ Approved by Bora on November 12, 2026 in #26 triage. See **Pause a schedule** an
 All dates below are in 2026. Times are Europe/Istanbul. Notification rows
 describe unsent reminders.
 
-| Case                        | Input / timeline                                                                 | Expected result                                                                                                                                                                                                                                                                                                                       |
-| --------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Interval range              | X = 1, 7, 24 hours; X = 0, -1, 1.5, 25                                           | First three accepted; remaining values rejected (D1).                                                                                                                                                                                                                                                                                 |
-| Midnight / late intake      | Anchor Nov 3 22:00, X = 7; first dose logged Taken at 23:15                      | Due Nov 3 22:00, Nov 4 05:00, 12:00, 19:00, Nov 5 02:00. Logging does not shift them.                                                                                                                                                                                                                                                 |
-| Food range                  | Lead = 1, 30, 120 minutes; lead = 0, -1, 0.5, 121                                | First three accepted; remaining values rejected (D2).                                                                                                                                                                                                                                                                                 |
-| Food midnight               | Nov 4 00:15 dose, 30-minute lead                                                 | Food target Nov 3 23:45. With quiet hours enabled it is dropped; dose stays 00:15.                                                                                                                                                                                                                                                    |
-| Food expiry                 | Nov 3 09:00 dose, 30-minute lead; food job first processed at 09:00              | Food target was 08:30; now expired. Dose remains 09:00.                                                                                                                                                                                                                                                                               |
-| Edit before due             | Old daily 09:00; C = Nov 3 08:59:59; change to 10:00                             | Old Nov 3 09:00 replaced and its pending reminders canceled; new Nov 3 10:00 expected (D3).                                                                                                                                                                                                                                           |
-| Edit exactly due            | Same edit, C = Nov 3 09:00:00                                                    | Preserve old 09:00 occurrence and history; new 10:00 expected. Old follow-ups remain subject to normal cancellation and expiry (D3).                                                                                                                                                                                                  |
-| Edit after due              | Same edit, C = Nov 3 09:00:01                                                    | Preserve 09:00; new 10:00 expected. Earlier Taken/Skipped remains unchanged (D3).                                                                                                                                                                                                                                                     |
-| New time equals cutoff      | Old 10:00; C = Nov 3 09:00; change to daily 09:00                                | Old future 10:00 replaced; no new dose at C. First new dose Nov 4 09:00 (D3).                                                                                                                                                                                                                                                         |
-| Final day                   | End Nov 3; daily 23:30                                                           | Nov 3 23:30 expected; Nov 4 23:30 absent. Pending +40 at Nov 4 00:10 and +80 at 00:50 canceled even with quiet hours disabled (D4).                                                                                                                                                                                                   |
-| Exact end boundary          | End Nov 3; interval would fall Nov 4 00:00; pending snooze also targets 00:00    | Neither occurrence nor snooze send is allowed at the boundary (D4).                                                                                                                                                                                                                                                                   |
-| End preserves history       | End Nov 3; unresolved Nov 3 23:30 dose; open history Nov 4                       | Dose remains Not logged and can later be logged/corrected; ending never marks it Skipped or Taken (D4).                                                                                                                                                                                                                               |
-| Last day today              | At Nov 3 10:00, daily 09:00 and 21:00 with no end date; change Last day to Nov 3 | Preserve 09:00 and its history; 21:00 expected; Nov 4 absent; cancel remaining unsent dose-related reminders after the boundary (D3, D4). Last day Nov 2 is rejected. Replaced the earlier "Shortened end" example (end date in the past) in [FE-562](https://github.com/BraveHeart-tex/Meddies/issues/25) triage, November 10, 2026. |
-| Stop now                    | At Nov 3 14:00, daily 08:00 and 20:00 unlogged; stop                             | Preserve 08:00 as Not logged, still loggable; 20:00 and Nov 4 absent; Ended Nov 3; cancel unsent reminders after 14:00 (D3, FE-770).                                                                                                                                                                                                  |
-| Stop keeps an early record  | Nov 3 20:00 logged Taken at 13:30; stop at 14:00                                 | 20:00 stays with its record on the earlier version (D3, FE-770).                                                                                                                                                                                                                                                                      |
-| Stop before start           | Schedule starting Nov 5; stop at Nov 3 10:00                                     | No occurrences ever; Ended Nov 3 (FE-770).                                                                                                                                                                                                                                                                                            |
-| Restart after stop          | Stopped Nov 3 14:00; change at Nov 4 10:00 to daily 08:00 and 20:00, no Last day | First occurrence Nov 4 20:00; Nov 3 20:00 and Nov 4 08:00 do not return (D3, FE-770).                                                                                                                                                                                                                                                 |
-| Pause now                   | At Nov 3 14:00, daily 08:00 and 20:00 unlogged; pause                            | Preserve 08:00 as Not logged, still loggable; 20:00 and Nov 4 absent, never Not logged; paused since Nov 3 (D3, #26).                                                                                                                                                                                                                 |
-| Pause keeps an early record | Nov 3 20:00 logged Taken at 13:30; pause at 14:00                                | 20:00 stays with its record on the earlier version (D3, #26).                                                                                                                                                                                                                                                                         |
-| Last day while paused       | Last day Nov 10; paused Nov 5                                                    | From Nov 11 the schedule is Ended Nov 10, no longer paused, and cannot be resumed (#26).                                                                                                                                                                                                                                              |
-| Stop while paused           | Paused Nov 3; stop Nov 4 10:00                                                   | Ended Nov 4; no occurrences between the pause and the stop (FE-770, #26).                                                                                                                                                                                                                                                             |
-| Resume clock                | Daily 08:00 and 20:00 paused Nov 3 14:00; resume Nov 5 10:00                     | First occurrence Nov 5 20:00; nothing from Nov 3 20:00 through Nov 5 08:00 (#26).                                                                                                                                                                                                                                                     |
-| Resume before start         | Daily 08:00 starting Nov 5; paused Nov 3; resume Nov 4                           | Start date kept; first occurrence Nov 5 08:00 (#26).                                                                                                                                                                                                                                                                                  |
-| Resume on the Last day      | Last day Nov 3, daily 08:00; paused Nov 2; resume Nov 3 10:00                    | Resume accepted; no occurrence left; Ended from Nov 4 (#26).                                                                                                                                                                                                                                                                          |
-| Resume interval             | Pause Nov 3 10:00; resume Nov 5 with new anchor 11:00 and X = 7                  | No paused-period doses; resumed sequence 11:00, 18:00, Nov 6 01:00.                                                                                                                                                                                                                                                                   |
-| Travel                      | Daily 09:00 Istanbul; device changes to another timezone                         | Due instant stays tied to 09:00 Europe/Istanbul.                                                                                                                                                                                                                                                                                      |
+| Case                        | Input / timeline                                                                 | Expected result                                                                                                                                                       |
+| --------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Interval range              | X = 1, 7, 24 hours; X = 0, -1, 1.5, 25                                           | First three accepted; remaining values rejected (D1).                                                                                                                 |
+| Midnight / late intake      | Anchor Nov 3 22:00, X = 7; first dose logged Taken at 23:15                      | Due Nov 3 22:00, Nov 4 05:00, 12:00, 19:00, Nov 5 02:00. Logging does not shift them.                                                                                 |
+| Food range                  | Lead = 1, 30, 120 minutes; lead = 0, -1, 0.5, 121                                | First three accepted; remaining values rejected (D2).                                                                                                                 |
+| Food midnight               | Nov 4 00:15 dose, 30-minute lead                                                 | Food target Nov 3 23:45. With quiet hours enabled it is dropped; dose stays 00:15.                                                                                    |
+| Food expiry                 | Nov 3 09:00 dose, 30-minute lead; food job first processed at 09:00              | Food target was 08:30; now expired. Dose remains 09:00.                                                                                                               |
+| Edit before due             | Old daily 09:00; C = Nov 3 08:59:59; change to 10:00                             | Old Nov 3 09:00 replaced and its pending reminders canceled; new Nov 3 10:00 expected (D3).                                                                           |
+| Edit exactly due            | Same edit, C = Nov 3 09:00:00                                                    | Preserve old 09:00 occurrence and history; new 10:00 expected. Old follow-ups remain subject to normal cancellation and expiry (D3).                                  |
+| Edit after due              | Same edit, C = Nov 3 09:00:01                                                    | Preserve 09:00; new 10:00 expected. Earlier Taken/Skipped remains unchanged (D3).                                                                                     |
+| New time equals cutoff      | Old 10:00; C = Nov 3 09:00; change to daily 09:00                                | Old future 10:00 replaced; no new dose at C. First new dose Nov 4 09:00 (D3).                                                                                         |
+| Final day                   | End Nov 3; daily 23:30                                                           | Nov 3 23:30 expected; Nov 4 23:30 absent. Pending +40 at Nov 4 00:10 and +80 at 00:50 canceled even with quiet hours disabled (D4).                                   |
+| Exact end boundary          | End Nov 3; interval would fall Nov 4 00:00; pending snooze also targets 00:00    | Neither occurrence nor snooze send is allowed at the boundary (D4).                                                                                                   |
+| End preserves history       | End Nov 3; unresolved Nov 3 23:30 dose; open history Nov 4                       | Dose remains Not logged and can later be logged/corrected; ending never marks it Skipped or Taken (D4).                                                               |
+| Last day today              | At Nov 3 10:00, daily 09:00 and 21:00 with no end date; change Last day to Nov 3 | Preserve 09:00 and its history; 21:00 expected; Nov 4 absent; cancel remaining unsent dose-related reminders after the boundary (D3, D4). Last day Nov 2 is rejected. |
+| Stop now                    | At Nov 3 14:00, daily 08:00 and 20:00 unlogged; stop                             | Preserve 08:00 as Not logged, still loggable; 20:00 and Nov 4 absent; Ended Nov 3; cancel unsent reminders after 14:00 (D3, FE-770).                                  |
+| Stop keeps an early record  | Nov 3 20:00 logged Taken at 13:30; stop at 14:00                                 | 20:00 stays with its record on the earlier version (D3, FE-770).                                                                                                      |
+| Stop before start           | Schedule starting Nov 5; stop at Nov 3 10:00                                     | No occurrences ever; Ended Nov 3 (FE-770).                                                                                                                            |
+| Restart after stop          | Stopped Nov 3 14:00; change at Nov 4 10:00 to daily 08:00 and 20:00, no Last day | First occurrence Nov 4 20:00; Nov 3 20:00 and Nov 4 08:00 do not return (D3, FE-770).                                                                                 |
+| Pause now                   | At Nov 3 14:00, daily 08:00 and 20:00 unlogged; pause                            | Preserve 08:00 as Not logged, still loggable; 20:00 and Nov 4 absent, never Not logged; paused since Nov 3 (D3, #26).                                                 |
+| Pause keeps an early record | Nov 3 20:00 logged Taken at 13:30; pause at 14:00                                | 20:00 stays with its record on the earlier version (D3, #26).                                                                                                         |
+| Last day while paused       | Last day Nov 10; paused Nov 5                                                    | From Nov 11 the schedule is Ended Nov 10, no longer paused, and cannot be resumed (#26).                                                                              |
+| Stop while paused           | Paused Nov 3; stop Nov 4 10:00                                                   | Ended Nov 4; no occurrences between the pause and the stop (FE-770, #26).                                                                                             |
+| Resume clock                | Daily 08:00 and 20:00 paused Nov 3 14:00; resume Nov 5 10:00                     | First occurrence Nov 5 20:00; nothing from Nov 3 20:00 through Nov 5 08:00 (#26).                                                                                     |
+| Resume before start         | Daily 08:00 starting Nov 5; paused Nov 3; resume Nov 4                           | Start date kept; first occurrence Nov 5 08:00 (#26).                                                                                                                  |
+| Resume on the Last day      | Last day Nov 3, daily 08:00; paused Nov 2; resume Nov 3 10:00                    | Resume accepted; no occurrence left; Ended from Nov 4 (#26).                                                                                                          |
+| Resume interval             | Pause Nov 3 10:00; resume Nov 5 with new anchor 11:00 and X = 7                  | No paused-period doses; resumed sequence 11:00, 18:00, Nov 6 01:00.                                                                                                   |
+| Travel                      | Daily 09:00 Istanbul; device changes to another timezone                         | Due instant stays tied to 09:00 Europe/Istanbul.                                                                                                                      |
 
 ## [FE-547](https://github.com/BraveHeart-tex/Meddies/issues/10) - Approved low-stock transitions (November 3, 2026)
-
-Bora approved D1-D6 and all 23 examples with "Accepted" in the implementation chat on November 3, 2026. These decisions refine [FE-539](https://github.com/BraveHeart-tex/Meddies/issues/2); stock implementation remains with downstream tickets.
-Source and approval evidence: [FE-547](https://github.com/BraveHeart-tex/Meddies/issues/10).
 
 ## Approved decisions
 

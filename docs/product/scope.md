@@ -1,8 +1,4 @@
-> **Current MVP scope - approved November 6, 2026:** [FE-620](https://github.com/BraveHeart-tex/Meddies/issues/82) supersedes the earlier offline MVP commitment. Writes require connectivity; optimistic dose changes remain visibly unconfirmed until acknowledged. Previously loaded data, drafts and uncertain-save recovery live in memory during the open session. Persistent offline availability, queued offline writes and pending-work recovery after reload/app closure are deferred beyond MVP. Server retry, revision, ownership and stock correctness remain required. Implementation is separate from this planning approval.
-
 # 01 - Product Vision & MVP Scope
-
-> **Status:** Approved product intent and MVP boundaries; implementation is underway. This document governs scope, not detailed operational behavior or current ticket progress. See the Meddies Agent Guide & Documentation Index for the owning domain specifications.
 
 ## Product intent
 
@@ -22,7 +18,7 @@ The expected initial audience is a single private user (the creator's girlfriend
 
 ## Current frontend and connectivity scope - November 6, 2026
 
-Writes require connectivity. Dose recording/correction provides optimistic feedback with honest pending state and session recovery. Cached navigation, selected dates and unfinished drafts persist in memory during the open session. Reload/closure may require a fresh server load and may discard pending recovery details/drafts. Next.js streams initial content into TanStack Query; see topic 06. This supersedes the earlier FE-548 offline MVP commitment without changing PWA installation or closed-app push scope.
+Writes require connectivity. Dose recording/correction provides optimistic feedback with honest pending state and session recovery. Cached navigation, selected dates and unfinished drafts persist in memory during the open session. Reload/closure may require a fresh server load and may discard pending recovery details/drafts. Next.js streams initial content into TanStack Query; see topic 06. PWA installation and closed-app push stay in scope; persistent offline use is [deferred](./deferred.md).
 
 ## MVP capability boundaries
 
@@ -42,24 +38,6 @@ Writes require connectivity. Dose recording/correction provides optimistic feedb
 
 Clarity and reliable medication records take precedence over reward mechanics. The product is an organizational tool, not a substitute for medical guidance.
 
-## Scope status
-
-The above captures approved product intent and scope, not the complete operational contract. Approved recurrence, notification, stock, online/session, export and deletion decisions are in domain topics 02-04, including [FE-545](https://github.com/BraveHeart-tex/Meddies/issues/8) through [FE-549](https://github.com/BraveHeart-tex/Meddies/issues/12). Screen-level layout details and real-iPhone notification feasibility remain unsettled. Refer to topic 06 for verified technical boundaries.
-
 ## Explicit private-MVP exclusions
 
 No public registration or multi-tenant/caregiver features; medical advice, drug-interaction or dosage recommendations; unsupported liquid/injection/cream units; taper or alternating-cycle schedules; recurrence anchored to actual intake or automatic travel-timezone adaptation; email reminder delivery, meal logging, unlimited follow-ups or inferred missed intake; persistent offline viewing, queued offline dose writes, offline setup/schedule editing/snooze, guaranteed closed-app background sync, real-time cross-device synchronization, advertising analytics or speculative infrastructure. Barcode-assisted lookup follows the manual-medicine core and requires independent rights/device validation.
-
-These are scope boundaries from [FE-539](https://github.com/BraveHeart-tex/Meddies/issues/2); approved operational details belong to their domain topics.
-
-## Related documents
-
-- 02 - UX & User Journeys
-- 03 - Medication & Dose Domain
-- 04 - Notifications & Reminder Delivery
-- 07 - Delivery Slices, Feasibility & Decisions
-- Documentation index: [Meddies 00 - Agent Guide & Documentation Index](./README.md)
-
----
-
-[Back to Meddies - Agent Guide & Documentation Index](./README.md)

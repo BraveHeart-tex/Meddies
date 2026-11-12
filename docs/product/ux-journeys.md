@@ -1,7 +1,5 @@
 # 02 - UX & User Journeys
 
-> **Status:** Current online/session behavior approved November 6, 2026 in [FE-620](https://github.com/BraveHeart-tex/Meddies/issues/82); FE-548 offline rules below are preserved as deferred historical scope. FE-549 export/deletion rules are updated for session actions. Cozy Care/FE-612 still govern visual and mobile interaction behavior. Implementation remains separate.
-
 ## Experience principle
 
 **Cozy Care** is the approved direction. Repo `DESIGN.md` governs visuals; [FE-612](https://github.com/BraveHeart-tex/Meddies/issues/74) governs interactions.
@@ -10,7 +8,7 @@
 
 | Surface              | Job to be done                                                                  |
 | -------------------- | ------------------------------------------------------------------------------- |
-| Today / Home         | See today's scheduled doses, overdue items and the next action                  |
+| Today / Home         | See today's scheduled doses, unresolved doses and the next action               |
 | Medications          | See active medication records and remaining inventory                           |
 | Add Medication       | Create a record manually; later assist entry by scanning a barcode              |
 | Schedule Setup       | Assign recurring dose times to a medication                                     |
@@ -32,16 +30,16 @@ Barcode scanning and inventory/refills are later enhancements, not blockers for 
 ## Design constraints
 
 - Never make a decorative UI element ambiguous with a dose action.
-- Preserve a distinction between scheduled, taken, skipped and overdue.
+- Preserve a distinction between Scheduled, Taken, Skipped and Not logged.
 - Make notification permission limitations and offline state intelligible rather than silently promising reliability.
 - Avoid reward mechanics that could misrepresent whether medication has actually been taken.
 - Mobile-first, installable iPhone/Android PWA; keep essential interactions accessible.
-- The primary device is the user's iPhone 17 (402×874 CSS px, DPR 3). Review affected UI at 402px under docs/verification.md. Add focused 320px, enlarged-text and reduced-motion checks when relevant. Preserve existing targeted regressions; no full capture matrix is required. Usable height is smaller because of Safari toolbars and safe areas, so content must scroll.
+- The primary device is the user's iPhone 17 (402×874 CSS px, DPR 3). Usable height is smaller because of Safari toolbars and safe areas, so content must scroll. Visual checks follow [verification](../verification.md#visual-verification).
 
 ## Approved UX and dose-state boundaries
 
 - Launch is private, English-language and mobile-first, with an approved Google-account allowlist and no public registration. Today, Medications and History are the primary navigation destinations, with Settings in the header ([FE-612](https://github.com/BraveHeart-tex/Meddies/issues/74)). Visuals follow Cozy Care in repo `DESIGN.md`.
-- Show scheduled, explicitly **Taken**, explicitly **Skipped**, and past **Not logged** distinctly. An overdue/unconfirmed occurrence is never automatically described as missed intake. Reminder delivery or acknowledgment does not prove intake.
+- Show scheduled, explicitly **Taken**, explicitly **Skipped**, and past **Not logged** distinctly. A past unconfirmed occurrence is never automatically described as missed intake. Reminder delivery or acknowledgment does not prove intake.
 - Actual taken time and quantity are user-reported and distinct from planned due time. Provide correction flows without rewriting past scheduled expectations; see [03 - Medication & Dose Domain](./medication-domain.md).
 - Setup and schedule changes require online server confirmation. Dose recording/correction may appear optimistically with a visible saving/unconfirmed state; never announce server success before acknowledgement. Persistent offline viewing and offline writes are deferred; see the current session contract below.
 - History export, selective deletion, account deletion and post-deletion expectations follow [FE-549](https://github.com/BraveHeart-tex/Meddies/issues/12) below. History deletion must not silently reverse stock consumption.
@@ -56,80 +54,17 @@ Barcode scanning and inventory/refills are later enhancements, not blockers for 
 - Keep History date in the URL and preserve navigation context. Unfinished medicine/schedule and dose drafts survive app navigation in session memory; successful submission or explicit discard clears them. FE-631 explicit drawer dismissal rules still apply, including pending-save dismissal guards. Navigation never cancels a submitted save.
 - No persistent device cache/queue or recovery promise after reload/app closure. A stable cold-launch skeleton is acceptable; skeletons otherwise appear only when no usable content exists. Available in-memory data is a possibly stale snapshot, not a promise of complete offline coverage.
 - Sign-out/expiry clears private cached data, drafts and mutation state; prevent late requests repopulating them. Network loss alone is not sign-out.
-- Cross-device synchronization and persistent offline viewing/writes are deferred. Server retry/revision/conflict safeguards remain. Installable PWA and closed-app push requirements are unchanged. Architecture: topic 06; rollout gate: FE-639.
+- Cross-device synchronization and persistent offline viewing/writes are deferred. Server retry/revision/conflict safeguards remain. Installable PWA and closed-app push requirements are unchanged. Architecture: topic 06.
 
 ## Open UX decisions
 
-Still open: onboarding presentation, remaining copy, permission education and screen-reader journey verification. **Not open:** underlying recurrence/edit semantics (topic 03), the distinction between Not logged and user-confirmed Skipped (topic 03), the current online/session scope below (which supersedes FE-548 for MVP), or export/deletion semantics ([FE-549](https://github.com/BraveHeart-tex/Meddies/issues/12) below). Do not infer new behavior from visual references.
-
-## Related reading
-
-- 01 - Product Vision & MVP Scope
-- 03 - Medication & Dose Domain
-- 04 - Notifications & Reminder Delivery
-- Documentation index: [Meddies 00 - Agent Guide & Documentation Index](./README.md)
-
----
-
-[Back to Meddies - Agent Guide & Documentation Index](./README.md)
+Still open: onboarding presentation, remaining copy, permission education and screen-reader journey verification. Settled: recurrence and edit semantics and Not logged versus Skipped (topic 03), the session contract above, and export and deletion ([FE-549](https://github.com/BraveHeart-tex/Meddies/issues/12) below). Visual references show layout, never new behavior.
 
 ## [FE-548](https://github.com/BraveHeart-tex/Meddies/issues/11) - Approved offline availability boundaries (November 3, 2026)
 
-> **Historical / deferred beyond MVP:** Bora approved these D1-D6 rules and 19 examples on November 3, 2026. The November 6 FE-620 decision above supersedes their MVP delivery status. Everything from this FE-548 heading through its acceptance table is retained future-scope evidence, not an instruction to implement persistent caching or offline writes now.
-
-## Approved decisions
-
-| ID  | Approved rule                                                                                                                                                                                                                                                                                                                                                  | Reason                                                                                             |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| D1  | After a successful online refresh on date D in Europe/Istanbul, cache history for the 30 preceding calendar days plus elapsed events today. Include scheduled occurrences/outcomes and unscheduled intake. Older history stays on the server until user deletion and requires internet to load.                                                                | A bounded, useful offline review window without changing server retention.                         |
-| D2  | Cache scheduled occurrences for today D through D+6 inclusive, including elapsed occurrences today. Show the last successful refresh time and exact cached dates. Only successful refresh advances coverage; midnight or reopening alone never extends it.                                                                                                     | Seven explicit calendar dates, without a local recurrence engine.                                  |
-| D3  | Allow offline unscheduled Taken for an already cached medicine, with actual intake time and supported quantity. Persist with a stable action ID and Waiting to sync. Do not create a scheduled occurrence, shift reminders or silently merge separate intakes. New medicine setup remains online-only.                                                         | Occasional intake can be recorded during connectivity loss using the same durable action boundary. |
-| D4  | Outside cached dose/history coverage, show Not available offline and Connect to refresh, with the available date range. Never display an empty result as No doses or invent Not logged occurrences. Cached medicine details remain available; D3 logging remains available even after the dose horizon ends.                                                   | Distinguishes missing data from a genuinely empty schedule.                                        |
-| D5  | Before first successful online sign-in/refresh, show Connect to set up Meddies; no medicine/dose data or offline intake controls. A previously cached but genuinely empty day may show No scheduled doses within its known coverage. If cache is lost, show unavailable state rather than reconstructing a routine.                                            | Initial setup requires server-confirmed identity and data.                                         |
-| D6  | History-window pruning must not discard pending actions or unresolved conflicts, even when older than 30 days. Keep them visible separately until acknowledged/resolved; exclude them from any claim of confirmed server history. Setup, schedule edits and snooze remain online and server-confirmed. No local reminder engine or guaranteed closed-app sync. | A display-retention boundary must not lose unconfirmed work.                                       |
-
-Offline views are snapshots, not confirmation that another device has made no
-changes. Show pending outcomes as Waiting to sync and explain that reminders may
-continue until the server receives them. A failed refresh preserves the previous
-coverage and pending work; it never reports a newly complete snapshot.
-
-Sync runs when connectivity and app execution allow, including after reopening.
-Retries reuse the original action ID and have no repeated outcome/stock effect.
-Genuine conflicts preserve both submissions for user resolution. Once the server
-knows of a Taken/Skipped conflict, suppress that occurrence's unsent dose reminders
-and mark affected stock uncertain; an offline-only client cannot cancel server
-work. Stock reconciliation occurs once after resolution. Supported units remain
-whole/half tablets and whole capsules. Pending stock is not a confirmed server count.
-
-## Acceptance examples
-
-Times and dates use Europe/Istanbul. Refresh is successful unless stated otherwise.
-
-| Case                   | Input / timeline                                   | Expected result                                                                                                                                  |
-| ---------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| History start          | Refresh Nov 3, 2026 at 10:00                       | History covers Oct 4 through elapsed Nov 3; Oct 3 requires internet. Server history is not deleted.                                              |
-| Dose coverage          | Same refresh                                       | Cached dose dates Nov 3-9 inclusive, including elapsed Nov 3 occurrences. Nov 10 unavailable offline.                                            |
-| Midnight               | Stay offline through Nov 4                         | Original Nov 3-9 dose coverage remains; Nov 10 is not generated locally.                                                                         |
-| Horizon exhausted      | Reopen offline Nov 10                              | Today says Not available offline, shows last refresh/coverage and Connect to refresh. Cached medicines and unscheduled logging remain available. |
-| Known empty day        | Nov 7 cached with no occurrences                   | No scheduled doses for Nov 7; no such claim for uncached Nov 10.                                                                                 |
-| Initial offline launch | No successful online sign-in/refresh               | Connect to set up Meddies; no offline medicine setup or intake logging.                                                                          |
-| Cache lost             | Previously used app, local cache absent, offline   | Data unavailable offline; reconnect required. No reconstruction or recovered-action claim.                                                       |
-| Scheduled action       | Cached Nov 3 12:00 dose; Taken offline 12:05       | Persist actual time and supported quantity as Waiting to sync; scheduled future times unchanged.                                                 |
-| Skipped                | Cached occurrence; Skipped offline                 | Waiting to sync; no stock consumption.                                                                                                           |
-| Unscheduled intake     | Cached medicine; Taken 0.5 tablet offline at 14:10 | Pending unscheduled record with stable ID; no occurrence, follow-up or schedule shift created.                                                   |
-| Uncached medicine      | Offline, medicine absent from cache                | Cannot create medicine or record an unscheduled intake against an unknown medicine; reconnect required.                                          |
-| Replay                 | Reopen and retry one pending action twice          | Same ID; one resulting record and one stock effect, once acknowledged.                                                                           |
-| Separate intakes       | Explicit unscheduled Taken at 14:10 and 18:10      | Separate action IDs and records; no deduplication merely by medicine/date.                                                                       |
-| Retention rollover     | Pending Oct 4 action; refresh Nov 4                | Normal history begins Oct 5; Oct 4 pending action remains visible until acknowledged/resolved.                                                   |
-| Conflict rollover      | Unresolved conflict ages beyond history window     | Both submissions remain available for resolution; stock remains uncertain, eligible dose reminders suppressed once server knows.                 |
-| Closed app             | Taken offline; close PWA; restore connection       | No promised sync while closed; server reminders may continue. Reopening with connectivity permits retry and acknowledgement.                     |
-| Failed refresh         | Nov 3 snapshot; refresh Nov 5 fails                | Keep Nov 3-9 coverage and pending actions; show failed refresh, no extension to Nov 11.                                                          |
-| Successful refresh     | Refresh Nov 5                                      | Dose coverage Nov 5-11; history Oct 6 through elapsed Nov 5, plus separately retained pending/conflict work.                                     |
-| Online-only actions    | Offline setup, schedule edit or snooze attempt     | Explain internet/server confirmation required; no applied change or successful snooze shown.                                                     |
+Deferred beyond MVP. The rules and examples live in [deferred scope](./deferred.md).
 
 ## [FE-549](https://github.com/BraveHeart-tex/Meddies/issues/12) - Approved export and deletion scope (November 3, 2026)
-
-Bora approved D1-D6 and all 16 examples on November 3, 2026. On November 6, FE-620 revised D2/D3/D6 and queue-related examples to use online in-flight/uncertain session actions; deletion scope, stock preservation, replay protections and backup retention remain approved.
 
 ## Approved decisions
 
@@ -151,7 +86,7 @@ history too; history deletion alone does not.
 
 ## Acceptance examples
 
-All dates/times use Europe/Istanbul. No example establishes implemented behavior.
+All dates/times use Europe/Istanbul.
 
 | Case                      | Input / timeline                                                                               | Expected result                                                                                                                                                                                                                                 |
 | ------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -174,6 +109,4 @@ All dates/times use Europe/Istanbul. No example establishes implemented behavior
 
 ## Accessibility and visual verification - approved November 7, 2026
 
-Review affected UI at 402px under docs/verification.md. Add focused 320px, enlarged-text and reduced-motion checks when relevant. Preserve existing targeted regressions; no full capture matrix is required. Meddies does not claim formal WCAG conformance. Preserve accessible labels, semantic controls, contrast, visible focus, 44px targets, safe areas, actual text enlargement, reduced-motion support, non-color status cues and reachable actions. The conditional text-enlargement stress target is 200%, with actual method/setting recorded; a CSS font-size probe is supplementary synthetic evidence. 201×437 viewport captures are not zoom or text-enlargement evidence.
-
-FE-688 owns reusable captures. Route owners retain behavioral/request-count/layout-budget assertions; the wave gate owns consolidated loading review and links existing route evidence without recapture. FE-616 retains physical iPhone acceptance, FE-602 integrated accessibility, and FE-642 the explicit approximately 39.7px calendar-target exception at 320px (38.6px before its popover change). Required local verification and CI remain unchanged. Earlier blanket capture requirements in historical designs/discussions are superseded. Full policy and progress: [FE-620](https://github.com/BraveHeart-tex/Meddies/issues/82); durable commands: repo docs/verification.md#visual-verification.
+Safeguards: [PRODUCT.md](../../PRODUCT.md#accessibility--inclusion). Checks: [verification](../verification.md#visual-verification). One approved exception: the calendar day target is about 39.7px at 320px width (FE-642).

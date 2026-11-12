@@ -1,7 +1,5 @@
 # 04 - Notifications & Reminder Delivery
 
-> **Status:** Approved reminder policy ([FE-539](https://github.com/BraveHeart-tex/Meddies/issues/2) baseline, refined by [FE-546](https://github.com/BraveHeart-tex/Meddies/issues/9)), with FCM/iPhone delivery feasibility still unproven. Do not mistake policy approval for verified device receipt.
-
 ## User promise
 
 Never forget a dose. Reminders should be **proactive, configurable, persistent enough to be useful and trustworthy**, including when the PWA is closed wherever the platform allows.
@@ -61,26 +59,11 @@ Email delivery/fallback is **outside the approved MVP**; it is not a mandatory p
 
 **Still unverified:** real installed/closed/locked iPhone Home Screen PWA delivery with FCM ([FE-543](https://github.com/BraveHeart-tex/Meddies/issues/6)), token lifecycle, reinstallation/revocation, device navigation, Focus/OS limitations, exact production provider credentials and operational monitoring. Standard Web Push is an approved fallback candidate if real-device FCM evidence requires it.
 
-**Already approved, not open:** original/+40/+80 cadence, two-slot snooze and delayed-job behavior ([FE-546](https://github.com/BraveHeart-tex/Meddies/issues/9) below), privacy-default notification content, quiet-hour treatment and the per-medicine food reminder lead range ([FE-545](https://github.com/BraveHeart-tex/Meddies/issues/8) in topic 03). The precise copy and device-settings UX remain design work, not license to change these rules.
-
-## Related reading
-
-- 03 - Medication & Dose Domain
-- 06 - Architecture, Storage & Integration
-- 07 - Delivery Slices, Feasibility & Decisions
-- Documentation index: [Meddies 00 - Agent Guide & Documentation Index](./README.md)
-
----
-
-[Back to Meddies - Agent Guide & Documentation Index](./README.md)
+**Settled:** original/+40/+80 cadence, two-slot snooze and delayed-job behavior ([FE-546](https://github.com/BraveHeart-tex/Meddies/issues/9) below), privacy-default notification content, quiet-hour treatment and the per-medicine food reminder lead range ([FE-545](https://github.com/BraveHeart-tex/Meddies/issues/8) in topic 03). The precise copy and device-settings UX remain design work within these rules.
 
 ## FE-546 - Approved snooze and delayed-reminder boundaries (November 3, 2026)
 
-Bora approved D1-D5 and the 19 timelines below on November 3, 2026,
-with "accept" in the implementation chat. These rules refine FE-539 and
-override earlier proposals in this topic for cadence, snooze and delayed jobs.
-They do not implement a scheduler or change the approved runtime choices.
-Source and approval evidence: [FE-546](https://github.com/BraveHeart-tex/Meddies/issues/9).
+These rules override earlier proposals in this topic for cadence, snooze and delayed jobs.
 
 ### Preserved rules
 
@@ -139,7 +122,3 @@ eligibility; all doses remain unconfirmed unless specified.
 | Next dose equality         | Old snooze targets 10:50; next same-medicine dose due 10:50                                         | Suppress old snooze at equality; new occurrence is independent.                                               |
 | Outcome / conflict / pause | Snooze targets 10:50; relevant suppression reaches server 10:49                                     | Cancel pending snooze. Already submitted pushes may still arrive.                                             |
 | Course end                 | End Nov 3; snooze targets Nov 4 00:00                                                               | Cancel at course-end boundary, even with quiet hours disabled.                                                |
-
-## Approved low-stock clarification - FE-547
-
-Bora approved D1-D6 and 23 acceptance examples on November 3, 2026. See [03 - Medication & Dose Domain](./medication-domain.md), section "FE-547 - Approved low-stock transitions (November 3, 2026)" for equality, initial low stock, threshold edits, refill/correction re-arming, paused-medicine refill alerts and overnight deferral. [FE-547](https://github.com/BraveHeart-tex/Meddies/issues/10) records approval and evidence. Dose pause/resume rules remain unchanged.

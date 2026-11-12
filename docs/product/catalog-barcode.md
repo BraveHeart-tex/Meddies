@@ -1,6 +1,6 @@
 # 05 - Turkish Medication Catalog & Barcode
 
-> **Status:** Discovery and preferred data direction, subject to source quality, licensing and feasibility. Start at Meddies Agent Guide & Documentation Index.
+Discovery and preferred data direction, subject to source quality, licensing and feasibility.
 
 ## Scope
 
@@ -24,7 +24,7 @@ Intended later flow:
 - Catalog replacement, corrections and imports must not cascade into changes or deletion of the user's personal medication records, stock or intake history.
 - Barcode-assisted onboarding is a later capability, not a prerequisite for the approved private-MVP manual entry flow. Source licensing, coverage and practical package recognition must be validated before vendor adoption.
 
-These product invariants come from [FE-539](https://github.com/BraveHeart-tex/Meddies/issues/2). Candidate datasets and camera libraries below remain investigatory until separately selected.
+Candidate datasets and camera libraries below remain investigatory until separately selected.
 
 ## Candidate Turkish data sources discussed
 
@@ -51,15 +51,3 @@ Keep catalog data in **Cloudflare D1**, in a separately indexed model from user 
 ## Important boundary
 
 A catalog record provides a **product label/identity hint**, not a prescribing instruction. User-controlled schedules and historical intake belong to separate domain models.
-
-## Related reading
-
-- 02 - UX & User Journeys
-- 03 - Medication & Dose Domain
-- 06 - Architecture, Storage & Integration
-- 07 - Delivery Slices, Feasibility & Decisions
-- Documentation index: [./README.md](./README.md)
-
----
-
-[Back to Meddies - Agent Guide & Documentation Index](./README.md)

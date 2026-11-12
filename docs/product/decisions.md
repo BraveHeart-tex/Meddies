@@ -1,11 +1,11 @@
 # 07 - Delivery Slices, Feasibility & Decisions
 
-> **Status:** Delivery strategy and historical slice proposals. Implementation has already begun; use current GitHub issue status and acceptance evidence for actual progress. This document does not override topic-specific approved behavior or ticket ownership.
+Delivery strategy and feasibility status. Progress lives in GitHub issues.
 
 ## Delivery principles
 
 - Use a **vertical-slice** approach that yields a demonstrable end-to-end user outcome.
-- Resolve genuinely unapproved requirements and architecture boundaries before implementation; do not reopen settled decisions already incorporated in the owning domain topic.
+- Resolve unapproved requirements and architecture boundaries before implementation; decisions already in a domain topic stay settled.
 - Verify risky mobile-platform capabilities with real-device spikes early.
 - Avoid broad horizontal infrastructure work that cannot yet demonstrate the core promise.
 
@@ -51,26 +51,6 @@ These experiments establish narrowly tested properties only. The currently appro
 | Neon / Convex              | Neon approved only if D1 path fails; Convex not baseline             | No current measured reason to switch                                                                                      |
 | Barcode                    | After core manual-medicine journey                                   | Separate later scope                                                                                                      |
 
-## Frontend decision and rollout - November 6, 2026
+## Frontend decision - November 6, 2026
 
-[FE-620](https://github.com/BraveHeart-tex/Meddies/issues/82) records approved Next.js section streaming + TanStack Query browser ownership. Initial server data hydrates the shared cache; session drafts, cached navigation and mutation tracking retain continuity. Online dose writes are optimistic with definite-rejection rollback and uncertain-save reconciliation. No routine polling, persistent browser cache or offline mutation queue. This supersedes FE-548's offline MVP commitment; historical approvals remain preserved in topic 02.
-
-Order: FE-621 standards -> FE-638 foundations with FE-622 primitives/FE-623 harness -> FE-624 Today -> FE-627 History -> FE-639 integrated validation gate -> FE-625 Medications -> FE-626 detail/setup -> FE-628 final CI/audit coordinated with FE-630. Implementation remains separate; the gate records evidence before broad rollout.
-
-FE-579/FE-580/FE-581/FE-601 remain deferred Backlog, without ready-for-agent or MVP-blocking edges. FE-582/FE-588 retain online conflict/stock safety. Real-iPhone reminders, privacy/backup/deletion and the one-week trial remain existing independent requirements.
-
-## Workflow for agents
-
-1. Start from the **assigned issue** and its directly linked governing topic headings. If the legacy ticket lacks exact references, use the short [Meddies 00 authority map](./README.md).
-2. Read only the applicable topic and acceptance examples; never automatically fetch all eight topics, the [FE-539](https://github.com/BraveHeart-tex/Meddies/issues/2) parent or completed clarification tickets.
-3. Distinguish approved product rules, implementation ownership, verified spike evidence and still-open implementation/feasibility choices.
-4. Do only the ticket's scope. Change product behavior only through a recorded approval, incorporated into the owning domain topic with preserved provenance.
-5. Use focused verification and record completion evidence on the implementation issue. Consult historical tickets or the archived handoff only for a concrete missing/conflicting rule.
-
-## Current authority
-
-**Approved product behavior:** domain topics 02-04 (plus topic 01 for scope, 05 for catalog boundaries and 06 for architecture). **Implementation scope and progress:** the relevant GitHub issue. **Historical approval:** [FE-539](https://github.com/BraveHeart-tex/Meddies/issues/2) and the completed clarifications, retrieved only if provenance or reconciliation is needed. Use the [documentation index](./README.md) for routing. Earlier delivery proposals in this document are not current implementation status.
-
----
-
-[Back to Meddies - Agent Guide & Documentation Index](./README.md)
+[FE-620](https://github.com/BraveHeart-tex/Meddies/issues/82) approved Next.js section streaming with TanStack Query owning browser data, online writes with optimistic dose feedback, and no persistent browser cache or offline queue. Contract: topic 06; build rules: [Next.js](../nextjs.md) and [client state](../client-state.md).
