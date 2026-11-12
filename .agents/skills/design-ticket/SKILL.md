@@ -9,8 +9,7 @@ A design ticket ends with approved lab frames and a build ticket that cites them
 imports, fixtures, stable ids) live in [docs/design/README.md](../../../docs/design/README.md#design-lab).
 Precedents: #212 and #215 (design tickets), #217 (build ticket citing frames).
 
-Write `<n>` for the design ticket's issue number. The precedents use their legacy design
-numbers (`764`, `767`) in slugs and citations, so examples below show `767`.
+Write `<n>` for the design ticket's issue number; examples below show `215`.
 
 ## Steps
 
@@ -74,6 +73,6 @@ numbers (`764`, `767`) in slugs and citations, so examples below show `767`.
 
 11. **Rewrite the build ticket** from [templates/build-ticket.md](templates/build-ticket.md):
     rules grouped by frame, open questions turned into decisions or named owners, and every
-    criterion citing frame IDs as `767·A3`.
+    criterion citing frame IDs as `215·A3`.
     _Done when_ the read-back build ticket has no criterion without a frame ID and no
     reference to "the approved frames" without IDs.

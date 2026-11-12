@@ -9,7 +9,7 @@ import { MedicationsLink, useMedicationsView } from './medications-nav'
 import { medicineKeys } from './queries'
 import { medicationsHref } from './routes'
 
-// A blank line holds the count's place so the rows below do not move when it arrives (647·L2).
+// A blank line holds the count's place so the rows below do not move when it arrives (107·L2).
 const reservedCount = ' '
 
 /**
@@ -19,7 +19,7 @@ const reservedCount = ' '
 export function MedicationsHeader() {
   const view = useMedicationsView()
   const medicines = useCachedQueryData<Medicine[]>(medicineKeys.list())
-  // The medication page and setup have their own Back row and identity header (650 Fix 1).
+  // The medication page and setup have their own Back row and identity header (110 Fix 1).
   if (view.mode !== 'list' && view.mode !== 'add') return null
   return (
     <AppHeader

@@ -8,15 +8,15 @@ import { enlargeText, scrollsHorizontally, stylesheetsLoaded } from './actions'
 // Opt-in design evidence, outside CI. Persistent frames need no storage or artificial reads.
 test.use({ journey: { auth: false, storage: false } })
 
-test('capture 649·L1 for design review', { tag: '@visual' }, async ({ page }) => {
+test('capture 109·L1 for design review', { tag: '@visual' }, async ({ page }) => {
   const out = process.env.MEDDIES_VISUAL_OUT
   // eslint-disable-next-line playwright/no-skipped-test -- local dev-only design review opt-in
   test.skip(!out || process.env.MEDDIES_BROWSER_DEV !== '1', 'Set dev mode and visual output')
   const entry = await captureRendered(
     page,
     {
-      name: '649-l1',
-      path: '/lab/649-l1',
+      name: '109-l1',
+      path: '/lab/109-l1',
       ready: (page) => page.getByRole('navigation', { name: 'Primary' }),
     },
     resolve(out!),
@@ -59,8 +59,8 @@ test('review the lab index and narrow frame links', { tag: '@visual' }, async ({
     resolve(out!, 'index'),
   )
   expect(entry.horizontalOverflow).toBe(false)
-  const link = page.getByRole('link', { name: '649·L1 · Cold launch' })
-  await expect(link).toHaveAttribute('href', '/lab/649-l1')
+  const link = page.getByRole('link', { name: '109·L1 · Cold launch' })
+  await expect(link).toHaveAttribute('href', '/lab/109-l1')
   const narrow = await captureRendered(
     page,
     {

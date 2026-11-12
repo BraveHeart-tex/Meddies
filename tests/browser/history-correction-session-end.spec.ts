@@ -4,7 +4,7 @@ import { expect, test, type App } from './fixtures'
 import { doseTrigger, drawer, historyRow } from './locators'
 import { addDays, insertScheduledMedicine, insertTakenRecord } from './seed'
 
-// #110 step 16 on a History correction (649·X1 to X5).
+// #110 step 16 on a History correction (109·X1 to X5).
 const initialScheduleTime = '2035-06-15T14:00:00+03:00'
 const date = addDays(initialScheduleTime.slice(0, 10), -1)
 const dueAt = new Date(`${date}T14:00:00+03:00`).toISOString()
@@ -49,7 +49,7 @@ async function startCorrection(page: Page) {
   return save
 }
 
-/** The session-end screen with a save outstanding (649·X4). */
+/** The session-end screen with a save outstanding (109·X4). */
 async function expectSaveInProgressSignIn(page: Page, app: App) {
   await expect(page).toHaveURL(`${app.origin}${expiredUrl}&notice=save-in-progress`)
   await expect(page.getByText('Your session ended.', { exact: true })).toBeVisible()

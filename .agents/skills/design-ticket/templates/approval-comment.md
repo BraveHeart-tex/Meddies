@@ -20,6 +20,6 @@ Bora approved **Direction {{A}}, {{name}}** after comparing three directions ({{
 
 **Not verified:** {{device, VoiceOver, real keyboard, iOS keyboard over pinned controls.}}
 
-**Open for FE-{{build}}:** {{questions the build ticket must settle}}
+**Open for #{{build}}:** {{questions the build ticket must settle}}
 
 ![{{n}}·A1]({{uploaded URL}})

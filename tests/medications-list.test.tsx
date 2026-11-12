@@ -428,7 +428,7 @@ describe('Done for now', () => {
     expect(await screen.findByRole('dialog', { name: 'Add medication' })).toBeVisible()
   })
 
-  test('returns to the list and focuses the saved medicine (647·B1)', async () => {
+  test('returns to the list and focuses the saved medicine (107·B1)', async () => {
     let saved = { ...medicine(1), label: 'Handoff Medicine' }
     const api = medicinesApi([])
     server.use(

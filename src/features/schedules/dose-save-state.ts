@@ -7,7 +7,7 @@ export type PinnedCorrection = Readonly<{ outcome: Outcome; revision: number }>
 /** A fresh cache-backed check found a record, no record, or failed. */
 export type RecordCheck = { record: DoseOutcomeRecord } | 'missing' | 'unknown'
 export type SaveProblem = { kind: 'rejected' } | { kind: 'uncertain'; checked: boolean }
-/** What a dose row shows while its save is pending or unconfirmed (650·D21). */
+/** What a dose row shows while its save is pending or unconfirmed (110·D21). */
 export type PendingDose = { id: string; outcome: Outcome; unconfirmed?: boolean }
 /** Raw Taken form values at submit and the Now minute they used, to reopen the attempt. */
 export type AttemptForm = Readonly<{ values: unknown; now: string }>

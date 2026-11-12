@@ -54,7 +54,7 @@ for (const mode of ['dev', 'start'] as const) {
     })
 
     test('unknown frames return the themed HTTP 404', async () => {
-      for (const path of ['/lab/unknown', '/lab/649-l1/extra']) {
+      for (const path of ['/lab/unknown', '/lab/109-l1/extra']) {
         const response = await fetch(`${origin}${path}`)
         expect(response.status, path).toBe(404)
         expect(await response.text()).toContain('This page isn')
@@ -70,7 +70,7 @@ for (const mode of ['dev', 'start'] as const) {
         expect(html).not.toContain('Cold launch')
         return
       }
-      expect(html).toContain('649·L1')
+      expect(html).toContain('109·L1')
       expect(html).toContain('Cold launch')
       // lab:capture discovers frames from these links.
       for (const { slug } of designFrames) expect(html).toContain(`href="/lab/${slug}"`)
@@ -94,7 +94,7 @@ for (const mode of ['dev', 'start'] as const) {
         expect(html, slug).not.toContain('data-dgst=')
       }
       if (mode === 'dev') {
-        const cold = await (await fetch(`${origin}/lab/649-l1`)).text()
+        const cold = await (await fetch(`${origin}/lab/109-l1`)).text()
         expect(cold).toContain('Opening Meddies')
         expect(cold).toContain('aria-label="Primary"')
       }

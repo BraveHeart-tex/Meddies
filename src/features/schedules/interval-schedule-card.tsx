@@ -8,8 +8,8 @@ import { intervalLabel, nextIntervalDoses } from './interval-preview'
 import { nextDosesLabel, untilLastDay } from './last-day'
 
 /**
- * A medication's Interval schedule (764·D1, D2). Its next doses stop at the Last day; an Ended
- * one lists none (779·A14, A17).
+ * A medication's Interval schedule (212·D1, D2). Its next doses stop at the Last day; an Ended
+ * one lists none (227·A14, A17).
  */
 export function IntervalScheduleCard({
   hours,

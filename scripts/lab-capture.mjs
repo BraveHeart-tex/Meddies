@@ -2,7 +2,7 @@
 // Captures design lab frames for review: PNGs at 402x874 and 320x740 plus one JSON summary
 // per frame, with the Next dev overlay hidden. Exits non-zero on horizontal overflow or a
 // console error. Runs its own next dev, so stop pnpm dev first.
-// Usage: pnpm lab:capture <slug-prefix> [--out <dir>]   e.g. pnpm lab:capture 767-
+// Usage: pnpm lab:capture <slug-prefix> [--out <dir>]   e.g. pnpm lab:capture 215-
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -10,7 +10,7 @@ import { devServerError } from './dev-server.mjs'
 
 const [prefix, flag, dir] = process.argv.slice(2)
 if (!prefix || prefix.startsWith('-') || (flag && (flag !== '--out' || !dir))) {
-  console.error('Usage: pnpm lab:capture <slug-prefix> [--out <dir>]   e.g. pnpm lab:capture 767-')
+  console.error('Usage: pnpm lab:capture <slug-prefix> [--out <dir>]   e.g. pnpm lab:capture 215-')
   process.exit(2)
 }
 const devServer = await devServerError(process.cwd(), 'lab:capture')

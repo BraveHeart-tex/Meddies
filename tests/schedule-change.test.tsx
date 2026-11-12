@@ -28,7 +28,7 @@ const magnesium: Medicine = {
 const setupSearch = `?schedule=${magnesium.id}`
 const detailSearch = `?medicine=${magnesium.id}`
 
-/** Every day at 08:00 and 20:00 since Mon 2 Nov (767·A2). */
+/** Every day at 08:00 and 20:00 since Mon 2 Nov (215·A2). */
 const clockVersion: DailySchedule = {
   id: '00000000-0000-4000-8000-0000000000a1',
   medicineId: magnesium.id,
@@ -42,7 +42,7 @@ const clockVersion: DailySchedule = {
   intervalHours: null,
   confirmedAt: '2026-11-01T18:00:00.000Z',
 }
-/** Every 8 hours from Mon 2 Nov at 08:00 (767·A4). */
+/** Every 8 hours from Mon 2 Nov at 08:00 (215·A4). */
 const intervalVersion: DailySchedule = {
   ...clockVersion,
   times: [{ time: '08:00', quantity: 1 }],
@@ -186,7 +186,7 @@ describe('Medication detail', () => {
     render(panel('detail', vi.fn(), justScheduled))
   }
 
-  test('767·A1 offers Change schedule under the schedule card', async () => {
+  test('215·A1 offers Change schedule under the schedule card', async () => {
     renderDetail([clockVersion])
     const change = await screen.findByRole('link', { name: 'Change schedule' })
     expect(change).toHaveAttribute('href', `/medications${setupSearch}#schedule-heading`)
@@ -194,7 +194,7 @@ describe('Medication detail', () => {
     expect(screen.getByText("Details can't be changed here yet.")).toBeVisible()
   })
 
-  test('767·S3 a changed Clock schedule reads Changed, with the next dose after saving', async () => {
+  test('215·S3 a changed Clock schedule reads Changed, with the next dose after saving', async () => {
     const changed: DailySchedule = {
       ...clockVersion,
       id: '00000000-0000-4000-8000-0000000000a2',
@@ -224,7 +224,7 @@ describe('changing a Clock schedule', () => {
     expect(edits[0].endDate).toBe('2026-11-10')
   })
 
-  test('767·A2 opens prefilled without a Start date, and Save changes waits for a change', async () => {
+  test('215·A2 opens prefilled without a Start date, and Save changes waits for a change', async () => {
     api([clockVersion])
     await openChange()
     expect(screen.getByText('Change schedule')).toBeVisible()
@@ -241,7 +241,7 @@ describe('changing a Clock schedule', () => {
     ).toBeVisible()
   })
 
-  test('767·A3, S1 previews the change, saves it as an edit, and confirms only from the server', async () => {
+  test('215·A3, S1 previews the change, saves it as an edit, and confirms only from the server', async () => {
     let release = () => {}
     const held = new Promise<void>((resolve) => (release = resolve))
     const { edits } = api([clockVersion], async () => {
@@ -274,7 +274,7 @@ describe('changing a Clock schedule', () => {
     ])
   })
 
-  test('767·A9 switching to Every few hours and back carries the quantity over', async () => {
+  test('215·A9 switching to Every few hours and back carries the quantity over', async () => {
     api([{ ...intervalVersion, times: [{ time: '08:00', quantity: 1.5 }] }])
     const { user } = await openChange()
     expect(saveChanges()).toBeDisabled()
@@ -290,7 +290,7 @@ describe('changing a Clock schedule', () => {
 })
 
 describe('changing an Interval schedule', () => {
-  test('767·A4, A5 keeps the Anchor when only the hours change', async () => {
+  test('215·A4, A5 keeps the Anchor when only the hours change', async () => {
     const { edits } = api([intervalVersion])
     const { user, onSaved } = await openChange()
     expect(button('Every few hours')).toHaveAttribute('aria-pressed', 'true')
@@ -312,7 +312,7 @@ describe('changing an Interval schedule', () => {
     })
   })
 
-  test('767·A6 to A8 switching from set times asks for a new Anchor', async () => {
+  test('215·A6 to A8 switching from set times asks for a new Anchor', async () => {
     const { edits } = api([clockVersion])
     const { user, onSaved } = await openChange()
     await user.click(button('Every few hours'))
@@ -369,7 +369,7 @@ describe('recovery', () => {
     expect(onSaved).not.toHaveBeenCalled()
   })
 
-  test('767·S2 a stale conflict applies nothing and offers the current schedule', async () => {
+  test('215·S2 a stale conflict applies nothing and offers the current schedule', async () => {
     api([clockVersion], () => HttpResponse.json({ error: 'conflict' }, { status: 409 }))
     const { user, onSaved, unmount } = await openChange()
     await addTime(user, '14:00')
@@ -451,7 +451,7 @@ describe('the Last day', () => {
     )
   }
 
-  test('779·A7, A8 set times prefills it, and moving it saves with a shorter preview', async () => {
+  test('227·A7, A8 set times prefills it, and moving it saves with a shorter preview', async () => {
     const { edits } = api([toTuesday(clockVersion)])
     const { user, onSaved } = await openChange()
     expect(lastDayField()).toHaveAccessibleName(/Tue 10 Nov$/)
@@ -471,7 +471,7 @@ describe('the Last day', () => {
     expect(edits[0]).toMatchObject({ endDate: '2026-11-09', times: clockVersion.times })
   })
 
-  test('779·A9 set times removes it, and moving it back disables Save changes again', async () => {
+  test('227·A9 set times removes it, and moving it back disables Save changes again', async () => {
     const { edits } = api([toTuesday(clockVersion)])
     const { user, onSaved } = await openChange()
     await user.click(button('Remove last day'))
@@ -486,7 +486,7 @@ describe('the Last day', () => {
     expect(edits[0].endDate).toBeNull()
   })
 
-  test('779·A10 to A12 every few hours prefills the row and No last day removes it', async () => {
+  test('227·A10 to A12 every few hours prefills the row and No last day removes it', async () => {
     const { edits } = api([toTuesday(intervalVersion)])
     const { user, onSaved } = await openChange()
     expect(lastDayRow()).toHaveAccessibleName('Last day: Tue 10 Nov')
@@ -524,7 +524,7 @@ describe('the Last day', () => {
     expect(edits[0].endDate).toBe('2026-11-09')
   })
 
-  test('779·A18, A19 an Ended schedule needs a later Last day before it restarts', async () => {
+  test('227·A18, A19 an Ended schedule needs a later Last day before it restarts', async () => {
     const { edits } = api([{ ...clockVersion, endDate: '2026-11-03' }])
     const { user, onSaved } = await openChange()
     expect(lastDayField()).toHaveAccessibleName(/Tue 3 Nov$/)
@@ -550,14 +550,14 @@ describe('Medication detail with a Last day', () => {
     render(panel('detail', vi.fn(), justScheduled))
   }
 
-  test('779·A13 a running Clock schedule shows its Last day under Started', async () => {
+  test('227·A13 a running Clock schedule shows its Last day under Started', async () => {
     renderDetail([{ ...clockVersion, endDate: '2026-11-10' }])
     expect(await screen.findByText('Started Mon 2 Nov')).toBeVisible()
     expect(screen.getByText('Last day Tue 10 Nov')).toBeVisible()
     expect(screen.getByRole('link', { name: 'Change schedule' })).toBeVisible()
   })
 
-  test('779·A14 an Interval schedule lists only the doses up to its Last day', async () => {
+  test('227·A14 an Interval schedule lists only the doses up to its Last day', async () => {
     renderDetail([{ ...intervalVersion, endDate: '2026-11-09' }])
     expect(await screen.findByText('Next dose')).toBeVisible()
     expect(screen.getByText('16:00')).toBeVisible()
@@ -565,7 +565,7 @@ describe('Medication detail with a Last day', () => {
     expect(screen.getByText('Last day Mon 9 Nov')).toBeVisible()
   })
 
-  test('779·A17 an Ended schedule keeps its times with one Ended line and Change schedule', async () => {
+  test('227·A17 an Ended schedule keeps its times with one Ended line and Change schedule', async () => {
     renderDetail([{ ...clockVersion, endDate: '2026-11-03' }])
     expect(await screen.findByText('Ended Tue 3 Nov')).toBeVisible()
     expect(screen.getByText('08:00')).toBeVisible()
@@ -574,14 +574,14 @@ describe('Medication detail with a Last day', () => {
     expect(screen.getByRole('link', { name: 'Change schedule' })).toBeVisible()
   })
 
-  test('779·A17 an Ended Interval schedule lists no next doses', async () => {
+  test('227·A17 an Ended Interval schedule lists no next doses', async () => {
     renderDetail([{ ...intervalVersion, endDate: '2026-11-03' }])
     expect(await screen.findByText('Ended Tue 3 Nov')).toBeVisible()
     expect(screen.queryByText(/^Next/)).not.toBeInTheDocument()
     expect(screen.getByText('1 tablet each time')).toBeVisible()
   })
 
-  test('779·A19 a restarted schedule reads Changed with its next dose', async () => {
+  test('227·A19 a restarted schedule reads Changed with its next dose', async () => {
     const restarted: DailySchedule = {
       ...clockVersion,
       id: '00000000-0000-4000-8000-0000000000a2',

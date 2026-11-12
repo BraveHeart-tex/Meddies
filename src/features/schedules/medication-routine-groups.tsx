@@ -19,7 +19,7 @@ function routineSummary(schedule: DailySchedule, now: string) {
   if (hours != null) {
     const anchor = intervalAnchor(schedule)
     const next = nextIntervalDoses({ anchor, hours, now, count: 1 })
-    // No next dose after the Last day (779·A20).
+    // No next dose after the Last day (227·A20).
     const [due] = untilLastDay(next, schedule.endDate ?? null)
     return due ? intervalRowSummary(hours, due, today) : intervalLabel(hours)
   }
@@ -39,7 +39,7 @@ export function MedicationRoutineGroups({
   medicines: Medicine[]
   schedules: DailySchedule[]
   serverNow: string
-  /** The row to focus once, when the list shows after Done for now (647·B1). */
+  /** The row to focus once, when the list shows after Done for now (107·B1). */
   focusMedicineId?: string | null
   onMedicineFocused?: () => void
 }) {
@@ -56,7 +56,7 @@ export function MedicationRoutineGroups({
   }))
   const today = istanbulDate(new Date(now))
   const isEnded = (schedule: DailySchedule) => Boolean(endedOn(schedule, today))
-  // Ended schedules sit below the others (779·A20).
+  // Ended schedules sit below the others (227·A20).
   const routineGroups = [
     {
       label: 'On a schedule',

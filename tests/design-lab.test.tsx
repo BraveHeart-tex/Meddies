@@ -3,7 +3,7 @@ import { expect, test, vi } from 'vitest'
 import { designFrames } from '../src/features/design-lab/frames'
 
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/lab/649-l1',
+  usePathname: () => '/lab/109-l1',
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), refresh: vi.fn() }),
 }))
 
@@ -17,10 +17,10 @@ test.each(designFrames.map((frame) => [frame.citation, frame] as const))(
   },
 )
 
-test('649·L1 renders the cold launch with one status and the real navigation', () => {
-  const frame = designFrames.find((entry) => entry.slug === '649-l1')!
+test('109·L1 renders the cold launch with one status and the real navigation', () => {
+  const frame = designFrames.find((entry) => entry.slug === '109-l1')!
   render(frame.render())
-  expect(frame.citation).toBe('649·L1')
+  expect(frame.citation).toBe('109·L1')
   expect(screen.getAllByRole('status')).toHaveLength(1)
   expect(screen.getByRole('status')).toHaveTextContent('Opening Meddies')
   expect(screen.getAllByRole('main')).toHaveLength(1)

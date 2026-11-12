@@ -15,7 +15,7 @@ describe('the earliest Last day', () => {
     expect(earliestLastDay(today, '2026-11-11')).toBe('2026-11-11')
   })
 
-  test('779·A3, A5 an earlier Last day names today, or the later earliest day', () => {
+  test('227·A3, A5 an earlier Last day names today, or the later earliest day', () => {
     expect(lastDayProblem(null, today, today)).toBeUndefined()
     expect(lastDayProblem(today, today, today)).toBeUndefined()
     expect(lastDayProblem('2026-11-08', today, today)).toBe('Choose today or a later date.')
@@ -25,7 +25,7 @@ describe('the earliest Last day', () => {
   })
 })
 
-test('779·A4 doses after the Last day are cut, in Istanbul time', () => {
+test('227·A4 doses after the Last day are cut, in Istanbul time', () => {
   const doses = ['2026-11-10T20:00:00.000Z', '2026-11-10T21:00:00.000Z']
   // 23:00 on Tue 10 Nov still counts; 00:00 on Wed 11 Nov doesn't.
   expect(untilLastDay(doses, '2026-11-10')).toEqual(['2026-11-10T20:00:00.000Z'])

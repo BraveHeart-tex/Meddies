@@ -12,7 +12,7 @@ import type { DoseOccurrence } from './contract'
 import { DoseSaveProblem } from './dose-save-problem'
 import type { SaveProblem } from './dose-saves'
 
-// Explicit skip confirmation (648·R4). A skip records no intake time or quantity.
+// Explicit skip confirmation (108·R4). A skip records no intake time or quantity.
 export function SkippedForm({
   dose,
   medicine,
@@ -75,7 +75,7 @@ export function SkippedForm({
             offline={offline}
           />
         )}
-        {/* A swipe that starts on a control never closes the drawer (648·D14). */}
+        {/* A swipe that starts on a control never closes the drawer (108·D14). */}
         <div data-base-ui-swipe-ignore="y" className="flex flex-col gap-1.5">
           <Button
             type="button"

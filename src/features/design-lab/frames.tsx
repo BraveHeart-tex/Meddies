@@ -14,15 +14,15 @@ export type DesignFrame = {
 
 export const designFrames = [
   {
-    slug: '649-l1',
+    slug: '109-l1',
     title: 'Cold launch',
-    citation: '649·L1',
+    citation: '109·L1',
     render: () => <Loading />,
   },
   {
-    slug: '745-b-scanner',
+    slug: '193-b-scanner',
     title: 'Scanner',
-    citation: '745·B·Scanner',
+    citation: '193·B·Scanner',
     render: () => <ScannerFrame />,
   },
   ...intervalFrames,

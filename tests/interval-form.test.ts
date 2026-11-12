@@ -47,7 +47,7 @@ describe('interval form validation', () => {
     ['-1', 'Use 1 to 24 hours.'],
     ['25', 'Use 1 to 24 hours.'],
     ['99999', 'Use 1 to 24 hours.'],
-  ])('hours %j reads %j (764·C6, C10, C11)', (hours, message) => {
+  ])('hours %j reads %j (212·C6, C10, C11)', (hours, message) => {
     expect(errorsOf({ hours })).toEqual({ hours: message })
   })
 
@@ -55,7 +55,7 @@ describe('interval form validation', () => {
     expect(errorsOf({ hours })).toEqual({})
   })
 
-  test('a first date is required and cannot be earlier than today (764·C12, C13)', () => {
+  test('a first date is required and cannot be earlier than today (212·C12, C13)', () => {
     expect(errorsOf({ date: '' })).toEqual({ date: 'Choose a date.' })
     expect(errorsOf({ date: '2026-11-08' })).toEqual({ date: 'Choose today or a later date.' })
     expect(errorsOf({ date: '2026-11-10' })).toEqual({})
@@ -65,7 +65,7 @@ describe('interval form validation', () => {
     expect(errorsOf({ date: '2026-11-08' }, { retryStartDate: '2026-11-08' })).toEqual({})
   })
 
-  test('a half-chosen first time is incomplete (764·C14)', () => {
+  test('a half-chosen first time is incomplete (212·C14)', () => {
     expect(errorsOf({ time: '' })).toEqual({ time: 'Choose a time.' })
     expect(errorsOf({ time: '08:' })).toEqual({ time: 'Choose a time.' })
   })
@@ -78,7 +78,7 @@ describe('interval form validation', () => {
     })
   })
 
-  test('every problem reports at once (764·C6)', () => {
+  test('every problem reports at once (212·C6)', () => {
     expect(errorsOf({ hours: '', time: '' })).toEqual({
       hours: 'Choose how many hours.',
       time: 'Choose a time.',

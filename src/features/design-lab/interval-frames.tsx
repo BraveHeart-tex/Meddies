@@ -7,71 +7,71 @@ const EARLIER_TODAY = { hours: '8', time: '08:00' }
 /** #212: the approved setup frames for an Interval schedule (C), then its display (M, D). */
 export const intervalFrames: readonly DesignFrame[] = [
   {
-    slug: '764-c0',
+    slug: '212-c0',
     title: 'opens on set times',
-    citation: '764·C0',
+    citation: '212·C0',
     render: () => <IntervalSetupFrame kind="times" />,
   },
   {
-    slug: '764-c1',
+    slug: '212-c1',
     title: 'every few hours',
-    citation: '764·C1',
+    citation: '212·C1',
     render: () => <IntervalSetupFrame />,
   },
   {
-    slug: '764-c2',
+    slug: '212-c2',
     title: 'filled in',
-    citation: '764·C2',
+    citation: '212·C2',
     render: () => <IntervalSetupFrame values={EARLIER_TODAY} />,
   },
   {
-    slug: '764-c3',
+    slug: '212-c3',
     title: 'every sheet',
-    citation: '764·C3',
+    citation: '212·C3',
     render: () => <IntervalSetupFrame values={{ hours: '8' }} sheet="every" />,
   },
   {
-    slug: '764-c4',
+    slug: '212-c4',
     title: 'starts sheet',
-    citation: '764·C4',
+    citation: '212·C4',
     render: () => <IntervalSetupFrame values={{ hours: '8', time: '08:00' }} sheet="starts" />,
   },
   {
-    slug: '764-c5',
+    slug: '212-c5',
     title: 'take sheet',
-    citation: '764·C5',
+    citation: '212·C5',
     render: () => <IntervalSetupFrame values={EARLIER_TODAY} sheet="take" />,
   },
   {
-    slug: '764-c6',
+    slug: '212-c6',
     title: 'error',
-    citation: '764·C6',
+    citation: '212·C6',
     render: () => (
       <IntervalSetupFrame errors={{ hours: 'Choose how many hours.', time: 'Choose a time.' }} />
     ),
   },
   {
-    slug: '764-c7',
+    slug: '212-c7',
     title: 'discard check',
-    citation: '764·C7',
+    citation: '212·C7',
     render: () => <IntervalSetupFrame values={EARLIER_TODAY} discard />,
   },
   {
-    slug: '764-c8',
+    slug: '212-c8',
     title: 'every 7 hours',
-    citation: '764·C8',
+    citation: '212·C8',
     render: () => <IntervalSetupFrame values={{ hours: '7', time: '20:00' }} />,
   },
   {
-    slug: '764-c9',
+    slug: '212-c9',
     title: 'custom hours',
-    citation: '764·C9',
+    citation: '212·C9',
     render: () => <IntervalSetupFrame values={{ hours: '5' }} sheet="every" />,
   },
   {
-    slug: '764-c10',
+    slug: '212-c10',
     title: 'hours not whole',
-    citation: '764·C10',
+    citation: '212·C10',
     render: () => (
       <IntervalSetupFrame
         values={{ hours: '1.5' }}
@@ -81,9 +81,9 @@ export const intervalFrames: readonly DesignFrame[] = [
     ),
   },
   {
-    slug: '764-c11',
+    slug: '212-c11',
     title: 'hours out of range',
-    citation: '764·C11',
+    citation: '212·C11',
     render: () => (
       <IntervalSetupFrame
         values={{ hours: '25' }}
@@ -93,9 +93,9 @@ export const intervalFrames: readonly DesignFrame[] = [
     ),
   },
   {
-    slug: '764-c12',
+    slug: '212-c12',
     title: 'first date blank',
-    citation: '764·C12',
+    citation: '212·C12',
     render: () => (
       <IntervalSetupFrame
         values={{ hours: '8', date: '', time: '08:00' }}
@@ -105,9 +105,9 @@ export const intervalFrames: readonly DesignFrame[] = [
     ),
   },
   {
-    slug: '764-c13',
+    slug: '212-c13',
     title: 'first date earlier than today',
-    citation: '764·C13',
+    citation: '212·C13',
     render: () => (
       <IntervalSetupFrame
         values={{ hours: '8', date: '2026-11-08', time: '08:00' }}
@@ -117,9 +117,9 @@ export const intervalFrames: readonly DesignFrame[] = [
     ),
   },
   {
-    slug: '764-c14',
+    slug: '212-c14',
     title: 'first time blank',
-    citation: '764·C14',
+    citation: '212·C14',
     render: () => (
       <IntervalSetupFrame
         values={{ hours: '8' }}
@@ -129,33 +129,33 @@ export const intervalFrames: readonly DesignFrame[] = [
     ),
   },
   {
-    slug: '764-c15',
+    slug: '212-c15',
     title: 'preview, future first time',
-    citation: '764·C15',
+    citation: '212·C15',
     render: () => <IntervalSetupFrame values={{ hours: '4', time: '12:00' }} />,
   },
   {
-    slug: '764-c16',
+    slug: '212-c16',
     title: 'preview, crossing midnight',
-    citation: '764·C16',
+    citation: '212·C16',
     render: () => <IntervalSetupFrame values={{ hours: '6', time: '20:00' }} />,
   },
   {
-    slug: '764-m1',
+    slug: '212-m1',
     title: 'Medications rows',
-    citation: '764·M1',
+    citation: '212·M1',
     render: () => <IntervalListFrame />,
   },
   {
-    slug: '764-d1',
+    slug: '212-d1',
     title: 'Detail: every 8 hours',
-    citation: '764·D1',
+    citation: '212·D1',
     render: () => <IntervalDetailFrame hours={8} anchor="2026-11-09T05:00:00.000Z" />,
   },
   {
-    slug: '764-d2',
+    slug: '212-d2',
     title: 'Detail: every 7 hours, times drift',
-    citation: '764·D2',
+    citation: '212·D2',
     render: () => <IntervalDetailFrame hours={7} anchor="2026-11-03T19:00:00.000Z" />,
   },
 ]

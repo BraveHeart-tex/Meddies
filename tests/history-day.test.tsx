@@ -92,7 +92,7 @@ function renderDay(props: Partial<Parameters<typeof HistoryDay>[0]> = {}) {
   )
 }
 
-test('a populated day lists doses in time order; Not logged rows are not buttons (648·H1)', () => {
+test('a populated day lists doses in time order; Not logged rows are not buttons (108·H1)', () => {
   const late = occurrence('22:30', {
     status: 'Taken',
     record: {
@@ -121,7 +121,7 @@ test('a populated day lists doses in time order; Not logged rows are not buttons
   expect(taken).toHaveTextContent('Taken on Fri 6 Nov')
 })
 
-test('today so far points Not logged rows to Today (648·H2)', () => {
+test('today so far points Not logged rows to Today (108·H2)', () => {
   renderDay({
     date: '2026-11-06',
     result: {
@@ -138,7 +138,7 @@ test('today so far points Not logged rows to Today (648·H2)', () => {
 
 const emptyStateIcon = (name: string) => document.querySelector(`.lucide-${name}`)
 
-test('a past day with no doses points to another day, with no action (752·B)', () => {
+test('a past day with no doses points to another day, with no action (200·B)', () => {
   renderDay({ date: '2026-11-01' })
   expect(
     screen.getByRole('heading', { level: 2, name: 'Nothing was scheduled on Sunday, 1 November' }),
@@ -156,7 +156,7 @@ test('stepping to another day focuses its heading (D11)', async () => {
   expect(screen.getByRole('heading', { name: 'Thursday, 5 November, 1 dose' })).toHaveFocus()
 })
 
-test('picking an empty day focuses its title, which names the day (752·B)', async () => {
+test('picking an empty day focuses its title, which names the day (200·B)', async () => {
   render(<HistoryDateNav today="2026-11-06" />)
   await userEvent.click(screen.getByRole('button', { name: /Choose a date/ }))
   await userEvent.click(document.querySelector<HTMLElement>('button[data-day="2026-11-01"]')!)
@@ -169,7 +169,7 @@ test('picking an empty day focuses its title, which names the day (752·B)', asy
   ).toBeVisible()
 })
 
-test('today with nothing due yet says doses will show, with no action (752·B)', () => {
+test('today with nothing due yet says doses will show, with no action (200·B)', () => {
   renderDay({ date: '2026-11-06' })
   expect(screen.getByRole('heading', { level: 2, name: 'Nothing due yet today' })).toBeVisible()
   expect(screen.getByText("Doses will show here once they're due.")).toBeVisible()
@@ -178,7 +178,7 @@ test('today with nothing due yet says doses will show, with no action (752·B)',
 })
 
 test.each(['2026-11-01', '2026-11-06'])(
-  'no medicines and no doses on %s offers Add medication (752·B)',
+  'no medicines and no doses on %s offers Add medication (200·B)',
   (date) => {
     renderDay({ date, result: { status: 'loaded', doses: [], medicines: [] } })
     expect(screen.getByRole('heading', { level: 2, name: 'No doses here yet' })).toBeVisible()
@@ -191,7 +191,7 @@ test.each(['2026-11-01', '2026-11-06'])(
   },
 )
 
-test('an unavailable day offers one retry for that date (648·H5)', async () => {
+test('an unavailable day offers one retry for that date (108·H5)', async () => {
   const retry = vi.fn()
   renderDay({ date: '2026-11-04', result: { status: 'unavailable', retry } })
   const alert = screen.getByRole('alert')
@@ -203,7 +203,7 @@ test('an unavailable day offers one retry for that date (648·H5)', async () => 
   expect(retry).toHaveBeenCalledOnce()
 })
 
-test('an invalid date shows today instead and replaces the URL (648·H6)', () => {
+test('an invalid date shows today instead and replaces the URL (108·H6)', () => {
   const replaceState = vi.spyOn(window.history, 'replaceState')
   renderDay({ date: '2026-11-06', notice: 'invalid' })
   expect(screen.getByText('Nothing to show for that day.')).toBeVisible()

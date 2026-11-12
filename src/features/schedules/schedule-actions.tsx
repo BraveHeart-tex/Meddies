@@ -14,8 +14,8 @@ import { StopScheduleDrawer } from './stop-schedule-drawer'
 import { useScheduleStop } from './use-schedule-stop'
 
 /**
- * Change schedule and Stop schedule side by side under the schedule card (779·A13, A14, A19). An
- * Ended schedule keeps only Change schedule, filling the row (779·A16, A17). Stays mounted when
+ * Change schedule and Stop schedule side by side under the schedule card (227·A13, A14, A19). An
+ * Ended schedule keeps only Change schedule, filling the row (227·A16, A17). Stays mounted when
  * the stop confirms, so the confirmation reaches `onStopped`.
  */
 export function ScheduleActions({

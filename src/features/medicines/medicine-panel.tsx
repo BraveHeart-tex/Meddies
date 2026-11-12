@@ -22,12 +22,12 @@ export function MedicinePanel({
   /** This render's server read already refreshed both queries, so views don't read again. */
   serverEntry?: boolean
 }) {
-  // Handoff from Add to the saved medicine's page (647·D7). Panel state carries it across
+  // Handoff from Add to the saved medicine's page (107·D7). Panel state carries it across
   // the replace navigation (one mounted panel per /medications); a reload drops it.
   const [savedMedicine, setSavedMedicine] = useState<Medicine | null>(null)
-  // Handoff from schedule setup to the medicine's page (647·D4), carried the same way.
+  // Handoff from schedule setup to the medicine's page (107·D4), carried the same way.
   const [scheduledMedicine, setScheduledMedicine] = useState<Medicine | null>(null)
-  // Done for now hands focus to the saved medicine's list row (647·B1).
+  // Done for now hands focus to the saved medicine's list row (107·B1).
   const [focusMedicineId, setFocusMedicineId] = useState<string | null>(null)
   const mounted = useRef(true)
   const mode = useRef(scheduleMode)

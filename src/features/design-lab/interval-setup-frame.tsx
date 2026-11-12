@@ -32,7 +32,7 @@ type Sheet = 'every' | 'starts' | 'take'
 const SHEET_TITLES: Record<Sheet, string> = { every: 'Every', starts: 'Starts', take: 'Take' }
 const BLANK: IntervalValues = { hours: '', date: TODAY, time: '', quantity: '1' }
 
-/** Approved setup (764·C): three plain answers, each edited alone, and the doses they produce. */
+/** Approved setup (212·C): three plain answers, each edited alone, and the doses they produce. */
 export function IntervalSetupFrame({
   kind,
   values,

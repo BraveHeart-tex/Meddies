@@ -14,7 +14,7 @@ import {
 import { datePicker, expectTime, pickTime } from './pickers'
 import { addDays, insertScheduledMedicine, insertTakenRecord } from './seed'
 
-// #110 steps 8 to 15 as one routine (648·W1 to W11, 649·G1, G2, S7). Interruptions at each
+// #110 steps 8 to 15 as one routine (108·W1 to W11, 109·G1, G2, S7). Interruptions at each
 // step stay with their route specs.
 const initialScheduleTime = '2035-06-15T14:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
@@ -170,7 +170,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
   const pastIron = historyRow(page, yesterday, instantOn(yesterday, '08:00'))
 
   await test.step('W9: Previous day pushes a dated History', async () => {
-    // Today's History lists doses already due; 648·W11 is a few minutes after Omega's 14:00.
+    // Today's History lists doses already due; 108·W11 is a few minutes after Omega's 14:00.
     await app.setScheduleTime(`${today}T14:03:00+03:00`)
     await nav.getByRole('link', { name: 'History' }).click()
     await expect(datePicker(page, 'Choose a date')).toHaveText('Today, Fri 15 Jun')

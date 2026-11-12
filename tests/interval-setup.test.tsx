@@ -135,7 +135,7 @@ async function fillIn(user: User, hours = '8 hours', time = '08:00') {
 }
 
 describe('choosing a kind of schedule', () => {
-  test('764·C0 opens on Set times with the existing form', async () => {
+  test('212·C0 opens on Set times with the existing form', async () => {
     api()
     await openSetup()
     expect(button('Set times')).toHaveAttribute('aria-pressed', 'true')
@@ -143,7 +143,7 @@ describe('choosing a kind of schedule', () => {
     expect(screen.getByRole('combobox', { name: 'Time 1 hour' })).toBeVisible()
   })
 
-  test('764·C1 Every few hours asks Every, Starts and Take with no day picker', async () => {
+  test('212·C1 Every few hours asks Every, Starts and Take with no day picker', async () => {
     api()
     const { user } = await openSetup()
     await chooseEveryFewHours(user)
@@ -157,7 +157,7 @@ describe('choosing a kind of schedule', () => {
 })
 
 describe('sheets', () => {
-  test('764·C3, C9 offers presets and exact hours from Other', async () => {
+  test('212·C3, C9 offers presets and exact hours from Other', async () => {
     api()
     const { user } = await openSetup()
     await chooseEveryFewHours(user)
@@ -174,7 +174,7 @@ describe('sheets', () => {
     expect(everyRow()).toHaveAccessibleName('Every: 7 hours')
   })
 
-  test('764·C10, C11 Done stays open on an invalid answer and shows the problem', async () => {
+  test('212·C10, C11 Done stays open on an invalid answer and shows the problem', async () => {
     api()
     const { user } = await openSetup()
     await chooseEveryFewHours(user)
@@ -206,7 +206,7 @@ describe('sheets', () => {
     expect(everyRow()).toHaveAccessibleName('Every: 8 hours')
   })
 
-  test('764·C14 Starts needs a first time; C5 Take shows its help', async () => {
+  test('212·C14 Starts needs a first time; C5 Take shows its help', async () => {
     api()
     const { user } = await openSetup()
     await chooseEveryFewHours(user)
@@ -242,7 +242,7 @@ describe('sheets', () => {
 })
 
 describe('saving with answers missing', () => {
-  test('764·C6 shows each problem on its row, focuses the first and posts nothing', async () => {
+  test('212·C6 shows each problem on its row, focuses the first and posts nothing', async () => {
     const { posted } = api()
     const { user } = await openSetup()
     await chooseEveryFewHours(user)
@@ -256,7 +256,7 @@ describe('saving with answers missing', () => {
 })
 
 describe('next 3 doses', () => {
-  test('764·C2 shows the first real dose after a first time earlier today', async () => {
+  test('212·C2 shows the first real dose after a first time earlier today', async () => {
     api()
     const { user } = await openSetup()
     await fillIn(user)
@@ -266,7 +266,7 @@ describe('next 3 doses', () => {
     expect(within(nextDoses()).getAllByLabelText('Overnight')).toHaveLength(1)
   })
 
-  test('764·C15 starts from a future first time, updating as values change', async () => {
+  test('212·C15 starts from a future first time, updating as values change', async () => {
     api()
     const { user } = await openSetup()
     await fillIn(user, '4 hours', '12:00')
@@ -275,7 +275,7 @@ describe('next 3 doses', () => {
     expect(doseLines()).toEqual(['12:00Today', '18:00Today', '00:00Tue 10 Nov'])
   })
 
-  test('764·C16 lists doses after midnight on their own day', async () => {
+  test('212·C16 lists doses after midnight on their own day', async () => {
     api()
     const { user } = await openSetup()
     await fillIn(user, '6 hours', '20:00')
@@ -355,7 +355,7 @@ describe('Cancel', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  test('764·C7 asks first with edits, and Keep editing stays', async () => {
+  test('212·C7 asks first with edits, and Keep editing stays', async () => {
     api()
     const { user } = await openSetup()
     await fillIn(user)
@@ -416,19 +416,19 @@ describe('showing an Interval schedule', () => {
     render(panel(mode))
   }
 
-  test('764·M1 the row names the hours and a next dose today', async () => {
+  test('212·M1 the row names the hours and a next dose today', async () => {
     api([intervalSchedule(7, '2026-11-03', '22:00')])
     renderMode('list')
     expect(await screen.findByText('Every 7 hours · Next at 11:00')).toBeVisible()
   })
 
-  test('764·M1 the row names the day when the next dose is not today', async () => {
+  test('212·M1 the row names the day when the next dose is not today', async () => {
     api([intervalSchedule(24, '2026-11-10', '09:00')])
     renderMode('list')
     expect(await screen.findByText('Every 24 hours · Next Tue 10 Nov at 09:00')).toBeVisible()
   })
 
-  test('764·D1 the detail card lists doses without a drift note when hours divide 24', async () => {
+  test('212·D1 the detail card lists doses without a drift note when hours divide 24', async () => {
     api([intervalSchedule(8, '2026-11-09', '08:00')])
     renderMode('detail')
     expect(await screen.findByText('Every 8 hours')).toBeVisible()
@@ -438,7 +438,7 @@ describe('showing an Interval schedule', () => {
     expect(screen.queryByText(/These times move/)).not.toBeInTheDocument()
   })
 
-  test('764·D2 explains why the times move when hours do not divide 24', async () => {
+  test('212·D2 explains why the times move when hours do not divide 24', async () => {
     api([intervalSchedule(7, '2026-11-03', '22:00')])
     renderMode('detail')
     expect(await screen.findByText('Every 7 hours')).toBeVisible()
@@ -462,7 +462,7 @@ describe('the Last day', () => {
     await sheetClosed('Last day')
   }
 
-  test('779·A4, A6 the sheet sets it, the preview stops at it, and it saves', async () => {
+  test('227·A4, A6 the sheet sets it, the preview stops at it, and it saves', async () => {
     const { posted } = api()
     const { user, onSaved } = await openSetup()
     await fillIn(user)
@@ -508,7 +508,7 @@ describe('the Last day', () => {
     expect(screen.queryByText(/^No doses after/)).not.toBeInTheDocument()
   })
 
-  test('779·A5 a Last day before a later first date shows its error on the row', async () => {
+  test('227·A5 a Last day before a later first date shows its error on the row', async () => {
     const { posted } = api()
     const { user } = await openSetup()
     await fillIn(user)

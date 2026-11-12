@@ -34,9 +34,9 @@ import type { SchedulesRead } from './queries'
 import { useScheduleNow } from './use-schedule-now'
 
 /**
- * The `?medicine=ID` page: 650 Fix 1's header above the schedule, 647·D1 to D3, and Change
- * schedule and Stop schedule under it (767·A1, S3, S4; 779·A13 to A16). A running schedule shows its Last day, an Ended one the day
- * it ended (779·A13, A14, A17).
+ * The `?medicine=ID` page: 110 Fix 1's header above the schedule, 107·D1 to D3, and Change
+ * schedule and Stop schedule under it (215·A1, S3, S4; 227·A13 to A16). A running schedule shows its Last day, an Ended one the day
+ * it ended (227·A13, A14, A17).
  */
 export function MedicationDetail({
   medicineId,
@@ -61,7 +61,7 @@ export function MedicationDetail({
   const { medicines, loading: medicinesLoading, loadError: medicinesError } = medicinesRead
   const { schedules, loading, loadError, refreshFailed, refreshing, retry } = schedulesRead
   const liveNow = useScheduleNow(now)
-  // The stop this screen confirmed, until the schedule changes again (779·A16).
+  // The stop this screen confirmed, until the schedule changes again (227·A16).
   const [stopped, setStopped] = useState<DailySchedule | null>(null)
   if (medicinesLoading) return <MedicationDetailSkeleton />
 

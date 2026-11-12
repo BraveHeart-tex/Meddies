@@ -18,8 +18,8 @@ import {
 import { useScheduleAttempt } from './use-schedule-save'
 
 /**
- * "When do you take it?" and the form for that answer (764·C0, C1). Opens on Set times, or a
- * change on the current Schedule version's kind (767·A2, A4), unless a save or a draft from this
+ * "When do you take it?" and the form for that answer (212·C0, C1). Opens on Set times, or a
+ * change on the current Schedule version's kind (215·A2, A4), unless a save or a draft from this
  * session is for the other kind.
  */
 export function ScheduleKindForms({

@@ -19,7 +19,7 @@ type LastDayProps = {
   disabled?: boolean
 }
 
-/** Set times: a DatePicker under Start date, removable once set (779·A1 to A3). */
+/** Set times: a DatePicker under Start date, removable once set (227·A1 to A3). */
 export function LastDayField({
   ref,
   value,
@@ -78,7 +78,7 @@ export function LastDayField({
 }
 
 /**
- * Every few hours: its own row, opening a calendar sheet with No last day (779·A4 to A6). The
+ * Every few hours: its own row, opening a calendar sheet with No last day (227·A4 to A6). The
  * sheet edits a draft; Done applies it, Cancel and dismissal keep the value.
  */
 export function LastDayRow({

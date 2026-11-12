@@ -36,9 +36,9 @@ function fakeStream(...tracks: ReturnType<typeof fakeTrack>[]) {
 }
 
 function renderScanner() {
-  const frame = designFrames.find((entry) => entry.slug === '745-b-scanner')!
+  const frame = designFrames.find((entry) => entry.slug === '193-b-scanner')!
   render(frame.render())
-  expect(frame.citation).toBe('745·B·Scanner')
+  expect(frame.citation).toBe('193·B·Scanner')
 }
 
 /** The library reads capabilities once, then the Scanner's torch check reads them again. */
@@ -76,7 +76,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-test('745·B·Scanner shows its copy and asks only for the camera', async () => {
+test('193·B·Scanner shows its copy and asks only for the camera', async () => {
   getUserMedia.mockResolvedValue(fakeStream(fakeTrack({})))
   renderScanner()
   expect(screen.getByRole('heading', { name: 'Scan the pack' })).toBeInTheDocument()

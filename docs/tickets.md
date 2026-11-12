@@ -47,11 +47,11 @@ implements, and an "Out of scope:" line naming the issue that owns each nearby i
 
 ## Acceptance criteria
 
-- [ ] One checkable outcome per line, citing design frames as `647·M6`
+- [ ] One checkable outcome per line, citing design frames as `107·M6`
 ```
 
 - The parent is a native sub-issue link, not a body section.
-- For lab frames, hand off the lab slug (for example `/lab/649-l1`), frame citation
+- For lab frames, hand off the lab slug (for example `/lab/109-l1`), frame citation
   and linked GitHub issue capture evidence with design approval. Reuse the same production
   components and evidence; HTML snapshots remain supported (see [design guide](design/README.md)).
 - After design approval, the design ticket's description gets an "Approved design" frame
@@ -129,6 +129,6 @@ owner, link it from this ticket, and remove the item here.
 ## Legacy Linear IDs
 
 Code, docs and tickets cite issues as `#n` and design frames as `<design>·<frame>`, such as
-`649·L1` ([design snapshots](design/README.md)). Old commits, migrated issue bodies and
-snapshot file names still say `FE-n`; each migrated issue ends with `Linear ID: FE-n`, so
+`109·L1` ([design snapshots](design/README.md)). Old commits, migrated issue bodies and
+snapshot contents still say `FE-n`; each migrated issue ends with `Linear ID: FE-n`, so
 resolve one with `gh issue list --search '"Linear ID: FE-n" in:body' --state all`.

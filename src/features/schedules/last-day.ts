@@ -9,7 +9,7 @@ export function earliestLastDay(today: string, start: string) {
   return start > today ? start : today
 }
 
-/** The field error for a Last day earlier than allowed (779·A3, A5, A18). */
+/** The field error for a Last day earlier than allowed (227·A3, A5, A18). */
 export function lastDayProblem(lastDay: string | null, today: string, start: string) {
   if (!lastDay) return undefined
   const earliest = earliestLastDay(today, start)
@@ -34,7 +34,7 @@ export function endedOn(schedule: Pick<DailySchedule, 'endDate' | 'stoppedAt'>, 
   return schedule.endDate && schedule.endDate < today ? schedule.endDate : null
 }
 
-/** "Next 3 doses", or how many are left before the Last day (779·A4, A8, A11). */
+/** "Next 3 doses", or how many are left before the Last day (227·A4, A8, A11). */
 export function nextDosesLabel(count: number, lastDay: string | null | undefined) {
   if (!lastDay || count === 3) return 'Next 3 doses'
   if (count === 0) return 'Next doses'

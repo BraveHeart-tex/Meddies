@@ -9,9 +9,9 @@ import { saveMessages } from '@/lib/save-messages'
 import type { SaveProblem } from '@/lib/session-saves'
 
 /**
- * Stop schedule's confirm step (779·A15, S1, S2): nothing saves until Stop schedule. While
+ * Stop schedule's confirm step (227·A15, S1, S2): nothing saves until Stop schedule. While
  * stopping it holds open with both buttons disabled; an unknown result offers Retry of the same
- * stop, and a stale one the 767·S2 recovery.
+ * stop, and a stale one the 215·S2 recovery.
  */
 export function StopScheduleDrawer({
   open,

@@ -35,7 +35,7 @@ export function takenAtLocal(
 
 export type TakenFormOptions = {
   unit: DoseUnit
-  /** The Now minute on screen; Save stores this minute (648·D12). */
+  /** The Now minute on screen; Save stores this minute (108·D12). */
   now: string
   /** The dose's scheduled minute; never changes. */
   scheduled: string
@@ -88,7 +88,7 @@ export type TakenFormOutput = z.output<ReturnType<typeof takenFormSchema>>
 
 /**
  * First recording: Now with the scheduled quantity. Editing an intake: Other at its recorded
- * minute and quantity, so the shown day is the actual day (648·C3).
+ * minute and quantity, so the shown day is the actual day (108·C3).
  */
 export function takenFormDefaults(quantity: number, original?: { local: string }): TakenFormValues {
   return original

@@ -37,7 +37,7 @@ type SetupProps = {
   sheet?: boolean
 }
 
-/** First-time setup (764·C0, C1) with the optional Last day. Nothing saves in the lab. */
+/** First-time setup (212·C0, C1) with the optional Last day. Nothing saves in the lab. */
 export function LastDaySetup({
   kind,
   start = TODAY,
@@ -127,7 +127,7 @@ export function LastDaySetup({
 const valuesOf = (schedule: LastDaySchedule) =>
   schedule.kind === 'times' ? { clock: schedule.clock } : { interval: schedule.interval }
 
-/** Change schedule (767·A2, A4) prefilled with the current Last day, which can move or go. */
+/** Change schedule (215·A2, A4) prefilled with the current Last day, which can move or go. */
 export function LastDayChange({
   current,
   lastDay: initialLastDay = current.lastDay,

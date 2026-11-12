@@ -2,7 +2,7 @@ import { LoadingSection, Skeleton } from '@/components/ui/skeleton'
 import { MedicationBackRow, medicationsListHref, SubScreenRow } from './medication-sub-screen'
 
 /**
- * 647·L2: four static rows. The blank line holds the first group label's place without guessing
+ * 107·L2: four static rows. The blank line holds the first group label's place without guessing
  * which group the rows belong to.
  */
 export function MedicationsListSkeleton() {
@@ -40,7 +40,7 @@ function IdentitySkeleton({ eyebrow = false }: { eyebrow?: boolean }) {
   )
 }
 
-/** 647·D1's schedule card. */
+/** 107·D1's schedule card. */
 export function ScheduleCardSkeleton() {
   return <Skeleton className="h-[150px] rounded-2xl" />
 }
@@ -50,7 +50,7 @@ export function ScheduleFormSkeleton() {
   return <Skeleton className="h-[440px] rounded-2xl" />
 }
 
-/** 647·D1: the real Back row, then the header and schedule card in their final positions. */
+/** 107·D1: the real Back row, then the header and schedule card in their final positions. */
 export function MedicationDetailSkeleton() {
   return (
     <LoadingSection label="Loading medication" className="flex flex-col gap-5">
@@ -63,7 +63,7 @@ export function MedicationDetailSkeleton() {
 
 /**
  * Setup has no frame of its own: D1's header above a form-area block. Back must name the
- * medication (650 Fix 1) and the name isn't known yet, so its text is a placeholder too.
+ * medication (110 Fix 1) and the name isn't known yet, so its text is a placeholder too.
  */
 export function MedicationSetupSkeleton() {
   return (

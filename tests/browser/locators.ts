@@ -69,7 +69,7 @@ export const firstCalendarDay = (scope: Page | Locator) => scope.locator('button
 /** Loading placeholders. They must stay hidden from assistive technology. */
 export const placeholders = (page: Page) => page.locator('[data-slot="skeleton"]')
 
-/** The cold launch fallback (649·L1), shown while a route's server reads are held. */
+/** The cold launch fallback (109·L1), shown while a route's server reads are held. */
 export const rootFallback = (page: Page) =>
   page.getByRole('status').filter({ hasText: 'Opening Meddies' })
 
@@ -79,15 +79,15 @@ export const todaysDoses = (page: Page) => page.getByRole('list', { name: "Today
 /** The page header (title row with Settings). It sits inside `main`, so it is not a banner. */
 export const appHeader = (page: Page) => page.locator('main header').first()
 
-/** Today's doses section fallback (648·T1), shown while its server reads are held. */
+/** Today's doses section fallback (108·T1), shown while its server reads are held. */
 export const todayFallback = (page: Page) =>
   page.getByRole('status').filter({ hasText: 'Loading today’s doses' })
 
-/** History's results fallback (648·H4), shown while a date's reads are held. */
+/** History's results fallback (108·H4), shown while a date's reads are held. */
 export const historyFallback = (page: Page) =>
   page.getByRole('status').filter({ hasText: 'Loading history' })
 
-/** The box History's results fallback (648·H4) occupies; its status is a visually hidden line. */
+/** The box History's results fallback (108·H4) occupies; its status is a visually hidden line. */
 export const historyFallbackSection = (page: Page) =>
   page.locator('[data-slot="loading-section"]').filter({ has: historyFallback(page) })
 
@@ -110,11 +110,11 @@ export const signInCard = (page: Page) => page.locator('main [data-slot="card"]'
 export const selectedNavigation = (page: Page) =>
   page.getByRole('navigation', { name: 'Primary' }).locator('a[aria-current="page"]')
 
-/** The Medications list fallback (647·L2), shown while its reads are held. */
+/** The Medications list fallback (107·L2), shown while its reads are held. */
 export const medicationsFallback = (page: Page) =>
   page.getByRole('status').filter({ hasText: 'Loading medications' })
 
-/** The medication page's fallback (647·D1). The exact match keeps it apart from the list's. */
+/** The medication page's fallback (107·D1). The exact match keeps it apart from the list's. */
 export const medicationFallback = (page: Page) =>
   page.getByRole('status').filter({ hasText: /^Loading medication$/ })
 

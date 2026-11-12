@@ -6,7 +6,7 @@
 
 {{The behaviour from the user's side, one paragraph.}}
 
-Approved rules, by frame ([FE-{{n}}]({{link}}) "Approved design" table):
+Approved rules, by frame ([#{{n}}]({{link}}) "Approved design" table):
 
 - **{{n}}·A1:** {{What the screen shows and does, with copy in quotes.}}
 - **{{n}}·A2, A4:** {{...}}

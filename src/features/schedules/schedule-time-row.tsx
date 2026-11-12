@@ -10,7 +10,7 @@ import type { DoseUnit } from '@/lib/dose-quantity'
 import type { ScheduleFormOutput, ScheduleFormValues } from './schedule-form-schema'
 
 /**
- * One "Time N" row: time on its own line, quantity below it at every width (647·A7). Each row
+ * One "Time N" row: time on its own line, quantity below it at every width (107·A7). Each row
  * owns its errors and border. Ids come from `useId`, so they match on the server and follow the
  * row through removals while the parent keys rows by field id; labels use its position.
  */

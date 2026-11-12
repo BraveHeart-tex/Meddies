@@ -113,7 +113,7 @@ const rows = (group: string) =>
     .getAllByRole('listitem')
     .map((item) => item.textContent)
 
-test('779·A20 Ended schedules sit in their own group below the others', async () => {
+test('227·A20 Ended schedules sit in their own group below the others', async () => {
   api(
     [magnesium, iron, omega, zinc, vitaminD],
     [
@@ -143,7 +143,7 @@ test('779·A20 Ended schedules sit in their own group below the others', async (
   ])
 })
 
-test('779·A20 an Interval row never shows a next dose after its Last day', async () => {
+test('227·A20 an Interval row never shows a next dose after its Last day', async () => {
   // Every 24 hours at 09:00: today's has passed and tomorrow's is after the Last day.
   api(
     [iron],
@@ -178,7 +178,7 @@ describe('Stop schedule', () => {
     return { ...view, stops, user: userEvent.setup() }
   }
 
-  test('779·A13, A14 sits beside Change schedule on a running or not-yet-started schedule', async () => {
+  test('227·A13, A14 sits beside Change schedule on a running or not-yet-started schedule', async () => {
     await openDetail([version(1, magnesium.id, { startDate: '2026-11-12' })])
     const stop = button('Stop schedule')
     expect(stop).toHaveClass('text-destructive')
@@ -187,12 +187,12 @@ describe('Stop schedule', () => {
     )
   })
 
-  test('779·A17 is hidden on an Ended schedule', async () => {
+  test('227·A17 is hidden on an Ended schedule', async () => {
     await openDetail([version(1, magnesium.id, { endDate: '2026-11-03' })])
     expect(screen.queryByRole('button', { name: 'Stop schedule' })).not.toBeInTheDocument()
   })
 
-  test('779·A15 the confirm step saves nothing, and Keep schedule or Escape dismiss it', async () => {
+  test('227·A15 the confirm step saves nothing, and Keep schedule or Escape dismiss it', async () => {
     const { user, stops } = await openDetail([running])
     await user.click(button('Stop schedule'))
     const dialog = await drawer()
@@ -213,7 +213,7 @@ describe('Stop schedule', () => {
     expect(stops).toEqual([])
   })
 
-  test('779·S1, A16 holds while stopping, then reads Ended today with only Change schedule', async () => {
+  test('227·S1, A16 holds while stopping, then reads Ended today with only Change schedule', async () => {
     let release = () => {}
     const held = new Promise<void>((resolve) => (release = resolve))
     const { user, stops } = await openDetail([running], async () => {
@@ -239,7 +239,7 @@ describe('Stop schedule', () => {
     expect(stops).toEqual([{ id: expect.any(String), basedOnId: running.id }])
   })
 
-  test('779·S2 an unknown result offers Retry of the same stop', async () => {
+  test('227·S2 an unknown result offers Retry of the same stop', async () => {
     let fail = true
     const { user, stops } = await openDetail([running], () =>
       fail ? new HttpResponse(null, { status: 503 }) : undefined,
@@ -259,7 +259,7 @@ describe('Stop schedule', () => {
     expect(stops[1]).toEqual(stops[0])
   })
 
-  test('a stale stop shows the 767·S2 recovery and saves nothing', async () => {
+  test('a stale stop shows the 215·S2 recovery and saves nothing', async () => {
     const { user } = await openDetail([running], () =>
       HttpResponse.json({ error: 'conflict' }, { status: 409 }),
     )
@@ -275,7 +275,7 @@ describe('Stop schedule', () => {
     expect(screen.getByText('Last day Tue 10 Nov')).toBeVisible()
   })
 
-  test('779·A20 a stopped schedule sits in the Ended group on its stop day', async () => {
+  test('227·A20 a stopped schedule sits in the Ended group on its stop day', async () => {
     const { user, unmount } = await openDetail([running])
     await user.click(button('Stop schedule'))
     await user.click(within(await drawer()).getByRole('button', { name: 'Stop schedule' }))

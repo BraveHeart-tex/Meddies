@@ -32,18 +32,18 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 
 - Use Drawer for every slide-in panel: a content-sized bottom drawer on phone and desktop, capped at a readable width, without snap points. Keep its swipe handle and Cozy Care scrim, radius, and safe-area padding.
 - Swiping, Close, backdrop press, and Escape dismiss it and discard unsaved input. While a save is pending, all of them are refused and Close is disabled.
-- Add medicine is this Drawer over Medications, built like the Settings inset list (`745·B·Drawer`).
+- Add medicine is this Drawer over Medications, built like the Settings inset list (`193·B·Drawer`).
 - The record drawer asks _What happened?_ with an explicit outcome choice and saves nothing until the user saves. Taken offers _Now_, the scheduled time once it has passed, or _Other_ date and time, plus an amount. Skipped confirms the skip and records no intake time or quantity.
 
 ## Dose status and confirmation
 
 - Distinguish _Scheduled_, _Due now_, _Not logged_, _Taken_, and _Skipped_ with text and icon. Keep scheduled time separate from actual intake and from skip confirmation.
 - Keep explicit confirmation, progress, retries, correction, and stale-state handling. Use a factual success announcement after the server confirms the save; `toast.add({ title, type })` shows it.
-- Dose outcomes have no Undo (648·F2): correct them through the dose drawer.
+- Dose outcomes have no Undo (108·F2): correct them through the dose drawer.
 
 ## Empty states
 
-- Use `EmptyState` (`752·B`) only after the read finishes; a failed read stays an Alert. Each answers what's here, why, and what to do next.
+- Use `EmptyState` (`200·B`) only after the read finishes; a failed read stays an Alert. Each answers what's here, why, and what to do next.
 - Geometry: a centred column with an 88px, 26px-radius muted tile and a 36px decorative Lucide icon, a `text-title` heavy heading, `text-body-lg` muted body, and an optional full-width `lg` primary action. Gaps are 40px below whatever sits above it (the parent's 20px plus the component's 20px), 20px tile to title, 8px title to body, 20px body to action.
 - Never use a check icon, because a check means Taken.
 - Allow at most one primary action per view: while the list is known to be empty, the header Add uses the soft Button variant.
@@ -51,15 +51,15 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 
 ## Screens
 
-- **Sign-in** is a blush screen with the logo and wordmark above a cream bottom sheet; this replaces `649·S1`.
-- **Settings** is an inset list: eyebrow-headed white groups with one icon-tiled row per fact, then the sign-out button below; this replaces `649·G1`.
+- **Sign-in** is a blush screen with the logo and wordmark above a cream bottom sheet; this replaces `109·S1`.
+- **Settings** is an inset list: eyebrow-headed white groups with one icon-tiled row per fact, then the sign-out button below; this replaces `109·G1`.
 
 ## Loading and saving
 
 - Show headings, navigation, and data-independent controls immediately. Use a skeleton only for a section with no usable data, never while refreshing or saving content already shown.
 - Match the loaded layout so nothing shifts when content arrives: same widths, radii, gaps, and minimum heights. Today shows the hero (28px radius) and three rows of 64px minimum height with 10px gaps. Medications shows four 76px rows. History shows the 46px date field and three rows. Use fixed placeholder counts; never size skeletons from guessed list lengths.
 - Fill skeletons with the sunken surface (the hero uses blush). Skeletons are static: no shimmer or pulse at any motion setting. Mark skeletons `aria-hidden` and give each loading section one polite `role="status"` label, such as _Loading Today_. Don't announce individual placeholders or background refreshes.
-- Route skeletons compose the shared `Skeleton` and `LoadingSection` primitives; Today's composition is shared with the cold launch. The cold launch (649·L1, the root loading fallback) is the reference: shell and nav, header bars beside the real Settings button, Today's skeleton and one _Opening Meddies_ status.
+- Route skeletons compose the shared `Skeleton` and `LoadingSection` primitives; Today's composition is shared with the cold launch. The cold launch (109·L1, the root loading fallback) is the reference: shell and nav, header bars beside the real Settings button, Today's skeleton and one _Opening Meddies_ status.
 - Refreshing keeps content and shows progress only on the refresh control. A failed refresh keeps content and adds a recoverable alert.
 - Saving disables the form and labels the primary action _Saving…_. Dose recording and correction show the chosen outcome on affected rows as a _Saving…_ outline badge until the server confirms; setup and schedule edits never show optimistic state.
 - A definite failure clears only that save's pending state, keeps the entered values, and shows an alert above the primary action. An unconfirmed save keeps values and turns the primary action into _Retry_: _Save could not be confirmed. Your details are still here. Connect and retry._ A form with no details (skip) omits the middle sentence; after a fresh load finds no record, add _Meddies checked and found no record yet._ A conflict applies nothing and offers _Review current outcome_.

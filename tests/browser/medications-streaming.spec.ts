@@ -18,9 +18,9 @@ import { blockPrefetch, expectReadsOverlap, expectStreamingOrder } from './strea
 import type { WorkerRoute } from './worker-proxy'
 
 // Medications streams one section for its data views (#87): the shell, title and Add render
-// first, 647·L2 holds the list while the server reads, the browser reuses the hydrated data, and
+// first, 107·L2 holds the list while the server reads, the browser reuses the hydrated data, and
 // view changes use the native History API. #88 adds the medication page and schedule setup,
-// whose direct links hold 647·D1 and its setup equivalent.
+// whose direct links hold 107·D1 and its setup equivalent.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
 
@@ -210,7 +210,7 @@ test('view changes make no server request, and Back, Forward and reload restore 
   await page.goForward()
   await expect(page).toHaveURL(/\/medications\?schedule=/)
 
-  // 764·C0: Cancel with no edits leaves for the medication's page in place of setup.
+  // 212·C0: Cancel with no edits leaves for the medication's page in place of setup.
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(page).toHaveURL(/\/medications\?medicine=/)
   await expect(page.getByRole('heading', { level: 1, name: unscheduled })).toBeVisible()
@@ -330,7 +330,7 @@ test.describe('direct links to one medication', () => {
       content: heading,
     })
     await expect(heading).toBeFocused()
-    // The modal covers the tab bar (764·C0).
+    // The modal covers the tab bar (212·C0).
     await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible()
     await expect(page.getByRole('navigation', { name: 'Primary' })).toBeHidden()
     await expect(placeholders(page)).toHaveCount(0)
@@ -338,7 +338,7 @@ test.describe('direct links to one medication', () => {
     expectNoRepeatedReads(api)
   })
 
-  test('a link to a medication that is not in the list shows 647·D2', async ({ page, app }) => {
+  test('a link to a medication that is not in the list shows 107·D2', async ({ page, app }) => {
     for (const route of reads) app.worker.hold(route)
     await page.goto(`/medications?medicine=${randomUUID()}`, { waitUntil: 'commit' })
     await expect(medicationFallback(page)).toBeVisible()

@@ -10,13 +10,13 @@ import type { SaveProblem } from '@/lib/session-saves'
 /** A change to the current Schedule version: whether anything differs, and the conflict exit. */
 export type ScheduleChangeFooter = {
   changed: boolean
-  /** Leaves for the current Schedule version after another save got there first (767·S2). */
+  /** Leaves for the current Schedule version after another save got there first (215·S2). */
   onReview: () => void
 }
 
 /**
  * The save problem or offline notice above the setup forms' one primary action, pinned to the
- * bottom (767·A2). A `change` saves changes to the current Schedule version instead.
+ * bottom (215·A2). A `change` saves changes to the current Schedule version instead.
  */
 export function ScheduleSaveFooter({
   problem,

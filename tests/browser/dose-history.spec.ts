@@ -96,7 +96,7 @@ test('review, edit and correct past doses in History', async ({
     await expect(list).toContainText('took ½ tablet')
     await expect(list).toContainText('2 tablets')
     await expect(list).toContainText('1½ tablets')
-    // Not logged rows are not buttons (648·H1).
+    // Not logged rows are not buttons (108·H1).
     await expect(rows.nth(2).getByRole('button')).toHaveCount(0)
     await page.screenshot({ path: testInfo.outputPath('dose-history.png') })
   })

@@ -44,7 +44,7 @@ export function LabData({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>
 }
 
-/** "When do you take it?", the setup's own kind choice (764·C0). */
+/** "When do you take it?", the setup's own kind choice (212·C0). */
 export function KindToggle({
   value,
   onChange,
@@ -176,7 +176,7 @@ export function ClockEditFields({
 type Sheet = 'every' | 'starts' | 'take'
 const SHEET_TITLES: Record<Sheet, string> = { every: 'Every', starts: 'Starts', take: 'Take' }
 
-/** The Interval schedule rows (764·C1), prefilled; the Anchor stays unless Starts changes. */
+/** The Interval schedule rows (212·C1), prefilled; the Anchor stays unless Starts changes. */
 export function IntervalEditRows({
   edit,
   disabled = false,

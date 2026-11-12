@@ -53,7 +53,7 @@ export function useScheduleStop(
   const problem = attempt?.result?.problem
   return {
     pending: attempt?.status === 'pending',
-    /** A definite rejection means the schedule changed, as a stale stop does (767·S2). */
+    /** A definite rejection means the schedule changed, as a stale stop does (215·S2). */
     problem: problem === 'rejected' ? 'conflict' : problem,
     clear: () => store.clear(key),
     stop: () =>

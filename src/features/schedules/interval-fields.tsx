@@ -20,7 +20,7 @@ type FieldProps = {
   onBlur?: () => void
 }
 
-/** The Every sheet: presets, or Other with exact hours (764·C3, C9). */
+/** The Every sheet: presets, or Other with exact hours (212·C3, C9). */
 export function IntervalHoursField({
   value,
   error,
@@ -86,7 +86,7 @@ export function IntervalHoursField({
   )
 }
 
-/** First date on the Starts sheet: Today, Tomorrow, or Other with the date picker (764·C4). */
+/** First date on the Starts sheet: Today, Tomorrow, or Other with the date picker (212·C4). */
 export function IntervalFirstDateField({
   value,
   error,
@@ -173,7 +173,7 @@ export function IntervalFirstTimeField({
   )
 }
 
-/** The Take sheet (764·C5). */
+/** The Take sheet (212·C5). */
 export function IntervalQuantityField({
   value,
   error,

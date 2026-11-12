@@ -74,7 +74,7 @@ export function DoseActions({
     today: () => istanbulDate(clock.now()),
     onRecorded(record, superseded) {
       onRecorded?.(record)
-      // Confirmed by the server: a Toast without Undo (648·F2, C5).
+      // Confirmed by the server: a Toast without Undo (108·F2, C5).
       toast.add({
         title: superseded
           ? 'Your earlier save went through. This dose has changed since then.'
@@ -95,7 +95,7 @@ export function DoseActions({
       setEditor(null)
       setDrawerOpen(false)
       setOpenedWithoutOutcome(false)
-      // Up next's button now shows the following dose, so the close must not return to it (648·W4).
+      // Up next's button now shows the following dose, so the close must not return to it (108·W4).
       returnFocus.current = rowTrigger.current
       requestAnimationFrame(() => rowTrigger.current?.focus())
     },

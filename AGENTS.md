@@ -24,7 +24,7 @@ commits and issues, and per-feature detail in the owning module's header comment
 | Tickets: selecting, writing, splitting, closing   | [tickets](docs/tickets.md), [triage labels](docs/triage-labels.md)                         |
 | UI: screens, components                           | [DESIGN](DESIGN.md), [PRODUCT](PRODUCT.md), visual source `.agents/skills/meddies-design/` |
 | UI copy: labels, messages, push reminders         | [copy](docs/copy.md)                                                                       |
-| Design frames and lab such as `649·L1`            | [design snapshots](docs/design/README.md)                                                  |
+| Design frames and lab such as `109·L1`            | [design snapshots](docs/design/README.md)                                                  |
 | Design tickets: directions, approval, hand-off    | [design-ticket skill](.agents/skills/design-ticket/SKILL.md)                               |
 | Forms                                             | [forms](docs/forms.md)                                                                     |
 | Routes, rendering, data loading, TanStack Query   | [Next.js](docs/nextjs.md)                                                                  |

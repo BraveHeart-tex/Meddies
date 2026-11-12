@@ -40,7 +40,7 @@ import {
   type TakenFormValues,
 } from './taken-form-schema'
 
-// A swipe that starts on a control never closes the drawer (648·D14).
+// A swipe that starts on a control never closes the drawer (108·D14).
 const swipeIgnore = { 'data-base-ui-swipe-ignore': 'y' }
 
 function offsetLabel(local: string, dueAt: string) {
@@ -64,7 +64,7 @@ const primaryLabels: Record<Mode, { save: string; retry: string }> = {
 }
 
 /**
- * Actual intake details for a Taken outcome (648·R2/R3, C1 to C5). `record` opens from the
+ * Actual intake details for a Taken outcome (108·R2/R3, C1 to C5). `record` opens from the
  * drawer's outcome choice, `correct` changes a Skipped dose to Taken, and `edit` opens a recorded
  * intake through Edit dose. Values stay here; the parent's mutation owns saving, the duplicate
  * lock, retry identity and errors.
@@ -137,7 +137,7 @@ export function TakenForm({
   const changedSinceSave =
     uncertain && submitted !== JSON.stringify(schema.safeParse(values).data ?? null)
 
-  // The scheduled minute itself is neither early nor passed (648·W2, R6).
+  // The scheduled minute itself is neither early nor passed (108·W2, R6).
   const beforeScheduled = now < scheduled
   const scheduledHasPassed = scheduled < now
   const takenAt = takenAtLocal(values, now, scheduled)

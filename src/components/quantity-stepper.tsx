@@ -13,7 +13,7 @@ import {
 } from '@/lib/dose-quantity'
 
 /**
- * Dose quantity in tablets or capsules (647·D3): "−" and "+" step by the unit's rule, and the
+ * Dose quantity in tablets or capsules (107·D3): "−" and "+" step by the unit's rule, and the
  * text stays editable, blank included, so a form schema decides what is valid. The unit and its
  * plural always show beside the number. `ref` focuses the text input.
  */

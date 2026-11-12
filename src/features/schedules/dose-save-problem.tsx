@@ -10,7 +10,7 @@ const rejected: Record<DoseOutcomeRecord['outcome'], string> = {
 }
 
 /**
- * Why a dose save was not confirmed (648·F3, F4), or the known-offline line (650·D22).
+ * Why a dose save was not confirmed (108·F3, F4), or the known-offline line (110·D22).
  * Values stay in the form either way. `changed` is true once details differ from the
  * unconfirmed save, which then starts a new save.
  */

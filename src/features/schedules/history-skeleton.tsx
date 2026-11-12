@@ -18,7 +18,7 @@ export function HistoryDaySkeleton() {
 }
 
 /**
- * One History date's results before they arrive (648·H4), under one polite status. The date bar
+ * One History date's results before they arrive (108·H4), under one polite status. The date bar
  * above stays real, so nothing here stands in for it.
  */
 export function HistoryDayLoading({ notice }: { notice?: 'invalid' }) {

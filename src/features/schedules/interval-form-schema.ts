@@ -22,7 +22,7 @@ function hoursProblem(text: string) {
 
 /** Client mirror of parseSchedule for an Interval schedule; the server parser stays authoritative. */
 export function intervalFormSchema({ unit, today, retryStartDate, current }: ScheduleFormOptions) {
-  // Editing an Interval schedule keeps its Anchor, however long ago it was (767·A5).
+  // Editing an Interval schedule keeps its Anchor, however long ago it was (215·A5).
   const kept = current?.intervalHours != null ? current : undefined
   return z
     .object({
@@ -39,7 +39,7 @@ export function intervalFormSchema({ unit, today, retryStartDate, current }: Sch
       lastDay: lastDaySchema,
     })
     .superRefine(({ date, time, lastDay }, ctx) => {
-      // The Anchor date is the first date (779·A5).
+      // The Anchor date is the first date (227·A5).
       const problem = lastDayProblem(lastDay, today, date)
       if (problem) ctx.addIssue({ code: 'custom', message: problem, path: ['lastDay'] })
       // A new Anchor starts today or later; only the kept one may be earlier.
@@ -66,7 +66,7 @@ export function intervalFormDefaults(unit: DoseUnit, today: string): IntervalFor
 
 /**
  * A change opens on the current Interval schedule version and its Anchor, or, switching from set
- * times, asks for Every and Starts again with the quantity carried over (767·A4, A6).
+ * times, asks for Every and Starts again with the quantity carried over (215·A4, A6).
  */
 export function intervalChangeDefaults(current: DailySchedule, today: string): IntervalFormValues {
   const quantity = formatQuantity(current.times[0].quantity)

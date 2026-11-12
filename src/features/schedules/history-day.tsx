@@ -32,7 +32,7 @@ export type HistoryDayResult =
 const recorded = (dose: DoseOccurrence) => dose.status === 'Taken' || dose.status === 'Skipped'
 
 /**
- * One History date (648·H1, H2, H5, H6, 752·B). `notice: 'invalid'` means the URL named a future or
+ * One History date (108·H1, H2, H5, H6, 200·B). `notice: 'invalid'` means the URL named a future or
  * malformed date and this is today instead; the URL is replaced to match.
  */
 export function HistoryDay({
@@ -94,7 +94,7 @@ export function HistoryDay({
   )
 }
 
-/** Start with no medicines, otherwise Clear (752·B). The title stays the day heading. */
+/** Start with no medicines, otherwise Clear (200·B). The title stays the day heading. */
 function EmptyDay({
   date,
   today,

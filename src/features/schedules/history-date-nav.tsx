@@ -12,7 +12,7 @@ export const historyHref = (date: string) => `/history?date=${date}`
 
 /**
  * The History date in the URL. Bare `/history` means today; the server already replaced a future
- * or malformed date with today (648·H6), so anything else invalid reads as today too.
+ * or malformed date with today (108·H6), so anything else invalid reads as today too.
  */
 export function useHistoryDate(today: string) {
   const date = useSearchParams().get('date')

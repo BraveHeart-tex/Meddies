@@ -15,7 +15,7 @@ import { ALL_WEEKDAYS } from './weekdays'
 // authoritative; keep the 1-24 times, unique times, weekdays and half-unit quantities in step.
 
 export type ScheduleFormOptions = {
-  /** The medicine's unit; setup always belongs to one medicine (647·A7). */
+  /** The medicine's unit; setup always belongs to one medicine (107·A7). */
   unit: DoseUnit
   /** Istanbul today, from the scheduling clock. */
   today: string
@@ -44,7 +44,7 @@ export const lastDaySchema = z.string().nullable()
 export function scheduleFormSchema({ unit, today, retryStartDate, current }: ScheduleFormOptions) {
   return z
     .object({
-      // A change has no Start date: it starts at its Edit time (767·A2).
+      // A change has no Start date: it starts at its Edit time (215·A2).
       startDate: current ? z.string() : startDateSchema(today, retryStartDate),
       weekdays: z
         .array(z.number().int().min(0).max(6))
@@ -78,7 +78,7 @@ export function scheduleFormSchema({ unit, today, retryStartDate, current }: Sch
       lastDay: lastDaySchema,
     })
     .superRefine(({ startDate, lastDay }, ctx) => {
-      // A change starts at its Edit time, so its Last day is today or later (779·A18).
+      // A change starts at its Edit time, so its Last day is today or later (227·A18).
       const problem = lastDayProblem(lastDay, today, current ? today : startDate)
       if (problem) ctx.addIssue({ code: 'custom', message: problem, path: ['lastDay'] })
     })
@@ -101,7 +101,7 @@ export function scheduleFormDefaults(unit: DoseUnit, today: string): ScheduleFor
 
 /**
  * A change opens on the current Clock schedule version, or, switching from an Interval schedule,
- * every day with one empty time and its quantity carried over (767·A2, A9).
+ * every day with one empty time and its quantity carried over (215·A2, A9).
  */
 export function scheduleChangeDefaults(current: DailySchedule, today: string): ScheduleFormValues {
   return current.intervalHours == null

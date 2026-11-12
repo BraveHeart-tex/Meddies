@@ -55,7 +55,7 @@ function ScheduleCard({ schedule }: { schedule: CurrentSchedule }) {
   )
 }
 
-/** Medication detail: Change schedule sits under the card, replacing the old footnote (767·A1). */
+/** Medication detail: Change schedule sits under the card, replacing the old footnote (215·A1). */
 export function ChangeEntryFrame({
   schedule,
   next,
@@ -86,7 +86,7 @@ export function ChangeEntryFrame({
   )
 }
 
-/** Back on Medication detail once the server saves, with the new version shown (767·S3, S4). */
+/** Back on Medication detail once the server saves, with the new version shown (215·S3, S4). */
 export function SavedFrame({
   schedule,
   first,
@@ -111,8 +111,8 @@ export function SavedFrame({
 }
 
 /**
- * The approved setup screen (764·C0) reopened on the current Schedule version, with the next 3
- * doses after now under the form and Save changes pinned to the bottom (767·A2 to A9).
+ * The approved setup screen (212·C0) reopened on the current Schedule version, with the next 3
+ * doses after now under the form and Save changes pinned to the bottom (215·A2 to A9).
  */
 export function FullScreenEdit({
   current,

@@ -288,7 +288,7 @@ test('a rejected save keeps the medicine and the details, and can be saved again
   expect(posted).toHaveLength(2)
 })
 
-test('a medicine that already has a schedule opens a change to it (767·A2)', async () => {
+test('a medicine that already has a schedule opens a change to it (215·A2)', async () => {
   api(capsules, [
     {
       id: scheduleId,
@@ -500,7 +500,7 @@ async function pickLastDay(user: User, date: string) {
   )
 }
 
-test('779·A1, A2 the optional Last day saves with the schedule and can be removed', async () => {
+test('227·A1, A2 the optional Last day saves with the schedule and can be removed', async () => {
   const { posted } = api(capsules)
   const { user, onSaved } = await openSetup(capsules.id)
   expect(screen.getByText('Last day (optional)')).toBeVisible()
@@ -518,7 +518,7 @@ test('779·A1, A2 the optional Last day saves with the schedule and can be remov
   expect(posted[0]).toMatchObject({ startDate: '2035-06-15', endDate: '2035-06-20' })
 })
 
-test('779·A3 a Last day before a later Start date shows its error after Save', async () => {
+test('227·A3 a Last day before a later Start date shows its error after Save', async () => {
   const { posted } = api(capsules)
   const { user } = await openSetup(capsules.id)
   await pickTime(user, 1, '20:00')

@@ -23,7 +23,7 @@ export function intervalStartsAnswer(date: string, time: string, today: string) 
   return `${date === today ? 'Today' : formatShortDay(date, today)}, ${time}`
 }
 
-/** Full-screen setup header (764·C0): Cancel, then the medication and "Set schedule" centered. */
+/** Full-screen setup header (212·C0): Cancel, then the medication and "Set schedule" centered. */
 export function ScheduleSetupHeader({
   label,
   subtitle = 'Set schedule',
@@ -57,7 +57,7 @@ export function ScheduleSetupHeader({
   )
 }
 
-/** One answer in the setup card; opens its sheet, and carries its own error (764·C1, C6). */
+/** One answer in the setup card; opens its sheet, and carries its own error (212·C1, C6). */
 export function IntervalRow({
   ref,
   id,
@@ -136,13 +136,13 @@ export function IntervalSheet({
   )
 }
 
-/** Under a change's preview: what an Edit time keeps (767·A3, A5). */
+/** Under a change's preview: what an Edit time keeps (215·A3, A5). */
 export const CHANGE_KEEPS_EARLIER =
   "Changes start when you save. Doses before then, and any you've logged, stay as they are."
 
 /**
- * "Next 3 doses" while setting up, with night doses marked (764·C1, C2, C8, C15, C16). A change
- * counts them from now and says what it keeps (767·A3, A5).
+ * "Next 3 doses" while setting up, with night doses marked (212·C1, C2, C8, C15, C16). A change
+ * counts them from now and says what it keeps (215·A3, A5).
  */
 export function NextDoses({
   doses: upcoming,
@@ -154,7 +154,7 @@ export function NextDoses({
   doses: string[] | null
   /** An Interval schedule's hours, which mark its first overnight dose. */
   hours?: number
-  /** Only doses on or before it show, then the day they stop (779·A4, A8, A11). */
+  /** Only doses on or before it show, then the day they stop (227·A4, A8, A11). */
   lastDay?: string | null
   today: string
   /** For a change: the live time the doses count from. */
@@ -206,7 +206,7 @@ export function NextDoses({
   )
 }
 
-/** Cancel with edits asks first (764·C7). */
+/** Cancel with edits asks first (212·C7). */
 export function ScheduleDiscardDrawer({
   open,
   change = false,
@@ -214,7 +214,7 @@ export function ScheduleDiscardDrawer({
   onDiscard,
 }: {
   open: boolean
-  /** Changes to the current Schedule version, which stays as it is (767). */
+  /** Changes to the current Schedule version, which stays as it is (215). */
   change?: boolean
   onKeepEditing: () => void
   onDiscard: () => void

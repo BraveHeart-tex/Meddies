@@ -32,8 +32,8 @@ import { useScheduleAttempt } from './use-schedule-save'
 
 /**
  * Schedule setup for the `?schedule=ID` medicine, a full-screen modal that covers the tab bar
- * (764·C0). With no schedule it sets the first one (647·A7, S5, S6); otherwise it changes the
- * current Schedule version (767·A2 to S2). The form shows only once Meddies knows which;
+ * (212·C0). With no schedule it sets the first one (107·A7, S5, S6); otherwise it changes the
+ * current Schedule version (215·A2 to S2). The form shows only once Meddies knows which;
  * `onSaved` runs after server confirmation.
  */
 export function ScheduleSetupForm({
@@ -59,7 +59,7 @@ export function ScheduleSetupForm({
   const [savedId, setSavedId] = useState('')
   const [discarding, setDiscarding] = useState(false)
   // The version this screen opened on. A newer one from elsewhere surfaces as a conflict when
-  // saving (767·S2), and this screen's own first save never turns it into a change.
+  // saving (215·S2), and this screen's own first save never turns it into a change.
   const [opened, setOpened] = useState<{ current?: DailySchedule } | null>(null)
   const schedule = schedules.find((item) => item.medicineId === medicineId)
   if (!opened && !loading && !loadError) setOpened({ current: schedule })

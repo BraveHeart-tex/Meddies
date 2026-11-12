@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 /**
- * Keeps a full-screen form's Alert and primary action in reach at the bottom (767·A2). Place it
+ * Keeps a full-screen form's Alert and primary action in reach at the bottom (215·A2). Place it
  * last in a `px-5` column; a hairline shows only while content scrolls beneath it.
  */
 export function StickyActions({ children }: { children: ReactNode }) {

@@ -9,7 +9,7 @@ import { TodayDosesLoading } from './today-skeleton'
 
 /**
  * Suspense fallback for Today's streamed doses section. A warm navigation shows the session's
- * cached doses while the server reads; otherwise the 648·T1 skeleton holds the section's place.
+ * cached doses while the server reads; otherwise the 108·T1 skeleton holds the section's place.
  * The cache is only watched, so a cold load never starts a browser read of its own.
  */
 export function TodayDosesFallback({ initialNow }: { initialNow: string }) {

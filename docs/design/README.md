@@ -4,21 +4,21 @@ Read-only copies of the approved Cozy Care journey designs, so frames can be sea
 locally. The live artifact linked at the top of each file is where reviews and comments
 happen. After a design changes there, refresh the copy here.
 
-| File                                                       | Design                                  | Frames                                                              |
-| ---------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------- |
-| [fe-646-screen-map.html](fe-646-screen-map.html)           | #106 screen and control map, D1 to D6   | Flow map, inventory, pattern mocks (screenshots stripped)           |
-| [fe-647-medications.html](fe-647-medications.html)         | #107 Medications journey, D7 to D9      | A, B, M, S, L, D                                                    |
-| [fe-648-daily-routine.html](fe-648-daily-routine.html)     | #108 Today, drawer, History, D10 to D14 | W, T, R, E, F, C, H                                                 |
-| [fe-649-access-recovery.html](fe-649-access-recovery.html) | #109 access and recovery, D15 to D19    | A, X, S, G, L                                                       |
-| [fe-650-routine-handoff.html](fe-650-routine-handoff.html) | #110 cross-journey review, D20 to D23   | Corrections (Fix 1 to 6), coverage, owner handoff                   |
-| [fe-745-add-flow.html](fe-745-add-flow.html)               | #193 Add medication, direction B chosen | B·Drawer, B·Scanner, B·Barcode read, B·No match, B·More types       |
-| [fe-752-empty-states.html](fe-752-empty-states.html)       | #200 empty states, option B chosen      | B·Medications Start, B·Today Finish, B·Today Clear, B·History Clear |
+| File                                                 | Design                                  | Frames                                                              |
+| ---------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------- |
+| [106-screen-map.html](106-screen-map.html)           | #106 screen and control map, D1 to D6   | Flow map, inventory, pattern mocks (screenshots stripped)           |
+| [107-medications.html](107-medications.html)         | #107 Medications journey, D7 to D9      | A, B, M, S, L, D                                                    |
+| [108-daily-routine.html](108-daily-routine.html)     | #108 Today, drawer, History, D10 to D14 | W, T, R, E, F, C, H                                                 |
+| [109-access-recovery.html](109-access-recovery.html) | #109 access and recovery, D15 to D19    | A, X, S, G, L                                                       |
+| [110-routine-handoff.html](110-routine-handoff.html) | #110 cross-journey review, D20 to D23   | Corrections (Fix 1 to 6), coverage, owner handoff                   |
+| [193-add-flow.html](193-add-flow.html)               | #193 Add medication, direction B chosen | B·Drawer, B·Scanner, B·Barcode read, B·No match, B·More types       |
+| [200-empty-states.html](200-empty-states.html)       | #200 empty states, option B chosen      | B·Medications Start, B·Today Finish, B·Today Clear, B·History Clear |
 
-- **Citations:** frame IDs repeat across designs, so cite them with the ticket number:
-  `649·L1` is frame `L1` in the `fe-649` file.
-- **Finding a frame:** frames in the `fe-647` to `fe-649` files are keyed by ID in the script.
-  Search the file instead of reading it whole: `rg -n "^\s+L1:" docs/design/fe-649-access-recovery.html`.
-- **Precedence:** `fe-650` overrides the earlier designs where they conflict. Mocks show layout,
+- **Citations:** frame IDs repeat across designs, so cite them with the design ticket's issue
+  number: `109·L1` is frame `L1` in the `109` file.
+- **Finding a frame:** frames in the `107` to `109` files are keyed by ID in the script.
+  Search the file instead of reading it whole: `rg -n "^\s+L1:" docs/design/109-access-recovery.html`.
+- **Precedence:** `110` overrides the earlier designs where they conflict. Mocks show layout,
   not chrome: build with the production AppShell, components and tokens, and take geometry
   from [DESIGN.md](../../DESIGN.md).
 - **Wording:** [docs/copy.md](../copy.md) overrides the wording in these snapshots.
@@ -29,7 +29,7 @@ for approval notes. Keep personal approval attribution in the linked GitHub issu
 ## Design lab
 
 Use the lab for new frames that should hand off as real production components. Run
-`pnpm dev`, then open `/lab` for the registry or `/lab/649-l1` for cold launch `649·L1`.
+`pnpm dev`, then open `/lab` for the registry or `/lab/109-l1` for cold launch `109·L1`.
 The lab exists only under `next dev`; production and preview builds return the themed
 HTTP 404. Existing HTML snapshots above remain supported.
 
@@ -57,13 +57,13 @@ Lab rules that the checks enforce or that bit before:
 Capture frames for review by slug prefix, with `pnpm dev` stopped:
 
 ```sh
-pnpm lab:capture 767-            # or --out <dir>; prints the capture folder
+pnpm lab:capture 215-            # or --out <dir>; prints the capture folder
 ```
 
 It writes `<slug>-402x874.png` (screen-size), `<slug>-320x740.png` and `<slug>.json` per
 frame, hides the Next dev overlay, and exits non-zero on horizontal overflow or a console
 error. The design-ticket skill (`.agents/skills/design-ticket/`) runs the full process.
-The deeper `649·L1` shell geometry check stays opt-in:
+The deeper `109·L1` shell geometry check stays opt-in:
 `MEDDIES_BROWSER_DEV=1 MEDDIES_VISUAL_OUT=/tmp/meddies-lab pnpm exec playwright test design-lab-capture --project=phone --grep=@visual`.
 Choose additional
 checks by risk under [verification](../verification.md#visual-verification).

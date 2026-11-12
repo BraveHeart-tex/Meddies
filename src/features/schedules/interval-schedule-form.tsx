@@ -52,10 +52,10 @@ const SHEET_FIELDS: Record<Sheet, FieldName[]> = {
 }
 
 /**
- * An Interval schedule for one saved medicine (764·C1 to C16): three answers, each edited alone
+ * An Interval schedule for one saved medicine (212·C1 to C16): three answers, each edited alone
  * in a sheet, and the doses they produce. Saves through the same attempt as a Clock schedule. A
  * `change` opens on the current Schedule version and keeps its Anchor unless Starts changes
- * (767·A4 to A8).
+ * (215·A4 to A8).
  */
 export function IntervalScheduleForm({
   medicine,
@@ -110,7 +110,7 @@ export function IntervalScheduleForm({
   }
 
   useEffect(() => {
-    // A change shows its own conflict recovery (767·S2).
+    // A change shows its own conflict recovery (215·S2).
     if (problem === 'conflict' && !current) onConflict()
   }, [problem, onConflict, current])
 
@@ -247,7 +247,7 @@ export function IntervalScheduleForm({
       <NextDoses
         doses={doses}
         lastDay={lastDay}
-        // The approved change preview has no overnight note (767·A5).
+        // The approved change preview has no overnight note (215·A5).
         hours={current || !timing.success ? undefined : timing.data.intervalHours}
         today={istanbulDate(new Date(now))}
         after={current ? now : undefined}

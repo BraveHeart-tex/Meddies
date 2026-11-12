@@ -19,7 +19,7 @@ import { medicineKeys } from './queries'
 
 /**
  * Suspense fallback for the streamed Medications section. A warm navigation shows the session's
- * cached view while the server reads; otherwise the view's own skeleton holds its place (647·L2,
+ * cached view while the server reads; otherwise the view's own skeleton holds its place (107·L2,
  * D1). A cached list without the linked medication isn't proof it's missing, so that waits for
  * the server too.
  */

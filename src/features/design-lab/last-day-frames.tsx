@@ -16,11 +16,11 @@ import { LastDayChange, LastDaySetup } from './last-day-screens'
 const fromTuesday = { hours: '8', date: TUESDAY, time: '08:00', quantity: '1' }
 const fromWednesday = { ...fromTuesday, date: WEDNESDAY }
 
-const at = (n: number) => `/lab/779-a${n}`
+const at = (n: number) => `/lab/227-a${n}`
 const frame = (n: number, title: string, render: () => ReactNode): DesignFrame => ({
-  slug: `779-a${n}` as DesignFrame['slug'],
+  slug: `227-a${n}` as DesignFrame['slug'],
   title,
-  citation: `779·A${n}` as DesignFrame['citation'],
+  citation: `227·A${n}` as DesignFrame['citation'],
   render,
 })
 
@@ -96,15 +96,15 @@ export const lastDayFrames: readonly DesignFrame[] = [
   )),
   frame(20, 'Medications, Ended group', () => <EndedListFrame />),
   {
-    slug: '779-s1',
+    slug: '227-s1',
     title: 'Stopping',
-    citation: '779·S1',
+    citation: '227·S1',
     render: () => <LastDayDetail schedule={clockToTuesday} change={at(7)} stopState="stopping" />,
   },
   {
-    slug: '779-s2',
+    slug: '227-s2',
     title: 'Stop might not have saved',
-    citation: '779·S2',
+    citation: '227·S2',
     render: () => <LastDayDetail schedule={clockToTuesday} change={at(7)} stopState="unknown" />,
   },
 ]

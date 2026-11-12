@@ -7,7 +7,7 @@ import { weekdaySummary } from './weekdays'
 
 /**
  * A schedule card's muted date lines: its first date line, then its Last day; an Ended schedule
- * shows only the day it ended (779·A13, A14, A17).
+ * shows only the day it ended (227·A13, A14, A17).
  */
 export function ScheduleDateLines({
   started,
@@ -37,7 +37,7 @@ export function ScheduleDateLines({
 }
 
 /**
- * A medication's Clock schedule (647·D1): its days, each time with its quantity, and its start,
+ * A medication's Clock schedule (107·D1): its days, each time with its quantity, and its start,
  * or, for a changed Schedule version, the day it changed, then its Last day or Ended day.
  */
 export function ClockScheduleCard({

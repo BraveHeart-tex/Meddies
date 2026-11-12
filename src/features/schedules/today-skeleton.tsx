@@ -1,7 +1,7 @@
 import { LoadingSection, Skeleton } from '@/components/ui/skeleton'
 
 /**
- * Today's sections before any schedule data arrives (648·T1): the next-dose hero, the doses
+ * Today's sections before any schedule data arrives (108·T1): the next-dose hero, the doses
  * heading and three rows, with the loaded layout's radii, minimum heights and gaps.
  */
 export function TodaySkeleton() {

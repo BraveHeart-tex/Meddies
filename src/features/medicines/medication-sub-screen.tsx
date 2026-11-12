@@ -12,7 +12,7 @@ import { MedicationsLink } from './medications-nav'
 import type { MedicinesRead } from './queries'
 import { medicationsHref } from './routes'
 
-/** The row above a sub-screen's identity: Back on the left, Settings on the right (650 Fix 1). */
+/** The row above a sub-screen's identity: Back on the left, Settings on the right (110 Fix 1). */
 export function SubScreenRow({ children }: { children: ReactNode }) {
   return (
     <header className="flex items-start justify-between gap-2 [overflow-wrap:anywhere]">
@@ -80,7 +80,7 @@ export function MedicationIdentity({
   )
 }
 
-/** 647·D2. Nothing can be done with this medication, so only the way out is offered. */
+/** 107·D2. Nothing can be done with this medication, so only the way out is offered. */
 export function MedicationNotFound() {
   return (
     <div className="flex flex-col gap-5">
@@ -117,7 +117,7 @@ export function MedicationLoadFailed({ onRetry }: { onRetry: () => void }) {
   )
 }
 
-/** 647·D3. The caller keeps Set schedule hidden: Meddies doesn't yet know there is no schedule. */
+/** 107·D3. The caller keeps Set schedule hidden: Meddies doesn't yet know there is no schedule. */
 export function ScheduleUnchecked({ name, onRetry }: { name: string; onRetry: () => void }) {
   return (
     <Alert variant="destructive">
