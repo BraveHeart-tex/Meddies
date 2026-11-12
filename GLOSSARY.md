@@ -45,6 +45,17 @@ End a schedule at its Edit time instead of at a Last day. Doses due by then stay
 The schedule becomes an Ended schedule.
 _Avoid_: remove, delete, cancel a schedule
 
+**Pause a schedule**:
+Put a schedule on hold at its Edit time. Doses due by then stay; none are expected while it is
+paused, and none are made up later. A paused schedule is not an Ended schedule; if its Last day
+passes while paused, it becomes one.
+_Avoid_: suspend, hold, disable a schedule
+
+**Resume a schedule**:
+Take a paused schedule off hold at its Edit time, keeping its routine and Last day. A Clock
+schedule continues at its next set time; an Interval schedule continues from a new Anchor.
+_Avoid_: restart, unpause, in UI copy and tickets
+
 **Edit time**:
 The moment the server confirms a schedule edit. Doses due at or before it, and any dose already
 recorded, stay with the earlier Schedule version; only later doses follow the new one.
