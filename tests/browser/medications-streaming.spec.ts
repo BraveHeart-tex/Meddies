@@ -17,9 +17,9 @@ import { addDays, insertScheduledMedicine } from './seed'
 import { blockPrefetch, expectReadsOverlap, expectStreamingOrder } from './streaming'
 import type { WorkerRoute } from './worker-proxy'
 
-// Medications streams one section for its data views (FE-625): the shell, title and Add render
+// Medications streams one section for its data views (#87): the shell, title and Add render
 // first, 647·L2 holds the list while the server reads, the browser reuses the hydrated data, and
-// view changes use the native History API. FE-626 adds the medication page and schedule setup,
+// view changes use the native History API. #88 adds the medication page and schedule setup,
 // whose direct links hold 647·D1 and its setup equivalent.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)

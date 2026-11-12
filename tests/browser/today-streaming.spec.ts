@@ -14,7 +14,7 @@ import { addDays, insertScheduledMedicine } from './seed'
 import { blockPrefetch, expectReadsOverlap, expectStreamingOrder } from './streaming'
 import type { WorkerRoute } from './worker-proxy'
 
-// Today streams its doses section (FE-672): the shell and header render first, the 648·T1
+// Today streams its doses section (#125): the shell and header render first, the 648·T1
 // fallback holds the section while the server reads, and the browser reuses the hydrated data.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
@@ -24,7 +24,7 @@ const todayReads: WorkerRoute[] = [
   { method: 'POST', path: '/medicines', operation: 'list' },
 ]
 
-// Direct-load layout shift budget at 402px; measured 0 (FE-672). The fallback is replaced, not
+// Direct-load layout shift budget at 402px; measured 0 (#125). The fallback is replaced, not
 // moved, and nothing above it changes size, so any shift is a regression. The small allowance
 // absorbs sub-pixel font metrics only.
 const layoutShiftBudget = 0.01

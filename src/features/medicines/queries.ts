@@ -38,7 +38,7 @@ export const medicinesQuery = () =>
 
 /**
  * Reads the cached medicines. Cached content stays on screen while it refreshes; loading and
- * load error apply only until the session has a list (FE-666).
+ * load error apply only until the session has a list (#119).
  */
 export function useMedicines({ serverEntry = false }: { serverEntry?: boolean } = {}) {
   const read = useQuery({ ...medicinesQuery(), refetchOnMount: !serverEntry })

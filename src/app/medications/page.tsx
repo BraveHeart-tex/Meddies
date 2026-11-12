@@ -13,7 +13,7 @@ import { schedulingNow } from '@/features/schedules/server'
 
 /**
  * The medicines and schedules every data view shares, read together in one section so the panel
- * stays mounted across views (FE-625). Add reads nothing here, so its Drawer never waits and the
+ * stays mounted across views (#87). Add reads nothing here, so its Drawer never waits and the
  * list behind it reads from the browser.
  */
 async function MedicationsSection({ add, initialNow }: { add: boolean; initialNow: string }) {

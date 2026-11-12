@@ -145,7 +145,7 @@ Before enabling the first release, an authorized maintainer must:
 
 Account settings and the first live Actions release require implementation-session
 authorization. Until inspected after setup and a live release, remote enforcement
-and deployment verification remain incomplete. See FE-610 for current evidence.
+and deployment verification remain incomplete. See #72 for current evidence.
 
 The Git rule follows [Vercel Git configuration](https://vercel.com/docs/project-configuration/git-configuration).
 CLI deployments follow [Vercel deploy](https://vercel.com/docs/cli/deploy).

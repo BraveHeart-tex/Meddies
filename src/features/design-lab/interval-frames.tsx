@@ -4,7 +4,7 @@ import { IntervalSetupFrame } from './interval-setup-frame'
 
 const EARLIER_TODAY = { hours: '8', time: '08:00' }
 
-/** FE-764: the approved setup frames for an Interval schedule (C), then its display (M, D). */
+/** #212: the approved setup frames for an Interval schedule (C), then its display (M, D). */
 export const intervalFrames: readonly DesignFrame[] = [
   {
     slug: '764-c0',

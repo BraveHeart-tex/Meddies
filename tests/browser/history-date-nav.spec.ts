@@ -4,7 +4,7 @@ import { scrollsHorizontally } from './actions'
 import { datePicker } from './pickers'
 import { addDays, insertScheduledMedicine } from './seed'
 
-// FE-678 (648·H7): the on-request review of the History date bar's sizes and alignment.
+// #131 (648·H7): the on-request review of the History date bar's sizes and alignment.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
 const startDate = addDays(today, -3)

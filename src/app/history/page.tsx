@@ -17,7 +17,7 @@ import { holdRouteRender } from '@/lib/route-render-hold'
 /**
  * One History date's results: its doses and the medicines that name them are read together and
  * only meaningful together, so they stream as one Suspense boundary. Later date changes read in
- * the browser (FE-679).
+ * the browser (#132).
  */
 async function HistoryDateResults({
   date,
@@ -65,7 +65,7 @@ export default async function HistoryPage({
     <SessionBoundary ownerId={session.user.id} expires={session.expires}>
       <SchedulingClockProvider serverNow={now.toISOString()}>
         <AppShell>
-          {/* Today's 20px section column, so the header stays put between tabs (FE-690). */}
+          {/* Today's 20px section column, so the header stays put between tabs (#143). */}
           <div className="flex flex-col gap-5">
             <AppHeader title="History" align="center" />
             <HistoryDateNav today={today} />

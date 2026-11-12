@@ -1,6 +1,6 @@
 import type { Medicine } from '@/features/medicines/contract'
 
-/** Saved at 10:00 Istanbul on Monday 9 November, the worked example in FE-764. */
+/** Saved at 10:00 Istanbul on Monday 9 November, the worked example in #212. */
 export const NOW = '2026-11-09T07:00:00.000Z'
 export const TODAY = '2026-11-09'
 

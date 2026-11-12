@@ -15,7 +15,7 @@ import { ALL_WEEKDAYS } from './weekdays'
 // authoritative; keep the 1-24 times, unique times, weekdays and half-unit quantities in step.
 
 export type ScheduleFormOptions = {
-  /** The medicine's unit; setup always belongs to one medicine (FE-647 A7). */
+  /** The medicine's unit; setup always belongs to one medicine (647·A7). */
   unit: DoseUnit
   /** Istanbul today, from the scheduling clock. */
   today: string

@@ -59,7 +59,7 @@ export function intervalFormSchema({ unit, today, retryStartDate, current }: Sch
 export type IntervalFormValues = z.input<ReturnType<typeof intervalFormSchema>>
 export type IntervalFormOutput = z.output<ReturnType<typeof intervalFormSchema>>
 
-/** New setup: today and one tablet or capsule are preselected (FE-764 Rules). */
+/** New setup: today and one tablet or capsule are preselected (#212 Rules). */
 export function intervalFormDefaults(unit: DoseUnit, today: string): IntervalFormValues {
   return { hours: '', date: today, time: '', quantity: quantityRule(unit).initial, lastDay: null }
 }

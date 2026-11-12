@@ -5,7 +5,7 @@ import { expect, test } from './fixtures'
 import { doseRow, doseStatus, doseTrigger, drawer, toastMessage } from './locators'
 import { insertScheduledMedicine } from './seed'
 
-// FE-674: dose saves and drawer drafts belong to the session, not to Today or the drawer.
+// #127: dose saves and drawer drafts belong to the session, not to Today or the drawer.
 const initialScheduleTime = '2035-06-15T12:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
 const dueAt = new Date(`${today}T08:00:00+03:00`).toISOString()

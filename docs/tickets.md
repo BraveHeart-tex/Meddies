@@ -128,7 +128,7 @@ owner, link it from this ticket, and remove the item here.
 
 ## Legacy Linear IDs
 
-Issues migrated from Linear end with `Linear ID: FE-n`, and `FE-n` in GitHub text links
-to that issue. Code, commits and design snapshots keep `FE-n`; resolve one with
-`gh issue list --search '"Linear ID: FE-n" in:body' --state all`. Never create new `FE-n`
-references.
+Code, docs and tickets cite issues as `#n` and design frames as `<design>·<frame>`, such as
+`649·L1` ([design snapshots](design/README.md)). Old commits, migrated issue bodies and
+snapshot file names still say `FE-n`; each migrated issue ends with `Linear ID: FE-n`, so
+resolve one with `gh issue list --search '"Linear ID: FE-n" in:body' --state all`.

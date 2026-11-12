@@ -251,7 +251,7 @@ test('a correction confirmed on History updates Today and its own date without a
   expect(await todayRow()).toHaveTextContent('Skipped')
 })
 
-test('a pending then unconfirmed save shows its badge on both Today and History (FE-674)', async () => {
+test('a pending then unconfirmed save shows its badge on both Today and History (#127)', async () => {
   const held = deferred()
   const { dose } = api({
     store: false,

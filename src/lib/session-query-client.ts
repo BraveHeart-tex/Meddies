@@ -4,7 +4,7 @@ import { endSessionSaves } from './session-saves'
 import { focusManager, QueryCache, QueryClient } from '@tanstack/react-query'
 
 // Query refreshes stale reads when the page becomes visible; also treat window focus as
-// returning, like the session check and Today do (FE-666).
+// returning, like the session check and Today do (#119).
 focusManager.setEventListener((onFocus) => {
   if (typeof window === 'undefined') return
   const listener = () => onFocus()
@@ -35,7 +35,7 @@ const sessionQueryCache = () =>
   })
 
 /**
- * Freshness defaults for private reads (FE-666). Cached content stays on screen while a stale
+ * Freshness defaults for private reads (#119). Cached content stays on screen while a stale
  * query refreshes on screen entry, focus or reconnect. No polling; failures surface at once so
  * the screen can offer a retry instead of waiting through silent backoff.
  */

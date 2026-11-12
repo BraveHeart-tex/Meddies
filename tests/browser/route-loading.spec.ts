@@ -16,7 +16,7 @@ import { layoutViewports, shellElements, trackLayout, type Viewport } from './la
 import { blockPrefetch, expectStreamingOrder } from './streaming'
 import { routeRender, type WorkerControls, type WorkerRoute } from './worker-proxy'
 
-// Route fallbacks (FE-689): each shows before its page resolves, shaped like that page rather
+// Route fallbacks (#142): each shows before its page resolves, shaped like that page rather
 // than Today. These pages have no Worker read ahead of the fallback, so the journeys hold the
 // page itself through the route-render seam. No product delay is involved.
 const dosesRead: WorkerRoute = { method: 'POST', path: '/schedules', operation: 'listOutcomes' }

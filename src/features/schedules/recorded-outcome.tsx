@@ -29,7 +29,7 @@ export function RecordedOutcome({
   )
 }
 
-/** FE-648 F8: a refresh found a record made elsewhere while the form was open. */
+/** 648·F8: a refresh found a record made elsewhere while the form was open. */
 export function RecordedElsewhere({ dose }: { dose: Recorded }) {
   return (
     <Alert role="status">

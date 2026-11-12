@@ -23,7 +23,7 @@ A reminder is never confused with confirmed intake. Every dose outcome is explic
 - Private Google sign-in limited to one allowlisted account. English interface. Schedules and times are in Türkiye time (Europe/Istanbul) and shown in 24-hour format, whatever the device timezone.
 - Main areas: Today (the next action and unresolved doses), Medications (manual setup and schedules), History (past outcomes and corrections), Settings.
 - Closed-app push reminders with bounded follow-ups, snooze, optional quiet hours and generic lock-screen content by default.
-- Writes require connectivity. Dose recording and correction provide optimistic feedback with an explicit unconfirmed state until server acknowledgement. Previously loaded views and drafts remain in memory across app navigation; unconfirmed saves retain recovery details during the session. Persistent offline viewing, queued offline writes and recovery after reload or app closure are deferred beyond MVP.
+- Writes require connectivity. Loaded views, drafts and save recovery stay in memory for the session ([session contract](docs/product/ux-journeys.md#current-online-and-session-interaction-contract---november-6-2026)); persistent offline use is deferred.
 
 ## Capabilities and Constraints
 
@@ -32,10 +32,10 @@ A reminder is never confused with confirmed intake. Every dose outcome is explic
 - Record Taken or Skipped, correct outcome, time or quantity, and log unscheduled intake without moving reminders.
 - Optional stock tracking: Taken subtracts, Skipped does not, refills and count corrections, per-medicine low-stock threshold, never negative.
 - Optional per-medicine food reminder with a lead time. It never changes dose timing.
-- Setup, schedule changes and snooze save only after server confirmation. Online stale revisions and conflicting outcomes require explicit recovery, never silent overwrites. Expanded offline or multi-device synchronization UX is deferred.
+- Setup, schedule changes and snooze save only after server confirmation. Online stale revisions and conflicting outcomes require explicit recovery, never silent overwrites.
 - History export, deliberate history deletion and account deletion.
-- Stack: Next.js App Router on Vercel, Cloudflare Worker with D1, Auth.js. Approved frontend architecture: streamed server-prefetched sections hydrate TanStack Query, which owns interactive data during the session. Stale data refreshes on entry, focus and reconnect, with targeted mutation reconciliation and no routine polling. Adoption and verification are tracked in [FE-620](https://github.com/BraveHeart-tex/Meddies/issues/82); implementation remains separate. See the docs index in AGENTS.md.
-- Detailed requirements: [product docs](docs/product/README.md). Interaction contract: [FE-612](https://github.com/BraveHeart-tex/Meddies/issues/74).
+- Stack: Next.js App Router on Vercel, Cloudflare Worker with D1, Auth.js ([architecture](docs/architecture.md)).
+- Detailed requirements: [product docs](docs/product/README.md). Interaction contract: #74.
 
 ## Brand Commitments
 

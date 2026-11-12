@@ -71,7 +71,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await expect(page.getByText('Routine Medicine saved.')).toHaveCount(0)
     await expect(page.getByRole('link', { name: 'Done for now' })).toHaveCount(0)
     await expect(page.getByRole('link', { name: 'Set schedule', exact: true })).toBeVisible()
-    // FE-650 steps 2 to 7: finish later, then return from the list for first setup.
+    // #110 steps 2 to 7: finish later, then return from the list for first setup.
     await page.getByRole('link', { name: 'Medications', exact: true }).first().click()
     await page.getByRole('link', { name: 'View details for Routine Medicine' }).click()
     const setSchedule = page.getByRole('link', { name: 'Set schedule', exact: true })

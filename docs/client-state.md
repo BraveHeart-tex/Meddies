@@ -1,7 +1,9 @@
 # Client state
 
 What the browser keeps between screens: pending saves, unconfirmed saves, session drafts
-and the Query cache, and how session end clears them. Terms follow
+and the Query cache, and how session end clears them. What the user sees is the
+[session contract](product/ux-journeys.md#current-online-and-session-interaction-contract---november-6-2026) in topic 02; this doc is how the browser
+implements it. Terms follow
 [GLOSSARY.md](../GLOSSARY.md); screen states and copy follow
 [DESIGN.md](../DESIGN.md#loading-and-saving).
 

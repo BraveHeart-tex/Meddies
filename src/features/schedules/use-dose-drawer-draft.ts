@@ -8,7 +8,7 @@ import type { DoseOutcomeRecord } from './contract'
 type Outcome = DoseOutcomeRecord['outcome']
 
 /**
- * Unsaved dose drawer details for the session (FE-674, FE-667 store): which outcome the open
+ * Unsaved dose drawer details for the session (#127, #120 store): which outcome the open
  * drawer had chosen, and Taken values under `takenKey`. Navigation keeps them; explicit dismissal
  * and a confirmed save discard them.
  */

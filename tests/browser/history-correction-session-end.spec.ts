@@ -4,7 +4,7 @@ import { expect, test, type App } from './fixtures'
 import { doseTrigger, drawer, historyRow } from './locators'
 import { addDays, insertScheduledMedicine, insertTakenRecord } from './seed'
 
-// FE-650 step 16 on a History correction (649·X1 to X5).
+// #110 step 16 on a History correction (649·X1 to X5).
 const initialScheduleTime = '2035-06-15T14:00:00+03:00'
 const date = addDays(initialScheduleTime.slice(0, 10), -1)
 const dueAt = new Date(`${date}T14:00:00+03:00`).toISOString()

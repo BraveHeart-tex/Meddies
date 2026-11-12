@@ -9,6 +9,7 @@ Where wording quoted elsewhere differs, such as in DESIGN.md or a design snapsho
 A calm friend who keeps your pill box tidy: warm and brief, never clinical, never cutesy.
 
 - Address the user as "you", and by first name in greetings.
+- Use sentence case and short instructions.
 - Reassure through facts. Confirmations state exactly what was saved.
 - Never imply a dose was taken unless it was recorded.
 - No guilt or pressure, no exclamation marks, no emoji.

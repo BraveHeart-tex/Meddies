@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { BarcodeScanner } from '@/features/medicines/barcode-scanner'
 
-/** Holds the Scanner's caller state, which FE-750 moves to the add medicine drawer. */
+/** Holds the Scanner's caller state, which #198 moves to the add medicine drawer. */
 export function ScannerFrame() {
   const [open, setOpen] = useState(true)
   const [value, setValue] = useState<string | null>(null)

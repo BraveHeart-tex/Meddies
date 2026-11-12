@@ -32,7 +32,7 @@ export type HistoryDayResult =
 const recorded = (dose: DoseOccurrence) => dose.status === 'Taken' || dose.status === 'Skipped'
 
 /**
- * One History date (648·H1, H2, H5, H6, FE-752·B). `notice: 'invalid'` means the URL named a future or
+ * One History date (648·H1, H2, H5, H6, 752·B). `notice: 'invalid'` means the URL named a future or
  * malformed date and this is today instead; the URL is replaced to match.
  */
 export function HistoryDay({
@@ -53,7 +53,7 @@ export function HistoryDay({
   }, [notice, today])
   const heading = formatLongDay(date, today)
 
-  // The notice is its own page section, 20px above the day (FE-690), so this renders two
+  // The notice is its own page section, 20px above the day (#143), so this renders two
   // siblings of History's section column.
   return (
     <>
@@ -94,7 +94,7 @@ export function HistoryDay({
   )
 }
 
-/** Start with no medicines, otherwise Clear (FE-752·B). The title stays the day heading. */
+/** Start with no medicines, otherwise Clear (752·B). The title stays the day heading. */
 function EmptyDay({
   date,
   today,
@@ -156,7 +156,7 @@ function LoadedDay({
           id={dayHeadingId}
           ref={focusTarget}
           tabIndex={-1}
-          // Announced on a date change: 'Thursday, 5 November, 7 doses' (FE-648 a11y).
+          // Announced on a date change: 'Thursday, 5 November, 7 doses' (#108 a11y).
           aria-label={`${heading}, ${doses.length} ${doses.length === 1 ? 'dose' : 'doses'}`}
           className="text-heading font-extrabold outline-none"
         >

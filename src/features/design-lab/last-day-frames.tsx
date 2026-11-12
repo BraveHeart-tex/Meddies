@@ -25,7 +25,7 @@ const frame = (n: number, title: string, render: () => ReactNode): DesignFrame =
 })
 
 /**
- * FE-779, Direction A approved: the optional Last day as a field (set times) or row (every few
+ * #227, Direction A approved: the optional Last day as a field (set times) or row (every few
  * hours) in setup and Change schedule, Stop schedule beside Change schedule, and Ended schedules
  * on Medication detail and Medications (A), then Stop's save states (S).
  */

@@ -45,7 +45,7 @@ import { SHORT_WEEKDAYS, WEEK_ORDER, WEEKDAY_NAMES, weekdaySummary } from './wee
 
 const MAX_TIMES = 24
 
-/** A change to the current Schedule version, instead of a first schedule (FE-769). */
+/** A change to the current Schedule version, instead of a first schedule (#217). */
 export type ScheduleChange = {
   current: DailySchedule
   /** Leaves for the current Schedule version after another save got there first. */
@@ -53,7 +53,7 @@ export type ScheduleChange = {
 }
 
 /**
- * First schedule for one saved medicine (FE-647 A7 to A9, S1 to S4; FE-650 D22), or a `change`
+ * First schedule for one saved medicine (647·A7 to A9, S1 to S4; 650·D22), or a `change`
  * to its current Schedule version without a Start date (767·A2, A3, A9). Values stay in session
  * memory; `onSaved` runs only after the server confirms, and `onConflict` when first setup finds
  * the medicine already has a schedule.
@@ -297,7 +297,7 @@ export function ScheduleForm({
         checkHint="Check the days, times and quantities, then save again."
         change={
           change && {
-            // Saving a stopped schedule restarts it, unchanged or not (FE-785).
+            // Saving a stopped schedule restarts it, unchanged or not (#231).
             changed:
               Boolean(current?.stoppedAt) ||
               current?.intervalHours != null ||

@@ -20,7 +20,7 @@ export function useDoseSaves() {
 }
 
 /**
- * Observes one occurrence's session-owned save (FE-674). Unmounting or closing the drawer never
+ * Observes one occurrence's session-owned save (#127). Unmounting or closing the drawer never
  * cancels it; the latest mount's callbacks receive its result.
  */
 export function useDoseOutcomeMutation({

@@ -14,7 +14,7 @@ import {
 import { datePicker, expectTime, pickTime } from './pickers'
 import { addDays, insertScheduledMedicine, insertTakenRecord } from './seed'
 
-// FE-650 steps 8 to 15 as one routine (648·W1 to W11, 649·G1, G2, S7). Interruptions at each
+// #110 steps 8 to 15 as one routine (648·W1 to W11, 649·G1, G2, S7). Interruptions at each
 // step stay with their route specs.
 const initialScheduleTime = '2035-06-15T14:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)

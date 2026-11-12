@@ -4,7 +4,7 @@ import { doseTrigger, drawer, toastMessage } from './locators'
 import { addDays, insertScheduledMedicine } from './seed'
 import type { WorkerRoute } from './worker-proxy'
 
-// FE-718: focus moved by script stays on headings and titles without looking like a control.
+// #168: focus moved by script stays on headings and titles without looking like a control.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
 const label = 'Focus Fixture Medicine'

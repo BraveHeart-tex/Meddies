@@ -2,34 +2,22 @@
 
 ## Selected architecture and evidence status
 
-| Concern               | Selected or preferred direction                                                                                  | Evidence / remaining work                                                                                               |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Client / app host     | **Next.js mobile-first PWA on Vercel**                                                                           | Vercel deployment demonstrated in [FE-540](https://github.com/BraveHeart-tex/Meddies/issues/3)                          |
-| D1 access boundary    | **Authenticated Cloudflare Worker** called by Vercel Node                                                        | Remote path demonstrated in [FE-542](https://github.com/BraveHeart-tex/Meddies/issues/5); hardening separate            |
-| Background scheduling | **Cloudflare Cron Triggers / Worker**, or approved authenticated [cron-job.org](http://cron-job.org) alternative | Reliability validation still required                                                                                   |
-| Durable persistence   | **Cloudflare D1 with Drizzle ORM** via Worker                                                                    | Remote migration, atomic writes and claims demonstrated in [FE-542](https://github.com/BraveHeart-tex/Meddies/issues/5) |
-| Push                  | **Firebase Cloud Messaging** preferred                                                                           | Real iPhone Home Screen PWA proof still blocked by [FE-543](https://github.com/BraveHeart-tex/Meddies/issues/6)         |
-| Medication catalog    | Indexed D1 catalog tables separate from user records                                                             | Data licensing and coverage unresolved                                                                                  |
-| Cache                 | **No Redis by default**                                                                                          | Add only on measured need                                                                                               |
-| Database alternatives | **Neon/PostgreSQL** acceptable conditional fallback; Convex not selected                                         | No D1 blocker currently warrants fallback                                                                               |
+| Concern               | Selected or preferred direction                                                                                  | Evidence / remaining work                                     |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Client / app host     | **Next.js mobile-first PWA on Vercel**                                                                           | Vercel deployment demonstrated in #3                          |
+| D1 access boundary    | **Authenticated Cloudflare Worker** called by Vercel Node                                                        | Remote path demonstrated in #5; hardening separate            |
+| Background scheduling | **Cloudflare Cron Triggers / Worker**, or approved authenticated [cron-job.org](http://cron-job.org) alternative | Reliability validation still required                         |
+| Durable persistence   | **Cloudflare D1 with Drizzle ORM** via Worker                                                                    | Remote migration, atomic writes and claims demonstrated in #5 |
+| Push                  | **Firebase Cloud Messaging** preferred                                                                           | Real iPhone Home Screen PWA proof still blocked by #6         |
+| Medication catalog    | Indexed D1 catalog tables separate from user records                                                             | Data licensing and coverage unresolved                        |
+| Cache                 | **No Redis by default**                                                                                          | Add only on measured need                                     |
+| Database alternatives | **Neon/PostgreSQL** acceptable conditional fallback; Convex not selected                                         | No D1 blocker currently warrants fallback                     |
 
 The D1 decision prioritizes a cost-conscious, low-operations setup for a very small initial audience while preserving production engineering practices. **Neon inactivity behavior was a concern** and Convex was considered more BaaS than needed.
 
 ## Frontend streaming, Query and session contract - approved November 6, 2026
 
-- Next.js authenticates before private content and starts independent initial reads concurrently. Stream coherent useful sections with stable, accessible Suspense fallbacks; await server prefetch within section boundaries and hydrate TanStack Query. Pending-query dehydration is optional later on measured benefit.
-- Use request-scoped server query clients and one stable authenticated browser client. Server reads call authenticated feature operations; browser reads use authenticated API routes. Never serialize secrets or share private caches across users/requests.
-- After hydration, TanStack Query owns interactive medicines, schedules and dated history. Related lists, counts and statuses use the same client cache; server-prefetched values must not become a second competing live view.
-- Dose recording and correction update affected cached Today/History views optimistically, with an explicit saving/unconfirmed state. Apply authoritative server responses, then reconcile relevant queries without routine route refreshes.
-- Roll back definite rejections without reverting unrelated/newer changes. A timeout or lost response is uncertain receipt, not proof of failure: preserve attempted details and action identity during the session, reconcile, and retry the same request safely. Conflicts require explicit recovery, never silent last-write-wins.
-- Mutation tracking survives screen unmount/navigation; pending state and failure recovery remain visible at app level. New writes need connectivity. No durable offline mutation queue or automatic blind write replay.
-- Retain usable cached content during stale-data refresh. Refresh stale queries on screen entry, focus and reconnect, plus targeted reconciliation after mutations. No routine polling initially. Advance due-time/day status locally; fetch newly required data without inventing unavailable coverage.
-- Protect newer optimistic/confirmed changes from late server hydration, stale reads and out-of-order responses. Cache rollback/reconciliation is query- and revision-aware.
-- Keep selected History date in the URL and restore navigation context. Keep unfinished medicine/schedule and dose drafts in session memory across app navigation; clear on successful submission or explicit discard. Explicit drawer Close/Cancel/backdrop/Escape/swipe behavior remains governed by FE-631; navigation does not cancel submitted work.
-- Setup, schedule edits and snooze remain online and server-confirmed. Optimistic dose display does not establish server receipt, stock confirmation or reminder cancellation.
-- Skeletons are for sections without usable data. Refresh and mutation retain content with local feedback. Keep stable geometry, reduced-motion support and useful loading announcements. Visual checks follow [verification](../verification.md#visual-verification).
-- In-memory cache/drafts/pending attempts need not survive reload, app closure or browser eviction. A brief stable cold-launch skeleton is acceptable. Clear private cache, drafts and mutations on sign-out/expiry and stop late responses repopulating them; connectivity loss alone is not sign-out.
-- Persistent offline viewing, offline dose writes, real-time cross-device sync and background/closed-app synchronization are deferred. Installable PWA and closed-app push remain separate existing product scope.
+#82 approved streamed, server-prefetched sections that hydrate TanStack Query, which owns browser data for the session. What the user sees: the [session contract](./ux-journeys.md#current-online-and-session-interaction-contract---november-6-2026) in topic 02. How it is built: [Next.js](../nextjs.md) and [client state](../client-state.md).
 
 ## Data ownership boundaries
 
@@ -53,13 +41,13 @@ These are conceptual modules, not a finalized table schema.
 
 ## Feasibility evidence and remaining gates
 
-| Evidence                                                     | Established boundary                                                                                                                          | Still not established                                                                      |
-| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| [FE-540](https://github.com/BraveHeart-tex/Meddies/issues/3) | Isolated Next.js/Vercel deployment and measured sample request limits                                                                         | Sustained throughput, complete production readiness                                        |
-| [FE-541](https://github.com/BraveHeart-tex/Meddies/issues/4) | Google allowlist/session lifecycle tested in a narrow deployment, with user-observed real-account checks                                      | Final production revocation/ownership policies                                             |
-| [FE-542](https://github.com/BraveHeart-tex/Meddies/issues/5) | Vercel to authenticated Worker to D1/Drizzle, remote migration, atomic stock/intake rollback, idempotency and competing reminder-claim leases | Full production schema and capacity, provider delivery guarantees                          |
-| [FE-544](https://github.com/BraveHeart-tex/Meddies/issues/7) | Synthetic encrypted D1 → private R2 → isolated D1 restore and independent key-recovery round trip                                             | Automated daily schedule, independent key custody, live restore and deleted-account safety |
-| [FE-543](https://github.com/BraveHeart-tex/Meddies/issues/6) | **Not completed**                                                                                                                             | Installed/closed/locked real-iPhone FCM delivery, token lifecycle and deep links           |
+| Evidence | Established boundary                                                                                                                          | Still not established                                                                      |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| #3       | Isolated Next.js/Vercel deployment and measured sample request limits                                                                         | Sustained throughput, complete production readiness                                        |
+| #4       | Google allowlist/session lifecycle tested in a narrow deployment, with user-observed real-account checks                                      | Final production revocation/ownership policies                                             |
+| #5       | Vercel to authenticated Worker to D1/Drizzle, remote migration, atomic stock/intake rollback, idempotency and competing reminder-claim leases | Full production schema and capacity, provider delivery guarantees                          |
+| #7       | Synthetic encrypted D1 → private R2 → isolated D1 restore and independent key-recovery round trip                                             | Automated daily schedule, independent key custody, live restore and deleted-account safety |
+| #6       | **Not completed**                                                                                                                             | Installed/closed/locked real-iPhone FCM delivery, token lifecycle and deep links           |
 
 Selected runtime: Vercel-hosted Next.js with a narrow authenticated Worker D1 boundary. Keep shared application behavior independent of invocation transport; avoid generic multi-provider frameworks without a measured need. Cloudflare Cron is the first scheduler candidate. Standard Web Push, Neon/PostgreSQL, and an authenticated external scheduler are conditional fallbacks, not parallel MVP deployments.
 

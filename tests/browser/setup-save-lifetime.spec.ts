@@ -10,7 +10,7 @@ test.use({
 
 for (const viewport of [
   { name: 'phone', width: 402, height: 874, reducedMotion: 'no-preference' as const },
-  // Retained after FE-668 found a zero-width Toast message beside its recovery action.
+  // Retained after #121 found a zero-width Toast message beside its recovery action.
   // This is a narrow viewport regression, not text enlargement or zoom evidence.
   {
     name: '201px toast wrapping regression',
@@ -19,7 +19,7 @@ for (const viewport of [
     reducedMotion: 'reduce' as const,
   },
 ]) {
-  // eslint-disable-next-line meddies/no-width-loop-tests -- only 201px squeezed the Toast message to zero width (FE-668)
+  // eslint-disable-next-line meddies/no-width-loop-tests -- only 201px squeezed the Toast message to zero width (#121)
   test.describe(viewport.name, () => {
     test.use({
       viewport: { width: viewport.width, height: viewport.height },

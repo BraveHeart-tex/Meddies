@@ -2,7 +2,7 @@
 
 ## Experience principle
 
-**Cozy Care** is the approved direction. Repo `DESIGN.md` governs visuals; [FE-612](https://github.com/BraveHeart-tex/Meddies/issues/74) governs interactions.
+**Cozy Care** is the approved direction. Repo `DESIGN.md` governs visuals; #74 governs interactions.
 
 ## Primary surfaces
 
@@ -38,11 +38,11 @@ Barcode scanning and inventory/refills are later enhancements, not blockers for 
 
 ## Approved UX and dose-state boundaries
 
-- Launch is private, English-language and mobile-first, with an approved Google-account allowlist and no public registration. Today, Medications and History are the primary navigation destinations, with Settings in the header ([FE-612](https://github.com/BraveHeart-tex/Meddies/issues/74)). Visuals follow Cozy Care in repo `DESIGN.md`.
+- Launch is private, English-language and mobile-first, with an approved Google-account allowlist and no public registration. Today, Medications and History are the primary navigation destinations, with Settings in the header (#74). Visuals follow Cozy Care in repo `DESIGN.md`.
 - Show scheduled, explicitly **Taken**, explicitly **Skipped**, and past **Not logged** distinctly. A past unconfirmed occurrence is never automatically described as missed intake. Reminder delivery or acknowledgment does not prove intake.
 - Actual taken time and quantity are user-reported and distinct from planned due time. Provide correction flows without rewriting past scheduled expectations; see [03 - Medication & Dose Domain](./medication-domain.md).
 - Setup and schedule changes require online server confirmation. Dose recording/correction may appear optimistically with a visible saving/unconfirmed state; never announce server success before acknowledgement. Persistent offline viewing and offline writes are deferred; see the current session contract below.
-- History export, selective deletion, account deletion and post-deletion expectations follow [FE-549](https://github.com/BraveHeart-tex/Meddies/issues/12) below. History deletion must not silently reverse stock consumption.
+- History export, selective deletion, account deletion and post-deletion expectations follow #12 below. History deletion must not silently reverse stock consumption.
 - Use accessible semantic controls, non-color status indicators, reassuring copy and explicit privacy/permission limitations. Do not offer clinical advice or guilt-based motivation.
 
 ## Current online and session interaction contract - November 6, 2026
@@ -51,20 +51,20 @@ Barcode scanning and inventory/refills are later enhancements, not blockers for 
 - On definite rejection, restore the previous affected state and retain attempted details for retry. On uncertain transport/timeout, show that saving could not be confirmed, preserve the same action identity during the session, and reconcile safely. Conflicts require deliberate recovery, never silent overwrite.
 - Pending and uncertain saves remain tracked across screen navigation/unmount, with recovery visible wherever the user navigates. New writes require connectivity; do not queue new offline actions or silently retry ambiguous writes as fresh actions.
 - Cached content appears immediately on return and remains during refresh/failure. Refresh stale data on entry, focus and reconnect plus relevant mutation reconciliation; no routine polling. Local time advances due-time/day status without inventing unavailable data.
-- Keep History date in the URL and preserve navigation context. Unfinished medicine/schedule and dose drafts survive app navigation in session memory; successful submission or explicit discard clears them. FE-631 explicit drawer dismissal rules still apply, including pending-save dismissal guards. Navigation never cancels a submitted save.
+- Keep History date in the URL and preserve navigation context. Unfinished medicine/schedule and dose drafts survive app navigation in session memory; successful submission or explicit discard clears them. #92 explicit drawer dismissal rules still apply, including pending-save dismissal guards. Navigation never cancels a submitted save.
 - No persistent device cache/queue or recovery promise after reload/app closure. A stable cold-launch skeleton is acceptable; skeletons otherwise appear only when no usable content exists. Available in-memory data is a possibly stale snapshot, not a promise of complete offline coverage.
 - Sign-out/expiry clears private cached data, drafts and mutation state; prevent late requests repopulating them. Network loss alone is not sign-out.
 - Cross-device synchronization and persistent offline viewing/writes are deferred. Server retry/revision/conflict safeguards remain. Installable PWA and closed-app push requirements are unchanged. Architecture: topic 06.
 
 ## Open UX decisions
 
-Still open: onboarding presentation, remaining copy, permission education and screen-reader journey verification. Settled: recurrence and edit semantics and Not logged versus Skipped (topic 03), the session contract above, and export and deletion ([FE-549](https://github.com/BraveHeart-tex/Meddies/issues/12) below). Visual references show layout, never new behavior.
+Still open: onboarding presentation, remaining copy, permission education and screen-reader journey verification. Settled: recurrence and edit semantics and Not logged versus Skipped (topic 03), the session contract above, and export and deletion (#12 below). Visual references show layout, never new behavior.
 
-## [FE-548](https://github.com/BraveHeart-tex/Meddies/issues/11) - Approved offline availability boundaries (November 3, 2026)
+## #11 - Approved offline availability boundaries (November 3, 2026)
 
 Deferred beyond MVP. The rules and examples live in [deferred scope](./deferred.md).
 
-## [FE-549](https://github.com/BraveHeart-tex/Meddies/issues/12) - Approved export and deletion scope (November 3, 2026)
+## #12 - Approved export and deletion scope (November 3, 2026)
 
 ## Approved decisions
 
@@ -109,4 +109,4 @@ All dates/times use Europe/Istanbul.
 
 ## Accessibility and visual verification - approved November 7, 2026
 
-Safeguards: [PRODUCT.md](../../PRODUCT.md#accessibility--inclusion). Checks: [verification](../verification.md#visual-verification). One approved exception: the calendar day target is about 39.7px at 320px width (FE-642).
+Safeguards: [PRODUCT.md](../../PRODUCT.md#accessibility--inclusion). Checks: [verification](../verification.md#visual-verification). One approved exception: the calendar day target is about 39.7px at 320px width (#102).

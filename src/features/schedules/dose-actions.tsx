@@ -41,7 +41,7 @@ export function DoseActions({
   describedBy?: string
 }) {
   const clock = useSchedulingClock()
-  // Unsaved drawer details survive navigation for the session (FE-674).
+  // Unsaved drawer details survive navigation for the session (#127).
   const draft = useDoseDrawerDraft(dose.id)
   const [editor, setEditor] = useState<Outcome | null>(draft.initial?.editor ?? null)
   const [correcting, setCorrecting] = useState(false)
@@ -74,7 +74,7 @@ export function DoseActions({
     today: () => istanbulDate(clock.now()),
     onRecorded(record, superseded) {
       onRecorded?.(record)
-      // Confirmed by the server: a Toast without Undo (FE-648 F2, C5).
+      // Confirmed by the server: a Toast without Undo (648·F2, C5).
       toast.add({
         title: superseded
           ? 'Your earlier save went through. This dose has changed since then.'
@@ -150,7 +150,7 @@ export function DoseActions({
     open(outcome: Outcome) {
       returnFocus.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null
-      // Taken on Up next starts at its form's first control (FE-648 Open rule).
+      // Taken on Up next starts at its form's first control (#108 Open rule).
       focusNowOnOpen.current = outcome === 'Taken'
       clearFeedback()
       setDrawerOpen(true)

@@ -9,7 +9,7 @@ import {
 } from './edit-lab-model'
 
 /**
- * FE-767, Direction A approved: Change schedule reopens the setup screen on the current Schedule
+ * #215, Direction A approved: Change schedule reopens the setup screen on the current Schedule
  * version, with the next 3 doses after now and Save changes pinned to the bottom (A), then the
  * save states (S).
  */

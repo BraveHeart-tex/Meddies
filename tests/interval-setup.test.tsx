@@ -16,7 +16,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
 }))
 
-// 10:00 on Monday 9 November in Istanbul, the worked example in FE-764.
+// 10:00 on Monday 9 November in Istanbul, the worked example in #212.
 const initialNow = '2026-11-09T07:00:00.000Z'
 const scheduleId = '00000000-0000-4000-8000-0000000000a1'
 const magnesium: Medicine = {

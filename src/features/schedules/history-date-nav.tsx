@@ -23,7 +23,7 @@ export function useHistoryDate(today: string) {
 export const dayHeadingId = 'history-day-heading'
 
 // Set by a date change here and consumed by the next History day that mounts, so focus moves to
-// its heading after navigation but not on a direct load or reload (FE-648 a11y).
+// its heading after navigation but not on a direct load or reload (#108 a11y).
 let focusRequested = false
 
 /** Moves focus to the next History day that mounts, as after a date change or Retry. */

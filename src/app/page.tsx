@@ -41,7 +41,7 @@ export default async function HomePage({
   if (session?.user?.id) {
     if (destination !== '/') redirect(destination)
     const initialNow = schedulingNow().toISOString()
-    // The shell and header need no reads, so they render before the doses stream (FE-672).
+    // The shell and header need no reads, so they render before the doses stream (#125).
     return (
       <SessionBoundary ownerId={session.user.id} expires={session.expires}>
         <AppShell>

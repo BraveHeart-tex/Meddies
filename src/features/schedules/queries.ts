@@ -68,7 +68,7 @@ export async function fetchScheduleSnapshot(signal?: AbortSignal): Promise<Sched
 }
 
 /**
- * Stale at once (FE-670): statuses depend on records and the server clock, so every screen
+ * Stale at once (#123): statuses depend on records and the server clock, so every screen
  * entry, focus and reconnect reconciles while cached content stays. No polling; due-time and
  * day rollover advance locally from the scheduling clock.
  */

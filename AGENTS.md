@@ -39,6 +39,6 @@ commits and issues, and per-feature detail in the owning module's header comment
 ## GitHub Issues
 
 Use `gh` ([tickets](docs/tickets.md)). Write multiline bodies to a file with a quoted
-heredoc, pass them as `--body-file "$body_file"`, then read back the saved text. `FE-n`
-is a legacy Linear ID: resolve it with
-`gh issue list --search '"Linear ID: FE-n" in:body' --state all`.
+heredoc, pass them as `--body-file "$body_file"`, then read back the saved text. Cite
+issues as `#n`; an `FE-n` in old commits or issue bodies is a legacy Linear ID: resolve it
+with `gh issue list --search '"Linear ID: FE-n" in:body' --state all`.

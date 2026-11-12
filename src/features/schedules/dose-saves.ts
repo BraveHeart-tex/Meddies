@@ -176,7 +176,7 @@ class DoseSaves {
       this.observers.set(key, (this.observers.get(key) ?? 1) - 1)
     }
   }
-  /** An open drawer keeps Retry while the current outcome changes (FE-673). */
+  /** An open drawer keeps Retry while the current outcome changes (#126). */
   openDrawer(key: string) {
     this.openDrawers.add(key)
     return () => {
@@ -391,7 +391,7 @@ class DoseSaves {
   /**
    * A record matching an unconfirmed attempt confirms it once, with "already saved" wording.
    * A different current outcome leaves a closed row explicit review instead of a lasting
-   * "Might not have saved"; an open drawer keeps offering Retry (FE-673).
+   * "Might not have saved"; an open drawer keeps offering Retry (#126).
    */
   private reconcile(records: DoseOutcomeRecord[]) {
     if (!this.active) return
@@ -433,7 +433,7 @@ class DoseSaves {
 
 const stores = new WeakMap<QueryClient, DoseSaves>()
 
-/** The session's dose saves; they end with the session's other saves (FE-669). */
+/** The session's dose saves; they end with the session's other saves (#122). */
 export function doseSaves(client: QueryClient) {
   let store = stores.get(client)
   if (!store) {

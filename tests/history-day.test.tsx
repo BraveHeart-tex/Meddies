@@ -15,7 +15,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/history',
 }))
 
-// Date changes use the native History API, so the results read the dated query (FE-679).
+// Date changes use the native History API, so the results read the dated query (#132).
 const push = vi.spyOn(window.history, 'pushState')
 const pushed = () => push.mock.lastCall?.[2]
 beforeEach(() => {
@@ -138,7 +138,7 @@ test('today so far points Not logged rows to Today (648·H2)', () => {
 
 const emptyStateIcon = (name: string) => document.querySelector(`.lucide-${name}`)
 
-test('a past day with no doses points to another day, with no action (FE-752·B)', () => {
+test('a past day with no doses points to another day, with no action (752·B)', () => {
   renderDay({ date: '2026-11-01' })
   expect(
     screen.getByRole('heading', { level: 2, name: 'Nothing was scheduled on Sunday, 1 November' }),
@@ -156,7 +156,7 @@ test('stepping to another day focuses its heading (D11)', async () => {
   expect(screen.getByRole('heading', { name: 'Thursday, 5 November, 1 dose' })).toHaveFocus()
 })
 
-test('picking an empty day focuses its title, which names the day (FE-752·B)', async () => {
+test('picking an empty day focuses its title, which names the day (752·B)', async () => {
   render(<HistoryDateNav today="2026-11-06" />)
   await userEvent.click(screen.getByRole('button', { name: /Choose a date/ }))
   await userEvent.click(document.querySelector<HTMLElement>('button[data-day="2026-11-01"]')!)
@@ -169,7 +169,7 @@ test('picking an empty day focuses its title, which names the day (FE-752·B)', 
   ).toBeVisible()
 })
 
-test('today with nothing due yet says doses will show, with no action (FE-752·B)', () => {
+test('today with nothing due yet says doses will show, with no action (752·B)', () => {
   renderDay({ date: '2026-11-06' })
   expect(screen.getByRole('heading', { level: 2, name: 'Nothing due yet today' })).toBeVisible()
   expect(screen.getByText("Doses will show here once they're due.")).toBeVisible()
@@ -178,7 +178,7 @@ test('today with nothing due yet says doses will show, with no action (FE-752·B
 })
 
 test.each(['2026-11-01', '2026-11-06'])(
-  'no medicines and no doses on %s offers Add medication (FE-752·B)',
+  'no medicines and no doses on %s offers Add medication (752·B)',
   (date) => {
     renderDay({ date, result: { status: 'loaded', doses: [], medicines: [] } })
     expect(screen.getByRole('heading', { level: 2, name: 'No doses here yet' })).toBeVisible()

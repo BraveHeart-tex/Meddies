@@ -1,7 +1,7 @@
 import { formatShortDay } from '@/lib/calendar-date'
 import { istanbulDate, type DailySchedule } from './contract'
 
-// Last day rules shared by setup, Change schedule, Medication detail and Medications (FE-779).
+// Last day rules shared by setup, Change schedule, Medication detail and Medications (#227).
 // The Worker stays authoritative; these mirror it for inline feedback.
 
 /** The earliest Last day: today, or a later start date or Anchor date. */

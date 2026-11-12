@@ -40,7 +40,7 @@ import {
   type TakenFormValues,
 } from './taken-form-schema'
 
-// A swipe that starts on a control never closes the drawer (FE-648 D14).
+// A swipe that starts on a control never closes the drawer (648·D14).
 const swipeIgnore = { 'data-base-ui-swipe-ignore': 'y' }
 
 function offsetLabel(local: string, dueAt: string) {
@@ -64,7 +64,7 @@ const primaryLabels: Record<Mode, { save: string; retry: string }> = {
 }
 
 /**
- * Actual intake details for a Taken outcome (FE-648 R2/R3, C1 to C5). `record` opens from the
+ * Actual intake details for a Taken outcome (648·R2/R3, C1 to C5). `record` opens from the
  * drawer's outcome choice, `correct` changes a Skipped dose to Taken, and `edit` opens a recorded
  * intake through Edit dose. Values stay here; the parent's mutation owns saving, the duplicate
  * lock, retry identity and errors.
@@ -95,7 +95,7 @@ export function TakenForm({
   mode?: Mode
   /** An unconfirmed attempt's values and Now minute, so reopening retries it exactly (F6). */
   restore?: AttemptForm
-  /** Keeps unsaved values for the session across navigation (FE-667 store). */
+  /** Keeps unsaved values for the session across navigation (#120 store). */
   draftKey?: string | null
   /** The Now choice, the form's first control, for the drawer's open focus. */
   nowRef?: RefObject<HTMLButtonElement | null>

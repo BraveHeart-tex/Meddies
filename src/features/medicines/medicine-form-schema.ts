@@ -20,7 +20,7 @@ export const medicineFormSchema = z.object({
     .pipe(z.enum(['tablet', 'capsule'], { error: 'Choose tablet or capsule.' })),
 })
 
-/** Editing values: unit is empty until chosen (FE-647 D9). */
+/** Editing values: unit is empty until chosen (647·D9). */
 export type MedicineFormValues = z.input<typeof medicineFormSchema>
 /** Validated values, shaped like the saved medicine without its id. */
 export type MedicineFormOutput = z.output<typeof medicineFormSchema>

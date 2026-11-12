@@ -7,9 +7,10 @@ user-invocable: true
 A design ticket ends with approved lab frames and a build ticket that cites them by frame ID.
 `meddies-design` is the visual reference; this skill is the process. Lab rules (registry
 imports, fixtures, stable ids) live in [docs/design/README.md](../../../docs/design/README.md#design-lab).
-Precedents: FE-764 and FE-767 (design tickets), FE-769 (build ticket citing frames).
+Precedents: #212 and #215 (design tickets), #217 (build ticket citing frames).
 
-Write `<n>` for the design ticket's number, such as `767`.
+Write `<n>` for the design ticket's issue number. The precedents use their legacy design
+numbers (`764`, `767`) in slugs and citations, so examples below show `767`.
 
 ## Steps
 
@@ -67,7 +68,7 @@ Write `<n>` for the design ticket's number, such as `767`.
     `contract.ts` and the Worker's validation, or against the backend ticket's criteria if
     it isn't built yet. A missing need becomes a backend ticket criterion, its own ticket,
     or goes back to Bora. Decisions made once the backend ticket has started become
-    their own ticket (FE-769's Start date gap came from one).
+    their own ticket (#217's Start date gap came from one).
     _Done when_ every need is met by the contract, cited by a backend ticket criterion,
     or dropped by Bora.
 

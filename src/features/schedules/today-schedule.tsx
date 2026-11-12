@@ -56,7 +56,7 @@ export function TodaySchedule({
   const showLoading =
     loading || (awaitingDay && !refreshFailed) || (medicinesLoading && medicines.length === 0)
   const heroOpener = useRef<DoseDrawerOpener>(null)
-  // Saves belong to the session, so their badges survive leaving Today (FE-674).
+  // Saves belong to the session, so their badges survive leaving Today (#127).
   const saves = useDoseSaves()
   const pendingDose = (dose: DoseOccurrence) => saves.pendingDose(doseSaveKey(dose))
   /** F6: what an unconfirmed attempt tried to save, on its row. */
@@ -77,7 +77,7 @@ export function TodaySchedule({
     const heading = document.getElementById(`dose-${dose.id}`)
     const active = document.activeElement
     if (active === document.body || heading?.parentElement?.contains(active)) heading?.focus()
-    // A confirmed save announces itself with a Toast from DoseActions (FE-648 F2).
+    // A confirmed save announces itself with a Toast from DoseActions (648·F2).
     if (!reconciled) return setIntakeMessage('')
     const description = `${name(dose.medicineId)} scheduled for ${formatTime(dose.dueAt)}`
     setIntakeMessage(`${description} was already recorded as ${record.outcome.toLowerCase()}.`)

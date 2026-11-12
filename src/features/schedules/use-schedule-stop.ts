@@ -27,7 +27,7 @@ function matchingStop(value: unknown, payload: Record<string, unknown>): DailySc
 }
 
 /**
- * Stop a schedule (FE-785): owns the save of the stop of `current` through confirmation, like a
+ * Stop a schedule (#231): owns the save of the stop of `current` through confirmation, like a
  * change. A retry after an unknown result sends the same stop; `onStopped` runs once the server
  * confirms, while this screen watches.
  */

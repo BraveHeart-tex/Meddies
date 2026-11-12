@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { parseMedicationsView } from './routes'
 
-/** The view in the URL. Native History changes reach it without a server round trip (FE-625). */
+/** The view in the URL. Native History changes reach it without a server round trip (#87). */
 export function useMedicationsView() {
   return parseMedicationsView(useSearchParams())
 }

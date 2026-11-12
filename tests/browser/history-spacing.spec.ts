@@ -10,7 +10,7 @@ import {
 import { addDays, insertScheduledMedicine } from './seed'
 import type { WorkerRoute } from './worker-proxy'
 
-// FE-690 (648·H1 to H7): History spaces its header, date bar and day results like Today, with
+// #143 (648·H1 to H7): History spaces its header, date bar and day results like Today, with
 // DESIGN.md's 20px section spacing rather than the mock's 14px.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
