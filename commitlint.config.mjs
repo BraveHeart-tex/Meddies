@@ -3,10 +3,11 @@ const config = {
   plugins: [
     {
       rules: {
-        'linear-issue-scope': ({ scope }) => {
-          const valid = /^FE-[1-9]\d*$/.test(scope ?? '')
+        // GitHub issue (#123); legacy Linear IDs (FE-123) stay valid for reverts and history
+        'issue-scope': ({ scope }) => {
+          const valid = /^(#[1-9]\d*|FE-[1-9]\d*)$/.test(scope ?? '')
 
-          return [valid, 'Commit scope must be a Linear issue ID (e.g. FE-123)']
+          return [valid, 'Commit scope must be a GitHub issue number (e.g. #123)']
         },
       },
     },
@@ -31,7 +32,7 @@ const config = {
     ],
     'scope-empty': [2, 'never'],
     'scope-case': [0],
-    'linear-issue-scope': [2, 'always'],
+    'issue-scope': [2, 'always'],
   },
 }
 

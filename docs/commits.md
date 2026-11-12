@@ -1,7 +1,10 @@
 # Commit conventions
 
-Use `type(FE-n): subject`. Scope to the active Linear issue, or `FE-1` when there
-is none. Read [commitlint.config.mjs](../commitlint.config.mjs) for allowed types
+Use `type(#n): subject`. Scope to the active GitHub issue, or to the pinned
+"Repository maintenance" issue ([#232](https://github.com/BraveHeart-tex/Meddies/issues/232)) when there is none. Legacy `FE-n` scopes stay valid only
+for reverting old commits. Never use closing keywords (`Closes #n`): pushes land on main
+before a Release run proves them, so issues are closed by hand
+([tickets](tickets.md#closing)). Read [commitlint.config.mjs](../commitlint.config.mjs) for allowed types
 and the scope rule.
 
 Inherited conventional rules limit header, body and footer lines to 100 characters.
