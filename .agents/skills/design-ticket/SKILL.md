@@ -4,7 +4,8 @@ description: Run a Meddies design ticket from directions to an approved hand-off
 user-invocable: true
 ---
 
-A design ticket ends with approved lab frames and a build ticket that cites them by frame ID.
+A design ticket ends with approved lab frames and a build ticket that cites them by frame ID;
+then it closes.
 `meddies-design` is the visual reference; this skill is the process. Lab rules (registry
 imports, fixtures, stable ids) live in [docs/design/README.md](../../../docs/design/README.md#design-lab).
 Precedents: #212 and #215 (design tickets), #217 (build ticket citing frames).
@@ -23,7 +24,9 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
    errors, saved) are `<n>-s1…`. Put the frames in `src/features/design-lab/<topic>-frames.tsx`
    and spread them into `designFrames`; example data goes in `lab-fixtures.ts`.
    _Done when_ every listed state has a frame in each direction (or in `-s*`), and
-   `pnpm exec vitest run --project integration tests/design-lab-http.test.ts` passes.
+   `pnpm exec vitest run --project integration tests/design-lab-http.test.ts` passes. It
+   starts its own `next dev` and `next start`, so stop `pnpm dev` and keep a `pnpm build`
+   output in `.next` first.
 
 3. **Capture.** Stop `pnpm dev`, then run `pnpm lab:capture <n>-`. It writes
    `<slug>-402x874.png`, `<slug>-320x740.png` and `<slug>.json` per frame and prints the
@@ -47,8 +50,9 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
    _Done when_ `rg -n '<n>-[bc][0-9]' src tests` (adjust letters to the losers) finds nothing
    and the HTTP test from step 2 passes.
 
-7. **Commit.** Follow [docs/commits.md](../../../docs/commits.md); run `pnpm verify:local`
-   first. _Done when_ the commit exists and verify passed.
+7. **Commit and push.** Follow [docs/commits.md](../../../docs/commits.md); run
+   `pnpm verify:local` first, then push to main.
+   _Done when_ verify passed and the commit is on `origin/main`.
 
 8. **Post the approval comment** on the design ticket from
    [templates/approval-comment.md](templates/approval-comment.md). Reference each 402x874 PNG
@@ -76,3 +80,8 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
     criterion citing frame IDs as `215·A3`.
     _Done when_ the read-back build ticket has no criterion without a frame ID and no
     reference to "the approved frames" without IDs.
+
+12. **Close the design ticket.** The approval comment is its evidence; build work is
+    tracked in the build ticket. Close it with `gh issue close <n> --reason completed`
+    ([tickets](../../../docs/tickets.md#closing)).
+    _Done when_ `gh issue view <n> --json state` reads `CLOSED`.

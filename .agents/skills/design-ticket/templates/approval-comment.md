@@ -12,8 +12,7 @@ Bora approved **Direction {{A}}, {{name}}** after comparing three directions ({{
 
 **Evidence**
 
-- Commit {{sha}}: `pnpm verify:local` passed. {{Pushed and Release run, or "local, not
-  pushed yet, so the Release proof is pending".}}
+- Commit {{sha}}, pushed to main: `pnpm verify:local` passed.
 - `pnpm lab:capture {{n}}-`: all {{count}} frames at 402x874 and 320x740 with no horizontal
   overflow and no console errors.
 - {{Tests added for any non-lab logic, such as a preview helper.}}

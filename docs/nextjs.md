@@ -103,6 +103,7 @@ Record these decisions in the owning ticket for each changed route:
   queries after mutations; there is no routine polling or `router.refresh()`.
 - Advance due-time and day status from `useSchedulingClock()`, and fetch newly required
   dates rather than inventing coverage.
-- Newer optimistic or confirmed state wins over late hydration, stale reads and
-  out-of-order responses: cancel or ignore outdated reads before optimistic updates, and
-  compare revisions when reconciling.
+- Newer pending or confirmed state wins over late hydration, stale reads and out-of-order
+  responses: cancel or ignore outdated reads before writing confirmed state, and compare
+  revisions when reconciling. Which state may be optimistic:
+  [client state](client-state.md#saves).

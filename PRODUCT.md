@@ -35,7 +35,7 @@ A reminder is never confused with confirmed intake. Every dose outcome is explic
 - Setup, schedule changes and snooze save only after server confirmation. Online stale revisions and conflicting outcomes require explicit recovery, never silent overwrites.
 - History export, deliberate history deletion and account deletion.
 - Stack: Next.js App Router on Vercel, Cloudflare Worker with D1, Auth.js ([architecture](docs/architecture.md)).
-- Detailed requirements: [product docs](docs/product/README.md). Interaction contract: #74.
+- Detailed requirements: [product docs](docs/product/README.md). Interaction contract: [UX and dose-state boundaries](docs/product/ux-journeys.md#approved-ux-and-dose-state-boundaries).
 
 ## Brand Commitments
 

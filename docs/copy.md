@@ -72,8 +72,8 @@ Say what happened, what is safe, and what to do next.
 - Rewrite existing strings. Add a new message only where a state gives no next step. Add no new
   greetings, encouragement or tips. Warmth belongs in the wording of a message that already exists,
   as in a short clause like "whenever you're ready".
-- Keep strings inline next to their components, except one small shared module for repeated save
-  and session messages.
+- Keep strings inline next to their components, except save messages repeated across forms and
+  dose saves, which live in `src/lib/save-messages.ts`.
 - Change tests in the same commit as their copy, and keep selecting by visible text and accessible
   name.
 

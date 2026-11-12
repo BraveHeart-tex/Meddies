@@ -2,7 +2,9 @@
 
 Approved product behavior. The assigned issue owns scope and acceptance criteria; these topics own
 behavior ([tickets](../tickets.md)). Open the topic the issue cites, and a second one only when the
-first lacks a rule you need. Approval history lives in the linked issues.
+first lacks a rule you need. Read only the cited sections and their acceptance examples; list a
+topic's sections with `rg -n '^#' docs/product/<file>.md`. Approval history lives in the linked
+issues.
 
 | Topic | Document                                                     | Open for                                                      |
 | ----- | ------------------------------------------------------------ | ------------------------------------------------------------- |

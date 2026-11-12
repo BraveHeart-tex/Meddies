@@ -42,8 +42,9 @@ with the first screen that uses it. Size each ticket for one fresh context windo
 ```markdown
 ## What to build
 
-The end-to-end behaviour from the user's side, citing the docs/product section it
-implements, and an "Out of scope:" line naming the issue that owns each nearby item.
+The end-to-end behaviour from the user's side, linking the docs/product section it
+implements by its heading anchor (`medication-domain.md#scheduling---approved-contract`),
+and an "Out of scope:" line naming the issue that owns each nearby item.
 
 ## Acceptance criteria
 
@@ -51,17 +52,14 @@ implements, and an "Out of scope:" line naming the issue that owns each nearby i
 ```
 
 - The parent is a native sub-issue link, not a body section.
-- For lab frames, hand off the lab slug (for example `/lab/109-l1`), frame citation
-  and linked GitHub issue capture evidence with design approval. Reuse the same production
-  components and evidence; HTML snapshots remain supported (see [design guide](design/README.md)).
-- After design approval, the design ticket's description gets an "Approved design" frame
-  table (frame, slug, what it shows), and the build ticket's rules and criteria cite those
-  frame IDs, never "the approved frames".
+- A design hands off as approved lab frames plus the approval comment with their captures
+  ([design-ticket skill](../.agents/skills/design-ticket/SKILL.md)); new designs commit no
+  HTML snapshot. The design ticket's description gets an "Approved design" frame table
+  (frame, slug, what it shows), and the build ticket's rules and criteria cite those frame
+  IDs with key copy in quotes, never "the approved frames".
 - Set blockers as native blocked-by relationships. Add a "Blocked by" section only when a
   blocker cannot be linked.
 - Describe behaviour, not file paths. Link stable docs and design artifacts.
-- When handing off a design frame, quote its key geometry (sizes, radii, gaps, copy) in
-  the ticket. Commit the approved artifact as a snapshot in [docs/design](design/README.md).
 - Five acceptance criteria at most. More means the ticket holds two slices: split it.
 - Evidence is an assertion, not a record: "the journey asserts layout shift ≤ 0.01",
   not "measure and record a budget". The assertion's comment carries the justification.

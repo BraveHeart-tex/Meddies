@@ -28,10 +28,10 @@ for approval notes. Keep personal approval attribution in the linked GitHub issu
 
 ## Design lab
 
-Use the lab for new frames that should hand off as real production components. Run
-`pnpm dev`, then open `/lab` for the registry or `/lab/109-l1` for cold launch `109·L1`.
-The lab exists only under `next dev`; production and preview builds return the themed
-HTTP 404. Existing HTML snapshots above remain supported.
+New designs are lab frames built from real production components, approved in the
+design ticket's approval comment; they add no snapshot above. Run `pnpm dev`, then open
+`/lab` for the registry or `/lab/109-l1` for cold launch `109·L1`. The lab exists only
+under `next dev`; production and preview builds return the themed HTTP 404.
 
 `src/features/design-lab/frames.tsx` is the typed registry: each lowercase
 `<design>-<frame>` slug owns its title, citation and render function. Routes only adapt

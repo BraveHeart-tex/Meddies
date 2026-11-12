@@ -2,9 +2,9 @@
 
 Use `type(#n): subject`. Scope to the active GitHub issue, or to the pinned
 "Repository maintenance" issue ([#232](https://github.com/BraveHeart-tex/Meddies/issues/232)) when there is none. Legacy `FE-n` scopes stay valid only
-for reverting old commits. Never use closing keywords (`Closes #n`): pushes land on main
-before a Release run proves them, so issues are closed by hand
-([tickets](tickets.md#closing)). Read [commitlint.config.mjs](../commitlint.config.mjs) for allowed types
+for reverting old commits. Issues close by hand after their evidence comment
+([tickets](tickets.md#closing)), so leave closing keywords such as `Closes #n` out of
+messages. Read [commitlint.config.mjs](../commitlint.config.mjs) for allowed types
 and the scope rule.
 
 Inherited conventional rules limit header, body and footer lines to 100 characters.
