@@ -28,7 +28,7 @@ A reminder is never confused with confirmed intake. Every dose outcome is explic
 ## Capabilities and Constraints
 
 - Manual medicine entry with a label, quantity unit, and product strength kept distinct from the quantity taken. Whole or half tablets and whole capsules.
-- Schedules: daily at set times, selected weekdays, every X hours from a chosen start, or no schedule for occasional use. Optional end date. Pause and resume without a backlog. Edits affect future doses only.
+- Schedules: daily at set times, selected weekdays, every X hours from a chosen start, or no schedule for occasional use. Optional Last day. Pause and resume without a backlog. Edits affect future doses only.
 - Record Taken or Skipped, correct outcome, time or quantity, and log unscheduled intake without moving reminders.
 - Optional stock tracking: Taken subtracts, Skipped does not, refills and count corrections, per-medicine low-stock threshold, never negative.
 - Optional per-medicine food reminder with a lead time. It never changes dose timing.

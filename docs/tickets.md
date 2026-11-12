@@ -132,4 +132,5 @@ owner, link it from this ticket, and remove the item here.
 
 Issues migrated from Linear end with `Linear ID: FE-n`, and `FE-n` in GitHub text links
 to that issue. Code, commits and design snapshots keep `FE-n`; resolve one with
-`rg FE-n docs/archive/linear-ids.tsv`. Never create new `FE-n` references.
+`gh issue list --search '"Linear ID: FE-n" in:body' --state all`. Never create new `FE-n`
+references.

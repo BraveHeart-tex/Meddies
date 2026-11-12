@@ -1,7 +1,7 @@
 # Meddies
 
-A personal medication reminder and tracker. These terms describe how loading, saves, drafts
-and the signed-in session behave from the user's side.
+A personal medication reminder and tracker. These terms name medicines, schedules, doses, saves,
+drafts, the signed-in session and loading from the user's side.
 
 ## Medicines
 

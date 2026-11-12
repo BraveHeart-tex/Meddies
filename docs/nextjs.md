@@ -7,8 +7,7 @@ start with `fetching-data`, `linking-and-navigating` and `caching` in
 `01-app/01-getting-started/`.
 
 These rules govern new and changed data-driven routes. Today is the reference
-implementation: copy its streaming source. Other routes adopt this architecture after
-Today and History pass the FE-639 gate. Saves, drafts and session end follow
+implementation: copy its streaming source. Saves, drafts and session end follow
 [client state](client-state.md).
 
 ## Reference: Today

@@ -17,7 +17,7 @@ The expected initial audience is a single private user (the creator's girlfriend
 ## Product pillars
 
 1. **Remember:** Proactive, configurable reminders that work when the PWA is closed, subject to platform feasibility.
-2. **Track:** An unambiguous daily schedule and records for taken, skipped, scheduled and overdue doses.
+2. **Track:** An unambiguous daily schedule and records for scheduled, taken, skipped and not logged doses.
 3. **Organize:** Medication records, barcode-assisted Turkish medication name identification, stock counts and refill alerts.
 
 ## Current frontend and connectivity scope - November 6, 2026
@@ -38,7 +38,7 @@ Writes require connectivity. Dose recording/correction provides optimistic feedb
 
 ## Product personality and UX guardrails
 
-**Playful Precision:** friendly, motivational, reassuring and dependable; cheerful without childish or clinically sterile styling. Visual references: Carely (friendly illustrations), Pillo (proactive reminders) and Apple Health (interaction clarity). The intended palette uses iris purple, mint, sunshine yellow, warm off-white and dark ink. Prioritize large touch targets, accessible contrast, and purposeful motion.
+**Cozy Care:** cozy, cheerful and dependable, without childish or clinically sterile styling. The visual direction lives in [DESIGN.md](../../DESIGN.md) and the voice in [copy](../copy.md). Prioritize large touch targets, accessible contrast, and purposeful motion.
 
 Clarity and reliable medication records take precedence over reward mechanics. The product is an organizational tool, not a substitute for medical guidance.
 

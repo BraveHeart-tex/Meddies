@@ -38,7 +38,7 @@ The rules for UI wording are in `docs/copy.md`, which wins where this section di
 - **Numbers:** 24-hour `HH:MM`, units with a space (`200 mg`, `1000 IU`), quantities spelled out with a unit ("1 tablet", "8 left"). Use a middle dot `·` as the separator.
 - **Status words are fixed:** *Taken*, *Not logged*, *Scheduled*, *Skipped*. Never write "Missed" or "Overdue", and never imply intake that wasn't recorded.
 - **No guilt, no pressure:** no streaks, no "you forgot", no exclamation marks. Reassure through facts: "After Magnesium, nothing else until this evening."
-- **Confirmations say exactly what was saved:** "Magnesium logged · taken at 14:38" plus an Undo.
+- **Confirmations say exactly what was saved:** "Magnesium logged · taken at 14:38". Dose outcomes have no Undo; they are changed through the dose drawer.
 - **Buttons describe the outcome:** "Save as taken", not "OK".
 - **Emoji:** never.
 
