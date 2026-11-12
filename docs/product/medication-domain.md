@@ -1,0 +1,226 @@
+# 03 - Medication & Dose Domain
+
+> **Status:** Approved medication, scheduling, dose and inventory product behavior, including [FE-545](https://github.com/BraveHeart-tex/Meddies/issues/8) and [FE-547](https://github.com/BraveHeart-tex/Meddies/issues/10). This is the behavioral authority, not a finalized database schema or event contract. Start at the relevant headings below.
+
+## Concepts
+
+- **Medication definition:** A medicine the user manages, with its visible name and associated regimen information.
+- **Schedule / regimen:** User-configured recurrence and expected times. One medication can lead to many scheduled occurrences.
+- **Scheduled dose:** One expected occurrence at a particular time.
+- **Dose outcome:** Explicit taken or skipped confirmation; overdue is an unresolved scheduling state, not proof of intake.
+- **Inventory:** A user-managed stock count used to support refill warnings.
+- **Catalog entry:** External product-name identity or barcode mapping; separate from a user's medication and schedule.
+
+These are conceptual distinctions, not an approved database schema.
+
+## Domain and Dose Logging - Approved Contract
+
+- **UserMedication** is the personal medication record, independent of a later **CatalogProduct**. It may have no catalog reference and no recurring schedule.
+- **MedicationSchedule** defines recurrence, effective dates and versioned expectations. **DoseOccurrence** identifies one expected dose; **DoseRecord** holds an explicit outcome, actual taken time, quantity and corrections. Unscheduled intake does not require an occurrence.
+- **StockMovement** represents intake consumption, refill and count reconciliation independently of reminder delivery. Medication strength (e.g., mg) and recorded quantity are different fields.
+- Only user confirmation establishes **Taken** or **Skipped**; past unconfirmed occurrences are **Not logged**, not automatically missed or skipped. Actual intake time is distinct from scheduled due time.
+- Supported quantities are whole or half **tablets**, or whole **capsules**. Unsupported forms and fractional capsules are outside this MVP.
+- Taken consumes the explicitly recorded quantity; Skipped consumes nothing. Corrections, refills and retries reconcile stock once. A zero/insufficient count never blocks truthful intake; displayed stock is non-negative with a correction prompt.
+- Optimistic dose outcomes are unconfirmed presentation only. Server records remain authoritative; success announcements, reminder cancellation and confirmed stock require server receipt. Definite rejection rolls back; uncertain receipt preserves action identity and session recovery per topic 02.
+- Stable occurrence IDs, schedule versions, client action IDs and revisions preserve history, prevent duplicate effects and support conflict resolution. Online stale revisions/conflicting outcomes require explicit recovery, not silent last-write-wins; preserve existing evidence, idempotency and server correctness. Stock is uncertain and affected reminders stop when a genuine unresolved conflict is known to the server. Offline queue and expanded multi-device UX delivery are deferred.
+- Unscheduled intake does not reschedule future expected doses. Server history remains until deliberate history/account deletion; deleting history does not reverse past inventory consumption. Full deletion and current online/session scope (including deferred offline capability) belong to [02 - UX & User Journeys](./ux-journeys.md).
+
+Low-stock thresholds, re-arming, uncertain stock and refill pushes follow the existing [FE-547](https://github.com/BraveHeart-tex/Meddies/issues/10) decisions and 23 examples below.
+
+## Required product behavior
+
+1. Manual medication creation must work without a barcode catalog.
+2. A recurring schedule populates Today with expected doses.
+3. Taken and skipped are deliberate, distinct outcomes.
+4. History reflects the confirmed outcome of each dose, not just the current schedule.
+5. The product can display overdue doses and feed reminder/follow-up logic.
+6. Optional per-medicine inventory tracking is part of the approved MVP; it belongs to the user's medication record, not a mutable catalog record.
+
+## Invariants to preserve during design
+
+- A scheduled dose must not silently become **taken** just because a reminder was delivered, acknowledged or opened.
+- Do not conflate medication catalog identity with a user's personal medication instance.
+- A user action that confirms intake must be attributable to the intended scheduled dose.
+- The system should distinguish unknown/unconfirmed from explicitly skipped.
+
+## Remaining technical and interaction decisions
+
+Recurrence forms, timezone, cutoff equality, allowed interval values, overdue/Not logged semantics, course-end cancellation, pause/resume and stock thresholds **have approved rules** below ([FE-545](https://github.com/BraveHeart-tex/Meddies/issues/8) and [FE-547](https://github.com/BraveHeart-tex/Meddies/issues/10)) or in the domain contract above; do not reopen them by treating the pre-approval discovery list as current.
+
+Still requiring implementation-specific choices and verification: exact schema, APIs, concurrency/locking strategies, migration format, presentation of user conflict resolution, and cross-platform accessibility/device behavior. Where a consequential product semantic is genuinely absent, raise it for approval rather than inventing a default. Notification slot and snooze semantics belong to [04 - Notifications & Reminder Delivery](./reminders.md); online/session and export/delete behavior belongs to topic 02; its retained FE-548 offline examples are deferred future scope.
+
+## Related reading
+
+- 02 - UX & User Journeys
+- 04 - Notifications & Reminder Delivery
+- 05 - Turkish Medication Catalog & Barcode
+- 06 - Architecture, Storage & Integration
+- Documentation index: [Meddies 00 - Agent Guide & Documentation Index](./README.md)
+
+---
+
+[Back to Meddies - Agent Guide & Documentation Index](./README.md)
+
+---
+
+## Scheduling - Approved Contract
+
+The approved baseline originates in [FE-539](https://github.com/BraveHeart-tex/Meddies/issues/2) and is refined by [FE-545](https://github.com/BraveHeart-tex/Meddies/issues/8) on November 3, 2026. The [FE-545](https://github.com/BraveHeart-tex/Meddies/issues/8) decision table and 15 acceptance examples below are normative. The original approval heading is preserved for existing deep links.
+
+### Recurrence and timezone
+
+Daily and selected-weekday schedules use one or more fixed local clock times. Interval recurrence uses an explicit first date/time and repeats by elapsed whole hours, across midnight. All schedules use Europe/Istanbul regardless of device timezone; late logging never re-anchors recurrence.
+
+### Occurrence identity and edit cutoff
+
+Schedule versions and stable occurrence identities preserve already-due expectations and history. An online, server-confirmed edit only replaces occurrences strictly after its effective instant; equality belongs to the old schedule. Logging and corrections never rewrite the planned times.
+
+### End dates, pause and resume
+
+An optional end date includes its final Istanbul calendar day. No new occurrences or unsent dose-related sends remain at 00:00 the following day; historical occurrences and records remain. Paused periods produce no occurrences/backlog; clock schedules resume at the next configured time and interval schedules require an explicit new anchor. Pending sends also obey outcome, conflict, quiet-hour and next-occurrence suppression rules from topic 04.
+
+### [FE-545](https://github.com/BraveHeart-tex/Meddies/issues/8) - Approved scheduling boundaries (November 3, 2026)
+
+Status: approved by Bora on November 3, 2026 in the implementation chat.
+Approval: "I accept your recomemndations" in response to D1-D4 and the linked
+rules/example draft. These decisions refine [FE-539](https://github.com/BraveHeart-tex/Meddies/issues/2)'s explicit scheduling gaps.
+
+Sources: [FE-545](https://github.com/BraveHeart-tex/Meddies/issues/8),
+[FE-539](https://github.com/BraveHeart-tex/Meddies/issues/2),
+and canonical wiki topic 03 - Medication & Dose Domain.
+
+#### Preserved approved rules
+
+- All examples use Europe/Istanbul, including when the device travels.
+- Daily and selected-weekday schedules use local clock times. Intervals use
+  elapsed hours from an explicit first date/time, continuing across midnight.
+- Actual intake time is separate from due time. Late logging never moves recurrence.
+- Edits preserve earlier expectations and records; corrections are separate.
+- Paused periods produce no expected doses or backlog. Clock resume uses the next
+  configured time; interval resume requires a new anchor.
+- An end date includes its final local calendar day for occurrence generation.
+- Quiet hours, outcome cancellation, next-occurrence supersession and bounded
+  follow-ups retain their [FE-539](https://github.com/BraveHeart-tex/Meddies/issues/2) behavior. Submitted pushes cannot be retracted.
+
+#### Approved decisions
+
+| ID  | Approved rule                                                                                                                                                                                                                                                                                                                             | Rationale                                                                                                                          |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Every X hours accepts whole hours from 1 through 24, inclusive. Reject fractions, zero, negative values and values above 24.                                                                                                                                                                                                              | Simple bounded MVP input; includes non-divisors of 24 without changing elapsed recurrence. This is input scope, not dosage advice. |
+| D2  | Enabled food reminders accept whole minutes from 1 through 120, inclusive. Disabled is separate from zero. Reject fractions and values outside the range.                                                                                                                                                                                 | Allows precise user-entered heads-up timing with a bounded window; no clinically chosen default.                                   |
+| D3  | Let C be the server-confirmed edit effective instant. Preserve old occurrences with due time <= C, including their identity and records. Replace only occurrences due > C; new-version occurrences must also be due > C. Cancel unsent reminders tied to replaced occurrences. Retained occurrences retain existing reminder eligibility. | Equality belongs to the already-due dose, independent of scheduler processing order. No duplicate dose at C.                       |
+| D4  | End date E stops both new occurrences and all unsent dose-related reminders at 00:00 on E + 1 day in Europe/Istanbul. Includes automatic follow-ups, explicit snoozes and food reminders. Preserve every earlier occurrence and record for logging/correction.                                                                            | Makes the course end a clear stop boundary; avoids reminders continuing into the next day. No refill-policy change.                |
+
+An occurrence due after C that already has a Taken or Skipped outcome (recorded early on its
+day) is not replaced: it stays with the earlier schedule version, keeping its identity and record,
+alongside the new version's occurrences. Approved November 10, 2026 in [FE-561](https://github.com/BraveHeart-tex/Meddies/issues/24) triage.
+
+An edit changing the end date still follows D3: it cannot erase an already-due
+occurrence. D4 suppresses its remaining sends if the new end boundary has passed.
+Food reminders already submitted for a replaced future occurrence cannot be
+retracted. Delayed-job coalescing, snooze timing details and other [FE-539](https://github.com/BraveHeart-tex/Meddies/issues/2) gaps
+outside D1-D4 have since been resolved in their owning clarification tickets ([FE-546](https://github.com/BraveHeart-tex/Meddies/issues/9) through [FE-549](https://github.com/BraveHeart-tex/Meddies/issues/12)). Topic 04 governs notification submission, snooze and food reminder delivery behavior.
+
+#### [FE-562](https://github.com/BraveHeart-tex/Meddies/issues/25) - Approved Last day rules (November 10, 2026)
+
+Approved by Bora on November 10, 2026 in FE-562 triage. The end date is called the **Last day** (GLOSSARY.md).
+
+- The Last day is optional and included: its doses are expected; none from 00:00 the next day (D4).
+- It can be set in first-time setup and in a schedule change, for Clock and Interval schedules. Setting, moving or removing it is a schedule change: a new Schedule version at the Edit time (D3). A change always states the Last day it wants; it is never copied over silently.
+- A Last day must be today or later (Istanbul, at server confirmation) and on or after the start date or Anchor date. Stopping a schedule right now is stopping it ([FE-770](https://github.com/BraveHeart-tex/Meddies/issues/218)), not a past Last day.
+- An **Ended schedule** (Last day passed) expects no more doses and keeps its earlier doses and outcomes. It restarts only through a change that moves the Last day to today or later or removes it; doses return only after the Edit time.
+- Previews and next-dose summaries never show a dose after the Last day. Ending changes nothing on Today.
+
+#### [FE-770](https://github.com/BraveHeart-tex/Meddies/issues/218) - Approved stop rules (November 10, 2026)
+
+Approved by Bora on November 10, 2026 in FE-770 triage. See **Stop a schedule** (GLOSSARY.md).
+
+- Stopping a schedule is a schedule change: a new Schedule version at the Edit time (D3). Occurrences due at or before it, and any later occurrence that already has an outcome, stay with the earlier version and can still be logged and corrected. None after it are expected.
+- The stopped schedule is an **Ended schedule** dated the stop day (Istanbul). It restarts only through a schedule change with no Last day; occurrences return only after that change's Edit time.
+- Any schedule not already Ended can be stopped, including one with a later Last day or one not yet started. Stopping an Ended schedule is rejected.
+- Stopping cancels every unsent dose-related reminder for occurrences after the Edit time, including follow-ups, snoozes and food reminders.
+- Previews and next-dose summaries never show a dose after the stop. Stopping changes nothing on Today. Logging intake without a schedule belongs to [FE-565](https://github.com/BraveHeart-tex/Meddies/issues/28).
+
+#### Acceptance examples
+
+All dates below are in 2026. Times are Europe/Istanbul. Notification rows
+describe unsent reminders.
+
+| Case                       | Input / timeline                                                                 | Expected result                                                                                                                                                                                                                                                                                                                       |
+| -------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Interval range             | X = 1, 7, 24 hours; X = 0, -1, 1.5, 25                                           | First three accepted; remaining values rejected (D1).                                                                                                                                                                                                                                                                                 |
+| Midnight / late intake     | Anchor Nov 3 22:00, X = 7; first dose logged Taken at 23:15                      | Due Nov 3 22:00, Nov 4 05:00, 12:00, 19:00, Nov 5 02:00. Logging does not shift them.                                                                                                                                                                                                                                                 |
+| Food range                 | Lead = 1, 30, 120 minutes; lead = 0, -1, 0.5, 121                                | First three accepted; remaining values rejected (D2).                                                                                                                                                                                                                                                                                 |
+| Food midnight              | Nov 4 00:15 dose, 30-minute lead                                                 | Food target Nov 3 23:45. With quiet hours enabled it is dropped; dose stays 00:15.                                                                                                                                                                                                                                                    |
+| Food expiry                | Nov 3 09:00 dose, 30-minute lead; food job first processed at 09:00              | Food target was 08:30; now expired. Dose remains 09:00.                                                                                                                                                                                                                                                                               |
+| Edit before due            | Old daily 09:00; C = Nov 3 08:59:59; change to 10:00                             | Old Nov 3 09:00 replaced and its pending reminders canceled; new Nov 3 10:00 expected (D3).                                                                                                                                                                                                                                           |
+| Edit exactly due           | Same edit, C = Nov 3 09:00:00                                                    | Preserve old 09:00 occurrence and history; new 10:00 expected. Old follow-ups remain subject to normal cancellation and expiry (D3).                                                                                                                                                                                                  |
+| Edit after due             | Same edit, C = Nov 3 09:00:01                                                    | Preserve 09:00; new 10:00 expected. Earlier Taken/Skipped remains unchanged (D3).                                                                                                                                                                                                                                                     |
+| New time equals cutoff     | Old 10:00; C = Nov 3 09:00; change to daily 09:00                                | Old future 10:00 replaced; no new dose at C. First new dose Nov 4 09:00 (D3).                                                                                                                                                                                                                                                         |
+| Final day                  | End Nov 3; daily 23:30                                                           | Nov 3 23:30 expected; Nov 4 23:30 absent. Pending +40 at Nov 4 00:10 and +80 at 00:50 canceled even with quiet hours disabled (D4).                                                                                                                                                                                                   |
+| Exact end boundary         | End Nov 3; interval would fall Nov 4 00:00; pending snooze also targets 00:00    | Neither occurrence nor snooze send is allowed at the boundary (D4).                                                                                                                                                                                                                                                                   |
+| End preserves history      | End Nov 3; unresolved Nov 3 23:30 dose; open history Nov 4                       | Dose remains Not logged and can later be logged/corrected; ending never marks it Skipped or Taken (D4).                                                                                                                                                                                                                               |
+| Last day today             | At Nov 3 10:00, daily 09:00 and 21:00 with no end date; change Last day to Nov 3 | Preserve 09:00 and its history; 21:00 expected; Nov 4 absent; cancel remaining unsent dose-related reminders after the boundary (D3, D4). Last day Nov 2 is rejected. Replaced the earlier "Shortened end" example (end date in the past) in [FE-562](https://github.com/BraveHeart-tex/Meddies/issues/25) triage, November 10, 2026. |
+| Stop now                   | At Nov 3 14:00, daily 08:00 and 20:00 unlogged; stop                             | Preserve 08:00 as Not logged, still loggable; 20:00 and Nov 4 absent; Ended Nov 3; cancel unsent reminders after 14:00 (D3, FE-770).                                                                                                                                                                                                  |
+| Stop keeps an early record | Nov 3 20:00 logged Taken at 13:30; stop at 14:00                                 | 20:00 stays with its record on the earlier version (D3, FE-770).                                                                                                                                                                                                                                                                      |
+| Stop before start          | Schedule starting Nov 5; stop at Nov 3 10:00                                     | No occurrences ever; Ended Nov 3 (FE-770).                                                                                                                                                                                                                                                                                            |
+| Restart after stop         | Stopped Nov 3 14:00; change at Nov 4 10:00 to daily 08:00 and 20:00, no Last day | First occurrence Nov 4 20:00; Nov 3 20:00 and Nov 4 08:00 do not return (D3, FE-770).                                                                                                                                                                                                                                                 |
+| Resume interval            | Pause Nov 3 10:00; resume Nov 5 with new anchor 11:00 and X = 7                  | No paused-period doses; resumed sequence 11:00, 18:00, Nov 6 01:00.                                                                                                                                                                                                                                                                   |
+| Travel                     | Daily 09:00 Istanbul; device changes to another timezone                         | Due instant stays tied to 09:00 Europe/Istanbul.                                                                                                                                                                                                                                                                                      |
+
+## [FE-547](https://github.com/BraveHeart-tex/Meddies/issues/10) - Approved low-stock transitions (November 3, 2026)
+
+Bora approved D1-D6 and all 23 examples with "Accepted" in the implementation chat on November 3, 2026. These decisions refine [FE-539](https://github.com/BraveHeart-tex/Meddies/issues/2); stock implementation remains with downstream tickets.
+Source and approval evidence: [FE-547](https://github.com/BraveHeart-tex/Meddies/issues/10).
+
+## Approved decisions
+
+| ID  | Approved rule                                                                                                                                                                                                                                                                                                                                                                                                                       | Reason                                                                                               |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| D1  | For tracked, certain stock S and per-medicine threshold T, low means S < T. Equality is sufficient stock. A low episode starts on entry into low and ends when certain stock becomes S >= T.                                                                                                                                                                                                                                        | Matches the approved wording "below" and gives one exact boundary.                                   |
+| D2  | Enabling tracking with an initially low count starts an episode immediately, with an in-app notice and one eligible refill push. Disabling tracking cancels unsent refill alerts and ends the episode; re-enabling evaluates the entered count afresh.                                                                                                                                                                              | Initial setup does not silently miss a warning.                                                      |
+| D3  | Threshold edits evaluate the current certain count immediately. Non-low to low starts an episode; low to non-low ends it and cancels its unsent push; remaining low keeps the same episode and push budget.                                                                                                                                                                                                                         | Configurable thresholds take effect without repeated pushes for edits within low.                    |
+| D4  | Refills, count corrections and resolved intake corrections use the same boundary. A refill that remains below T does not re-arm. Reaching T or above ends the episode; a later fall below T starts a new one. Retries apply each stock change once. During a conflict, show uncertain stock, suspend refill submission and preserve the episode/budget; evaluate the reconciled certain count once after resolution.                | Avoids double-counting and artificial episodes from provisional conflict counts.                     |
+| D5  | Pause affects dose-related reminders only. Stock notices and refill pushes remain active while paused, including initial low counts, corrections and refills. Resume alone never creates a new low episode.                                                                                                                                                                                                                         | Inventory remains useful independently of the dose schedule.                                         |
+| D6  | Each episode has one logical refill push, with no repeated push after submission or ambiguous acceptance. Known failed attempts may retry that same alert. With quiet hours enabled, defer at 23:00 inclusive until 08:00 exclusive Europe/Istanbul. At submission, recheck tracking, certain stock, current episode, budget and quiet hours. Recovery after 08:00 may submit the still-valid alert; never revive an ended episode. | Preserves one push per episode and overnight deferral without claiming exactly-once device delivery. |
+
+The in-app low notice persists while certain stock is low even after its push.
+Uncertain stock is presented as uncertain rather than a confident low/sufficient
+count. No submission while uncertain consumes the push budget. Closing an episode
+cancels unsent work; already submitted notifications cannot be retracted.
+Thresholds and counts retain the supported whole/half-tablet and whole-capsule
+units. Taken consumes quantity, Skipped consumes nothing, and zero stock never
+blocks intake. Displayed counts stay non-negative and discrepancies prompt
+correction. These decisions do not change dose pause, resume or course-end rules.
+
+### Acceptance examples
+
+All quantities are tablets unless stated. T = 5 except where specified. Times
+are Europe/Istanbul, November 3-4, 2026. Push means submission eligibility, not
+confirmed device receipt. Each row is independent unless its sequence says otherwise.
+
+| Case                  | Input / timeline                                                       | Expected result                                                                                                                                   |
+| --------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Equality              | S = 6; Taken 1; then Taken 0.5                                         | At 5 no low episode; at 4.5 start one, show notice, one push eligible.                                                                            |
+| Initially low         | Enable at S = 4                                                        | Start episode and show notice immediately; one push eligible.                                                                                     |
+| Initial equality      | Enable at S = 5                                                        | No low notice or push.                                                                                                                            |
+| Threshold raised      | S = 5, T changes 5 to 6                                                | Enter low; one new episode and push.                                                                                                              |
+| Edit within low       | S = 4, T changes 5 to 6 after push                                     | Same episode; no second push.                                                                                                                     |
+| Threshold lowered     | S = 4, pending push; T changes 5 to 4                                  | End episode at equality; hide low notice and cancel pending push.                                                                                 |
+| Partial refill        | S = 2, push submitted; refill +2                                       | S = 4 remains same episode; no second push.                                                                                                       |
+| Refill re-arms        | S = 2; refill +3; then Taken 0.5                                       | At 5 end episode; at 4.5 start a new episode with one push.                                                                                       |
+| Correction re-arms    | S = 4; correct count to 5; later correct to 4                          | End old episode, then start new episode; corrections obey the same boundary.                                                                      |
+| Intake correction     | S = 5; Taken 1; correct to Skipped; later new Taken 1                  | 4 starts episode; restoring 5 ends it; later 4 starts a new episode. Retrying any action changes nothing further.                                 |
+| Conflict              | S = 4 with pending push; Taken/Skipped conflict; resolve certain S = 4 | Suspend push while uncertain; resolution keeps same episode and its one pending alert. If already submitted, no new push.                         |
+| Conflict recovery     | Existing low episode; conflict resolves certain S = 5                  | End episode and cancel its unsent alert. Never send based on provisional stock.                                                                   |
+| Paused stock          | Paused medicine S = 2; refill +2, then +1; later correct to 4          | At 4 remain low; at 5 end episode; correction to 4 starts another, refill push eligible despite pause. No dose reminders or paused backlog added. |
+| Resume                | Low episode already pushed while paused; resume                        | Keep same episode; no extra refill push. Dose resume rules remain unchanged.                                                                      |
+| Quiet start           | Enter low at 23:00 with quiet hours enabled                            | Notice immediate; push deferred until Nov 4 08:00.                                                                                                |
+| Morning equality      | Previous case; refill to 5 at 07:59                                    | End episode; no 08:00 push.                                                                                                                       |
+| Still low morning     | Enter low at 23:30; still low at 08:00                                 | One push eligible at 08:00; further checks do not create another.                                                                                 |
+| Replacement episode   | Low at 23:30; refill to 5 at 01:00; Taken 1 at 02:00                   | Old pending alert canceled; only new episode's alert eligible at 08:00.                                                                           |
+| Delayed morning check | Low overnight; first recovery check 09:15; still low                   | Submit same episode's one pending alert, with current eligibility rechecked.                                                                      |
+| Quiet hours disabled  | Enter low at 23:30; quiet hours disabled                               | Push immediately eligible.                                                                                                                        |
+| Tracking toggle       | Low episode already pushed; disable, then re-enable with S = 4         | Cancel old pending work; re-enable starts a fresh episode with one push.                                                                          |
+| Zero stock            | S = 0, T = 5; Taken 1 then Skipped                                     | Intake allowed; display remains 0 with correction prompt; same low episode, no extra push.                                                        |
+| Capsule boundary      | Capsules, T = 5, S = 5; Taken 1 capsule                                | S = 4 starts low episode. No fractional capsule introduced.                                                                                       |
