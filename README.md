@@ -1,8 +1,9 @@
 # Meddies
 
-Production Next.js App Router scaffold. Product requirements remain in
-[FE-539](https://linear.app/karacadev/issue/FE-539/meddies-private-mvp-product-and-engineering-specification)
-and the [Meddies documentation index](https://linear.app/karacadev/document/meddies-00-agent-guide-and-documentation-index-b487477f52de).
+Production Next.js App Router scaffold. Product requirements live in
+[docs/product](docs/product/README.md); work is tracked in
+[GitHub Issues](https://github.com/BraveHeart-tex/Meddies/issues) and the
+[Meddies Project](https://github.com/users/BraveHeart-tex/projects/3).
 
 ## Local development
 

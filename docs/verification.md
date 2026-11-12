@@ -177,7 +177,7 @@ needs a reason. Prettier rewraps after indentation changes also remain.
 
 ## Evidence and completion
 
-Record one evidence comment in the active Linear issue: the commit, journeys added or
+Record one evidence comment in the active GitHub issue: the commit, journeys added or
 changed (by file), visual and manual checks performed, limitations and outstanding device
 checks. The assertions are the evidence; do not copy measurements or
 results. Link existing evidence rather than copying it between issues.

@@ -1,0 +1,231 @@
+linear_id	github	title
+FE-539	#2	Meddies private MVP - product and engineering specification
+FE-540	#3	Prove Next.js deployment on Vercel
+FE-541	#4	Prove Google sign-in on the chosen runtime
+FE-542	#5	Prove atomic D1 operations
+FE-543	#6	Prove real-iPhone push delivery
+FE-544	#7	Prove encrypted backup restoration
+FE-545	#8	Clarify scheduling boundaries
+FE-546	#9	Clarify snooze and delayed-reminder boundaries
+FE-547	#10	Clarify low-stock transitions
+FE-548	#11	Clarify offline availability boundaries
+FE-549	#12	Clarify export and deletion scope
+FE-550	#13	Review the add-to-log mobile flow
+FE-551	#14	Sign in privately with Google
+FE-552	#15	Save a manual medicine
+FE-553	#16	Schedule daily doses
+FE-554	#17	Record a scheduled dose as Taken
+FE-555	#18	Record a scheduled dose as Skipped
+FE-556	#19	Review dose history
+FE-557	#20	Correct a dose outcome
+FE-558	#21	Correct taken time or quantity
+FE-559	#22	Schedule selected weekdays
+FE-560	#23	Schedule every X hours
+FE-561	#24	Edit future scheduled doses
+FE-562	#25	End a medication course
+FE-563	#26	Pause a medicine
+FE-564	#27	Resume a medicine
+FE-565	#28	Record unscheduled intake
+FE-566	#29	Enable push on a device
+FE-567	#30	Send the scheduled dose reminder
+FE-568	#31	Send bounded automatic follow-ups
+FE-569	#32	Cancel reminders after a recorded outcome
+FE-570	#33	Expire stale automatic reminders
+FE-571	#34	Stop older reminders at the next dose
+FE-572	#35	Configure quiet hours
+FE-573	#36	Snooze for 40 minutes
+FE-574	#37	Configure notification privacy
+FE-575	#38	Configure and send a food reminder
+FE-576	#39	Suppress food reminders during quiet hours
+FE-577	#40	Expire food reminders at dose time
+FE-578	#41	Cancel food reminders after early logging
+FE-579	#42	Keep the routine available offline
+FE-580	#43	Save Taken/Skipped while offline
+FE-581	#44	Synchronize pending dose actions
+FE-582	#45	Handle conflicting online dose outcomes safely
+FE-583	#46	Enable stock tracking for a medicine
+FE-584	#47	Apply intake to stock
+FE-585	#48	Record a refill
+FE-586	#49	Correct the stock count
+FE-587	#50	Reconcile stock after intake corrections
+FE-588	#51	Show uncertain stock during conflicts
+FE-589	#52	Configure and display low-stock warnings
+FE-590	#53	Send one refill push per low-stock episode
+FE-591	#54	Defer overnight refill pushes
+FE-592	#55	Export medication history
+FE-593	#56	Delete selected history safely
+FE-594	#57	Delete the account and active data
+FE-595	#58	Run daily encrypted backups
+FE-596	#59	Expire backups after 30 days
+FE-597	#60	Restore without reviving deleted accounts
+FE-598	#61	Detect stalled reminder processing
+FE-599	#62	Detect failed or stale backups
+FE-600	#63	Verify schedule changes cancel the right reminders
+FE-601	#64	Verify offline logging and stock together
+FE-602	#65	Verify accessibility of complete journeys
+FE-603	#66	Verify recovery and privacy together
+FE-604	#67	Verify the complete routine on her iPhone
+FE-605	#68	Complete the one-week private trial
+FE-606	#69	Establish the production Next.js app scaffold
+FE-607	#70	Standardize linting, formatting and fast Git hooks
+FE-609	#71	Establish Tailwind and shadcn UI conventions
+FE-610	#72	Automate verified, ordered D1, Worker and Vercel releases
+FE-611	#73	Make the daily medication routine coherent on mobile
+FE-612	#74	Record the approved mobile UX contract
+FE-613	#75	Navigate the private app and launch it from the Home Screen
+FE-614	#76	Save a medicine and set its first schedule
+FE-615	#77	Record and correct doses consistently on Today and History
+FE-616	#78	Verify the complete online routine on mobile
+FE-617	#79	Cozy Care foundations and app shell
+FE-618	#80	Cozy Care Today and dose review
+FE-619	#81	Cozy Care Medications and schedule setup
+FE-620	#82	Adopt streaming SSR with TanStack Query and fast client interactions
+FE-621	#83	Define streaming, Query ownership and session interaction standards
+FE-622	#84	Add the shared skeleton primitive and cold launch screen
+FE-623	#85	Delay server reads in browser journeys and measure streaming
+FE-624	#86	Stream Today into Query with optimistic dose interactions
+FE-625	#87	Stream and cache Medications with stable list and form placement
+FE-626	#88	Stream medication detail and setup with stable loading and recovery
+FE-627	#89	Stream History into Query and validate Today consistency
+FE-629	#90	Migrate browser journeys to Playwright Test with role-based locator policy - TODO: Cut off due to usage, make the agent review the implemented work and close
+FE-630	#91	Run Playwright browser journeys in CI
+FE-631	#92	Replace app sheets with shadcn Base UI Drawer
+FE-633	#93	Refactor API routes and shared contracts
+FE-634	#94	Refactor Worker transport and persistence modules
+FE-635	#95	Replace production native selects with shadcn Select
+FE-636	#96	Replace native date and time inputs with shadcn pickers
+FE-637	#97	Add Cozy Care toast component
+FE-638	#98	Add shared Query hydration and session interaction foundations
+FE-639	#99	Validate Today/History architecture before route rollout
+FE-640	#100	Standardize data-entry forms on shadcn and React Hook Form
+FE-641	#101	Establish RHF form standard and migrate medicine creation
+FE-642	#102	Integrate date and time pickers with RHF forms
+FE-643	#103	Migrate schedule creation to RHF with dynamic rows
+FE-644	#104	Migrate intake recording and correction to RHF
+FE-645	#105	Design coherent Meddies screens and flows with Claude
+FE-646	#106	Design 1: map screens, flows and shared control usage
+FE-647	#107	Design 2: Medications, medicine creation and first schedule
+FE-648	#108	Design 3: Today, dose recording, correction and History
+FE-649	#109	Design 4: Settings, sign-in and session recovery
+FE-650	#110	Design 5: review the complete routine and prepare handoff
+FE-651	#111	Faster local browser-journey loop
+FE-652	#112	Server-anchored client clock for journeys
+FE-653	#113	Cut CI Verify time
+FE-655	#114	Skip the duplicate type check in CI builds
+FE-656	#115	Split Verify into parallel jobs with a Checks aggregator
+FE-657	#116	Cache .next/cache in Verify build jobs
+FE-662	#117	Split schedule panel into snapshot hook, today, setup and leaf modules
+FE-663	#118	Extract dose outcome mutation into useDoseOutcomeMutation
+FE-666	#119	Read the Medications list through a session Query client
+FE-667	#120	Keep medicine Add and schedule setup values as session drafts
+FE-668	#121	Keep medicine and schedule saves going after leaving the screen
+FE-669	#122	End sessions on one path that clears private state
+FE-670	#123	Read schedules through Query on Today and Medications
+FE-671	#124	Group Today's doses by what to do next
+FE-672	#125	Stream Today from the server into Query
+FE-673	#126	Update Today immediately when a dose is saved
+FE-674	#127	Keep dose saves going after the drawer closes or Today is left
+FE-675	#128	Send signed-out visits to one sign-in screen that returns you
+FE-676	#129	Show the account in Settings and sign out truthfully
+FE-677	#130	Show themed pages for errors and unknown addresses
+FE-678	#131	Step through History day by day with the approved states
+FE-679	#132	Stream History from the server into Query
+FE-680	#133	Keep History and Today consistent after dose saves
+FE-681	#134	Verify Google sign-in and session recovery in the deployment
+FE-682	#135	Triage the FE-639 gate after Today streams
+FE-683	#136	Triage FE-625 and FE-626 before Medications rollout
+FE-684	#137	Run unit and integration tests in Vitest with per-test timeouts
+FE-685	#138	Prove Medications list states in a component test and trim the journey
+FE-686	#139	Convert unit and integration tests to TypeScript
+FE-687	#140	Add a dev-only design lab route for building frames as real components
+FE-688	#141	Measure request counts, layout shift and loading captures in browser journeys
+FE-689	#142	Give every route a loading state shaped like its page
+FE-690	#143	Space History's header, date bar and day like Today
+FE-691	#144	Cut agent verification overhead in browser journeys
+FE-692	#145	Make visual journeys opt-in and rename the phone project
+FE-693	#146	Trim repeated viewports and split the intake form journey
+FE-694	#147	Prove session end clears private state in a browser journey
+FE-695	#148	Rewrite the verification policy for CI-gated journeys
+FE-696	#149	Make the product copy warm and plain
+FE-697	#150	Write the copy rules and point the docs at them
+FE-698	#151	Draft the before/after wording table for every screen
+FE-699	#152	Approve the before/after wording table
+FE-700	#153	Rewrite save and session-end messages in forms and the dose drawer
+FE-701	#154	Rewrite Today screen copy
+FE-702	#155	Rewrite dose drawer copy
+FE-703	#156	Rewrite History copy
+FE-704	#157	Rewrite Add medicine form copy
+FE-705	#158	Rewrite Medicines list and detail copy
+FE-706	#159	Rewrite schedule setup form copy
+FE-707	#160	Use medication instead of medicine in visible copy
+FE-708	#161	Rewrite sign-in, Settings and app error copy
+FE-709	#162	Add a lint rule for banned words in UI copy
+FE-711	#163	Make journey server startup failures diagnosable and bounded
+FE-712	#164	Keep History’s invalid-date notice stable while results load
+FE-714	#165	Repair three browser journeys failing on main
+FE-716	#166	Return focus to the saved row after saving from Up next
+FE-717	#167	Hide the scheduled intake choice during the scheduled minute
+FE-718	#168	Hide the focus ring on page titles focused by script
+FE-719	#169	Align the title with the Settings button on title-only headers
+FE-720	#170	Focus the Now choice when Taken opens the drawer from Up next
+FE-721	#171	Format every UI date and time from one central place
+FE-722	#172	Finish the medication saved and schedule handoff screens
+FE-723	#173	Keep browser journeys for what only a browser can prove
+FE-724	#174	Set when a browser journey is allowed
+FE-726	#175	Trim the streaming journeys for Today, History and Medications
+FE-727	#176	Trim the route loading, sign-in entry and unknown-address journeys
+FE-728	#177	Remove duplicate save and routine journeys
+FE-729	#178	Move visual-only journey checks to on-request runs
+FE-730	#179	Prove adding a medicine with component tests
+FE-731	#180	Prove schedule setup and pickers with component tests
+FE-732	#181	Prove recording and correcting a dose with component tests
+FE-733	#182	Move four small journey checks to component tests
+FE-734	#183	Fail lint when journeys loop over screen widths
+FE-735	#184	Measure the journey step after the cleanup
+FE-736	#185	Replace hand-rolled Cozy Care glyphs with Lucide
+FE-738	#186	Stop outdated CI checks when a newer push lands
+FE-739	#187	Skip Release for docs-only pushes
+FE-740	#188	Cut repeated CI setup
+FE-741	#189	Speed up the dev stack tests
+FE-742	#190	Make local verification faster and stop false passes
+FE-743	#191	Replace the PWA icons with the Two capsules logo
+FE-744	#192	Check the Two capsules icon on the iPhone Home Screen
+FE-745	#193	Add medicine in the Inset drawer
+FE-746	#194	Inset drawer form for Add medicine
+FE-747	#195	Scanner reads a barcode
+FE-748	#196	Barcode lookup for scanned medicines
+FE-749	#197	Support more medicine types
+FE-750	#198	Scan fills the Add medicine drawer
+FE-751	#199	Fix Today cache subscription and navigation console warnings
+FE-752	#200	Adopt one empty state across Meddies
+FE-753	#201	Ship the shared empty state on Medications
+FE-754	#202	Make Today's empty states truthful and actionable
+FE-755	#203	Guide empty days on History
+FE-756	#204	Make existing architecture easier for agents to follow
+FE-757	#205	Enforce the existing architecture in automated checks
+FE-758	#206	Use one safe server-to-browser data handoff
+FE-759	#207	Give Add medicine one owner for saves
+FE-760	#208	Give initial schedule setup one owner for saves
+FE-761	#209	Own dose save effects across Today and History
+FE-762	#210	Use the same numeric quantity rules in forms and server checks
+FE-763	#211	Mobile routine journey fails D7 request check on main
+FE-764	#212	Design Interval schedule setup and display
+FE-765	#213	Save and track doses for Interval schedules
+FE-766	#214	Set up an Interval schedule from the schedule form
+FE-767	#215	Design schedule edits and switching kind
+FE-768	#216	Save Schedule versions at the Edit time
+FE-769	#217	Change a schedule from Medication detail
+FE-770	#218	Stop a medicine's schedule
+FE-771	#219	Make design tickets repeatable for agents
+FE-772	#220	Make schedule time row ids stable across server and client
+FE-773	#221	Cheaper screen captures, related tests, lab smoke tests and honest doc copy
+FE-774	#222	Cut GitHub Actions usage
+FE-775	#223	Scan the repo for leaks before going public
+FE-776	#224	Make the repo public and lock it down
+FE-777	#225	One verify job before the ordered release
+FE-778	#226	Skip CI for more non-runtime paths
+FE-779	#227	Design the Last day and Ended schedules
+FE-780	#228	Save a schedule's Last day
+FE-781	#229	Set a Last day and show Ended schedules
+FE-784	#230	Save a schedule stop
+FE-785	#231	Stop a schedule from Medication detail

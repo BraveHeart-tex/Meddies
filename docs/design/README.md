@@ -24,7 +24,7 @@ happen. After a design changes there, refresh the copy here.
 - **Wording:** [docs/copy.md](../copy.md) overrides the wording in these snapshots.
 
 Keep committed snapshots and captures synthetic: use example addresses and role names
-for approval notes. Keep personal approval attribution in the linked Linear evidence.
+for approval notes. Keep personal approval attribution in the linked GitHub issue evidence.
 
 ## Design lab
 
@@ -68,5 +68,6 @@ The deeper `649·L1` shell geometry check stays opt-in:
 Choose additional
 checks by risk under [verification](../verification.md#visual-verification).
 
-Attach screenshots and JSON to the owning Linear issue, record design review and approval
-there, and link the same evidence in the implementation handoff. Commit no binary artifacts.
+Attach screenshots to the owning GitHub issue with `gh issue comment <n> --attach <png>`
+(images and video only; link JSON from the CI run or paste it in a collapsed block), record
+design review and approval there, and link the same evidence in the implementation handoff. Commit no binary artifacts.

@@ -1,6 +1,6 @@
 # Triage labels
 
-Use these Linear labels when a workflow refers to the corresponding triage role.
+Use these GitHub labels when a workflow refers to the corresponding triage role.
 
 | Label           | Apply when                                                                                                   |
 | --------------- | ------------------------------------------------------------------------------------------------------------ |

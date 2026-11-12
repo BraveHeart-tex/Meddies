@@ -2,10 +2,10 @@ Keep plans extremely concise. Sacrifice grammar for concision.
 Always use normal dashes instead of em dashes.
 
 Done means: `pnpm verify:local` passes, every ticket criterion is checked, the change is
-pushed to main, and the evidence comment is in the active Linear issue. A commit is proven
+pushed to main, and the evidence comment is in the active GitHub issue. A commit is proven
 by the latest green Release run containing it; the maintainer checks that run's Verify
-job. Progress and verification live in Linear; repo docs hold only durable rules, setup
-and architecture.
+job. Progress and verification live in GitHub Issues; repo docs hold product behavior,
+durable rules, setup and architecture.
 
 Use [GLOSSARY.md](GLOSSARY.md) terms verbatim in code, docs and tickets; UI copy follows
 [docs/copy.md](docs/copy.md).
@@ -17,6 +17,7 @@ Read the matching doc before starting the work.
 | Work                                              | Read                                                                                       |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | Committing, PR descriptions                       | [commits](docs/commits.md)                                                                 |
+| Product behavior, approved decisions              | [product docs](docs/product/README.md)                                                     |
 | Tickets: selecting, writing, splitting, closing   | [tickets](docs/tickets.md), [triage labels](docs/triage-labels.md)                         |
 | UI: screens, components                           | [DESIGN](DESIGN.md), [PRODUCT](PRODUCT.md), visual source `.agents/skills/meddies-design/` |
 | UI copy: labels, messages, push reminders         | [copy](docs/copy.md)                                                                       |
@@ -32,7 +33,8 @@ Read the matching doc before starting the work.
 | Running the app with local Worker/D1              | [local stack](docs/local-stack.md)                                                         |
 | Releases, deployment, recovery                    | [deployment](docs/deployment.md)                                                           |
 
-## Linear
+## GitHub Issues
 
-Use the `linearis` skill. Write multiline bodies to a file with a quoted heredoc, pass
-them as `--body "$(cat "$body_file")"`, then read back the saved text.
+Use `gh` ([tickets](docs/tickets.md)). Write multiline bodies to a file with a quoted
+heredoc, pass them as `--body-file "$body_file"`, then read back the saved text. `FE-n`
+is a legacy Linear ID: resolve it with `rg FE-n docs/archive/linear-ids.tsv`.

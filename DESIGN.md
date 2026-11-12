@@ -34,4 +34,4 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 
 Use synthetic data in production routes. Review Today with a next occurrence and unresolved doses, Medications with and without schedules, and the dose drawer for record and review. Check History for cross-date intake, first-schedule setup for validation, and signed-out and unavailable states for recovery. These are reference scenarios, not a checklist for every change. For meaningful UI changes, review affected screens and states at 402px. Add narrow-screen, enlarged-text, reduced-motion, keyboard and device checks when relevant under the [verification guide](docs/verification.md#visual-verification). Reuse current evidence for unchanged behavior.
 
-The Cozy Care export in `.agents/skills/meddies-design/` supplies the visual source. [FE-612](https://linear.app/karacadev/issue/FE-612/record-the-approved-mobile-ux-contract) and the linked UX and domain specs govern interactions.
+The Cozy Care export in `.agents/skills/meddies-design/` supplies the visual source. [FE-612](https://github.com/BraveHeart-tex/Meddies/issues/74) and the linked UX and domain specs govern interactions.

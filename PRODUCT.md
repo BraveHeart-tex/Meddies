@@ -34,8 +34,8 @@ A reminder is never confused with confirmed intake. Every dose outcome is explic
 - Optional per-medicine food reminder with a lead time. It never changes dose timing.
 - Setup, schedule changes and snooze save only after server confirmation. Online stale revisions and conflicting outcomes require explicit recovery, never silent overwrites. Expanded offline or multi-device synchronization UX is deferred.
 - History export, deliberate history deletion and account deletion.
-- Stack: Next.js App Router on Vercel, Cloudflare Worker with D1, Auth.js. Approved frontend architecture: streamed server-prefetched sections hydrate TanStack Query, which owns interactive data during the session. Stale data refreshes on entry, focus and reconnect, with targeted mutation reconciliation and no routine polling. Adoption and verification are tracked in [FE-620](https://linear.app/karacadev/issue/FE-620/adopt-streaming-ssr-with-tanstack-query-and-fast-client-interactions); implementation remains separate. See the docs index in AGENTS.md.
-- Detailed requirements: [FE-539](https://linear.app/karacadev/issue/FE-539/meddies-private-mvp-product-and-engineering-specification). Interaction contract: [FE-612](https://linear.app/karacadev/issue/FE-612/record-the-approved-mobile-ux-contract).
+- Stack: Next.js App Router on Vercel, Cloudflare Worker with D1, Auth.js. Approved frontend architecture: streamed server-prefetched sections hydrate TanStack Query, which owns interactive data during the session. Stale data refreshes on entry, focus and reconnect, with targeted mutation reconciliation and no routine polling. Adoption and verification are tracked in [FE-620](https://github.com/BraveHeart-tex/Meddies/issues/82); implementation remains separate. See the docs index in AGENTS.md.
+- Detailed requirements: [product docs](docs/product/README.md). Interaction contract: [FE-612](https://github.com/BraveHeart-tex/Meddies/issues/74).
 
 ## Brand Commitments
 

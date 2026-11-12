@@ -51,8 +51,9 @@ Write `<n>` for the design ticket's number, such as `767`.
    first. _Done when_ the commit exists and verify passed.
 
 8. **Post the approval comment** on the design ticket from
-   [templates/approval-comment.md](templates/approval-comment.md). Upload each 402x874 PNG
-   with `linearis files upload <png>` and embed the returned URLs.
+   [templates/approval-comment.md](templates/approval-comment.md). Reference each 402x874 PNG
+   as `![frame](./<png>)` in the body and pass `--attach ./<png>` per file to
+   `gh issue comment <n> --body-file <file>`; gh uploads them and rewrites the references.
    _Done when_ the read-back comment shows every approved frame.
 
 9. **Add the frame table** to the design ticket's description as its "Approved design"

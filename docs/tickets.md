@@ -1,26 +1,37 @@
 # Tickets
 
-How to write Linear issues so an agent can finish them without guessing. The
+How to write GitHub issues so an agent can finish them without guessing. The
 `/to-tickets` and `/triage` skills follow these rules. Labels are defined in
-[triage labels](triage-labels.md), terms in [GLOSSARY.md](../GLOSSARY.md).
+[triage labels](triage-labels.md), terms in [GLOSSARY.md](../GLOSSARY.md). Product
+behavior lives in [docs/product](product/README.md); an issue cites and narrows it, never
+restates or changes it. A behavior change lands as a doc edit in the same change set.
+
+Use `gh` from the repo root (it targets `BraveHeart-tex/Meddies`). Issues live in the
+**Meddies** GitHub Project (`gh project list --owner BraveHeart-tex`), which holds
+`Status` (Backlog, In progress, Done), `Priority` (Urgent, High, Medium, Low) and the
+legacy `Linear ID`.
 
 ## Selecting work
 
-When asked for the next task, read the top row of the
-[Meddies What's Next view](https://linear.app/karacadev/view/meddies-whats-next-e5459d3a2a92).
-Linearis has no custom-view command. From the repo root, fetch candidates with:
+When asked for the next task, take the top row of the Project's **Next up** view: open,
+`ready-for-agent`, no open blocker, highest Priority, then lowest number. From the CLI:
 
 ```sh
-node scripts/linear-next.mjs | jq '{view, next}'
+node scripts/next-issue.mjs | jq '{next, candidates}'
 ```
 
-`next: null` means the view is empty. The helper refuses view settings it cannot
-reproduce (grouping, nesting, unsupported ordering); its header comment covers
-credentials and upgrades. If it fails, fix the helper or run `linearis auth login`.
+`next: null` means nothing is ready. The script needs the `project` scope
+(`gh auth refresh -s project`). Read the selected issue, its comments and
+blockers before starting:
 
-Read the selected issue, its discussions and current blockers through Linearis
-before starting. Keep task order and blocker relations in Linear; fetch them again
-when selecting work.
+```sh
+gh issue view <n> --comments
+gh issue view <n> --json parent,subIssues,blockedBy --jq '{parent: .parent.number,
+  subIssues: [.subIssues.nodes[] | {number, state}], blockedBy: [.blockedBy.nodes[] | {number, state}]}'
+```
+
+Set the Project `Status` to In progress when you start (`gh project item-edit`, or the
+board).
 
 ## Shape
 
@@ -29,27 +40,24 @@ it touches, proven on a real screen or test. A shared primitive ships together
 with the first screen that uses it. Size each ticket for one fresh context window.
 
 ```markdown
-## Parent
-
-FE-n
-
 ## What to build
 
-The end-to-end behaviour from the user's side, and an "Out of scope:" line naming
-the ticket that owns each nearby item.
+The end-to-end behaviour from the user's side, citing the docs/product section it
+implements, and an "Out of scope:" line naming the issue that owns each nearby item.
 
 ## Acceptance criteria
 
 - [ ] One checkable outcome per line, citing design frames as `647·M6`
 ```
 
+- The parent is a native sub-issue link, not a body section.
 - For lab frames, hand off the lab slug (for example `/lab/649-l1`), frame citation
-  and linked Linear capture evidence with design approval. Reuse the same production
+  and linked GitHub issue capture evidence with design approval. Reuse the same production
   components and evidence; HTML snapshots remain supported (see [design guide](design/README.md)).
 - After design approval, the design ticket's description gets an "Approved design" frame
   table (frame, slug, what it shows), and the build ticket's rules and criteria cite those
   frame IDs, never "the approved frames".
-- Set blockers as native Linear relations. Add a "Blocked by" section only when a
+- Set blockers as native blocked-by relationships. Add a "Blocked by" section only when a
   blocker cannot be linked.
 - Describe behaviour, not file paths. Link stable docs and design artifacts.
 - When handing off a design frame, quote its key geometry (sizes, radii, gaps, copy) in
@@ -60,8 +68,8 @@ the ticket that owns each nearby item.
 - A ticket may ask for a browser journey only by naming an
   [allowed reason](verification.md#when-a-journey-is-allowed). Otherwise it says
   "Tests prove…".
-- A ticket with sub-issues is a parent. It lists the slices, an ownership list
-  and the shared rules, and its only criterion is that the slices are Done.
+- A ticket with sub-issues is a parent. It lists the ownership list and the shared rules,
+  and its only criterion is that the sub-issues are closed.
 
 ## Ownership
 
@@ -71,22 +79,24 @@ unowned and gets skipped.
 
 ## Creating
 
-- For every FE issue, including sub-issues, pass
-  `--project "Meddies - Medication Reminder & Tracker"`. Without it the user
-  cannot see the issue.
+```sh
+gh issue create --title "..." --body-file "$body_file" \
+  --label enhancement,frontend,needs-triage --milestone "<milestone>" \
+  --project Meddies [--parent <n>] [--blocked-by <n>,<n>]
+```
+
+- Always pass `--project Meddies`, then set Priority on the new item.
 - Give each ticket one category label, one state label and at least one area label.
   A ticket that spans both areas gets `backend` and `frontend`. Use `ready-for-agent`
   only for tickets from a breakdown the user approved. Every other new ticket gets
   `needs-triage`.
-- Set priority: Urgent for the single head of the critical path, High for the rest
-  of the critical path, Medium for work that blocks nothing on it, Low for human
-  checks. Leave parents without a priority.
-- A critical-path ticket ends with an "On completion" section: set this ticket
-  back to High and set the next critical-path ticket to Urgent, or that ticket's
-  open blockers if it is still blocked.
-- A ticket that must wait for triage gets a `ready-for-human` reminder ticket. The
-  reminder is blocked by the ticket that triggers triage, and it blocks the ticket
-  being triaged.
+- Set Priority: Urgent for the head of the critical path, High for the rest of it,
+  Medium for work that blocks nothing on it, Low for human checks. Leave parents
+  without a priority. Blockers decide what is startable; Priority only orders startable
+  work, so there is no priority hand-off on completion.
+- Work that needs a human gets `ready-for-human` on the issue itself and is assigned to
+  the maintainer; it blocks the issues that wait on it.
+- Pick a milestone when the work belongs to one (`gh api repos/{owner}/{repo}/milestones`).
 
 ## Changing scope
 
@@ -98,6 +108,14 @@ ticket's description in the same change, then comments on both tickets.
 
 Close a ticket only when every criterion is checked, `pnpm verify:local` passes, the
 change is pushed to main, and the evidence comment is recorded in the ticket
-([verification](verification.md#evidence-and-completion)).
+([verification](verification.md#evidence-and-completion)). Post the evidence with
+`gh issue comment <n> --body-file <file>`, read it back, then
+`gh issue close <n> --reason completed`. Commits never close issues.
 For any criterion that will not be finished, create a follow-up ticket with a single
 owner, link it from this ticket, and remove the item here.
+
+## Legacy Linear IDs
+
+Issues migrated from Linear end with `Linear ID: FE-n`, and `FE-n` in GitHub text links
+to that issue. Code, commits and design snapshots keep `FE-n`; resolve one with
+`rg FE-n docs/archive/linear-ids.tsv`. Never create new `FE-n` references.

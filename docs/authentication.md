@@ -45,4 +45,4 @@ Worker capability.
 After private Vercel configuration, verify approved and rejected Google accounts,
 reload persistence, expired-session recovery and sign-out in that deployment.
 Synthetic HTTP tests do not prove a successful Google callback. Record results
-and unresolved integration requirements in the active Linear issue.
+and unresolved integration requirements in the active GitHub issue.
