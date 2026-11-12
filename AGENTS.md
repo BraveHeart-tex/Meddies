@@ -29,7 +29,7 @@ commits and issues, and per-feature detail in the owning module's header comment
 | Forms                                             | [forms](docs/forms.md)                                                                     |
 | Routes, rendering, data loading, TanStack Query   | [Next.js](docs/nextjs.md)                                                                  |
 | Saves, drafts, retries, session end               | [client state](docs/client-state.md)                                                       |
-| Layers: routes, operations, contracts, Worker, D1 | [architecture](docs/architecture.md)                                                       |
+| Layers: operations, contracts, Worker, migrations | [architecture](docs/architecture.md)                                                       |
 | Sign-in, sessions, authorization                  | [authentication](docs/authentication.md)                                                   |
 | Tests, browser journeys, evidence                 | [verification](docs/verification.md)                                                       |
 | Asking for or adding a browser journey            | [when a journey is allowed](docs/verification.md#when-a-journey-is-allowed)                |

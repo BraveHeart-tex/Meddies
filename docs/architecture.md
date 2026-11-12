@@ -87,6 +87,14 @@ owner.
   `PATCH /api/schedules` appends a correction revision, guarded by expected revision and
   outcome, idempotent by action UUID. Originals stay intact; Today and History project the
   latest revision.
+- **Schema changes:** write each migration by hand as the next numbered
+  `worker/migrations/NNNN_<name>.sql` and mirror it in the Drizzle tables in
+  `worker/schema.ts`. The local stack, tests and Release apply migrations in order. Keep
+  each one additive and backward compatible, since the old app with the new Worker and the
+  old Worker with the new schema coexist during release and recovery: a new column is
+  nullable or has a default. Leave applied migrations unchanged and repair forward with a
+  new one. A destructive change needs a separately planned expand/contract rollout and a
+  backup and recovery review.
 
 Client retry and action-ID rules: [client state](client-state.md#saves).
 

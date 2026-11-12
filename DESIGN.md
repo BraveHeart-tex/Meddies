@@ -26,7 +26,7 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 - Forms follow the [form conventions](docs/forms.md), with Add medicine as the reference.
 - Show each error under its control, above its help text, after the first submit; focus the first invalid control.
 - Choices of two or three short options are a ToggleGroup, with nothing preselected when a wrong default could be saved. An option set expected to grow past three is a Select row, also with nothing preselected; Add medicine's Type is the reference.
-- Use one Alert above one full-width primary action. While the device is known offline, the primary reads _Connect to save_ (disabled) and an Alert says values stay until she leaves the page.
+- Use one Alert above one full-width primary action. While the device is known offline, the primary reads _Connect to save_ (disabled) and an Alert says the entered values stay for this session.
 
 ## Drawers
 
@@ -61,8 +61,9 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 - Fill skeletons with the sunken surface (the hero uses blush). Skeletons are static: no shimmer or pulse at any motion setting. Mark skeletons `aria-hidden` and give each loading section one polite `role="status"` label, such as _Loading Today_. Don't announce individual placeholders or background refreshes.
 - Route skeletons compose the shared `Skeleton` and `LoadingSection` primitives; Today's composition is shared with the cold launch. The cold launch (109·L1, the root loading fallback) is the reference: shell and nav, header bars beside the real Settings button, Today's skeleton and one _Opening Meddies_ status.
 - Refreshing keeps content and shows progress only on the refresh control. A failed refresh keeps content and adds a recoverable alert.
-- Saving disables the form and labels the primary action _Saving…_. Dose recording and correction show the chosen outcome on affected rows as a _Saving…_ outline badge until the server confirms; setup and schedule edits never show optimistic state.
-- A definite failure clears only that save's pending state, keeps the entered values, and shows an alert above the primary action. An unconfirmed save keeps values and turns the primary action into _Retry_: _Save could not be confirmed. Your details are still here. Connect and retry._ A form with no details (skip) omits the middle sentence; after a fresh load finds no record, add _Meddies checked and found no record yet._ A conflict applies nothing and offers _Review current outcome_.
+- Saving disables the form and gives the primary action a saving label. Dose recording and correction show the chosen outcome on affected rows as a pending outline badge until the server confirms; setup and schedule edits never show optimistic state.
+- A definite failure clears only that save's pending state, keeps the entered values, and shows an alert above the primary action. An unconfirmed save keeps the values and turns the primary action into a retry of the same attempt. A conflict applies nothing and offers a way to review what is saved now.
+- Wording for these states follows [copy](docs/copy.md#errors); messages repeated across saves live in `src/lib/save-messages.ts`.
 - Pending saves and their failures stay visible after navigating away. Review affected loading, refreshing, saving and failure states under the [visual verification policy](docs/verification.md#visual-verification).
 
 ## Reference screens

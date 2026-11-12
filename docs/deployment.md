@@ -194,10 +194,8 @@ then run the same public GET probes against `PRODUCTION_APP_URL` and the Worker
 origin. Keep credentials out of shell tracing, command logs, issue comments and
 artifacts. Never use `set -x` with release commands.
 
-D1 migrations, Worker deployment and Vercel deployment are separate operations.
-Use additive, backward-compatible migrations: old app/new Worker and old Worker/new
-schema must coexist during release and recovery. Never edit an applied migration.
+D1 migrations, Worker deployment and Vercel deployment are separate operations, so
+migrations follow the [schema change rules](architecture.md#persistence-rules).
 Do not automatically reverse schema changes or roll an old Worker over a schema
 it cannot read. Repair forward with a reviewed additive migration or a compatible
-Worker/app version. Destructive changes need a separately planned expand/contract
-rollout and backup/recovery review.
+Worker/app version.
