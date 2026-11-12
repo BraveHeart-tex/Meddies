@@ -1,10 +1,13 @@
 # Next.js
 
-Read the relevant installed guide under `node_modules/next/dist/docs/` before
-implementing, reviewing or debugging Next.js routes, rendering, configuration or framework
-APIs, and follow its version-specific APIs and deprecation notices. For data loading,
-start with `fetching-data`, `linking-and-navigating` and `caching` in
-`01-app/01-getting-started/`.
+The installed Next.js may postdate your knowledge. For patterns `src` already uses, copy
+the repo. Before using a framework API, file convention or config option that `src` does
+not use yet, or after a deprecation warning, read only that API's page in the installed
+docs:
+
+```sh
+rg -l '<api>' node_modules/next/dist/docs/01-app/03-api-reference
+```
 
 These rules govern new and changed data-driven routes. Today is the reference
 implementation: copy its streaming source. Saves, drafts and session end follow
