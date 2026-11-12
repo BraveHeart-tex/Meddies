@@ -1,3 +1,16 @@
+// Schedule persistence: immutable, owner-scoped Schedule versions.
+// - One initial version per medicine and one successor per version (migration 0008), so
+//   compare-and-append on `basedOnId` is atomic and a replaced version rejects further edits.
+// - Requests replay by version `id`: the same request returns the saved version, any other
+//   conflicts.
+// - Edits take no start date. Clock to Interval requires `anchorDate`; an Interval edit
+//   without one keeps the Anchor date and must keep the Anchor time. `endDate` (the Last
+//   day) is always sent, null for none, and must be today or later in Istanbul and on or
+//   after the new start or Anchor date.
+// - A stop sends only `id` and `basedOnId`. It keeps the recurrence, sets no Last day and
+//   stamps `stoppedAt` (null while running; its Istanbul date is the stop day). Stopped
+//   versions generate no occurrences, and stopping a stopped or Ended schedule is rejected.
+//   A restart is a normal edit and never restores doses from the stopped period.
 import { isQuantityForUnit } from '../src/lib/dose-quantity'
 import { and, asc, eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'

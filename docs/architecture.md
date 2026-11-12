@@ -58,8 +58,8 @@ owner.
   after those checks, keeping owner-first validation, defaults and legacy optional dates.
 - `medicines.ts` and `schedules.ts` own feature persistence and snapshot composition.
   `doses/mutations.ts` owns writes and retry reconciliation, `doses/queries.ts` the read
-  contracts, `doses/occurrence.ts` owner-scoped occurrence context. Each module's header
-  states its invariants.
+  contracts, `doses/occurrence.ts` owner-scoped occurrence context. The `schedules.ts` and
+  `doses/mutations.ts` headers state their invariants.
 - SQL stays beside its behavior. Map selected rows to wire fields explicitly; snapshot
   null metadata and omitted mutation fields are compatibility contracts.
 - Worker modules import only runtime-neutral contracts, scheduling rules and errors, and
@@ -69,29 +69,15 @@ owner.
 
 - **Medicines:** save IDs are immutable and unique per owner. An identical retry returns
   the saved medicine; a changed payload returns conflict.
-- **Schedules:** an initial schedule is immutable, owner-scoped and unique per medicine,
-  with the same retry and conflict behavior. Start dates use Europe/Istanbul and must be
-  today or later on first save. Only times strictly after server confirmation produce
-  occurrences, and a retry keeps that cutoff across midnight. Schedule-edit work keeps old
-  versions and their occurrence identities. `POST /api/schedules/edit` accepts a new version
-  `id` (also the attempt ID), `basedOnId`, `times`, `weekdays` and `intervalHours`.
-  `anchorDate` is required when switching Clock to Interval; omitting it on an Interval
-  edit retains the Anchor date and requires the same Anchor time. Edits accept no start
-  date and explicitly send `endDate` (the Last day), with null meaning none. The Last day
-  must be today or later in Istanbul and on or after the new start or Anchor date.
-  The Worker derives the medicine and Edit time, and appends one successor
-  atomically. Migration 0008 retains all schedule/outcome IDs while replacing the original
-  uniqueness rule with one initial version per medicine and one successor per version.
-  Snapshots list current schedules separately from `earlierSchedules`; the Query cache
-  combines both for Today projection and filters earlier versions from medication lists.
-  `POST /api/schedules/stop` accepts only a new version `id` and `basedOnId`.
-  It appends a stopped version through the same atomic predecessor rule, retaining the
-  recurrence for restart but setting no Last day. Reads include `stoppedAt` (null for
-  running versions); its Istanbul date is the stop day. Stopped versions generate no
-  occurrences. Earlier versions retain doses due by the Edit time and later recorded
-  outcomes. A stop rejects an already Ended schedule; a restart uses the normal edit
-  contract and never restores doses from the stopped period. Migration 0009 adds nullable
-  stop metadata without changing existing versions or outcomes.
+- **Schedules:** Schedule versions are immutable and owner-scoped, with the same retry and
+  conflict behavior. A medicine has one initial version; every edit, Last day change or
+  stop appends one successor to the version it names, atomically, at the Worker-derived
+  Edit time, and earlier versions keep their doses and outcomes. First-save start dates are
+  today or later in Istanbul. Only times strictly after server confirmation produce
+  occurrences, and a retry keeps that cutoff across midnight. Snapshots list current
+  schedules separately from `earlierSchedules`; the Query cache combines both for Today and
+  filters earlier versions from medication lists. Request rules: the `contract.ts` parsers
+  and the `worker/schedules.ts` header.
 - **Occurrences:** identity is the immutable schedule UUID plus its UTC due instant, so
   reloads and device travel leave it unchanged. Clock conversion uses Istanbul's UTC+03:00
   rules, never the device timezone.

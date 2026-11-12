@@ -14,6 +14,9 @@ Use [GLOSSARY.md](GLOSSARY.md) terms verbatim in code, docs and tickets; UI copy
 
 Read the matching doc before starting the work.
 
+Docs state current rules. When behavior changes, rewrite the rule in place; history goes in
+commits and issues, and per-feature detail in the owning module's header comment.
+
 | Work                                              | Read                                                                                       |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | Committing, PR descriptions                       | [commits](docs/commits.md)                                                                 |
