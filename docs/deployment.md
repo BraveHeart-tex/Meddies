@@ -30,15 +30,33 @@ maintainer machine. Keep synthetic feasibility databases separate from productio
 Releases apply `worker/migrations` before deploying the Worker (below); manual Wrangler
 commands are for coordinated recovery only.
 
-## Ordered releases
+## Verify workflow
 
-`.github/workflows/verify.yml` runs on pull requests, using `.node-version`,
-`packageManager` and a frozen install. It has read-only repository access and no
-production environment or secrets. One `Verify` job runs lint, format check, typecheck,
-production build, Worker build and every non-`@visual` journey
-([layout](verification.md#ci-jobs)). Vitest stays in `pnpm verify:local`; there is no
-`Checks` aggregator. No branch protection uses the removed aggregator.
-`scripts/verify.mjs` is the local and manual-recovery path.
+`.github/workflows/verify.yml` runs on pull requests and is called by Release before
+production mutations, using `.node-version`, `packageManager` and a frozen install. It has
+read-only repository access and no production environment or secrets. Its one `Verify` job
+sets up dependencies once, then runs lint, format check, typecheck, production build,
+Worker build and every non-`@visual` journey; any failing step blocks release. Vitest runs
+only in `pnpm verify:local`, and `scripts/verify.mjs` is the local and manual-recovery
+path. The production build sets `CI_SKIP_BUILD_TYPECHECK=1` after the explicit typecheck;
+Vercel and local journey builds keep the check. ESLint and Prettier caches stay local in
+`.cache`.
+
+Verify and Release restore installed `node_modules` with an exact cache key: OS,
+architecture, resolved Node version, and hashes of the lockfile, package manifest and pnpm
+install policy. A miss runs a frozen install; there are no prefix restores. Only main runs
+save the dependency cache, immediately after a successful install.
+
+Verify also restores Turbopack's `.next/cache`, keyed by OS, a hash of `pnpm-lock.yaml`
+and `next.config.ts`, and the commit SHA, with prefix restore keys. Only main runs save it,
+so pull requests cannot poison or evict it. To clear it:
+
+```sh
+gh cache list --key Linux-next-cache- --limit 1000 --json id --jq '.[].id' \
+  | xargs -n1 gh cache delete
+```
+
+## Ordered releases
 
 `.github/workflows/release.yml` runs on `main` pushes or manual dispatch on `main`.
 Pushes changing only `docs/**`, `**/*.md` or `.agents/skills/meddies-design/**`
@@ -70,8 +88,7 @@ A separate non-canceling concurrency group on the release job covers every mutat
 The Vercel CLI is locked in the root dependencies. Its optional `koffi` build is
 disabled; releases use remote Vercel builds, not local native build tooling.
 No production environment files or deployable build artifacts are uploaded by Actions;
-Verify caches installed dependencies and the `.next/cache` compiler cache; Release
-reuses the same dependency cache ([rules](verification.md#ci-jobs)).
+Release reuses Verify's dependency cache ([Verify workflow](#verify-workflow)).
 Alias verification calls Vercel's read-only deployment API with an explicit
 `teamId` from `VERCEL_ORG_ID`, using `VERCEL_TOKEN` from the environment. It checks
 the ready production deployment URL, project ID and commit SHA. This avoids the

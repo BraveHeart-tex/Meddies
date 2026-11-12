@@ -120,11 +120,9 @@ ticket's description in the same change, then comments on both tickets.
 
 ## Closing
 
-Close a ticket only when every criterion is checked, `pnpm verify:local` passes, the
-change is pushed to main, and the evidence comment is recorded in the ticket
-([verification](verification.md#evidence-and-completion)). Post the evidence with
-`gh issue comment <n> --body-file <file>`, read it back, then
-`gh issue close <n> --reason completed`. Commits never close issues.
+Close a ticket once it is done ([AGENTS.md](../AGENTS.md)). Post the
+[evidence](verification.md#evidence) with `gh issue comment <n> --body-file <file>`, read it
+back, then `gh issue close <n> --reason completed`. Commits never close issues.
 For any criterion that will not be finished, create a follow-up ticket with a single
 owner, link it from this ticket, and remove the item here.
 

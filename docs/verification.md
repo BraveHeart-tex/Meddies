@@ -6,17 +6,12 @@
 pnpm verify:local
 ```
 
-Runs lint, format check and typecheck together, then builds and runs integration tests
-alongside unit and component tests. A static-check failure stops before stage 2; stage 2
-checks finish even when another fails. Output is grouped per check, followed by durations,
-failures and a warning when dev stack tests skip because fixed ports are unavailable.
-ESLint and Prettier cache locally in `.cache`; CI uses neither cache.
+Runs lint, format check and typecheck, then the build, integration, unit and component
+tests. A static-check failure stops before the second stage; second-stage checks all finish
+even when one fails. A warning names dev-stack tests skipped because fixed ports were busy.
 
-Local builds use Turbopack when a local port can be opened, otherwise Webpack. Build errors
-never trigger a fallback build. Verify skips the build's repeat typecheck after the static
-typecheck passes; journey builds keep it. Both wrappers reuse only builds with unchanged
-inputs and a matching success marker written after completion. Hand-run `pnpm build` has
-no marker and must be rebuilt by a wrapper. CI always builds.
+The verify and journey wrappers reuse a build only when its inputs are unchanged and their
+success marker exists, so a hand-run `pnpm build` is always rebuilt.
 
 While iterating, run the unit and component tests that import the changed files, rather
 than a guessed list; `pnpm verify:local` stays the done gate:
@@ -27,34 +22,11 @@ pnpm test:related src/features/schedules/schedule-setup-form.tsx
 
 Test commands: [tests/README.md](../tests/README.md).
 
-## CI jobs
+## CI
 
-The Verify workflow runs one job, also called by Release before production mutations.
-It checks release eligibility before dependency setup: head and non-runtime-only advances proceed;
-a SHA superseded by any runtime commit succeeds without running the remaining steps, and
-Release skips production. Unknown or unrelated history fails closed. The same non-runtime-only
-rule guards production mutations.
-
-The job sets up dependencies once, then runs lint, format check, typecheck, production
-build, Worker build and every non-`@visual` journey. Any failing step blocks release.
-There is no Checks aggregator. Vitest runs through `pnpm verify:local`, not in CI.
-
-The production build sets `CI_SKIP_BUILD_TYPECHECK=1` after the explicit typecheck.
-Vercel and local journey builds keep the check.
-
-Verify and Release restore installed `node_modules` using an exact cache key containing
-OS, architecture, resolved Node version, and hashes of the lockfile, package manifest
-and pnpm install policy. A miss runs a frozen install; there are no prefix restores.
-Only main runs save the dependency cache, immediately after a successful install.
-
-Verify restores Turbopack's `.next/cache`. Its key is the OS, a hash of
-`pnpm-lock.yaml` and `next.config.ts`, and the commit SHA, with prefix restore keys. Only
-main runs save it, so pull requests cannot poison or evict it. To clear it:
-
-```sh
-gh cache list --key Linux-next-cache- --limit 1000 --json id --jq '.[].id' \
-  | xargs -n1 gh cache delete
-```
+CI runs lint, format check, typecheck, both builds and every non-`@visual` journey; Vitest
+runs only in `pnpm verify:local`. Workflow, caches and release gating:
+[deployment](deployment.md#verify-workflow).
 
 ## Cheapest proof
 
@@ -146,8 +118,8 @@ Add focused checks by risk:
 - **Keyboard and focus:** controls, forms, dialogs, popups or navigation.
 - **Synthetic vs device:** the `phone` project is Chromium at 402×874 and is never iPhone
   evidence. Device checks (installed-PWA behavior, safe areas, the software keyboard,
-  gestures, VoiceOver, resume after suspend with a pending save) are human acceptance in
-  FE-616; integrated accessibility review stays in FE-602.
+  gestures, VoiceOver, resume after suspend with a pending save) are human acceptance: list
+  them as outstanding in the evidence comment. Integrated accessibility review stays in #65.
 
 Pick cases that exercise each relevant risk rather than a viewport × motion × state
 matrix. Batch review after implementation, reuse current evidence for unchanged behavior,
@@ -175,15 +147,13 @@ needs a reason. Prettier rewraps after indentation changes also remain.
 - Worker or database deployment changes: verify the changed operation against the
   deployed service and database.
 
-## Evidence and completion
+## Evidence
 
 Record one evidence comment in the active GitHub issue: the commit, journeys added or
-changed (by file), visual and manual checks performed, limitations and outstanding device
-checks. The assertions are the evidence; do not copy measurements or
-results. Link existing evidence rather than copying it between issues.
+changed (by file), visual and manual checks performed, limitations, unverified deployment
+behavior and outstanding device checks. The assertions are the evidence: link them and
+existing evidence rather than copying measurements, results or another issue's evidence.
+Record a failed or blocked check explicitly; it keeps the work open.
 
-Verification is complete when `pnpm verify:local` passes, the change is pushed to main,
-applicable manual checks are recorded, and any unverified deployment behavior is named.
-A commit is proven by the latest green Release run containing it, so a Verify canceled by
-a newer push is not a failure. The maintainer checks that run's Verify job (journeys
-included). A failed or blocked check keeps verification incomplete; record it explicitly.
+Done is defined in [AGENTS.md](../AGENTS.md). A Verify canceled by a newer push is not a
+failure.
