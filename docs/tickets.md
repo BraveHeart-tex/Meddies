@@ -8,7 +8,7 @@ restates or changes it. A behavior change lands as a doc edit in the same change
 
 Use `gh` from the repo root (it targets `BraveHeart-tex/Meddies`). Issues live in the
 **Meddies** GitHub Project (`gh project list --owner BraveHeart-tex`), which holds
-`Status` (Backlog, In progress, Done), `Priority` (Urgent, High, Medium, Low) and the
+`Status` (Backlog, To Do, In progress, In Review, Done, Canceled), `Priority` (Urgent, High, Medium, Low) and the
 legacy `Linear ID`.
 
 ## Selecting work
@@ -85,7 +85,21 @@ gh issue create --title "..." --body-file "$body_file" \
   --project Meddies [--parent <n>] [--blocked-by <n>,<n>]
 ```
 
-- Always pass `--project Meddies`, then set Priority on the new item.
+- Always pass `--project Meddies`, then set Status to Backlog and set Priority on the new
+  item.
+
+```sh
+project=PVT_kwHOBMJPk84BrDnq
+item=$(gh project item-list 3 --owner BraveHeart-tex --limit 500 --format json \
+  --jq ".items[] | select(.content.number == $n) | .id")
+# Status: Backlog
+gh project item-edit --project-id "$project" --id "$item" \
+  --field-id PVTSSF_lAHOBMJPk84BrDnqzhpX_s0 --single-select-option-id 3058447d
+# Priority: Urgent f6825608, High 25485ae3, Medium 097090b1, Low 7424e82b
+gh project item-edit --project-id "$project" --id "$item" \
+  --field-id PVTSSF_lAHOBMJPk84BrDnqzhpX_wk --single-select-option-id <option>
+```
+
 - Give each ticket one category label, one state label and at least one area label.
   A ticket that spans both areas gets `backend` and `frontend`. Use `ready-for-agent`
   only for tickets from a breakdown the user approved. Every other new ticket gets
