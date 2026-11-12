@@ -123,10 +123,3 @@ Close a ticket once it is done ([AGENTS.md](../AGENTS.md)). Post the
 back, then `gh issue close <n> --reason completed`. Commits never close issues.
 For any criterion that will not be finished, create a follow-up ticket with a single
 owner, link it from this ticket, and remove the item here.
-
-## Legacy Linear IDs
-
-Code, docs and tickets cite issues as `#n` and design frames as `<design>·<frame>`, such as
-`109·L1` ([design snapshots](design/README.md)). Old commits, migrated issue bodies and
-snapshot contents still say `FE-n`; each migrated issue ends with `Linear ID: FE-n`, so
-resolve one with `gh issue list --search '"Linear ID: FE-n" in:body' --state all`.

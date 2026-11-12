@@ -63,6 +63,30 @@ _Avoid_: cutoff, effective instant, in UI copy and tickets
 
 ## Doses
 
+**Occurrence**:
+One dose a Schedule version expects, identified by its schedule and due instant, so it stays the
+same across reloads and devices.
+_Avoid_: slot, instance; write dose in UI copy
+
+**Dose outcome**:
+What the user recorded for an Occurrence: Taken or Skipped. Nothing records one except the user
+saving it.
+_Avoid_: status, log entry; in UI copy, write what happened, or name Taken or Skipped
+
+**Taken**:
+A Dose outcome that keeps the actual intake time and quantity, separate from the scheduled time.
+_Avoid_: done, completed, confirmed
+
+**Skipped**:
+A Dose outcome recording a deliberate skip at its confirmation time, with no intake time or
+quantity.
+_Avoid_: missed, dismissed
+
+**Not logged**:
+An Occurrence whose due time has passed with no Dose outcome. It proves neither intake nor a skip
+and can still be logged.
+_Avoid_: missed, overdue
+
 **History date**:
 The day a dose was due, in Istanbul time. A dose shows on its History date even when it was
 taken on another day.

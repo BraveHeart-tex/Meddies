@@ -23,7 +23,7 @@ A reminder is never confused with confirmed intake. Every dose outcome is explic
 - Private Google sign-in limited to one allowlisted account. English interface. Schedules and times are in Türkiye time (Europe/Istanbul) and shown in 24-hour format, whatever the device timezone.
 - Main areas: Today (the next action and unresolved doses), Medications (manual setup and schedules), History (past outcomes and corrections), Settings.
 - Closed-app push reminders with bounded follow-ups, snooze, optional quiet hours and generic lock-screen content by default.
-- Writes require connectivity. Loaded views, drafts and save recovery stay in memory for the session ([session contract](docs/product/ux-journeys.md#current-online-and-session-interaction-contract---november-6-2026)); persistent offline use is deferred.
+- Writes require connectivity. Loaded views, drafts and save recovery stay in memory for the session ([session contract](docs/product/ux-journeys.md#session-contract)); persistent offline use is deferred.
 
 ## Capabilities and Constraints
 

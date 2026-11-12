@@ -18,7 +18,7 @@ The expected initial audience is a single private user (the creator's girlfriend
 
 ## Current frontend and connectivity scope - November 6, 2026
 
-Writes require connectivity, and the open session keeps loaded data, drafts and save recovery in memory; the [session contract](./ux-journeys.md#current-online-and-session-interaction-contract---november-6-2026) in topic 02 has the details. PWA installation and closed-app push stay in scope; persistent offline use is [deferred](./deferred.md).
+Writes require connectivity, and the open session keeps loaded data, drafts and save recovery in memory; the [session contract](./ux-journeys.md#session-contract) in topic 02 has the details. PWA installation and closed-app push stay in scope; persistent offline use is [deferred](./deferred.md).
 
 ## MVP capability boundaries
 

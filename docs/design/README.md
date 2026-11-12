@@ -18,6 +18,9 @@ happen. After a design changes there, refresh the copy here.
   number: `109·L1` is frame `L1` in the `109` file.
 - **Finding a frame:** frames in the `107` to `109` files are keyed by ID in the script.
   Search the file instead of reading it whole: `rg -n "^\s+L1:" docs/design/109-access-recovery.html`.
+  Lab frames are listed with their citations at `/lab` under `pnpm dev`. Some citations are
+  generated (`227·A${n}`), so search the design number instead:
+  `rg -n "227" src/features/design-lab`.
 - **Precedence:** `110` overrides the earlier designs where they conflict. Mocks show layout,
   not chrome: build with the production AppShell, components and tokens, and take geometry
   from [DESIGN.md](../../DESIGN.md).

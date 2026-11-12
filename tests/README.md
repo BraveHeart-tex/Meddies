@@ -10,7 +10,7 @@ checks `next dev` HTTP behavior.
 pnpm test:unit                           # unit and component projects, no Worker build
 pnpm test:unit tests/http.test.ts       # one file
 pnpm test:unit medications-list          # files matching a name
-pnpm test:related src/lib/save-messages.ts# unit and component tests importing these files
+pnpm test:related src/lib/save-messages.ts # unit and component tests importing these files
 pnpm test:integration                    # builds the Worker, then integration
 ```
 

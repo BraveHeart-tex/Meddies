@@ -17,7 +17,7 @@ The D1 decision prioritizes a cost-conscious, low-operations setup for a very sm
 
 ## Frontend streaming, Query and session contract - approved November 6, 2026
 
-#82 approved streamed, server-prefetched sections that hydrate TanStack Query, which owns browser data for the session. What the user sees: the [session contract](./ux-journeys.md#current-online-and-session-interaction-contract---november-6-2026) in topic 02. How it is built: [Next.js](../nextjs.md) and [client state](../client-state.md).
+#82 approved streamed, server-prefetched sections that hydrate TanStack Query, which owns browser data for the session. What the user sees: the [session contract](./ux-journeys.md#session-contract) in topic 02. How it is built: [Next.js](../nextjs.md) and [client state](../client-state.md).
 
 ## Data ownership boundaries
 

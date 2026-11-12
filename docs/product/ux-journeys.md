@@ -2,7 +2,7 @@
 
 ## Experience principle
 
-**Cozy Care** is the approved direction. Repo `DESIGN.md` governs visuals; #74 governs interactions.
+**Cozy Care** is the approved direction. Repo `DESIGN.md` governs visuals; [Approved UX and dose-state boundaries](#approved-ux-and-dose-state-boundaries) and the topic 03 [dose logging contract](./medication-domain.md#domain-and-dose-logging---approved-contract) govern interactions.
 
 ## Primary surfaces
 
@@ -44,6 +44,8 @@ Barcode scanning and inventory/refills are later enhancements, not blockers for 
 - Setup and schedule changes require online server confirmation. Dose recording/correction may appear optimistically with a visible saving/unconfirmed state; never announce server success before acknowledgement. Persistent offline viewing and offline writes are deferred; see the current session contract below.
 - History export, selective deletion, account deletion and post-deletion expectations follow #12 below. History deletion must not silently reverse stock consumption.
 - Use accessible semantic controls, non-color status indicators, reassuring copy and explicit privacy/permission limitations. Do not offer clinical advice or guilt-based motivation.
+
+<a id="session-contract"></a>
 
 ## Current online and session interaction contract - November 6, 2026
 

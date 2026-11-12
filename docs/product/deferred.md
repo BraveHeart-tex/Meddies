@@ -2,7 +2,7 @@
 
 Approved rules that #82 deferred beyond MVP on
 November 6, 2026. Build them only when an issue brings them back into scope; current behavior is in
-[02 - UX & User Journeys](./ux-journeys.md#current-online-and-session-interaction-contract---november-6-2026).
+[02 - UX & User Journeys](./ux-journeys.md#session-contract).
 
 ## #11 - Offline availability
 
