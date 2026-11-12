@@ -1,11 +1,18 @@
 ---
 name: meddies-design
-description: Use this skill to generate well-branded interfaces and assets for Meddies, either for production or throwaway prototypes/mocks/etc. Contains essential design guidelines, colors, type, fonts, assets, and UI kit components for prototyping.
+description: Meddies Cozy Care brand kit with tokens, logo, components and screen mockups. Use for Meddies mocks, prototypes, comparison pages or brand assets.
 user-invocable: true
 ---
 
-Read the readme.md file within this skill, and explore the other available files.
-If creating visual artifacts (slides, mocks, throwaway prototypes, etc), copy assets out and create static HTML files for the user to view. If working on production code, you can copy assets and read the rules here to become an expert in designing with this brand.
-If the user invokes this skill without any other guidance, ask them what they want to build or design, ask some questions, and act as an expert designer who outputs HTML artifacts _or_ production code, depending on the need.
+A reference export of the Cozy Care direction. [DESIGN.md](../../../DESIGN.md) and
+`src/global.css` win wherever this kit differs; production UI builds from them.
 
-Production UI icons use direct `lucide-react` imports, component references, container-owned sizes, `data-icon` in Button, and one global stroke width of 2.5. The exported custom icons and name-based props are historical references only; do not copy them into production. Medication identity tiles keep their brand shapes.
+1. Read DESIGN.md, then this kit's [readme.md](readme.md) index.
+2. Open only the files the task needs: `tokens/` for values, `assets/logo/` for the logo,
+   `components/` and `ui_kits/meddies-app/` for mockup building blocks.
+3. For mocks and prototypes, copy assets out and build static HTML. For production code,
+   take tokens from `src/global.css` and icons from `lucide-react`; this kit's custom icon
+   components and name-based icon props are historical references.
+
+Invoked with no other guidance: ask what to build, then act as the designer, producing HTML
+artifacts or production code as the need demands.

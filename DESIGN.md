@@ -4,20 +4,55 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 
 ## Foundations
 
-- Cream canvas, flat white cards, and cocoa text. Berry is for primary actions. Blush is for selected surfaces, the next-dose hero, and the sign-in welcome. Sign-in is a blush screen with the logo and wordmark above a cream bottom sheet; this replaces `649·S1`. Settings is an inset list: eyebrow-headed white groups with one icon-tiled row per fact, then the sign-out button below; this replaces `649·G1`.
-- Use the Tailwind semantic roles in [the global theme](src/global.css). Pale card borders are decorative. Use the stronger input border and solid focus ring on controls. This is a light theme.
-- Nunito is served through Next.js. Use the theme's type roles (`text-display`, `text-title`, `text-heading`, `text-body-lg`, `text-body-sm`, `text-caption`, `text-label`, `text-micro`), heavy headings and action labels, readable supporting text, and tabular numerals. Keep times in 24-hour Istanbul time and show the actual date when it differs from the scheduled date.
-- Start with 20px page and section spacing, 10px list gaps, and 16px card padding. Use the theme's larger radii for cards, the hero, and the drawer. Reserve shadows for floating surfaces.
+- **Color:** cream canvas, flat white cards, and cocoa text. Berry is for primary actions. Blush is for selected surfaces, the next-dose hero, and the sign-in welcome. Use the Tailwind semantic roles in [the global theme](src/global.css). Pale card borders are decorative; controls use the stronger input border and solid focus ring. This is a light theme.
+- **Type:** Nunito is served through Next.js. Use the theme's type roles (`text-display`, `text-title`, `text-heading`, `text-body-lg`, `text-body-sm`, `text-caption`, `text-label`, `text-micro`), heavy headings and action labels, readable supporting text, and tabular numerals. Keep times in 24-hour Istanbul time and show the actual date when it differs from the scheduled date.
+- **Spacing:** start with 20px page and section spacing, 10px list gaps, and 16px card padding. Use the theme's larger radii for cards, the hero, and the drawer. Reserve shadows for floating surfaces.
+- **Reach:** use a 44px minimum control target. Let text wrap and layout grow. Respect keyboard focus, system safe areas, and reduced motion.
 
-## Components and states
+## Components
 
-- Build with the shadcn components in `src/components/ui` (Base UI primitives) themed to Cozy Care through their variants: Button, Drawer, Card, Item, Badge, ToggleGroup, Field, Input, Select, DatePicker (Popover + Calendar), TimePicker (hour and minute Selects), Alert, Toast. Don't hand-roll drawers, selects, date or time pickers, option sets, or status pills; don't use native date or time inputs. Use real route links and direct `lucide-react` imports for every UI icon. Pass icon components, never glyph-name strings. Containers own icon sizes; Button icons use `data-icon`. Center icon-and-label groups with symmetric horizontal padding. One global `.lucide` rule sets stroke width to 2.5 and icons inherit `currentColor`. Medication identity tiles keep their brand shapes. Use a 44px minimum control target. Let text wrap and layout grow. Respect keyboard focus, system safe areas, and reduced motion.
-- Forms follow the [form conventions](docs/forms.md), with Add medicine as the reference. Show each error under its control, above its help text, after the first submit; focus the first invalid control. Choices of two or three short options are a ToggleGroup with nothing preselected when a wrong default could be saved. An option set expected to grow past three is a Select row, also with nothing preselected; Add medicine's Type is the reference. Use one Alert above one full-width primary action. While the device is known offline, the primary reads _Connect to save_ (disabled) and an Alert says values stay until she leaves the page.
-- Use Drawer for every slide-in panel: a content-sized bottom drawer on phone and desktop, capped at a readable width, without snap points. Swiping, Close, backdrop press, and Escape dismiss it and discard unsaved input; refuse all of them while a save is pending and disable Close. Keep its swipe handle and Cozy Care scrim, radius, and safe-area padding. Add medicine is this Drawer over Medications, built like the Settings inset list (`745·B·Drawer`).
+- Build with the shadcn components in `src/components/ui` (Base UI primitives), themed to Cozy Care through their variants: Button, Drawer, Card, Item, Badge, ToggleGroup, Field, Input, Select, DatePicker (Popover + Calendar), TimePicker (hour and minute Selects), Alert, Toast. They cover every drawer, select, option set and status pill; dates and times always use DatePicker and TimePicker, never native date or time inputs.
+- Use real route links for navigation.
+
+## Icons
+
+- Import every UI icon directly from `lucide-react` and pass the component, never a glyph-name string.
+- Containers own icon sizes; Button icons use `data-icon`. Center icon-and-label groups with symmetric horizontal padding.
+- One global `.lucide` rule sets stroke width to 2.5, and icons inherit `currentColor`.
+- Medication identity tiles keep their brand shapes and stay decorative.
+
+## Forms
+
+- Forms follow the [form conventions](docs/forms.md), with Add medicine as the reference.
+- Show each error under its control, above its help text, after the first submit; focus the first invalid control.
+- Choices of two or three short options are a ToggleGroup, with nothing preselected when a wrong default could be saved. An option set expected to grow past three is a Select row, also with nothing preselected; Add medicine's Type is the reference.
+- Use one Alert above one full-width primary action. While the device is known offline, the primary reads _Connect to save_ (disabled) and an Alert says values stay until she leaves the page.
+
+## Drawers
+
+- Use Drawer for every slide-in panel: a content-sized bottom drawer on phone and desktop, capped at a readable width, without snap points. Keep its swipe handle and Cozy Care scrim, radius, and safe-area padding.
+- Swiping, Close, backdrop press, and Escape dismiss it and discard unsaved input. While a save is pending, all of them are refused and Close is disabled.
+- Add medicine is this Drawer over Medications, built like the Settings inset list (`745·B·Drawer`).
 - The record drawer asks _What happened?_ with an explicit outcome choice and saves nothing until the user saves. Taken offers _Now_, the scheduled time once it has passed, or _Other_ date and time, plus an amount. Skipped confirms the skip and records no intake time or quantity.
-- Keep medication identity tiles decorative. Distinguish _Scheduled_, _Due now_, _Not logged_, _Taken_, and _Skipped_ with text and icon. Keep scheduled time separate from actual intake and from skip confirmation.
-- Keep explicit confirmation, progress, retries, correction, and stale-state handling. Use a factual success announcement after the server confirms the save; `toast.add({ title, type })` shows it. Dose outcomes have no Undo (FE-648 F2): correct them through the dose drawer. Use loading, empty, and recovery states appropriate to the screen.
-- Empty states use `EmptyState` (`FE-752·B`): a centred column with an 88px, 26px-radius muted tile and a 36px decorative Lucide icon, a `text-title` heavy heading, `text-body-lg` muted body, and an optional full-width `lg` primary action. Gaps are 40px below whatever sits above it (the parent's 20px plus the component's 20px), 20px tile to title, 8px title to body, 20px body to action. Show it only after the read finishes; a failed read stays an Alert. Each answers what's here, why, and what to do next. Never use a check icon, because a check means Taken. Allow at most one primary action per view: while the list is known to be empty, the header Add uses the soft Button variant. A not-found screen is recovery, not an empty state: use an Alert above an outline link, like the app 404.
+
+## Dose status and confirmation
+
+- Distinguish _Scheduled_, _Due now_, _Not logged_, _Taken_, and _Skipped_ with text and icon. Keep scheduled time separate from actual intake and from skip confirmation.
+- Keep explicit confirmation, progress, retries, correction, and stale-state handling. Use a factual success announcement after the server confirms the save; `toast.add({ title, type })` shows it.
+- Dose outcomes have no Undo (FE-648 F2): correct them through the dose drawer.
+
+## Empty states
+
+- Use `EmptyState` (`FE-752·B`) only after the read finishes; a failed read stays an Alert. Each answers what's here, why, and what to do next.
+- Geometry: a centred column with an 88px, 26px-radius muted tile and a 36px decorative Lucide icon, a `text-title` heavy heading, `text-body-lg` muted body, and an optional full-width `lg` primary action. Gaps are 40px below whatever sits above it (the parent's 20px plus the component's 20px), 20px tile to title, 8px title to body, 20px body to action.
+- Never use a check icon, because a check means Taken.
+- Allow at most one primary action per view: while the list is known to be empty, the header Add uses the soft Button variant.
+- A not-found screen is recovery, not an empty state: use an Alert above an outline link, like the app 404.
+
+## Screens
+
+- **Sign-in** is a blush screen with the logo and wordmark above a cream bottom sheet; this replaces `649·S1`.
+- **Settings** is an inset list: eyebrow-headed white groups with one icon-tiled row per fact, then the sign-out button below; this replaces `649·G1`.
 
 ## Loading and saving
 
@@ -32,6 +67,6 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 
 ## Reference screens
 
-Use synthetic data in production routes. Review Today with a next occurrence and unresolved doses, Medications with and without schedules, and the dose drawer for record and review. Check History for cross-date intake, first-schedule setup for validation, and signed-out and unavailable states for recovery. These are reference scenarios, not a checklist for every change. For meaningful UI changes, review affected screens and states at 402px. Add narrow-screen, enlarged-text, reduced-motion, keyboard and device checks when relevant under the [verification guide](docs/verification.md#visual-verification). Reuse current evidence for unchanged behavior.
+Use synthetic data in production routes. Review Today with a next occurrence and unresolved doses, Medications with and without schedules, and the dose drawer for record and review. Check History for cross-date intake, first-schedule setup for validation, and signed-out and unavailable states for recovery. These are reference scenarios, not a checklist for every change; which screens and checks a change needs follows the [verification guide](docs/verification.md#visual-verification).
 
-The Cozy Care export in `.agents/skills/meddies-design/` supplies the visual source. [FE-612](https://github.com/BraveHeart-tex/Meddies/issues/74) and the linked UX and domain specs govern interactions.
+The Cozy Care export in `.agents/skills/meddies-design/` supplies the visual source; this file and `src/global.css` win where they differ. [FE-612](https://github.com/BraveHeart-tex/Meddies/issues/74) and the linked UX and domain specs govern interactions.

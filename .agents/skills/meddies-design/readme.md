@@ -3,7 +3,7 @@
 **Meddies** is a personal medication reminder and tracking app: a mobile-first PWA, used mostly on iPhone, built for one person to start with.
 Mission: **Never miss a dose. Never run out. Feel in control.** Personality: **Cozy. Cheerful. Dependable.**
 
-This reference kit captures **1a Cozy Care**, the direction chosen in the original visual exploration and written brief. For production guidance, see [DESIGN.md](../../../DESIGN.md).
+This reference kit captures **1a Cozy Care**, the direction chosen in the original visual exploration and written brief. For production guidance, see [DESIGN.md](../../../DESIGN.md); it and `src/global.css` win where this kit differs.
 
 ## Index
 - `styles.css`: the global entry point (imports only)
