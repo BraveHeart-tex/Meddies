@@ -58,7 +58,12 @@ jobs:
       - run: pnpm test
 
   journeys:
-    name: Journeys
+    name: Journeys (${{ matrix.workers }} workers, run ${{ matrix.trial }})
+    strategy:
+      fail-fast: false
+      matrix:
+        workers: [2, 3]
+        trial: [1, 2, 3]
     needs: eligibility
     if: needs.eligibility.outputs.eligible == 'true'
     runs-on: ubuntu-latest
@@ -117,12 +122,12 @@ jobs:
         if: (steps.playwright-cache.outputs.cache-hit == 'true')
         run: pnpm exec playwright install-deps chromium
       - name: Browser journeys
-        run: pnpm test:browser
+        run: pnpm test:browser --workers=${{ matrix.workers }} --repeat-each=3
       - name: Upload browser artifacts
         if: (failure())
         uses: actions/upload-artifact@v4
         with:
-          name: browser-artifacts-${{ github.run_attempt }}
+          name: browser-artifacts-${{ matrix.workers }}-${{ matrix.trial }}-${{ github.run_attempt }}
           path: .browser-artifacts/
           # upload-artifact skips dot-directories unless hidden files are included.
           include-hidden-files: true
