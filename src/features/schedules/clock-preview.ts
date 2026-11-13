@@ -11,12 +11,15 @@ export function nextClockDoses({
   times,
   now,
   count = 3,
+  pausedAt,
 }: {
   weekdays: number[]
   times: string[]
   now: string
   count?: number
+  pausedAt?: string | null
 }): string[] {
+  if (pausedAt) return []
   const today = istanbulDate(new Date(now))
   const schedule = { startDate: today, endDate: null, weekdays }
   const sorted = [...times].sort()

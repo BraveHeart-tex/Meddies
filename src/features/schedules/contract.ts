@@ -20,8 +20,11 @@ export type DailySchedule = DailyScheduleInput & {
   basedOnId?: string | null
   /** Stop Edit time; its Istanbul date is the stop day. This version expects no doses. */
   stoppedAt?: string | null
+  /** Pause Edit time; no occurrences while this version is paused. */
+  pausedAt?: string | null
   replacedAt?: string | null
 }
+export type SchedulePauseInput = { id: string; basedOnId: string }
 export type ScheduleStopInput = { id: string; basedOnId: string }
 export type ScheduleEditInput = {
   id: string
@@ -36,6 +39,7 @@ export type ScheduleCommand =
   | { operation: 'list'; ownerId: string; date?: string }
   | { operation: 'listOutcomes'; ownerId: string; date: string }
   | { operation: 'save'; ownerId: string; schedule: DailyScheduleInput }
+  | { operation: 'pause'; ownerId: string; pause: SchedulePauseInput }
   | { operation: 'stop'; ownerId: string; stop: ScheduleStopInput }
   | { operation: 'edit'; ownerId: string; edit: ScheduleEditInput }
   | { operation: 'recordTaken'; ownerId: string; record: TakenDoseInput }
@@ -66,6 +70,7 @@ export type ScheduleResponses = {
   save: { schedules: DailySchedule[] }
   edit: { schedules: DailySchedule[] }
   stop: { schedules: DailySchedule[] }
+  pause: { schedules: DailySchedule[] }
   recordTaken: { records: DoseRecord[] }
   recordSkipped: { records: SkippedDoseRecord[] }
   correctOutcome: { records: DoseOutcomeRecord[] }
@@ -218,6 +223,10 @@ export function parseScheduleStop(value: unknown): ScheduleStopInput {
   return { id: input.id.toLowerCase(), basedOnId: input.basedOnId.toLowerCase() }
 }
 
+export function parseSchedulePause(value: unknown): SchedulePauseInput {
+  return parseScheduleStop(value)
+}
+
 export function isScheduleDate(value: unknown): value is string {
   return (
     typeof value === 'string' &&
@@ -227,10 +236,10 @@ export function isScheduleDate(value: unknown): value is string {
 }
 
 export function scheduleRunsOn(
-  schedule: Pick<DailySchedule, 'startDate' | 'endDate' | 'weekdays' | 'stoppedAt'>,
+  schedule: Pick<DailySchedule, 'startDate' | 'endDate' | 'weekdays' | 'stoppedAt' | 'pausedAt'>,
   date: string,
 ): boolean {
-  if (schedule.stoppedAt) return false
+  if (schedule.stoppedAt || schedule.pausedAt) return false
   if (date < schedule.startDate || (schedule.endDate && date > schedule.endDate)) return false
   const [year, month, day] = date.split('-').map(Number)
   const weekday = new Date(Date.UTC(year, month - 1, day, 12)).getUTCDay()

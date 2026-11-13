@@ -5,6 +5,7 @@ import {
   parseSchedule,
   parseScheduleEdit,
   parseScheduleStop,
+  parseSchedulePause,
   parseDoseOutcome,
   parseDoseCorrection,
   parseSkippedDose,
@@ -24,6 +25,21 @@ export function createScheduleOperations(dependencies: {
       const schedule = parseSchedule(input)
       const response = await dependencies.send({ operation: 'save', ownerId: user.id, schedule })
       if (!response.schedules) throw new ApplicationError('unavailable', 503)
+      return response.schedules
+    },
+    async pause(input: unknown) {
+      const user = await dependencies.requireUser()
+      const pause = parseSchedulePause(input)
+      const response = await dependencies.send({ operation: 'pause', ownerId: user.id, pause })
+      if (
+        !response.schedules ||
+        response.schedules.length !== 1 ||
+        response.schedules[0].id !== pause.id ||
+        !response.schedules[0].pausedAt ||
+        response.schedules[0].pausedAt !== response.schedules[0].confirmedAt ||
+        response.schedules[0].basedOnId !== pause.basedOnId
+      )
+        throw new ApplicationError('unavailable', 503)
       return response.schedules
     },
     async stop(input: unknown) {

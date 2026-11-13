@@ -18,7 +18,7 @@ export function scheduledInstant(date: string, time: string) {
 export function scheduleSlotsOn(
   schedule: Pick<
     DailySchedule,
-    'startDate' | 'endDate' | 'weekdays' | 'times' | 'intervalHours' | 'stoppedAt'
+    'startDate' | 'endDate' | 'weekdays' | 'times' | 'intervalHours' | 'stoppedAt' | 'pausedAt'
   >,
   date: string,
 ) {

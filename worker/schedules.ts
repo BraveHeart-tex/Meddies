@@ -11,6 +11,8 @@
 //   stamps `stoppedAt` (null while running; its Istanbul date is the stop day). Stopped
 //   versions generate no occurrences, and stopping a stopped or Ended schedule is rejected.
 //   A restart is a normal edit and never restores doses from the stopped period.
+// - Pause appends the same routine, start and Last day with `pausedAt` at the Edit time.
+//   Paused versions expect no doses; they reject changes and pauses but allow Stop.
 import { isQuantityForUnit } from '../src/lib/dose-quantity'
 import { and, asc, eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
@@ -37,6 +39,7 @@ const scheduleColumns = {
   intervalHours: dailySchedules.intervalHours,
   basedOnId: dailySchedules.basedOnId,
   stoppedAt: dailySchedules.stoppedAt,
+  pausedAt: dailySchedules.pausedAt,
   replacedAt: sql<string | null>`(SELECT confirmed_at FROM daily_schedules successor
     WHERE successor.owner_id = daily_schedules.owner_id AND successor.based_on_id = daily_schedules.id)`.as(
     'replacedAt',
@@ -124,9 +127,11 @@ export async function editSchedule(
   ownerId: string,
   edit: ScheduleEditInput | ScheduleStopInput,
   clock: () => Date,
+  action?: 'pause',
 ): Promise<ScheduleResponses['edit']> {
-  const stopping = !('times' in edit)
-  const request = JSON.stringify(edit)
+  const pausing = action === 'pause'
+  const stopping = !('times' in edit) && !pausing
+  const request = JSON.stringify(pausing ? { ...edit, operation: 'pause' } : edit)
   const readSaved = () =>
     db
       .select({ ...scheduleColumns, editRequest: dailySchedules.editRequest })
@@ -155,8 +160,9 @@ export async function editSchedule(
   if (parent.replacedAt) throw new ApplicationError('conflict', 409)
   const now = clock()
   const today = istanbulDate(now)
-  if (stopping && (parent.stoppedAt || (parent.endDate && parent.endDate < today)))
+  if ((stopping || pausing) && (parent.stoppedAt || (parent.endDate && parent.endDate < today)))
     throw new ApplicationError('validation', 400)
+  if (parent.pausedAt && !stopping) throw new ApplicationError('validation', 400)
   const change: ScheduleEditInput =
     'times' in edit
       ? edit
@@ -165,7 +171,7 @@ export async function editSchedule(
           times: parent.times,
           weekdays: parent.weekdays,
           intervalHours: parent.intervalHours,
-          endDate: null,
+          endDate: pausing ? (parent.endDate ?? null) : null,
         }
   const interval = change.intervalHours != null
   if (
@@ -178,18 +184,19 @@ export async function editSchedule(
       change.times[0].time !== parent.times[0].time)
   )
     throw new ApplicationError('validation', 400)
-  const startDate = stopping
-    ? parent.startDate
-    : interval
-      ? (change.anchorDate ?? parent.startDate)
-      : today
+  const startDate =
+    stopping || pausing
+      ? parent.startDate
+      : interval
+        ? (change.anchorDate ?? parent.startDate)
+        : today
   if (change.endDate !== null && (change.endDate < today || change.endDate < startDate))
     throw new ApplicationError('validation', 400)
   await db.run(sql`
     INSERT INTO daily_schedules (owner_id, id, medicine_id, start_date, times, confirmed_at,
-      weekdays, end_date, interval_hours, based_on_id, edit_request, stopped_at)
+      weekdays, end_date, interval_hours, based_on_id, edit_request, stopped_at, paused_at)
     SELECT ${ownerId}, ${edit.id}, ${parent.medicineId}, ${startDate}, ${JSON.stringify(change.times)},
-      ${now.toISOString()}, ${JSON.stringify(change.weekdays)}, ${change.endDate}, ${change.intervalHours ?? null}, ${edit.basedOnId}, ${request}, ${stopping ? now.toISOString() : null}
+      ${now.toISOString()}, ${JSON.stringify(change.weekdays)}, ${change.endDate}, ${change.intervalHours ?? null}, ${edit.basedOnId}, ${request}, ${stopping ? now.toISOString() : null}, ${pausing ? now.toISOString() : null}
     WHERE NOT EXISTS (SELECT 1 FROM daily_schedules WHERE owner_id = ${ownerId} AND based_on_id = ${edit.basedOnId})
     ON CONFLICT DO NOTHING
   `)

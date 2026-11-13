@@ -52,3 +52,14 @@ describe('nextIntervalDoses', () => {
     ])
   })
 })
+
+test('paused interval previews expect no doses', () => {
+  expect(
+    nextIntervalDoses({
+      anchor: istanbul('2026-11-03T08:00'),
+      hours: 12,
+      now: istanbul('2026-11-03T14:00'),
+      pausedAt: istanbul('2026-11-03T14:00'),
+    }),
+  ).toEqual([])
+})

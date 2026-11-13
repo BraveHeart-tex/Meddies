@@ -70,12 +70,15 @@ owner.
   the saved medicine; a changed payload returns conflict.
 - **Schedules:** Schedule versions are immutable and owner-scoped, with the same retry and
   conflict behavior. A medicine has one initial version; every edit, Last day change or
-  stop appends one successor to the version it names, atomically, at the Worker-derived
+  stop or pause appends one successor to the version it names, atomically, at the Worker-derived
   Edit time, and earlier versions keep their doses and outcomes. First-save start dates are
   today or later in Istanbul. Only times strictly after server confirmation produce
   occurrences, and a retry keeps that cutoff across midnight. Snapshots list current
   schedules separately from `earlierSchedules`; the Query cache combines both for Today and
-  filters earlier versions from medication lists. Request rules: the `contract.ts` parsers
+  filters earlier versions from medication lists. Paused versions keep the routine, start
+  date and Last day but expect no doses. `pausedAt`
+  keeps the immutable Edit time; `pausedOn` derives the pause day and returns null once the
+  schedule is Ended. Request rules: the `contract.ts` parsers
   and the `worker/schedules.ts` header.
 - **Occurrences:** identity is the immutable schedule UUID plus its UTC due instant, so
   reloads and device travel leave it unchanged. Clock conversion uses Istanbul's UTC+03:00

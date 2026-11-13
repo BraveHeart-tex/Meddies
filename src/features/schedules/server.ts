@@ -37,6 +37,8 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
         const schedule = parseSchedule(value)
         const confirmedAt = (value as Record<string, unknown>).confirmedAt
         if (!isInstant(confirmedAt)) throw new Error('contract')
+        const pausedAt = (value as Record<string, unknown>).pausedAt
+        if (pausedAt != null && !isInstant(pausedAt)) throw new Error('contract')
         const stoppedAt = (value as Record<string, unknown>).stoppedAt
         if (stoppedAt != null && !isInstant(stoppedAt)) throw new Error('contract')
         const replacedAt = (value as Record<string, unknown>).replacedAt
@@ -46,6 +48,7 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
         return {
           ...schedule,
           confirmedAt,
+          ...(pausedAt === undefined ? {} : { pausedAt: pausedAt as string | null }),
           ...(stoppedAt === undefined ? {} : { stoppedAt: stoppedAt as string | null }),
           ...(basedOnId === undefined ? {} : { basedOnId: basedOnId as string | null }),
           ...(replacedAt === undefined ? {} : { replacedAt: replacedAt as string | null }),
@@ -55,7 +58,8 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
     if (
       command.operation !== 'save' &&
       command.operation !== 'edit' &&
-      command.operation !== 'stop'
+      command.operation !== 'stop' &&
+      command.operation !== 'pause'
     ) {
       if (!Array.isArray(data.records)) throw new Error('contract')
       result.records = data.records.map((value: unknown) =>

@@ -13,12 +13,15 @@ export function nextIntervalDoses({
   hours,
   now,
   count = 3,
+  pausedAt,
 }: {
   anchor: string
   hours: number
   now: string
   count?: number
+  pausedAt?: string | null
 }): string[] {
+  if (pausedAt) return []
   const start = Date.parse(anchor)
   const step = hours * HOUR_MS
   const first = Math.max(0, Math.floor((Date.parse(now) - start) / step) + 1)

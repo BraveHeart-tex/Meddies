@@ -42,3 +42,14 @@ describe('nextClockDoses', () => {
     expect(doses).toEqual([istanbul('2026-11-10T10:00')])
   })
 })
+
+test('paused clock previews expect no doses', () => {
+  expect(
+    nextClockDoses({
+      weekdays: EVERY_DAY,
+      times: ['08:00', '20:00'],
+      now: istanbul('2026-11-03T14:00'),
+      pausedAt: istanbul('2026-11-03T14:00'),
+    }),
+  ).toEqual([])
+})

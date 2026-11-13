@@ -33,6 +33,8 @@ export function createWorker(clock: () => Date = () => new Date()) {
             return json(await listOutcomeSnapshot(db, command.ownerId, command.date))
           case 'save':
             return json(await saveSchedule(db, command.ownerId, command.schedule, clock))
+          case 'pause':
+            return json(await editSchedule(db, command.ownerId, command.pause, clock, 'pause'))
           case 'stop':
             return json(await editSchedule(db, command.ownerId, command.stop, clock))
           case 'edit':

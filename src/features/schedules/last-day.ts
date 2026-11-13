@@ -40,3 +40,13 @@ export function nextDosesLabel(count: number, lastDay: string | null | undefined
   if (count === 0) return 'Next doses'
   return count === 1 ? 'Next dose' : `Next ${count} doses`
 }
+
+/** Pause day in Istanbul; a Last day that has passed makes the schedule Ended instead. */
+export function pausedOn(
+  schedule: Pick<DailySchedule, 'pausedAt' | 'endDate' | 'stoppedAt'>,
+  today: string,
+) {
+  return schedule.pausedAt && !endedOn(schedule, today)
+    ? istanbulDate(new Date(schedule.pausedAt))
+    : null
+}
