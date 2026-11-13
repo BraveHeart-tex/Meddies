@@ -21,9 +21,11 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
 
 2. **Build three directions.** Each direction is a set of lab frames from production
    components: `<n>-a1…`, `<n>-b1…`, `<n>-c1…`. States every direction shares (saving,
-   errors, saved) are `<n>-s1…`. Put the frames in `src/features/design-lab/<topic>-frames.tsx`
-   and spread them into `designFrames`; example data shared across designs goes in
-   `lab-fixtures.ts`, data only this design uses in `<topic>-model.ts`.
+   errors, saved) are `<n>-s1…`. Write each slug and citation out literally. Put the frames
+   in `src/features/design-lab/draft/<topic>-frames.tsx`, their lab-only modules beside them
+   in `draft/`, and spread them into `draftFrames` in `draft/frames.tsx`. Example data shared
+   across designs goes in `lab-fixtures.ts`, data only this design uses in
+   `draft/<topic>-model.ts`.
    _Done when_ every listed state has a frame in each direction (or in `-s*`), and
    `pnpm exec vitest run --project integration tests/design-lab-http.test.ts` passes. It
    starts its own `next dev` and `next start`, so stop `pnpm dev` and keep a `pnpm build`
@@ -45,11 +47,13 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
 5. **Get Bora's pick.** Send the page link and ask which direction to approve.
    _Done when_ Bora has named a direction. Apply any requested changes and repeat steps 3 and 4.
 
-6. **Remove the losing directions.** Delete their frames and any lab-only parts only they
-   used. Republish the page to the same URL as the approved record: approved direction,
-   shared frames, decisions, open questions for the build ticket.
-   _Done when_ `rg -n '<n>-[bc][0-9]' src tests` (adjust letters to the losers) finds nothing
-   and the HTTP test from step 2 passes.
+6. **Move the winner to `approved/`.** Delete the losing directions' frames and every lab
+   module only they used. `git mv` the winner's frames and modules from `draft/` to
+   `approved/`, and move its spread from `draftFrames` to `approvedFrames`. Republish the page
+   to the same URL as the approved record: approved direction, shared frames, decisions,
+   open questions for the build ticket.
+   _Done when_ `draft/` holds no `<n>-` frame, `rg -n '<n>·[BC][0-9]' src tests` (adjust
+   letters to the losers) finds nothing, and the HTTP test from step 2 passes.
 
 7. **Commit and push.** Follow [docs/commits.md](../../../docs/commits.md); run
    `pnpm verify:local` first, then push to main.

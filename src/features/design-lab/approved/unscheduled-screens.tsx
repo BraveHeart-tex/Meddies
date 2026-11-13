@@ -13,15 +13,14 @@ import type { Medicine } from '@/features/medicines/contract'
 import { MedicationBackRow, MedicationIdentity } from '@/features/medicines/medication-sub-screen'
 import { medicationSetupHref, medicationsHref } from '@/features/medicines/routes'
 import type { DoseOccurrence } from '@/features/schedules/contract'
+import { ClockScheduleCard } from '@/features/schedules/clock-schedule-card'
 import { DoseStatusBadge } from '@/features/schedules/dose-status-badge'
 import { greeting, NextDose } from '@/features/schedules/next-dose'
 import type { UnscheduledDose } from '@/features/unscheduled-doses/contract'
 import { formatLongDay, formatTime } from '@/lib/calendar-date'
 import { quantityLabel } from '@/lib/dose-quantity'
 import { cn } from '@/lib/utils'
-import { magnesium, NOW, TODAY } from './lab-fixtures'
-import { LabScheduleCard } from './pause-parts'
-import { clockRunning } from './pause-model'
+import { magnesium, magnesiumSchedule, NOW, TODAY } from '../lab-fixtures'
 import { medicines } from './unscheduled-model'
 import { badgeClassName, LogDoseEntry, rowClassName } from './unscheduled-parts'
 
@@ -53,10 +52,10 @@ export function LogDetail({
           </h2>
           {hasSchedule ? (
             <>
-              <LabScheduleCard schedule={clockRunning} />
+              <ClockScheduleCard schedule={magnesiumSchedule} unit={magnesium.unit} today={TODAY} />
               <div className="grid grid-cols-2 gap-2.5 *:px-3">
                 <Link
-                  href="/lab/227-a7"
+                  href={medicationSetupHref(magnesium.id)}
                   className={buttonVariants({
                     variant: 'outline',
                     size: 'lg',
@@ -66,13 +65,13 @@ export function LogDetail({
                   Change schedule
                 </Link>
                 <Link
-                  href="/lab/233-a3"
+                  href="/lab/241-a2"
                   className={buttonVariants({ variant: 'outline', size: 'lg' })}
                 >
                   Pause
                 </Link>
                 <Link
-                  href="/lab/227-a15"
+                  href="/lab/241-a2"
                   className={buttonVariants({ variant: 'destructive', size: 'lg' })}
                 >
                   Stop schedule

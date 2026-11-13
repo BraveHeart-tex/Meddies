@@ -1,37 +1,32 @@
 import type { ReactNode } from 'react'
-import Loading from '@/app/loading'
-import { editFrames } from './edit-frames'
-import { intervalFrames } from './interval-frames'
-import { lastDayFrames } from './last-day-frames'
-import { pauseFrames } from './pause-frames'
-import { ScannerFrame } from './scanner-frame'
-import { settingsEntryFrames } from './settings-entry-frames'
-import { unscheduledFrames } from './unscheduled-frames'
+import { approvedFrames } from './approved/frames'
+import { builtFrames } from './built/frames'
+import { draftFrames } from './draft/frames'
 
-export type DesignFrame = {
+/**
+ * The design lab registry (docs/design/README.md#design-lab). A frame's status is its folder:
+ * `draft/` holds design-ticket directions, `approved/` designs waiting for their build ticket and
+ * `built/` design-critical screens rendered from production code. Each folder's `frames.tsx`
+ * lists its frames; this module stamps the status, so no frame states its own.
+ */
+type Frame = {
   slug: `${number}-${Lowercase<string>}`
   title: string
   citation: `${number}·${string}`
   render: () => ReactNode
 }
 
-export const designFrames = [
-  {
-    slug: '109-l1',
-    title: 'Cold launch',
-    citation: '109·L1',
-    render: () => <Loading />,
-  },
-  {
-    slug: '193-b-scanner',
-    title: 'Scanner',
-    citation: '193·B·Scanner',
-    render: () => <ScannerFrame />,
-  },
-  ...intervalFrames,
-  ...editFrames,
-  ...lastDayFrames,
-  ...pauseFrames,
-  ...settingsEntryFrames,
-  ...unscheduledFrames,
-] satisfies readonly DesignFrame[]
+/** A draft or approved frame. Only built frames carry a route. */
+export type LabFrame = Frame & { route?: never }
+
+/** A design-critical screen from production code; `route` is the app route it renders. */
+export type BuiltFrame = Frame & { route: `/${string}` }
+
+export type DesignFrame =
+  (LabFrame & { status: 'draft' | 'approved' }) | (BuiltFrame & { status: 'built' })
+
+export const designFrames: readonly DesignFrame[] = [
+  ...draftFrames.map((frame) => ({ ...frame, status: 'draft' as const })),
+  ...approvedFrames.map((frame) => ({ ...frame, status: 'approved' as const })),
+  ...builtFrames.map((frame) => ({ ...frame, status: 'built' as const })),
+]

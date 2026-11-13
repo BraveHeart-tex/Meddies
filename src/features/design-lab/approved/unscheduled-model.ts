@@ -5,8 +5,7 @@ import { localMinute, type TakenAtChoice } from '@/features/schedules/taken-form
 import type { UnscheduledDose } from '@/features/unscheduled-doses/contract'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { formatQuantity, quantityLabel } from '@/lib/dose-quantity'
-import { ibuprofen, magnesium, TODAY } from './lab-fixtures'
-import { clockRunning } from './pause-model'
+import { ibuprofen, magnesium, magnesiumSchedule, TODAY } from '../lab-fixtures'
 
 export const YESTERDAY = '2026-11-08'
 /** 00:20 on Mon 9 Nov: a dose taken at 23:30 belongs to Sun 8 Nov (the #28 Cross-midnight example). */
@@ -33,8 +32,8 @@ export const unscheduled = (
 const scheduled = (date: string, time: string, taken?: string): DoseOccurrence => {
   const dueAt = at(date, time)
   const base = {
-    id: `${clockRunning.id}:${dueAt}`,
-    scheduleId: clockRunning.id,
+    id: `${magnesiumSchedule.id}:${dueAt}`,
+    scheduleId: magnesiumSchedule.id,
     medicineId: magnesium.id,
     dueAt,
     quantity: 1,
@@ -44,7 +43,7 @@ const scheduled = (date: string, time: string, taken?: string): DoseOccurrence =
         ...base,
         status: 'Taken',
         record: {
-          scheduleId: clockRunning.id,
+          scheduleId: magnesiumSchedule.id,
           dueAt,
           takenAt: at(date, taken),
           quantity: 1,

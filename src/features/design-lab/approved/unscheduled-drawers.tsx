@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import type { Medicine } from '@/features/medicines/contract'
 import type { UnscheduledDose } from '@/features/unscheduled-doses/contract'
-import { ibuprofen, TODAY } from './lab-fixtures'
+import { ibuprofen, TODAY } from '../lab-fixtures'
 import {
   DoseFields,
   LabDoseDrawer,

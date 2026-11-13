@@ -2,7 +2,7 @@
 
 **Direction {{A}}, {{name}}**, approved by Bora on {{Month D, YYYY}}. Comparison page:
 {{artifact URL}}. Evidence and captures are in this ticket's approval comment. Frames run
-under `pnpm dev` at `/lab/<slug>`, registered in `src/features/design-lab/{{topic}}-frames.tsx`.
+under `pnpm dev` at `/lab/<slug>`, registered in `src/features/design-lab/approved/{{topic}}-frames.tsx`.
 
 | Frame    | Slug       | Shows                                                         |
 | -------- | ---------- | ------------------------------------------------------------- |

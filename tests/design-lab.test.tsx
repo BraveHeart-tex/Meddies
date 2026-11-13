@@ -1,6 +1,9 @@
 import { render, screen, within } from '@testing-library/react'
 import { expect, test, vi } from 'vitest'
-import { designFrames } from '../src/features/design-lab/frames'
+import { approvedFrames } from '../src/features/design-lab/approved/frames'
+import { builtFrames } from '../src/features/design-lab/built/frames'
+import { draftFrames } from '../src/features/design-lab/draft/frames'
+import { designFrames, type BuiltFrame, type LabFrame } from '../src/features/design-lab/frames'
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/lab/109-l1',
@@ -17,6 +20,24 @@ test.each(designFrames.map((frame) => [frame.citation, frame] as const))(
     expect(document.body).not.toBeEmptyDOMElement()
   },
 )
+
+test('a frame takes its status from its folder', () => {
+  const folders = { draft: draftFrames, approved: approvedFrames, built: builtFrames }
+  for (const [status, frames] of Object.entries(folders))
+    expect(designFrames.filter((frame) => frame.status === status).map(({ slug }) => slug)).toEqual(
+      frames.map(({ slug }) => slug),
+    )
+})
+
+test('only built frames carry a route', () => {
+  const frame = { slug: '900-a1', title: 'Today', citation: '900·A1', render: () => null } as const
+  const built: BuiltFrame = { ...frame, route: '/' }
+  // @ts-expect-error a draft or approved frame has no route
+  const approved: LabFrame = { ...frame, route: '/' }
+  // @ts-expect-error a built frame names the route it renders
+  const unrouted: BuiltFrame = frame
+  expect([built, approved, unrouted]).toHaveLength(3)
+})
 
 test('109·L1 renders the cold launch with one status and the real navigation', () => {
   const frame = designFrames.find((entry) => entry.slug === '109-l1')!
@@ -69,7 +90,7 @@ test('241·A1 offers Log a dose without a schedule and lists no past doses', () 
 
 test('241 save messages name the day only when it is not today', async () => {
   const { savedMessage, unscheduled, at } =
-    await import('../src/features/design-lab/unscheduled-model')
+    await import('../src/features/design-lab/approved/unscheduled-model')
   const { ibuprofen, magnesium } = await import('../src/features/design-lab/lab-fixtures')
   expect(
     savedMessage(ibuprofen, unscheduled(1, ibuprofen, at('2026-11-09', '10:00')), '2026-11-09'),

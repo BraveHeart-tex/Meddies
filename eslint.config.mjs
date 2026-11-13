@@ -97,7 +97,7 @@ const eslintConfig = defineConfig([
   },
   // Lab frame files render on the server: only components from client modules.
   {
-    files: ['src/features/design-lab/frames.tsx', 'src/features/design-lab/*-frames.tsx'],
+    files: ['src/features/design-lab/**/frames.tsx', 'src/features/design-lab/**/*-frames.tsx'],
     plugins: { meddies },
     rules: { 'meddies/lab-client-imports': 'error' },
   },
@@ -118,6 +118,40 @@ const eslintConfig = defineConfig([
     ],
     rules: {
       'no-restricted-imports': ['error', { patterns: browserRestrictedImports }],
+    },
+  },
+  // Built frames render production code (docs/design/README.md#design-lab): no lab-only modules
+  // and no styling of their own. These options replace the browser and src/**/*.tsx ones, so they
+  // repeat them.
+  {
+    files: ['src/features/design-lab/built/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { group: browserRestrictedImports },
+            {
+              regex: '^(\\.|@/features/design-lab/)(.*/)?(draft|approved)(/|$)',
+              message: 'Built frames may not import draft or approved frames.',
+            },
+            {
+              regex: '^(\\.|@/features/design-lab/).*-(parts|screens|drawers)$',
+              message: 'Built frames may not import lab parts, screens or drawers.',
+            },
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        routeLinkSyntax,
+        ...wallClockSyntax,
+        {
+          selector:
+            "JSXOpeningElement[name.type='JSXIdentifier'][name.name=/^[a-z]/] > JSXAttribute[name.name='className']",
+          message: 'Built frames take styling from production components, not className.',
+        },
+      ],
     },
   },
   // Worker code may consume neutral contracts/rules, never app wiring or browser policy.

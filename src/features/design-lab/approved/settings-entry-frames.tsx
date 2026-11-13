@@ -17,9 +17,8 @@ import { HistoryDateNav } from '@/features/schedules/history-date-nav'
 import { MedicationRow } from '@/features/schedules/medication-row'
 import { NextDose } from '@/features/schedules/next-dose'
 import { formatLongDay } from '@/lib/calendar-date'
-import type { DesignFrame } from './frames'
-import { magnesium, NOW, TODAY } from './lab-fixtures'
-import { clockRunning } from './pause-model'
+import type { LabFrame } from '../frames'
+import { magnesium, magnesiumSchedule, NOW, TODAY } from '../lab-fixtures'
 
 /**
  * #238, Direction A approved and built in #239: Settings is the fourth tab and headers carry only
@@ -37,7 +36,7 @@ const vitaminD: Medicine = {
 
 const evening: DoseOccurrence = {
   id: 'dose-mg-2000',
-  scheduleId: clockRunning.id,
+  scheduleId: magnesiumSchedule.id,
   medicineId: magnesium.id,
   dueAt: '2026-11-09T17:00:00.000Z',
   quantity: 1,
@@ -111,7 +110,7 @@ function DetailScreen() {
     <Screen current="/medications">
       <MedicationBackRow href={medicationsHref({ mode: 'list' })}>Medications</MedicationBackRow>
       <MedicationIdentity medicine={magnesium} />
-      <ClockScheduleCard schedule={clockRunning} unit={magnesium.unit} today={TODAY} />
+      <ClockScheduleCard schedule={magnesiumSchedule} unit={magnesium.unit} today={TODAY} />
     </Screen>
   )
 }
@@ -159,20 +158,41 @@ function SettingsScreen() {
   )
 }
 
-const screens: [string, () => ReactNode][] = [
-  ['Today', TodayScreen],
-  ['Medications', MedicationsScreen],
-  ['Medication detail', DetailScreen],
-  ['History', HistoryScreen],
-  ['Settings', SettingsScreen],
-  ['Cold launch', Loading],
-]
-
-export const settingsEntryFrames: readonly DesignFrame[] = screens.map(
-  ([title, Screen], index): DesignFrame => ({
-    slug: `238-a${index + 1}` as DesignFrame['slug'],
-    title: `Fourth tab, ${title}`,
-    citation: `238·A${index + 1}` as DesignFrame['citation'],
-    render: () => <Screen />,
-  }),
-)
+export const settingsEntryFrames = [
+  {
+    slug: '238-a1',
+    title: 'Fourth tab, Today',
+    citation: '238·A1',
+    render: () => <TodayScreen />,
+  },
+  {
+    slug: '238-a2',
+    title: 'Fourth tab, Medications',
+    citation: '238·A2',
+    render: () => <MedicationsScreen />,
+  },
+  {
+    slug: '238-a3',
+    title: 'Fourth tab, Medication detail',
+    citation: '238·A3',
+    render: () => <DetailScreen />,
+  },
+  {
+    slug: '238-a4',
+    title: 'Fourth tab, History',
+    citation: '238·A4',
+    render: () => <HistoryScreen />,
+  },
+  {
+    slug: '238-a5',
+    title: 'Fourth tab, Settings',
+    citation: '238·A5',
+    render: () => <SettingsScreen />,
+  },
+  {
+    slug: '238-a6',
+    title: 'Fourth tab, Cold launch',
+    citation: '238·A6',
+    render: () => <Loading />,
+  },
+] satisfies readonly LabFrame[]

@@ -18,9 +18,8 @@ happen. After a design changes there, refresh the copy here.
   number: `109·L1` is frame `L1` in the `109` file.
 - **Finding a frame:** frames in the `107` to `109` files are keyed by ID in the script.
   Search the file instead of reading it whole: `rg -n "^\s+L1:" docs/design/109-access-recovery.html`.
-  Lab frames are listed with their citations at `/lab` under `pnpm dev`. Some citations are
-  generated (`227·A${n}`), so search the design number instead:
-  `rg -n "227" src/features/design-lab`.
+  Lab frames are listed with their citations at `/lab` under `pnpm dev`; search one by its
+  literal citation: `rg -n "241·A5" src/features/design-lab`.
 - **Precedence:** `110` overrides the earlier designs where they conflict. Mocks show layout,
   not chrome: build with the production AppShell, components and tokens, and take geometry
   from [DESIGN.md](../../DESIGN.md).
@@ -36,34 +35,64 @@ design ticket's approval comment; they add no snapshot above. Run `pnpm dev`, th
 `/lab` for the registry or `/lab/109-l1` for cold launch `109·L1`. The lab exists only
 under `next dev`; production and preview builds return the themed HTTP 404.
 
-`src/features/design-lab/frames.tsx` is the typed registry: each lowercase
-`<design>-<frame>` slug owns its title, citation and render function. Routes only adapt
-and compose. Import production compositions; reusable UI belongs in shared UI, layout
-or feature modules from day one. The initial frame imports the root loading composition,
-including its AppShell exactly once.
+### Lifecycle folders
 
-Synthetic fixtures must be typed against feature contracts and seeded into a per-frame
-Query client, with no data network reads. Cold launch needs no data wrapper. The first
-data-driven frame's owner implements that wrapper.
+A frame's status is its folder under `src/features/design-lab/`:
 
-Lab rules that the checks enforce or that bit before:
+| Folder      | Holds                                                                   | Leaves when                                  |
+| ----------- | ----------------------------------------------------------------------- | -------------------------------------------- |
+| `draft/`    | A design ticket's directions                                            | Approval: the winner moves, the rest go      |
+| `approved/` | Approved designs waiting for their build ticket                         | The build ticket moves or deletes each frame |
+| `built/`    | **Built frames:** design-critical screens rendered from production code | A redesign's build ticket replaces it        |
 
-- **Registry imports stay hook-free.** `frames.tsx` is a server module, so frame files it
-  imports render client screens marked `'use client'` and hold no hooks themselves. The
-  lab HTTP test renders every registered frame, so a break fails `pnpm verify:local`.
+Each folder's `frames.tsx` lists its frames, and the registry `frames.tsx` stamps their
+status, so no frame states its own. Only built frames carry a `route`; a `route` on a draft
+or approved frame is a type error. A design's modules (`<topic>-frames.tsx`, `-parts`,
+`-screens`, `-drawers`, `-model`) live in its frames' folder and move or go with them.
+
+An **archived design** has no frames left in the registry. Its citations stay valid and
+resolve through its design ticket's "Approved design" table and approval comment, and its
+frames stay in git history.
+
+### Citations
+
+`241·A5` is frame `A5` of design ticket #241. A frame's slug is its citation lowercased with
+`·` as `-`: `193·B·Scanner` is `/lab/193-b-scanner`. Write every slug and citation out
+literally, never from a template, so `rg` finds them. While a design has frames in the
+registry, every citation of it in `src`, `tests`, `docs`, `.agents`, `DESIGN.md`,
+`PRODUCT.md` and `AGENTS.md` must be a registered frame. `tests/design-citations.test.ts`
+enforces this in `pnpm verify:local`.
+
+### Rules
+
+Routes only adapt and compose. Import production compositions; reusable UI belongs in shared
+UI, layout or feature modules from day one. Synthetic fixtures must be typed against feature
+contracts and seeded into a per-frame Query client, with no data network reads.
+
+- **Built frames render production code only.** They may import production components,
+  `@/components/ui/**`, layout and feature modules, `lab-fixtures.ts` and `*-model` values,
+  never `draft/`, `approved/` or lab `-parts`, `-screens` and `-drawers` modules, and put no
+  `className` on lowercase elements. Lint fails `built/**` files that break this.
+- **Registry imports stay hook-free.** The `frames.tsx` files are server modules, so frame
+  files they import render client screens marked `'use client'` and hold no hooks
+  themselves. The lab HTTP test renders every registered frame, so a break fails
+  `pnpm verify:local`.
 - **Frame files take only components from client modules.** Plain values a frame needs live in
   `<topic>-model.ts`; `meddies/lab-client-imports` fails a frame file that imports anything else
   from a `'use client'` module.
 - **Shared example data lives in `lab-fixtures.ts`**, typed against feature contracts, so
-  frames show the same medicine, clock and schedules.
+  frames show the same medicine, clock and schedule. Data only one design uses lives in its
+  `<topic>-model.ts`.
 - **Server-rendered ids are stable.** Frames render on the server first, so ids come from
   fixtures or `useId`, never from random values such as `useFieldArray`'s row ids, which
   break hydration.
 
+### Capture
+
 Capture frames for review by slug prefix, with `pnpm dev` stopped:
 
 ```sh
-pnpm lab:capture 215-            # or --out <dir>; prints the capture folder
+pnpm lab:capture 241-            # or --out <dir>; prints the capture folder
 ```
 
 It writes `<slug>-402x874.png` (screen-size), `<slug>-320x740.png` and `<slug>.json` per
