@@ -2,6 +2,8 @@ import type { Page } from '@playwright/test'
 import { waitForClientRouter } from './actions'
 import { expect, test } from './fixtures'
 import {
+  doseTrigger,
+  drawer,
   historyList,
   placeholders,
   rootFallback,
@@ -134,8 +136,21 @@ test('warm client navigation shows cached doses instead of the skeleton', async 
   await expect(todaysDoses(page)).toContainText('Streaming Fixture Medicine')
   await expect(fallback(page)).toHaveCount(0)
   await expect(placeholders(page)).toHaveCount(0)
+  // #255: the cached section stays interactive through the server-to-browser handoff.
+  await doseTrigger(page, 'Streaming Fixture Medicine').first().click()
+  await drawer(page).getByRole('button', { name: 'I took it' }).click()
+  await drawer(page)
+    .getByLabel(/^Amount/)
+    .fill('2')
   for (const route of todayReads) app.worker.release(route)
-  await expect(todaysDoses(page)).toContainText('Streaming Fixture Medicine')
+  await expect
+    .poll(() => todayReads.every((route) => app.worker.requests(route).every((read) => read.end)))
+    .toBe(true)
+  await expect(drawer(page).getByRole('button', { name: 'I took it' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await expect(drawer(page).getByLabel(/^Amount/)).toHaveValue('2')
 })
 
 test('failed Today reads show recoverable errors in the shell', async ({ page, app }) => {

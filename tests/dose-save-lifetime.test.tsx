@@ -1,17 +1,25 @@
-import { onlineManager, QueryClientProvider, type QueryClient } from '@tanstack/react-query'
+import {
+  dehydrate,
+  onlineManager,
+  QueryClientProvider,
+  type QueryClient,
+} from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { useState } from 'react'
+import { Suspense, use, useState } from 'react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { Toaster } from '../src/components/ui/toast'
 import type { Medicine } from '../src/features/medicines/contract'
 import { medicineKeys } from '../src/features/medicines/queries'
 import type { DailySchedule, DoseOutcomeRecord } from '../src/features/schedules/contract'
 import { SchedulePanel } from '../src/features/schedules/schedule-panel'
+import { TodayDosesReady, TodayDosesSection } from '../src/features/schedules/today-doses-section'
+import { scheduleKeys } from '../src/features/schedules/queries'
 import { TodayHeader } from '../src/features/schedules/today-header'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
+import { PrivateQueryHandoff } from '../src/lib/private-query-handoff'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
@@ -269,3 +277,63 @@ test('a different record for a closed unconfirmed save replaces its badge with e
   expect(await row()).not.toHaveTextContent("Check what's saved")
   expect(state.puts).toHaveLength(1)
 })
+
+// A warm route exposes cached dose controls before its server section finishes streaming.
+// The stream must not replace the interactive tree underneath an open or restored drawer.
+test.each(['unchosen', 'restored'] as const)(
+  'server streaming keeps the %s drawer mounted and its draft intact',
+  async (state) => {
+    api(async () => HttpResponse.json({}, { status: 503 }))
+    client.setQueryData(scheduleKeys.snapshot(), {
+      schedules: [schedule],
+      records: [],
+      now,
+      date: '2026-11-14',
+    })
+    const incoming = createQueryClient()
+    incoming.setQueryData(medicineKeys.list(), [medicine])
+    incoming.setQueryData(scheduleKeys.snapshot(), client.getQueryData(scheduleKeys.snapshot()))
+    const held = deferred()
+    function Streamed() {
+      use(held.promise)
+      return (
+        <PrivateQueryHandoff state={dehydrate(incoming)}>
+          <TodayDosesReady />
+        </PrivateQueryHandoff>
+      )
+    }
+    let navigate!: (show: boolean) => void
+    function App() {
+      const [show, setShow] = useState(true)
+      navigate = setShow
+      return (
+        <QueryClientProvider client={client}>
+          <Toaster>
+            {show && (
+              <TodayDosesSection initialNow={now}>
+                <Suspense fallback={null}>
+                  <Streamed />
+                </Suspense>
+              </TodayDosesSection>
+            )}
+          </Toaster>
+        </QueryClientProvider>
+      )
+    }
+    render(<App />)
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
+    await user.click(await screen.findByRole('button', { name: /^Record dose for Morning Tablet/ }))
+    if (state === 'restored') {
+      await user.click(screen.getByRole('button', { name: 'I took it' }))
+      await user.clear(screen.getByLabelText(/^Amount/))
+      await user.type(screen.getByLabelText(/^Amount/), '3')
+      act(() => navigate(false))
+      act(() => navigate(true))
+    }
+    const dialog = await screen.findByRole('dialog', { name: 'Morning Tablet' })
+    await act(async () => held.release())
+    expect(await screen.findByRole('dialog', { name: 'Morning Tablet' })).toBe(dialog)
+    await user.click(within(dialog).getByRole('button', { name: 'I took it' }))
+    expect(within(dialog).getByLabelText(/^Amount/)).toHaveValue(state === 'restored' ? '3' : '1')
+  },
+)

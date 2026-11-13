@@ -9,18 +9,17 @@ import { AppShell } from '@/components/layout/app-shell'
 import { ScreenStack } from '@/components/layout/screen-stack'
 import { schedulingNow } from '@/features/schedules/server'
 import { prefetchToday } from '@/features/schedules/prefetch'
-import { SchedulePanel } from '@/features/schedules/schedule-panel'
 import { TodayHeader } from '@/features/schedules/today-header'
-import { TodayDosesFallback } from '@/features/schedules/today-doses-fallback'
+import { TodayDosesReady, TodayDosesSection } from '@/features/schedules/today-doses-section'
 
 /**
  * Today's doses section: the next-dose hero and the dose list derive from the same two reads,
  * so they stream as one Suspense boundary rather than two that always resolve together.
  */
-async function TodayDoses({ initialNow }: { initialNow: string }) {
+async function TodayDoses() {
   return (
     <PrivateQueryHandoff state={await prefetchToday()}>
-      <SchedulePanel mode="today" initialNow={initialNow} />
+      <TodayDosesReady />
     </PrivateQueryHandoff>
   )
 }
@@ -48,9 +47,11 @@ export default async function HomePage({
         <AppShell>
           <ScreenStack>
             <TodayHeader initialNow={initialNow} />
-            <Suspense fallback={<TodayDosesFallback initialNow={initialNow} />}>
-              <TodayDoses initialNow={initialNow} />
-            </Suspense>
+            <TodayDosesSection initialNow={initialNow}>
+              <Suspense fallback={null}>
+                <TodayDoses />
+              </Suspense>
+            </TodayDosesSection>
           </ScreenStack>
         </AppShell>
       </SessionBoundary>

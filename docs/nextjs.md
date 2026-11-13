@@ -16,13 +16,13 @@ implementation: copy its streaming source. Saves, drafts and session end follow
 ## Reference: Today
 
 - Page: [`src/app/page.tsx`](../src/app/page.tsx) authenticates, renders the shell and
-  [`TodayHeader`](../src/features/schedules/today-header.tsx), and streams one doses section
+  [`TodayHeader`](../src/features/schedules/today-header.tsx), and streams one data handoff
   in `<Suspense>` with `PrivateQueryHandoff`.
 - Server prefetch: [`schedules/prefetch.ts`](../src/features/schedules/prefetch.ts) into the
   request client from [`request-query-client.ts`](../src/lib/request-query-client.ts).
 - Section: [`schedule-panel.tsx`](../src/features/schedules/schedule-panel.tsx) and
-  [`today-schedule.tsx`](../src/features/schedules/today-schedule.tsx); fallback
-  [`today-doses-fallback.tsx`](../src/features/schedules/today-doses-fallback.tsx) (the cached
+  [`today-schedule.tsx`](../src/features/schedules/today-schedule.tsx); stable host
+  [`today-doses-section.tsx`](../src/features/schedules/today-doses-section.tsx) (the cached
   section on warm navigation, else
   [`today-skeleton.tsx`](../src/features/schedules/today-skeleton.tsx)).
 - Query keys and options: [`schedules/queries.ts`](../src/features/schedules/queries.ts),
@@ -36,9 +36,11 @@ Lessons from Today:
   with `useCachedQueryData` (`src/lib/use-cached-query-data.ts`) rather than creating its
   query, even with `enabled: false`: hydration of an existing query is deferred to an
   effect, so the section's observer would fetch again.
-- The server cannot see the browser cache, so a section's Suspense fallback renders the
-  cached section when the session already holds its queries, and the skeleton only
-  without usable data.
+- The server cannot see the browser cache. Today keeps its interactive section outside
+  Suspense, showing cached content while a data-only handoff streams. Completion hydrates
+  the same mounted section; it never replaces open drawers or their Session drafts. Without
+  usable data the host shows the skeleton until hydration, then query error/retry states
+  also become available for failed server reads.
 - A query with `staleTime: 0` refetches as it mounts with hydrated data. When the page's
   server prefetch is the entry read, the route's observer sets `refetchOnMount: false`
   (`useScheduleSnapshot({ serverEntry: true })`). Keep `staleTime` as is: focus refresh and

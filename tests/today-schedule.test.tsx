@@ -16,7 +16,7 @@ import type { DailySchedule, DoseOutcomeRecord } from '../src/features/schedules
 import { scheduleToday } from '../src/features/schedules/occurrences'
 import { scheduleKeys } from '../src/features/schedules/queries'
 import { SchedulePanel } from '../src/features/schedules/schedule-panel'
-import { TodayDosesFallback } from '../src/features/schedules/today-doses-fallback'
+import { TodayDosesSection } from '../src/features/schedules/today-doses-section'
 import { TodayHeader } from '../src/features/schedules/today-header'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
@@ -811,7 +811,7 @@ describe('streamed section fallback', () => {
   const renderFallback = () =>
     render(
       <QueryClientProvider client={client}>
-        <TodayDosesFallback initialNow={initialNow} />
+        <TodayDosesSection initialNow={initialNow} />
       </QueryClientProvider>,
     )
 
