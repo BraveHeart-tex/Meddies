@@ -87,9 +87,15 @@ An Occurrence whose due time has passed with no Dose outcome. It proves neither 
 and can still be logged.
 _Avoid_: missed, overdue
 
+**Unscheduled dose**:
+A dose the user records as taken with no Occurrence behind it, keeping its intake time and
+quantity. It is always Taken, never Skipped or Not logged, and never stands in for an Occurrence
+or moves later doses.
+_Avoid_: extra dose, PRN dose, unscheduled intake in new text; write dose in UI copy
+
 **History date**:
-The day a dose was due, in Istanbul time. A dose shows on its History date even when it was
-taken on another day.
+The day a dose was due, in Istanbul time; for an Unscheduled dose, the day it was taken. A
+scheduled dose shows on its History date even when it was taken on another day.
 _Avoid_: taken date, record date
 
 ## Saves and drafts

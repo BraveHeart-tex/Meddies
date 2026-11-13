@@ -16,6 +16,27 @@ The entities below are conceptual distinctions, not an approved database schema.
 
 Low-stock thresholds, re-arming, uncertain stock and refill pushes follow #10 below.
 
+### #28 - Approved Unscheduled dose rules (November 13, 2026)
+
+See **Unscheduled dose** and **History date** (GLOSSARY.md).
+
+- An Unscheduled dose is always Taken: it keeps an actual intake time and quantity and never requires a schedule or DoseOccurrence. It never stands in for an occurrence: due and Not logged occurrences, later occurrences, Interval Anchors and reminders stay unchanged.
+- The user logs it from Medication detail, for any medication, whether its schedule is missing, running, paused or Ended. Today and History do not start one.
+- Intake time is Now, or a minute today or yesterday (Istanbul), never in the future. Quantity starts at 1 of the medication's unit and follows the supported quantities above.
+- It shows on Today and on History for its History date, the Istanbul day it was taken, in time order among scheduled doses and marked as not on a schedule. It never becomes Today's next dose. Today lists it in place of its empty state. Medication detail shows no list of past Unscheduled doses.
+- When the saved intake falls on a day other than today, the save message names that day.
+- From Today or History the user can change its intake time and quantity under the same rules, or remove it after a confirm step. A removed Unscheduled dose leaves Today and History; the server keeps its revisions for retry safety and export, and stock treats it as never taken (#50).
+- Meddies records what the user reports and gives no advice: no suggestion to take an extra dose, no warning about earlier doses and no limit on how many are logged.
+- Each log is its own action with its own action ID: an identical retry returns the saved dose, and two logs at the same minute are two doses. Saves follow the [session contract](./ux-journeys.md#session-contract); stock effects belong to #47 and offline logging stays deferred (D3 in [deferred](./deferred.md)).
+
+| Example           | Setup                                                         | Expected                                                                                       |
+| ----------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| No schedule       | Medication with no schedule; log 1 tablet Now at Nov 3 14:10  | Today and the Nov 3 History show it at 14:10, marked; no occurrence is created.                |
+| Beside a schedule | Daily 08:00 Not logged and 20:00 due; log 0.5 tablet at 14:10 | 08:00 stays Not logged, 20:00 stays due and next; the 14:10 dose sits between them, marked.    |
+| Cross-midnight    | At Nov 4 00:20, log a dose taken Nov 3 23:30                  | It shows on the Nov 3 History, not on Nov 4 Today; the save message names Nov 3.               |
+| Separate logs     | Two logs of 1 capsule at 14:10 with different action IDs      | Two Unscheduled doses; neither merges with the other.                                          |
+| Remove            | Remove the 14:10 dose after its confirm step                  | It leaves Today and History; its revisions stay on the server; stock treats it as never taken. |
+
 ## Required product behavior
 
 1. Manual medication creation must work without a barcode catalog.
