@@ -5,6 +5,7 @@ import { designFrames } from '../src/features/design-lab/frames'
 vi.mock('next/navigation', () => ({
   usePathname: () => '/lab/109-l1',
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 // Every registered frame renders in jsdom, so a frame needing a browser API jsdom lacks fails
