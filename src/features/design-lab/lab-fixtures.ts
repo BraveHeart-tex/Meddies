@@ -10,3 +10,11 @@ export const magnesium: Medicine = {
   strength: '400 mg',
   unit: 'tablet',
 }
+
+/** Ibuprofen has no schedule: every dose of it is an Unscheduled dose. */
+export const ibuprofen: Medicine = {
+  id: '66666666-6666-4666-8666-666666666666',
+  label: 'Ibuprofen',
+  strength: '200 mg',
+  unit: 'tablet',
+}

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import type { Medicine } from '@/features/medicines/contract'
 import type { UnscheduledDose } from '@/features/unscheduled-doses/contract'
-import { TODAY } from './lab-fixtures'
+import { ibuprofen, TODAY } from './lab-fixtures'
 import {
   DoseFields,
   LabDoseDrawer,
@@ -12,7 +12,7 @@ import {
   RemoveConfirm,
   type SaveStep,
 } from './unscheduled-parts'
-import { ibuprofen, medicines, savedValues, type DoseValues } from './unscheduled-model'
+import { medicines, savedValues, type DoseValues } from './unscheduled-model'
 
 /**
  * Log a dose from Medication detail (241·A3, A4, S1, S4 to S6): the Taken drawer without a

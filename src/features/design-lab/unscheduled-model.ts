@@ -5,16 +5,8 @@ import { localMinute, type TakenAtChoice } from '@/features/schedules/taken-form
 import type { UnscheduledDose } from '@/features/unscheduled-doses/contract'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { formatQuantity, quantityLabel } from '@/lib/dose-quantity'
-import { magnesium, TODAY } from './lab-fixtures'
+import { ibuprofen, magnesium, TODAY } from './lab-fixtures'
 import { clockRunning } from './pause-model'
-
-/** Ibuprofen has no schedule: every dose of it is an Unscheduled dose. */
-export const ibuprofen: Medicine = {
-  id: '66666666-6666-4666-8666-666666666666',
-  label: 'Ibuprofen',
-  strength: '200 mg',
-  unit: 'tablet',
-}
 
 export const YESTERDAY = '2026-11-08'
 /** 00:20 on Mon 9 Nov: a dose taken at 23:30 belongs to Sun 8 Nov (the #28 Cross-midnight example). */

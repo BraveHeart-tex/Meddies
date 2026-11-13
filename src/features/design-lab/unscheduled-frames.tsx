@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react'
 import type { DesignFrame } from './frames'
-import { magnesium, TODAY } from './lab-fixtures'
+import { ibuprofen, magnesium, TODAY } from './lab-fixtures'
 import { ChangeDrawer, LogDrawer } from './unscheduled-drawers'
 import {
   at,
-  ibuprofen,
   morningIbuprofen,
   nowValues,
   onlyUnscheduled,

@@ -68,9 +68,9 @@ test('241·A1 offers Log a dose without a schedule and lists no past doses', () 
 })
 
 test('241 save messages name the day only when it is not today', async () => {
-  const { savedMessage, unscheduled, at, ibuprofen } =
+  const { savedMessage, unscheduled, at } =
     await import('../src/features/design-lab/unscheduled-model')
-  const { magnesium } = await import('../src/features/design-lab/lab-fixtures')
+  const { ibuprofen, magnesium } = await import('../src/features/design-lab/lab-fixtures')
   expect(
     savedMessage(ibuprofen, unscheduled(1, ibuprofen, at('2026-11-09', '10:00')), '2026-11-09'),
   ).toBe('Ibuprofen · taken at 10:00, 1 tablet')
