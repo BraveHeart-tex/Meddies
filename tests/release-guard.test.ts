@@ -116,3 +116,19 @@ test.each<[string, boolean]>([
   commit(path)
   expect(guard()).toBe(nonRuntime ? 0 : 1)
 })
+
+test('Verify gates parallel Vitest and journeys behind one eligibility check', () => {
+  const workflow = readFileSync(resolve('.github/workflows/verify.yml'), 'utf8')
+  expect(workflow).toContain('value: ${{ jobs.eligibility.outputs.eligible }}')
+  expect(workflow.match(/node scripts\/release-guard.mjs/g)).toHaveLength(1)
+  for (const job of ['vitest', 'journeys']) {
+    const block = workflow.split(`\n  ${job}:\n`)[1]?.split(/\n  \w+:\n/)[0]
+    expect(block).toContain('needs: eligibility')
+    expect(block).toContain("if: needs.eligibility.outputs.eligible == 'true'")
+    expect(block).toContain('run: pnpm build')
+    expect(block).toContain(job === 'vitest' ? 'run: pnpm test' : 'run: pnpm test:browser')
+  }
+  const release = readFileSync(resolve('.github/workflows/release.yml'), 'utf8')
+  expect(release).toContain('needs: verify')
+  expect(release).toContain("if: needs.verify.outputs.eligible == 'true'")
+})

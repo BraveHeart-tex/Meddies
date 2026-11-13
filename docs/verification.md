@@ -9,8 +9,8 @@ pnpm verify:local
 Runs lint, format check and typecheck, then the build, integration, unit and component
 tests. A static-check failure stops before the second stage; second-stage checks all finish
 even when one fails. A warning names dev-stack tests skipped because fixed ports were busy.
-CI skips Vitest ([Verify workflow](deployment.md#verify-workflow)), so this is the only run of
-the unit, component and integration tests.
+CI also runs every Vitest project in parallel with journeys before Release
+([Verify workflow](deployment.md#verify-workflow)).
 
 The verify and journey wrappers reuse a build only when its inputs are unchanged and their
 success marker exists, so a hand-run `pnpm build` is always rebuilt.

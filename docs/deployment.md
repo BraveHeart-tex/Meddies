@@ -16,11 +16,13 @@ Manual Wrangler commands are for [coordinated recovery](#failure-and-recovery) o
 
 `.github/workflows/verify.yml` runs on pull requests and is called by Release before
 production mutations, using `.node-version`, `packageManager` and a frozen install. It has
-read-only repository access and no production environment or secrets. Its one `Verify` job
-sets up dependencies once, then runs lint, format check, typecheck, production build,
-Worker build and every non-`@visual` journey; any failing step blocks release. Vitest runs
-only in `pnpm verify:local`, and `scripts/verify.mjs` is the local and manual-recovery
-path. The production build sets `CI_SKIP_BUILD_TYPECHECK=1` after the explicit typecheck;
+read-only repository access and no production environment or secrets. One eligibility job
+checks current main before two parallel jobs start: `Vitest` builds Next.js and runs
+`pnpm test` (Worker build and every Vitest project); `Journeys` runs lint, format check,
+typecheck, production build, Worker build and every non-`@visual` journey. Both must pass
+before Release can mutate production. `scripts/verify.mjs` remains the local and
+manual-recovery path. The Journeys production build sets `CI_SKIP_BUILD_TYPECHECK=1`
+after the explicit typecheck;
 Vercel and local journey builds keep the check. ESLint and Prettier caches stay local in
 `.cache`.
 
@@ -44,11 +46,12 @@ A **non-runtime-only** commit changes only `docs/**` or `**/*.md`. `.agents` scr
 inputs. Tests pin the workflow patterns and prove release-guard parity.
 
 `.github/workflows/release.yml` runs on `main` pushes, except non-runtime-only ones, and on
-manual dispatch on `main`, which always runs. It calls the single Verify job for the event
-SHA, then enters the `production` environment. Before dependency setup, Verify checks current
-main: a SHA superseded by any runtime commit succeeds early without journeys, and its release
-job is skipped. Head and non-runtime-only advances proceed; lookup or history errors fail
-closed. The release job directly requires Verify success and its eligible output.
+manual dispatch on `main`, which always runs. It calls Verify for the event SHA, then
+enters the `production` environment. Before dependency setup, Verify checks current main:
+a SHA superseded by any runtime commit succeeds early without Vitest or journeys, and its
+release job is skipped. Head and non-runtime-only advances proceed; lookup or history
+errors fail closed. The release job directly requires Verify success (both parallel jobs)
+and its eligible output.
 A newer push cancels an in-progress Verify, and the newer Verify starts without waiting.
 A separate non-canceling concurrency group on the release job covers every mutation:
 
