@@ -25,8 +25,14 @@ test('109·L1 renders the cold launch with one status and the real navigation', 
   expect(screen.getAllByRole('status')).toHaveLength(1)
   expect(screen.getByRole('status')).toHaveTextContent('Opening Meddies')
   expect(screen.getAllByRole('main')).toHaveLength(1)
-  expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings')
   expect(screen.getAllByRole('navigation', { name: 'Primary' })).toHaveLength(1)
-  for (const name of ['Today', 'Medications', 'History'])
+  for (const name of ['Today', 'Medications', 'History', 'Settings'])
     expect(screen.getByRole('link', { name })).toBeInTheDocument()
+})
+
+test('238·A5 selects the Settings tab and its title stands alone', () => {
+  const frame = designFrames.find((entry) => entry.slug === '238-a5')!
+  render(frame.render())
+  expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page')
+  expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible()
 })

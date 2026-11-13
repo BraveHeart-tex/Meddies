@@ -24,7 +24,7 @@ function Skeleton({
 
 /**
  * One loading section with a single polite status label. Real controls inside it, such as the
- * header's Settings button, stay reachable; only `Skeleton` placeholders are hidden.
+ * header's Add button, stay reachable; only `Skeleton` placeholders are hidden.
  */
 function LoadingSection({
   label,

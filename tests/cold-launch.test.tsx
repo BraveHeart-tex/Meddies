@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { expect, test, vi } from 'vitest'
 import Loading from '../src/app/loading'
 
@@ -18,11 +18,16 @@ test('cold launch announces one status and keeps placeholders hidden', () => {
   }
 })
 
-test('cold launch keeps the real Settings button and primary navigation', () => {
+test('cold launch shows four tabs and a header skeleton without Settings', () => {
   render(<Loading />)
 
-  expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings')
   const nav = screen.getByRole('navigation', { name: 'Primary' })
-  expect(nav).toBeInTheDocument()
+  expect(
+    within(nav)
+      .getAllByRole('link')
+      .map((link) => link.textContent),
+  ).toEqual(['Today', 'Medications', 'History', 'Settings'])
+  // The Settings tab is the only Settings link: the header skeleton has none.
+  expect(screen.getAllByRole('link', { name: 'Settings' })).toHaveLength(1)
   expect(screen.queryByRole('heading')).toBeNull()
 })

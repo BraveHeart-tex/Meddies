@@ -10,7 +10,7 @@ export default function NotFound() {
   return (
     <AppShell>
       <div className="flex flex-col gap-5">
-        <AppHeader title="Page not found" align="center" />
+        <AppHeader title="Page not found" />
         <Alert>
           <Info aria-hidden="true" />
           <AlertTitle>This page isn&apos;t in Meddies.</AlertTitle>

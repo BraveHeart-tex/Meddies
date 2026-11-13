@@ -308,9 +308,7 @@ test.describe('direct links to one medication', () => {
 
       const result = await layout.result()
       const [fallbackBoxes, loadedBoxes] = result.snapshots.map((snapshot) => snapshot.boxes)
-      expect(loadedBoxes, 'the Back row, Settings and nav keep their geometry').toEqual(
-        fallbackBoxes,
-      )
+      expect(loadedBoxes, 'the Back row and nav keep their geometry').toEqual(fallbackBoxes)
       // Same budget as Today, History and the list. The skeleton is replaced rather than moved, and
       // it reserves each line of a one-line name, as this fixture has, so any shift is a regression.
       expect(result.cumulativeLayoutShift).toBeLessThanOrEqual(layoutShiftBudget)

@@ -2,7 +2,6 @@
 
 import type { ReactNode, Ref } from 'react'
 import { ChevronLeftIcon, Info } from 'lucide-react'
-import { SettingsLink } from '@/components/layout/app-header'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -12,14 +11,9 @@ import { MedicationsLink } from './medications-nav'
 import type { MedicinesRead } from './queries'
 import { medicationsHref } from './routes'
 
-/** The row above a sub-screen's identity: Back on the left, Settings on the right (110 Fix 1). */
+/** The row above a sub-screen's identity: Back alone (110 Fix 1, 238·A3). */
 export function SubScreenRow({ children }: { children: ReactNode }) {
-  return (
-    <header className="flex items-start justify-between gap-2 [overflow-wrap:anywhere]">
-      {children}
-      <SettingsLink />
-    </header>
-  )
+  return <header className="flex items-start [overflow-wrap:anywhere]">{children}</header>
 }
 
 /** Names where Back goes. Long names wrap and are never truncated or replaced by "Back". */

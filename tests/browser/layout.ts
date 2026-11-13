@@ -41,7 +41,6 @@ export function summarizeLayoutShifts(entries: LayoutShiftEntry[], since: number
 /** The shell elements whose geometry route tickets compare between fallback and content. */
 export const shellElements = (page: Page) => ({
   header: appHeader(page),
-  settings: page.getByRole('link', { name: 'Settings' }),
   primaryNav: page.getByRole('navigation', { name: 'Primary' }),
 })
 

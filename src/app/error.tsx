@@ -12,7 +12,7 @@ export default function ErrorPage({ retry }: { retry: () => void }) {
   return (
     <AppShell>
       <div className="flex flex-col gap-5">
-        <AppHeader title="Meddies" align="center" />
+        <AppHeader title="Meddies" />
         <Alert variant="destructive">
           <TriangleAlert aria-hidden="true" />
           <AlertTitle>This page couldn&apos;t open.</AlertTitle>

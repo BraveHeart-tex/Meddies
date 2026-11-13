@@ -13,7 +13,8 @@ test('unexpected errors keep navigation and offer retry and Today without sign-i
   expect(screen.getByRole('heading', { name: 'Meddies' })).toBeVisible()
   expect(
     within(screen.getByRole('navigation', { name: 'Primary' })).getAllByRole('link'),
-  ).toHaveLength(3)
+  ).toHaveLength(4)
+  expect(screen.getAllByRole('link', { name: 'Settings' })).toHaveLength(1)
   expect(screen.getByRole('link', { name: 'Open Today' })).toHaveAttribute('href', '/')
   expect(screen.queryByText(/sign.in/i)).not.toBeInTheDocument()
   await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }))
@@ -33,5 +34,6 @@ test('unknown addresses show public recovery content with no navigation tab sele
   )) {
     expect(link).not.toHaveAttribute('aria-current')
   }
+  expect(screen.getAllByRole('link', { name: 'Settings' })).toHaveLength(1)
   expect(screen.getByRole('link', { name: 'Open Today' })).toHaveAttribute('href', '/')
 })

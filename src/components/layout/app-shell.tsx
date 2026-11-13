@@ -1,6 +1,6 @@
 'use client'
 
-import { CircleDot, List, Pill, type LucideIcon } from 'lucide-react'
+import { CircleDot, List, Pill, Settings2, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
@@ -11,11 +11,16 @@ const destinations: { href: string; label: string; icon: LucideIcon }[] = [
   { href: '/', label: 'Today', icon: CircleDot },
   { href: '/medications', label: 'Medications', icon: Pill },
   { href: '/history', label: 'History', icon: List },
+  { href: '/settings', label: 'Settings', icon: Settings2 },
 ]
 
-// Pages render their own AppHeader so the title row can carry page actions beside Settings.
-export function AppShell({ children }: { children: ReactNode }) {
-  const pathname = usePathname()
+/**
+ * Pages render their own AppHeader so the title row can carry page actions. `current` overrides
+ * the tab chosen from the URL, for design lab frames.
+ */
+export function AppShell({ children, current }: { children: ReactNode; current?: string }) {
+  const urlPathname = usePathname()
+  const pathname = current ?? urlPathname
 
   return (
     <div className="mx-auto flex min-h-svh max-w-2xl flex-col px-5 pt-[calc(0.875rem+env(safe-area-inset-top,0px))] pb-[calc(8.125rem+env(safe-area-inset-bottom,0px))]">
@@ -25,11 +30,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         // Display none so a full-screen modal also takes the tabs out of the focus order.
         className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom,0px))] z-10 mx-auto max-w-2xl [body:has([data-covers-tab-bar])_&]:hidden rounded-[2.125rem] border bg-card p-1.5 shadow-nav"
       >
-        <ul className="grid grid-cols-3 gap-1">
+        <ul className="flex gap-1">
           {destinations.map(({ href, label, icon: Icon }) => {
             const active = pathname === href
             return (
-              <li key={href} className="min-w-0">
+              // Tabs share the width equally but never shrink below their label, so
+              // "Medications" stays whole at 320px.
+              <li key={href} className="min-w-fit flex-1">
                 <Link
                   href={href}
                   onNavigate={

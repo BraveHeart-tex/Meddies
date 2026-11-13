@@ -197,7 +197,7 @@ describe('the medication page', () => {
     await identity('Magnesium')
     expect(screen.getByText('200 mg · tablet')).toBeVisible()
     expect(backRow('Medications')).toHaveAttribute('href', '/medications')
-    expect(screen.getByRole('link', { name: 'Settings' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Medications' })).not.toBeInTheDocument()
     expect(await screen.findByText('No schedule yet')).toBeVisible()
     expect(setSchedule()).toBeVisible()

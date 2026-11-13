@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures'
+import { selectedNavigation } from './locators'
 import { insertScheduledMedicine } from './seed'
 import { enlargeText, scrollsHorizontally, scrollPosition, waitForClientRouter } from './actions'
 
@@ -50,7 +51,7 @@ test('Settings checks session end before showing the signed-out destination and 
   expect((await page.request.get('/api/session')).status()).toBe(401)
 })
 
-test('Settings leaves nav unselected and browser Back restores the History date', async ({
+test('Settings selects its tab and browser Back restores the History date', async ({
   page,
   app,
 }) => {
@@ -61,15 +62,11 @@ test('Settings leaves nav unselected and browser Back restores the History date'
   await page.mouse.wheel(0, 650)
   await expect.poll(() => scrollPosition(page)).toBeGreaterThan(0)
   const before = await scrollPosition(page)
-  // Activate the focused header link without scrolling it into view first.
+  // Activate the focused tab without scrolling the page first.
   await page.keyboard.press('Enter')
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Settings' })).toHaveCount(0)
-  for (const name of ['Today', 'Medications', 'History']) {
-    await expect(
-      page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name }),
-    ).not.toHaveAttribute('aria-current')
-  }
+  await expect(page.getByRole('link', { name: 'Settings' })).toHaveCount(1)
+  await expect(selectedNavigation(page)).toHaveText('Settings')
   await expect(page.getByRole('link', { name: /Back/ })).toHaveCount(0)
   await page.goBack()
   await expect(page).toHaveURL(`${app.origin}/history?date=2035-06-14`)

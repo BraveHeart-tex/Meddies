@@ -76,7 +76,7 @@ export const rootFallback = (page: Page) =>
 /** The Today dose list. */
 export const todaysDoses = (page: Page) => page.getByRole('list', { name: "Today's doses" })
 
-/** The page header (title row with Settings). It sits inside `main`, so it is not a banner. */
+/** The page header (title row and page action). It sits inside `main`, so it is not a banner. */
 export const appHeader = (page: Page) => page.locator('main header').first()
 
 /** Today's doses section fallback (108·T1), shown while its server reads are held. */

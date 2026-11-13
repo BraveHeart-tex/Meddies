@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { expect, test, vi } from 'vitest'
 import HistoryLoading from '../src/app/history/loading'
 import SettingsLoading from '../src/app/settings/loading'
@@ -17,15 +17,18 @@ function expectOneStatus(container: HTMLElement, label: string) {
   for (const placeholder of placeholders) expect(placeholder).toHaveAttribute('aria-hidden', 'true')
 }
 
-test('Settings fallback selects no tab and makes no claim about the account', () => {
+test('Settings fallback selects the Settings tab and makes no claim about the account', () => {
   navigation.pathname = '/settings'
   const { container } = render(<SettingsLoading />)
 
   expectOneStatus(container, 'Opening Settings')
   expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument()
-  expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument()
   const primary = screen.getByRole('navigation', { name: 'Primary' })
-  expect(primary.querySelector('[aria-current="page"]')).toBeNull()
+  expect(within(primary).getByRole('link', { name: 'Settings' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  expect(screen.getAllByRole('link', { name: 'Settings' })).toHaveLength(1)
   expect(container).not.toHaveTextContent(/signed in|session ends|sign out/i)
 })
 

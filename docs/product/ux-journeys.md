@@ -38,7 +38,7 @@ Barcode scanning and inventory/refills are later enhancements, not blockers for 
 
 ## Approved UX and dose-state boundaries
 
-- Launch is private, English-language and mobile-first, with an approved Google-account allowlist and no public registration. Today, Medications and History are the primary navigation destinations, with Settings in the header (#74). Visuals follow Cozy Care in repo `DESIGN.md`.
+- Launch is private, English-language and mobile-first, with an approved Google-account allowlist and no public registration. Today, Medications, History and Settings are the four bottom tabs; page headers carry only page actions (#239). Visuals follow Cozy Care in repo `DESIGN.md`.
 - Show scheduled, explicitly **Taken**, explicitly **Skipped**, and past **Not logged** distinctly. A past unconfirmed occurrence is never automatically described as missed intake. Reminder delivery or acknowledgment does not prove intake.
 - Actual taken time and quantity are user-reported and distinct from planned due time. Provide correction flows without rewriting past scheduled expectations; see [03 - Medication & Dose Domain](./medication-domain.md).
 - Setup and schedule changes require online server confirmation; dose recording and correction follow the [session contract](#session-contract) below. Never announce server success before acknowledgement.

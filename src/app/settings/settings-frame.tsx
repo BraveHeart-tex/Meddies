@@ -11,9 +11,10 @@ import { SettingsGroup, SettingsRow } from './settings-list'
  */
 export function SettingsFrame({ account, children }: { account: ReactNode; children: ReactNode }) {
   return (
-    <AppShell>
+    // Named rather than read from the URL so the design lab frame (238·A5) selects it too.
+    <AppShell current="/settings">
       <section className="space-y-5">
-        <AppHeader title="Settings" align="center" />
+        <AppHeader title="Settings" />
         <SettingsGroup title="Account">{account}</SettingsGroup>
         <SettingsGroup title="Time" note="The same wherever your device is.">
           <SettingsRow icon={Clock} label="Times">

@@ -2,7 +2,6 @@ import { render, screen } from '@testing-library/react'
 import { expect, test, vi } from 'vitest'
 import { DoseStatusBadge } from '../src/features/schedules/dose-status-badge'
 import { QuantityStepper } from '../src/components/quantity-stepper'
-import { SettingsLink } from '../src/components/layout/app-header'
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/' }))
 
@@ -19,20 +18,10 @@ test.each([
   expect(badge.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument()
 })
 
-test('icon-only quantity controls and Settings retain accessible names', () => {
+test('icon-only quantity controls retain accessible names', () => {
   render(
-    <>
-      <SettingsLink />
-      <QuantityStepper
-        id="amount"
-        label="Amount"
-        unit="tablet"
-        value="2"
-        onValueChange={() => {}}
-      />
-    </>,
+    <QuantityStepper id="amount" label="Amount" unit="tablet" value="2" onValueChange={() => {}} />,
   )
-  expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings')
   for (const name of ['Fewer: Amount', 'More: Amount']) {
     expect(screen.getByRole('button', { name })).toContainHTML('aria-hidden="true"')
   }

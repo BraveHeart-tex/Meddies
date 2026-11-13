@@ -30,8 +30,8 @@ const solidRing = { focusVisible: true, outline: 'solid' }
 // Reuse interactions; only the on-request group asserts appearance.
 function focusScenarios(checkRing: (actual: unknown, expected: unknown) => void) {
   for (const { path, role, name } of [
-    { path: '/', role: 'link', name: 'Settings' },
-    { path: '/history', role: 'link', name: 'Settings' },
+    { path: '/', role: 'button', name: `Record ${label} at 09:01 as taken` },
+    { path: '/history', role: 'button', name: 'Previous day' },
     { path: '/medications', role: 'link', name: 'Add a medication' },
     { path: '/settings', role: 'button', name: 'Sign out' },
   ] as const) {
@@ -40,8 +40,11 @@ function focusScenarios(checkRing: (actual: unknown, expected: unknown) => void)
       const title = page.getByRole('heading', { level: 1 })
       await expect(title).toBeFocused()
       checkRing(await focusRing(title), noRing)
-      await page.keyboard.press('Tab')
+      // Today's doses arrive after the title, and its first control is among them.
       const control = page.getByRole(role, { name })
+      await expect(control).toBeVisible()
+      await expect(title).toBeFocused()
+      await page.keyboard.press('Tab')
       await expect(control).toBeFocused()
       checkRing(await focusRing(control), solidRing)
     })

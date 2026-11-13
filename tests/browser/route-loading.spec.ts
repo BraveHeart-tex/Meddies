@@ -43,7 +43,7 @@ const settings: Route = {
   hold: routeRender('settings'),
   fallback: settingsRouteFallback,
   content: (page) => page.getByText('Approved', { exact: true }),
-  tab: null,
+  tab: 'Settings',
   shell: true,
 }
 const history: Route = {

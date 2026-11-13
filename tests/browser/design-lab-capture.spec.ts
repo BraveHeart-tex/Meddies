@@ -28,19 +28,19 @@ test('capture 109·L1 for design review', { tag: '@visual' }, async ({ page }) =
   // Current production composition geometry at 402px, from AppShell and AppHeaderSkeleton.
   expect(entry.boxes).toEqual({
     header: { x: 20, y: 14, width: 362, height: 56.8 },
-    settings: { x: 338, y: 14, width: 44, height: 44 },
     primaryNav: { x: 16, y: 788, width: 370, height: 70 },
   })
-  await expect(page.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings')
-  // Keyboard access stays usable in the rendered composition.
+  const nav = page.getByRole('navigation', { name: 'Primary' })
+  await expect(nav.getByRole('link')).toHaveText(['Today', 'Medications', 'History', 'Settings'])
+  // Keyboard access stays usable in the rendered composition: the header has no controls.
   await page.keyboard.press('Tab')
-  await expect(page.getByRole('link', { name: 'Settings' })).toBeFocused()
+  await expect(nav.getByRole('link', { name: 'Today' })).toBeFocused()
 
   // A narrow viewport exercises the unchanged production composition, without another preset.
   await page.setViewportSize({ width: 320, height: 740 })
   await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
   const narrow = await boxes(shellElements(page))
-  expect(narrow.settings).not.toBeNull()
+  expect(narrow.primaryNav).not.toBeNull()
   expect(await scrollsHorizontally(page)).toBe(false)
   await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
 })
