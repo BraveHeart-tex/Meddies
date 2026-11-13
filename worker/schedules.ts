@@ -15,6 +15,7 @@
 //   Paused versions expect no doses; they reject changes and pauses but allow Stop.
 // - Resume requires a paused, non-Ended version and keeps its routine and Last day.
 //   Resume keeps its start date; Interval requires a new Anchor date/time, today or later.
+import { listUnscheduledDoses } from './doses/unscheduled'
 import { isQuantityForUnit } from '../src/lib/dose-quantity'
 import { and, asc, eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
@@ -70,7 +71,11 @@ export async function listLegacySnapshot(
 
 export async function listOutcomeSnapshot(db: DrizzleD1Database, ownerId: string, date: string) {
   const records = await listDoseOutcomes(db, ownerId, date)
-  return { records, schedules: await listSchedules(db, ownerId) }
+  return {
+    records,
+    schedules: await listSchedules(db, ownerId),
+    unscheduledDoses: await listUnscheduledDoses(db, ownerId, date),
+  }
 }
 
 export async function saveSchedule(

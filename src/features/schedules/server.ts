@@ -1,3 +1,4 @@
+import { parseUnscheduledDoseRecord } from '../unscheduled-doses/contract'
 import 'server-only'
 import { readFileSync } from 'node:fs'
 import { sendStorage } from '@/lib/medicine-storage'
@@ -25,9 +26,19 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
   const data = (await sendStorage('/schedules', command)) as {
     schedules?: unknown
     records?: unknown
+    unscheduledDoses?: unknown
   }
   try {
-    const result: { schedules?: DailySchedule[]; records?: DoseOutcomeRecord[] } = {}
+    if (command.operation === 'saveUnscheduled' || command.operation === 'changeUnscheduled') {
+      const doses = data.unscheduledDoses
+      if (!Array.isArray(doses)) throw new Error('contract')
+      return { unscheduledDoses: doses.map(parseUnscheduledDoseRecord) } as ScheduleResponse<C>
+    }
+    const result: {
+      unscheduledDoses?: ReturnType<typeof parseUnscheduledDoseRecord>[]
+      schedules?: DailySchedule[]
+      records?: DoseOutcomeRecord[]
+    } = {}
     if (
       command.operation !== 'recordTaken' &&
       command.operation !== 'recordSkipped' &&
@@ -77,6 +88,11 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
             })()
           : parseDoseOutcomeRecord(value),
       )
+    }
+    if (command.operation === 'listOutcomes') {
+      const doses = data.unscheduledDoses === undefined ? [] : data.unscheduledDoses
+      if (!Array.isArray(doses)) throw new Error('contract')
+      result.unscheduledDoses = doses.map(parseUnscheduledDoseRecord)
     }
     return result as ScheduleResponse<C>
   } catch {

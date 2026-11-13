@@ -1,3 +1,4 @@
+import { parseUnscheduledDose, parseUnscheduledDoseChange } from '../unscheduled-doses/contract'
 import { scheduleHistoryDay, scheduleToday } from './occurrences'
 import {
   istanbulDate,
@@ -21,6 +22,51 @@ export function createScheduleOperations(dependencies: {
   now?: () => Date
 }) {
   const operations = {
+    async saveUnscheduled(input: unknown) {
+      const user = await dependencies.requireUser()
+      const dose = parseUnscheduledDose(input)
+      const response = await dependencies.send({
+        operation: 'saveUnscheduled',
+        ownerId: user.id,
+        dose,
+      })
+      const saved = response.unscheduledDoses[0]
+      if (
+        !saved ||
+        response.unscheduledDoses.length !== 1 ||
+        saved.id !== dose.actionId ||
+        saved.actionId !== dose.actionId ||
+        saved.medicineId !== dose.medicineId ||
+        saved.takenAt !== dose.takenAt ||
+        saved.quantity !== dose.quantity ||
+        saved.revision !== 0 ||
+        saved.removed
+      )
+        throw new ApplicationError('unavailable', 503)
+      return saved
+    },
+    async changeUnscheduled(input: unknown) {
+      const user = await dependencies.requireUser()
+      const change = parseUnscheduledDoseChange(input)
+      const response = await dependencies.send({
+        operation: 'changeUnscheduled',
+        ownerId: user.id,
+        change,
+      })
+      const saved = response.unscheduledDoses[0]
+      if (
+        !saved ||
+        response.unscheduledDoses.length !== 1 ||
+        saved.id !== change.doseId ||
+        saved.actionId !== change.actionId ||
+        saved.revision !== change.expectedRevision + 1 ||
+        saved.removed !== change.removed ||
+        (!change.removed &&
+          (saved.takenAt !== change.takenAt || saved.quantity !== change.quantity))
+      )
+        throw new ApplicationError('unavailable', 503)
+      return saved
+    },
     async save(input: unknown) {
       const user = await dependencies.requireUser()
       const schedule = parseSchedule(input)
@@ -153,7 +199,11 @@ export function createScheduleOperations(dependencies: {
     async snapshot() {
       const user = await dependencies.requireUser()
       const now = dependencies.now?.() ?? new Date()
-      const { schedules, records } = await dependencies.send({
+      const {
+        schedules,
+        records,
+        unscheduledDoses = [],
+      } = await dependencies.send({
         operation: 'listOutcomes',
         ownerId: user.id,
         date: istanbulDate(now),
@@ -163,21 +213,29 @@ export function createScheduleOperations(dependencies: {
         schedules: schedules.filter((schedule) => !schedule.replacedAt),
         earlierSchedules: schedules.filter((schedule) => schedule.replacedAt),
         records,
+        unscheduledDoses,
         today: scheduleToday(schedules, now, records),
       }
     },
     async history(date: unknown) {
+      return (await operations.historySnapshot(date)).doses
+    },
+    async historySnapshot(date: unknown) {
       const user = await dependencies.requireUser()
       const now = dependencies.now?.() ?? new Date()
       if (!isScheduleDate(date) || date > istanbulDate(now))
         throw new ApplicationError('validation', 400)
-      const { schedules, records } = await dependencies.send({
+      const {
+        schedules,
+        records,
+        unscheduledDoses = [],
+      } = await dependencies.send({
         operation: 'listOutcomes',
         ownerId: user.id,
         date,
       })
       if (!schedules || !records) throw new ApplicationError('unavailable', 503)
-      return scheduleHistoryDay(schedules, date, now, records)
+      return { doses: scheduleHistoryDay(schedules, date, now, records), unscheduledDoses }
     },
   }
   return operations

@@ -8,6 +8,7 @@ const neutral = new Set([
   'src/lib/calendar-date',
   'src/features/medicines/contract',
   'src/features/schedules/contract',
+  'src/features/unscheduled-doses/contract',
   'src/features/schedules/occurrences',
   'src/features/schedules/weekdays',
 ])

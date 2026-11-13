@@ -160,6 +160,7 @@ test('Taken-only decoding drops metadata while outcome decoding preserves it', a
   assert.deepEqual(await scheduleSend({ ...list, operation: 'listOutcomes', date: '2026-11-06' }), {
     schedules: [],
     records: [record],
+    unscheduledDoses: [],
   })
   assert.equal(revision, 2)
   assert.ok(actionId)
@@ -486,4 +487,82 @@ test('schedule resume HTTP boundary guards, authenticates and decodes running ve
     globalThis.fetch = async () => Response.json({ schedules: [{ ...schedule, pausedAt }] })
     assert.equal((await post(resume)).status, 503)
   }
+})
+
+test('Unscheduled dose HTTP boundary authenticates, guards writes, decodes receipts and includes reads', async () => {
+  const { POST, PATCH } = await import('../src/app/api/schedules/unscheduled/route')
+  const { GET } = await import('../src/app/api/schedules/history/route')
+  const input = {
+    actionId: '10000000-0000-4000-8000-000000000001',
+    medicineId: '10000000-0000-4000-8000-000000000002',
+    takenAt: '2026-11-03T11:10:00.000Z',
+    quantity: 0.5,
+  }
+  const saved = { ...input, id: input.actionId, outcome: 'Taken', revision: 0, removed: false }
+  const request = (method: string, body: unknown, origin = 'https://meddies.test') =>
+    new Request('https://meddies.test/api/schedules/unscheduled', {
+      method,
+      headers: { origin, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  let calls = 0
+  globalThis.fetch = async (_url, options) => {
+    calls++
+    assert.deepEqual(JSON.parse(options!.body as string), {
+      operation: 'saveUnscheduled',
+      ownerId: 'google:test',
+      dose: input,
+    })
+    return Response.json({ unscheduledDoses: [saved] })
+  }
+  assert.equal((await POST(request('POST', input, 'https://other.test'))).status, 403)
+  setAuthenticated(false)
+  try {
+    assert.equal((await POST(request('POST', input))).status, 401)
+  } finally {
+    setAuthenticated(true)
+  }
+  assert.equal(calls, 0)
+  assert.equal((await POST(request('POST', { ...input, quantity: 0.25 }))).status, 400)
+  const response = await POST(request('POST', { ...input, ownerId: 'google:outsider' }))
+  assert.equal(response.status, 200)
+  assert.equal(response.headers.get('cache-control'), 'no-store')
+  assert.deepEqual(await response.json(), { dose: saved })
+  const change = {
+    actionId: '10000000-0000-4000-8000-000000000003',
+    doseId: saved.id,
+    expectedRevision: 0,
+    removed: true,
+  }
+  globalThis.fetch = async (_url, options) => {
+    assert.deepEqual(JSON.parse(options!.body as string), {
+      operation: 'changeUnscheduled',
+      ownerId: 'google:test',
+      change,
+    })
+    return Response.json({
+      unscheduledDoses: [{ ...saved, actionId: change.actionId, revision: 1, removed: true }],
+    })
+  }
+  assert.equal((await PATCH(request('PATCH', change))).status, 200)
+  for (const status of [400, 409]) {
+    globalThis.fetch = async () => Response.json({}, { status })
+    assert.equal((await PATCH(request('PATCH', change))).status, status)
+  }
+  for (const unscheduledDoses of [null, [{}], [{ ...saved, outcome: 'Skipped' }]]) {
+    globalThis.fetch = async () => Response.json({ unscheduledDoses })
+    assert.equal((await POST(request('POST', input))).status, 503)
+  }
+  globalThis.fetch = async () =>
+    Response.json({ schedules: [], records: [], unscheduledDoses: [saved] })
+  const history = await GET(
+    new Request('https://meddies.test/api/schedules/history?date=2026-11-03'),
+  )
+  assert.equal(history.status, 200)
+  assert.deepEqual(await history.json(), { doses: [], unscheduledDoses: [saved] })
+  globalThis.fetch = async () => Response.json({ schedules: [], records: [] })
+  assert.deepEqual(
+    await scheduleSend({ operation: 'listOutcomes', ownerId: 'google:test', date: '2026-11-03' }),
+    { schedules: [], records: [], unscheduledDoses: [] },
+  )
 })

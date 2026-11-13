@@ -4,6 +4,7 @@ import { authenticateService, commandPath, failure, json, readJsonRequest } from
 import { listMedicines, saveMedicine } from './medicines'
 import { listLegacySnapshot, listOutcomeSnapshot, saveSchedule, editSchedule } from './schedules'
 import { correctDoseOutcome, recordSkipped, recordTaken } from './doses/mutations'
+import { writeUnscheduledDose } from './doses/unscheduled'
 
 type Env = { DB: D1Database; MEDICINES_WORKER_SECRET: string }
 
@@ -27,6 +28,18 @@ export function createWorker(clock: () => Date = () => new Date()) {
         }
         const command = decoded.command
         switch (command.operation) {
+          case 'saveUnscheduled':
+            return json({
+              unscheduledDoses: [
+                await writeUnscheduledDose(db, command.ownerId, command.dose, clock()),
+              ],
+            })
+          case 'changeUnscheduled':
+            return json({
+              unscheduledDoses: [
+                await writeUnscheduledDose(db, command.ownerId, command.change, clock()),
+              ],
+            })
           case 'list':
             return json(await listLegacySnapshot(db, command.ownerId, command.date))
           case 'listOutcomes':

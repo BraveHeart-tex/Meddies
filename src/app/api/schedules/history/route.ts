@@ -7,7 +7,7 @@ export const runtime = 'nodejs'
 export async function GET(request: Request) {
   try {
     const date = new URL(request.url).searchParams.get('date')
-    return json({ doses: await schedules.history(date) })
+    return json(await schedules.historySnapshot(date))
   } catch (error) {
     return failure(error, 'schedule_request_failure')
   }

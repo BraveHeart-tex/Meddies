@@ -1,3 +1,8 @@
+import type {
+  UnscheduledDose,
+  UnscheduledDoseInput,
+  UnscheduledDoseChange,
+} from '../unscheduled-doses/contract'
 import { isDoseQuantity } from '../../lib/dose-quantity'
 import { ApplicationError } from '../../lib/application-error'
 import { ALL_WEEKDAYS } from './weekdays'
@@ -44,6 +49,8 @@ export type ScheduleEditInput = {
   anchorDate?: string
 }
 export type ScheduleCommand =
+  | { operation: 'saveUnscheduled'; ownerId: string; dose: UnscheduledDoseInput }
+  | { operation: 'changeUnscheduled'; ownerId: string; change: UnscheduledDoseChange }
   | { operation: 'list'; ownerId: string; date?: string }
   | { operation: 'listOutcomes'; ownerId: string; date: string }
   | { operation: 'save'; ownerId: string; schedule: DailyScheduleInput }
@@ -74,8 +81,14 @@ export type SkippedDoseRecord = SkippedDoseInput & {
 }
 export type DoseOutcomeRecord = DoseRecord | SkippedDoseRecord
 export type ScheduleResponses = {
+  saveUnscheduled: { unscheduledDoses: UnscheduledDose[] }
+  changeUnscheduled: { unscheduledDoses: UnscheduledDose[] }
   list: { schedules: DailySchedule[]; records?: DoseRecord[] }
-  listOutcomes: { schedules: DailySchedule[]; records: DoseOutcomeRecord[] }
+  listOutcomes: {
+    schedules: DailySchedule[]
+    records: DoseOutcomeRecord[]
+    unscheduledDoses?: UnscheduledDose[]
+  }
   save: { schedules: DailySchedule[] }
   edit: { schedules: DailySchedule[] }
   stop: { schedules: DailySchedule[] }

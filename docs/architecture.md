@@ -57,7 +57,8 @@ owner.
   after those checks, keeping owner-first validation, defaults and legacy optional dates.
 - `medicines.ts` and `schedules.ts` own feature persistence and snapshot composition.
   `doses/mutations.ts` owns writes and retry reconciliation, `doses/queries.ts` the read
-  contracts, `doses/occurrence.ts` owner-scoped occurrence context. The `schedules.ts` and
+  contracts, `doses/occurrence.ts` owner-scoped occurrence context. `doses/unscheduled.ts` owns
+  Unscheduled dose revisions, action retries and History date reads. The `schedules.ts` and
   `doses/mutations.ts` headers state their invariants.
 - SQL stays beside its behavior. Map selected rows to wire fields explicitly; snapshot
   null metadata and omitted mutation fields are compatibility contracts.
@@ -91,6 +92,13 @@ owner.
   `PATCH /api/schedules` appends a correction revision, guarded by expected revision and
   outcome, idempotent by action UUID. Originals stay intact; Today and History project the
   latest revision.
+- **Unscheduled doses:** `POST /api/schedules/unscheduled` saves Taken intake with an
+  action UUID, medication, intake instant and quantity. `PATCH` names the dose, action UUID
+  and expected revision; `removed: false` changes intake and quantity, `removed: true`
+  appends a removal. Immutable owner-scoped revisions retain exact retry receipts, even
+  after later changes or removal. Intake validation uses the Worker clock and medication
+  unit. Today and History responses include a separate `unscheduledDoses` array for the
+  intake's Istanbul History date; Occurrences and next-dose calculations stay unchanged.
 - **Schema changes:** write each migration by hand as the next numbered
   `worker/migrations/NNNN_<name>.sql` and mirror it in the Drizzle tables in
   `worker/schema.ts`. The local stack, tests and Release apply migrations in order. Keep

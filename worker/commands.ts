@@ -1,3 +1,7 @@
+import {
+  parseUnscheduledDose,
+  parseUnscheduledDoseChange,
+} from '../src/features/unscheduled-doses/contract'
 import { parseMedicine, type MedicineCommand } from '../src/features/medicines/contract'
 import {
   isScheduleDate,
@@ -43,6 +47,20 @@ export function decodeCommand(path: '/medicines' | '/schedules', value: unknown)
     }
   }
   switch (input.operation) {
+    case 'saveUnscheduled':
+      return {
+        path,
+        command: { operation: 'saveUnscheduled', ownerId, dose: parseUnscheduledDose(input.dose) },
+      }
+    case 'changeUnscheduled':
+      return {
+        path,
+        command: {
+          operation: 'changeUnscheduled',
+          ownerId,
+          change: parseUnscheduledDoseChange(input.change),
+        },
+      }
     case 'list':
     case 'listOutcomes': {
       if (input.date !== undefined && !isScheduleDate(input.date))

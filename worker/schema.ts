@@ -132,3 +132,33 @@ export const doseCorrections = sqliteTable(
     ),
   ],
 )
+
+export const unscheduledDoses = sqliteTable(
+  'unscheduled_doses',
+  {
+    ownerId: text('owner_id').notNull(),
+    id: text('id').notNull(),
+    revision: integer('revision').notNull(),
+    actionId: text('action_id').notNull(),
+    medicineId: text('medicine_id').notNull(),
+    takenAt: text('taken_at').notNull(),
+    quantity: real('quantity').notNull(),
+    removed: integer('removed', { mode: 'boolean' }).notNull().default(false),
+    request: text('request').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.id, table.revision] }),
+    unique().on(table.ownerId, table.actionId),
+    foreignKey({
+      columns: [table.ownerId, table.medicineId],
+      foreignColumns: [userMedications.ownerId, userMedications.id],
+    }),
+    index('unscheduled_doses_owner_taken').on(table.ownerId, table.takenAt),
+    check('unscheduled_doses_revision', sql`${table.revision} >= 0`),
+    check(
+      'unscheduled_doses_quantity',
+      sql`${table.quantity} > 0 AND ${table.quantity} * 2 = CAST(${table.quantity} * 2 AS INTEGER)`,
+    ),
+    check('unscheduled_doses_removed', sql`${table.removed} IN (0, 1)`),
+  ],
+)
