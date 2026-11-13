@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { expect, test, vi } from 'vitest'
 import { designFrames } from '../src/features/design-lab/frames'
 
@@ -35,4 +35,50 @@ test('238·A5 selects the Settings tab and its title stands alone', () => {
   render(frame.render())
   expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page')
   expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible()
+})
+
+const renderFrame = (slug: string) =>
+  render(designFrames.find((entry) => entry.slug === slug)!.render())
+
+test('241·A5 shows the Unscheduled dose in Logged by time, marked and never Up next', () => {
+  renderFrame('241-a5')
+  // Later today's 20:00, then Logged by time: 08:00 taken, 09:30 Unscheduled.
+  const rows = within(screen.getByRole('list', { name: "Today's doses" }))
+    .getAllByRole('listitem')
+    .map((row) => row.textContent ?? '')
+  expect(rows).toHaveLength(3)
+  expect(rows[1]).toMatch(/^08:00.*Magnesium/)
+  expect(rows[2]).toMatch(/^09:30.*Ibuprofen.*Not on a schedule/)
+  expect(screen.getByRole('heading', { name: 'Logged · 2' })).toBeVisible()
+  expect(
+    screen.getByRole('heading', { name: 'Up next' }).closest('[data-slot=card]'),
+  ).toHaveTextContent('Magnesium')
+})
+
+test('241·A6 lists only Unscheduled doses instead of the empty state', () => {
+  renderFrame('241-a6')
+  expect(screen.getByRole('heading', { name: 'Logged · 2' })).toBeVisible()
+  expect(screen.queryByText('Nothing to take today')).not.toBeInTheDocument()
+})
+
+test('241·A1 offers Log a dose without a schedule and lists no past doses', () => {
+  renderFrame('241-a1')
+  expect(screen.getByRole('link', { name: 'Log a dose' })).toBeVisible()
+  expect(screen.queryByText(/Not on a schedule/)).not.toBeInTheDocument()
+})
+
+test('241 save messages name the day only when it is not today', async () => {
+  const { savedMessage, unscheduled, at, ibuprofen } =
+    await import('../src/features/design-lab/unscheduled-model')
+  const { magnesium } = await import('../src/features/design-lab/lab-fixtures')
+  expect(
+    savedMessage(ibuprofen, unscheduled(1, ibuprofen, at('2026-11-09', '10:00')), '2026-11-09'),
+  ).toBe('Ibuprofen · taken at 10:00, 1 tablet')
+  expect(
+    savedMessage(
+      magnesium,
+      unscheduled(2, magnesium, at('2026-11-08', '23:30'), 0.5),
+      '2026-11-09',
+    ),
+  ).toBe('Magnesium · taken at 23:30 on Sun 8 Nov, ½ tablet')
 })

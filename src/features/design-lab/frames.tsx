@@ -6,6 +6,7 @@ import { lastDayFrames } from './last-day-frames'
 import { pauseFrames } from './pause-frames'
 import { ScannerFrame } from './scanner-frame'
 import { settingsEntryFrames } from './settings-entry-frames'
+import { unscheduledFrames } from './unscheduled-frames'
 
 export type DesignFrame = {
   slug: `${number}-${Lowercase<string>}`
@@ -32,4 +33,5 @@ export const designFrames = [
   ...lastDayFrames,
   ...pauseFrames,
   ...settingsEntryFrames,
+  ...unscheduledFrames,
 ] satisfies readonly DesignFrame[]
