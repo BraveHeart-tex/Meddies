@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { expect, test } from './fixtures'
-import { scrollsHorizontally } from './actions'
+import { scrollsHorizontally, waitForClientRouter } from './actions'
 import { pickTime } from './pickers'
 import { chooseMedicineType } from './drawers'
 
@@ -42,17 +42,30 @@ for (const viewport of [
           }
           await route.fallback()
         })
+        // #258: a document reload intentionally loses session saves; prove client navigation.
+        const documents: string[] = []
+        page.on('request', (request) => {
+          if (request.isNavigationRequest() && request.frame() === page.mainFrame())
+            documents.push(request.url())
+        })
         await page.goto('/medications')
+        await waitForClientRouter(page)
         await page.getByRole('link', { name: 'Add a medication' }).click()
         await page.getByLabel('Name', { exact: true }).fill('Magnesium')
         await page.getByLabel(/^Strength/).fill(' 200 mg ')
         await chooseMedicineType(page, 'Tablet')
+        expect(documents, 'Add keeps the session document').toEqual([`${app.origin}/medications`])
         await page.getByRole('button', { name: 'Save medication', exact: true }).click()
         await expect(page.getByRole('button', { name: 'Saving medication...' })).toBeDisabled()
         // The modal Drawer covers the nav, so Back is how she leaves during the save.
         await page.goBack()
+        await expect(page).toHaveURL(`${app.origin}/medications`)
+        expect(documents, 'Back keeps the session document').toEqual([`${app.origin}/medications`])
         await page.getByRole('link', { name: 'Today', exact: true }).click()
         await expect(page).toHaveURL(app.origin + '/')
+        expect(documents, 'Add, Back and Today keep the session document').toEqual([
+          `${app.origin}/medications`,
+        ])
         await expect(page.getByText('Saving Magnesium…', { exact: true })).toBeVisible()
         release()
         const checkOutcome = {
@@ -111,7 +124,13 @@ for (const viewport of [
         await held
         await route.fallback()
       })
+      const documents: string[] = []
+      page.on('request', (request) => {
+        if (request.isNavigationRequest() && request.frame() === page.mainFrame())
+          documents.push(request.url())
+      })
       await page.goto(`/medications?schedule=${id}`)
+      await waitForClientRouter(page)
       await pickTime(page, 'Time 1', '12:00')
       await page.getByRole('button', { name: 'Save schedule', exact: true }).click()
       await expect(page.getByRole('button', { name: 'Saving schedule...' })).toBeDisabled()
@@ -119,6 +138,9 @@ for (const viewport of [
       await page.getByRole('button', { name: 'Cancel', exact: true }).click()
       await page.getByRole('link', { name: 'Today', exact: true }).click()
       await expect(page).toHaveURL(app.origin + '/')
+      expect(documents, 'Cancel and Today keep the session document').toEqual([
+        `${app.origin}/medications?schedule=${id}`,
+      ])
       await expect(page.getByText('Saving schedule for Magnesium…', { exact: true })).toBeVisible()
       release()
       await expect(page.getByText('Schedule saved for Magnesium', { exact: true })).toBeVisible()
