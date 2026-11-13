@@ -6,6 +6,7 @@ import { safeReturnTo, saveInProgressNotice } from '@/features/auth/return-to'
 import { redirect } from 'next/navigation'
 import { SessionBoundary } from '@/features/auth/session-boundary'
 import { AppShell } from '@/components/layout/app-shell'
+import { ScreenStack } from '@/components/layout/screen-stack'
 import { schedulingNow } from '@/features/schedules/server'
 import { prefetchToday } from '@/features/schedules/prefetch'
 import { SchedulePanel } from '@/features/schedules/schedule-panel'
@@ -45,12 +46,12 @@ export default async function HomePage({
     return (
       <SessionBoundary ownerId={session.user.id} expires={session.expires}>
         <AppShell>
-          <div className="flex flex-col gap-5">
+          <ScreenStack>
             <TodayHeader initialNow={initialNow} />
             <Suspense fallback={<TodayDosesFallback initialNow={initialNow} />}>
               <TodayDoses initialNow={initialNow} />
             </Suspense>
-          </div>
+          </ScreenStack>
         </AppShell>
       </SessionBoundary>
     )

@@ -1,0 +1,36 @@
+- main
+  - banner
+    - link "Medications"
+  - heading "Magnesium" [level=1]
+  - paragraph
+    - text: 400 mg · tablet
+  - region "Schedule"
+    - heading "Schedule" [level=2]
+    - text: Schedule
+    - text: Every day
+    - list
+      - listitem
+        - text: 08:00
+        - text: 1 tablet
+      - listitem
+        - text: 20:00
+        - text: 1 tablet
+    - paragraph
+      - text: Started Mon 2 Nov
+    - paragraph
+      - text: Last day Tue 10 Nov
+    - link "Change schedule"
+    - button "Pause"
+    - button "Stop schedule"
+  - paragraph
+    - text: Details can't be changed here yet.
+- navigation "Primary"
+  - list
+    - listitem
+      - link "Today"
+    - listitem
+      - link "Medications" [current=page]
+    - listitem
+      - link "History"
+    - listitem
+      - link "Settings"

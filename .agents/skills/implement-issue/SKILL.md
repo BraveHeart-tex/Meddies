@@ -38,8 +38,13 @@ Work **lean** throughout:
    _Done when_ every criterion has a named test or check.
 
 4. **Build.** Test-first at those seams (use the `tdd` skill). Iterate on
-   `pnpm test:related <changed files>` and `pnpm typecheck`.
-   _Done when_ every seam's test passes.
+   `pnpm test:related <changed files>` and `pnpm typecheck`. Work that touches a
+   design-critical screen follows [built frames](../../../docs/design/README.md#built-frames):
+   a design's build ticket moves its frames for design-critical screens to `built/` and
+   deletes the rest, and a screen change updates its [outline](../../../docs/design/README.md#outlines).
+   A significant visual change runs `pnpm lab:capture` for those frames before building and
+   again after.
+   _Done when_ every seam's test passes, and every changed outline and capture is reviewed.
 
 5. **Review.** Read `git diff $base` against two axes: the standards in AGENTS.md and the
    docs from step 2, and each acceptance criterion. Fix what you accept.

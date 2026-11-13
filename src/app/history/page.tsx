@@ -11,6 +11,7 @@ import { HistoryDayFallback } from '@/features/schedules/history-day-fallback'
 import { HistoryResults } from '@/features/schedules/history-results'
 import { SchedulingClockProvider } from '@/features/schedules/scheduling-clock'
 import { AppShell } from '@/components/layout/app-shell'
+import { ScreenStack } from '@/components/layout/screen-stack'
 import { AppHeader } from '@/components/layout/app-header'
 import { holdRouteRender } from '@/lib/route-render-hold'
 
@@ -65,14 +66,13 @@ export default async function HistoryPage({
     <SessionBoundary ownerId={session.user.id} expires={session.expires}>
       <SchedulingClockProvider serverNow={now.toISOString()}>
         <AppShell>
-          {/* Today's 20px section column, so the header stays put between tabs (#143). */}
-          <div className="flex flex-col gap-5">
+          <ScreenStack>
             <AppHeader title="History" />
             <HistoryDateNav today={today} />
             <Suspense fallback={<HistoryDayFallback date={date} today={today} notice={notice} />}>
               <HistoryDateResults date={date} today={today} notice={notice} />
             </Suspense>
-          </div>
+          </ScreenStack>
         </AppShell>
       </SchedulingClockProvider>
     </SessionBoundary>

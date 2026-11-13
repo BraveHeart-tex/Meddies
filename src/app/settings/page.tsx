@@ -1,14 +1,10 @@
-import { Hourglass, ShieldCheck, UserRound } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { connection } from 'next/server'
-import { AuthControl } from '@/features/auth/controls'
 import { auth, authConfigured } from '@/features/auth/server'
 import { SessionBoundary } from '@/features/auth/session-boundary'
 import { schedulingNow } from '@/features/schedules/server'
-import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { holdRouteRender } from '@/lib/route-render-hold'
-import { SettingsFrame } from './settings-frame'
-import { SettingsRow } from './settings-list'
+import { SettingsScreen } from './settings-screen'
 
 export default async function SettingsPage() {
   // Session-dependent: never prerender, even when auth env is absent at build time.
@@ -17,32 +13,9 @@ export default async function SettingsPage() {
   const configured = authConfigured()
   const session = configured ? await auth() : null
   if (!session?.user?.id) redirect(`/?returnTo=${encodeURIComponent('/settings')}`)
-  const today = schedulingNow().toISOString()
   return (
     <SessionBoundary ownerId={session.user.id} expires={session.expires}>
-      <SettingsFrame
-        account={
-          <>
-            <SettingsRow icon={UserRound} label="Google account">
-              <span className="inline-flex items-center gap-1 text-dose-taken-foreground [&>svg]:size-4">
-                <ShieldCheck aria-hidden="true" />
-                Approved
-              </span>
-            </SettingsRow>
-            <SettingsRow icon={Hourglass} label="Session ends">
-              <time dateTime={session.expires}>
-                {formatShortDay(session.expires, today)} at {formatTime(session.expires)}
-              </time>
-            </SettingsRow>
-          </>
-        }
-      >
-        <AuthControl signedIn />
-        <p className="text-caption text-muted-foreground">
-          Signs you out of Meddies in this browser. Your Google account and Meddies sessions on
-          other devices stay signed in.
-        </p>
-      </SettingsFrame>
+      <SettingsScreen expires={session.expires} now={schedulingNow().toISOString()} />
     </SessionBoundary>
   )
 }

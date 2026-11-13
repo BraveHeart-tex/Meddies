@@ -1,0 +1,14 @@
+- main
+  - status
+    - text: Opening Meddies
+  - banner
+- navigation "Primary"
+  - list
+    - listitem
+      - link "Today"
+    - listitem
+      - link "Medications"
+    - listitem
+      - link "History"
+    - listitem
+      - link "Settings"

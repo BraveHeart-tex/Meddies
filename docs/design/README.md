@@ -70,9 +70,10 @@ UI, layout or feature modules from day one. Synthetic fixtures must be typed aga
 contracts and seeded into a per-frame Query client, with no data network reads.
 
 - **Built frames render production code only.** They may import production components,
-  `@/components/ui/**`, layout and feature modules, `lab-fixtures.ts` and `*-model` values,
-  never `draft/`, `approved/` or lab `-parts`, `-screens` and `-drawers` modules, and put no
-  `className` on lowercase elements. Lint fails `built/**` files that break this.
+  `@/components/ui/**`, layout and feature modules, `lab-fixtures.ts`, `fixture-query.tsx` and
+  `*-model` values, never `draft/`, `approved/` or lab `-parts`, `-screens` and `-drawers`
+  modules, and put no `className` on lowercase elements. Lint fails `built/**` files that break
+  this.
 - **Registry imports stay hook-free.** The `frames.tsx` files are server modules, so frame
   files they import render client screens marked `'use client'` and hold no hooks
   themselves. The lab HTTP test renders every registered frame, so a break fails
@@ -86,6 +87,47 @@ contracts and seeded into a per-frame Query client, with no data network reads.
 - **Server-rendered ids are stable.** Frames render on the server first, so ids come from
   fixtures or `useId`, never from random values such as `useFieldArray`'s row ids, which
   break hydration.
+
+### Built frames
+
+A **built frame** renders a **design-critical screen** from production code, so the lab shows
+what ships. Each design-critical screen has exactly one built frame, titled by the screen
+(`designCriticalScreens` in the registry `frames.tsx`). The Scanner joins the list once it has a
+route.
+
+| Screen            | Frame    | Route                        |
+| ----------------- | -------- | ---------------------------- |
+| Today             | `238·A1` | `/`                          |
+| Medications       | `238·A2` | `/medications`               |
+| Medication detail | `238·A3` | `/medications?medicine=<id>` |
+| History           | `238·A4` | `/history`                   |
+| Settings          | `238·A5` | `/settings`                  |
+| Cold launch       | `109·L1` | `/`                          |
+
+- A built frame composes what its page renders, with the page's server reads replaced by
+  fixtures seeded into `FixtureQuery` (`fixture-query.tsx`). Seeded data never goes stale and
+  nothing reads the network. The shared data is `routine` in `lab-fixtures.ts`.
+- When a page can't render from seeded data alone, the frame renders the production child its
+  view selects: Medication detail renders `MedicinePanel`, because the lab URL carries no
+  Medications view. Styled markup a frame needs moves out of the page into a production
+  component, such as `ScreenStack` and `SettingsScreen`. Production code takes props for its own
+  callers only.
+- A design's build ticket moves its frames for design-critical screens to `built/` and deletes
+  the rest. A redesign's build ticket replaces the built frame in place.
+
+### Outlines
+
+`tests/built-frames.test.tsx` renders every built frame and compares its text outline (roles,
+accessible names, states and text; no classes) with `tests/outlines/<slug>.txt`. It goes red on
+a copy or structure change in a production screen, never on visual drift. After an intended
+change, review the outline diff, then update it:
+
+```sh
+pnpm exec vitest run tests/built-frames.test.tsx -u
+```
+
+The same test checks that each design-critical screen has exactly one built frame and that no
+built frame reads the network.
 
 ### Capture
 
@@ -105,6 +147,11 @@ check stays opt-in:
 ```sh
 MEDDIES_BROWSER_DEV=1 MEDDIES_VISUAL_OUT=/tmp/meddies-lab pnpm exec playwright test design-lab-capture --project=phone --grep=@visual
 ```
+
+A significant visual change to a design-critical screen (layout, spacing, type, color or
+control placement) gets a capture review: capture its built frames before building and again
+after, compare the PNGs yourself, fix unintended drift, and attach both sets to the evidence
+with every remaining difference named. Outlines cover copy and structure, not this.
 
 `gh issue comment --attach` takes images and video only; link JSON from the CI run or paste
 it in a collapsed block. Commit no binary artifacts.

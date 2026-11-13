@@ -1,0 +1,54 @@
+- main
+  - banner
+    - paragraph
+      - text: Monday, 9 November
+    - heading "Good morning" [level=1]
+  - region "Your doses"
+    - heading "Your doses" [level=2]
+    - status
+    - heading "Up next" [level=3]
+    - paragraph
+      - text: Scheduled ·
+      - time
+        - text: 20:00
+    - paragraph
+      - text: Magnesium
+    - paragraph
+      - text: 400 mg · 1 tablet
+    - button "Record Magnesium at 20:00 as taken"
+    - button "Record Magnesium at 20:00 as skipped"
+    - region "Today’s doses"
+      - list "Today's doses"
+        - heading "Later today · 2" [level=3]
+        - listitem
+          - heading "20:00 · Magnesium" [level=4]
+          - paragraph
+            - text: 400 mg · 1 tablet
+          - text: Scheduled
+          - button "Record dose for Magnesium scheduled at 20:00"
+        - listitem
+          - heading "22:00 · Iron" [level=4]
+          - paragraph
+            - text: 400 mg · 1 tablet
+          - text: Scheduled
+          - button "Record dose for Iron scheduled at 22:00"
+        - heading "Logged · 1" [level=3]
+        - listitem
+          - heading "08:00 · Magnesium" [level=4]
+          - paragraph
+            - text: 400 mg · 1 tablet
+          - text: Taken
+          - time
+            - text: 08:05
+          - button "Review dose for Magnesium scheduled at 08:00"
+    - button "Refresh Today"
+- navigation "Primary"
+  - list
+    - listitem
+      - link "Today" [current=page]
+    - listitem
+      - link "Medications"
+    - listitem
+      - link "History"
+    - listitem
+      - link "Settings"

@@ -1,0 +1,33 @@
+- main
+  - banner
+    - heading "Settings" [level=1]
+  - heading "Account" [level=2]
+  - list
+    - listitem
+      - text: Google account
+      - text: Approved
+    - listitem
+      - text: Session ends
+      - time
+        - text: Mon 16 Nov at 10:00
+  - heading "Time" [level=2]
+  - list
+    - listitem
+      - text: Times
+      - text: Istanbul, 24-hour
+  - paragraph
+    - text: The same wherever your device is.
+  - button "Sign out"
+  - status
+  - paragraph
+    - text: Signs you out of Meddies in this browser. Your Google account and Meddies sessions on other devices stay signed in.
+- navigation "Primary"
+  - list
+    - listitem
+      - link "Today"
+    - listitem
+      - link "Medications"
+    - listitem
+      - link "History"
+    - listitem
+      - link "Settings" [current=page]

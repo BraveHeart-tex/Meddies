@@ -19,8 +19,24 @@ type Frame = {
 /** A draft or approved frame. Only built frames carry a route. */
 export type LabFrame = Frame & { route?: never }
 
-/** A design-critical screen from production code; `route` is the app route it renders. */
-export type BuiltFrame = Frame & { route: `/${string}` }
+/** The screens whose design is checked in the lab, each by exactly one built frame. */
+export const designCriticalScreens = [
+  'Today',
+  'Medications',
+  'Medication detail',
+  'History',
+  'Settings',
+  'Cold launch',
+] as const
+
+/**
+ * A design-critical screen from production code, titled by the screen it shows; `route` is the
+ * app route it renders.
+ */
+export type BuiltFrame = Frame & {
+  title: (typeof designCriticalScreens)[number]
+  route: `/${string}`
+}
 
 export type DesignFrame =
   (LabFrame & { status: 'draft' | 'approved' }) | (BuiltFrame & { status: 'built' })

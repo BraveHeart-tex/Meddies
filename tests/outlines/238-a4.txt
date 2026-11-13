@@ -1,0 +1,30 @@
+- main
+  - banner
+    - heading "History" [level=1]
+  - navigation "History date"
+    - button "Previous day"
+    - button "Choose a date, Today, Mon 9 Nov"
+    - button "Next day" [disabled]
+  - region "Monday, 9 November"
+    - heading "Monday, 9 November, 1 dose" [level=2]
+    - paragraph
+      - text: 1 of 1 so far
+    - list "Doses for Monday, 9 November"
+      - listitem
+        - heading "08:00 · Magnesium" [level=3]
+        - paragraph
+          - text: 400 mg · 1 tablet
+        - text: Taken
+        - time
+          - text: 08:05
+        - button "Review dose for Magnesium scheduled at 08:00"
+- navigation "Primary"
+  - list
+    - listitem
+      - link "Today"
+    - listitem
+      - link "Medications"
+    - listitem
+      - link "History" [current=page]
+    - listitem
+      - link "Settings"

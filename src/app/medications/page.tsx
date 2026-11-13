@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/layout/app-shell'
+import { ScreenStack } from '@/components/layout/screen-stack'
 import { auth, authConfigured } from '@/features/auth/server'
 import { SessionBoundary } from '@/features/auth/session-boundary'
 import { MedicationsFallback } from '@/features/medicines/medications-fallback'
@@ -38,7 +39,7 @@ export default async function MedicationsPage({
   return (
     <SessionBoundary ownerId={session.user.id} expires={session.expires}>
       <AppShell>
-        <div className="flex flex-col gap-5">
+        <ScreenStack>
           <MedicationsHeader />
           <Suspense fallback={<MedicationsFallback />}>
             <MedicationsSection
@@ -46,7 +47,7 @@ export default async function MedicationsPage({
               initialNow={schedulingNow().toISOString()}
             />
           </Suspense>
-        </div>
+        </ScreenStack>
       </AppShell>
     </SessionBoundary>
   )

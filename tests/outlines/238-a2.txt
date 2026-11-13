@@ -1,0 +1,46 @@
+- main
+  - banner
+    - heading "Medications" [level=1]
+    - paragraph
+      - text: 3 medications
+    - link "Add a medication"
+  - region "Your medications"
+    - heading "Your medications" [level=2]
+    - region "On a schedule"
+      - heading "On a schedule" [level=3]
+      - list
+        - listitem
+          - heading "Magnesium" [level=4]
+          - paragraph
+            - text: 400 mg · tablet
+          - paragraph
+            - text: Every day · 08:00, 20:00
+          - link "View details for Magnesium"
+        - listitem
+          - heading "Iron" [level=4]
+          - paragraph
+            - text: 400 mg · tablet
+          - paragraph
+            - text: Every day · 22:00
+          - link "View details for Iron"
+    - region "No schedule"
+      - heading "No schedule" [level=3]
+      - list
+        - listitem
+          - heading "Vitamin D" [level=4]
+          - paragraph
+            - text: tablet
+          - paragraph
+            - text: No schedule yet.
+          - link "Set schedule for Vitamin D"
+          - link "View details for Vitamin D"
+- navigation "Primary"
+  - list
+    - listitem
+      - link "Today"
+    - listitem
+      - link "Medications" [current=page]
+    - listitem
+      - link "History"
+    - listitem
+      - link "Settings"

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { AppHeader } from '@/components/layout/app-header'
 import { AppShell } from '@/components/layout/app-shell'
+import { ScreenStack } from '@/components/layout/screen-stack'
 import { buttonVariants } from '@/components/ui/button'
 import { designFrames } from '@/features/design-lab/frames'
 
@@ -22,7 +23,7 @@ export default async function DesignLab({ params }: { params: Promise<{ frame?: 
   }
   return (
     <AppShell>
-      <div className="flex flex-col gap-5">
+      <ScreenStack>
         <AppHeader title="Design lab" />
         <ul className="flex flex-col gap-2.5">
           {designFrames.map(({ slug, title, citation }) => (
@@ -33,7 +34,7 @@ export default async function DesignLab({ params }: { params: Promise<{ frame?: 
             </li>
           ))}
         </ul>
-      </div>
+      </ScreenStack>
     </AppShell>
   )
 }
