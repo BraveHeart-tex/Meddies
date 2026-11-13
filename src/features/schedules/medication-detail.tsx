@@ -29,14 +29,25 @@ import { ClockScheduleCard } from './clock-schedule-card'
 import { intervalAnchor } from './interval-preview'
 import { IntervalScheduleCard } from './interval-schedule-card'
 import { ScheduleActions } from './schedule-actions'
-import { endedOn } from './last-day'
+import { endedOn, pausedOn } from './last-day'
 import type { SchedulesRead } from './queries'
 import { useScheduleNow } from './use-schedule-now'
 
+/** After the server confirms a pause (233·A4). */
+export function PausedScheduleAlert({ label }: { label: string }) {
+  return (
+    <Alert variant="confirmation" role="status" aria-label="Paused schedule">
+      <AlertTitle>Schedule paused for {label}.</AlertTitle>
+      <AlertDescription>No doses expected until you resume.</AlertDescription>
+    </Alert>
+  )
+}
+
 /**
  * The `?medicine=ID` page: 110 Fix 1's header above the schedule, 107·D1 to D3, and Change
- * schedule and Stop schedule under it (215·A1, S3, S4; 227·A13 to A16). A running schedule shows its Last day, an Ended one the day
- * it ended (227·A13, A14, A17).
+ * schedule, Pause and Stop schedule under it (215·A1, S3, S4; 227·A13 to A16; 233·A1 to A5). A
+ * running schedule shows its Last day, a paused one the day it paused, an Ended one the day it
+ * ended (227·A13, A14, A17; 233·A4, A5).
  */
 export function MedicationDetail({
   medicineId,
@@ -63,6 +74,8 @@ export function MedicationDetail({
   const liveNow = useScheduleNow(now)
   // The stop this screen confirmed, until the schedule changes again (227·A16).
   const [stopped, setStopped] = useState<DailySchedule | null>(null)
+  // The pause this screen confirmed, until the schedule changes again (233·A4).
+  const [justPaused, setJustPaused] = useState<DailySchedule | null>(null)
   if (medicinesLoading) return <MedicationDetailSkeleton />
 
   const medicine = medicines.find((item) => item.id === medicineId)
@@ -89,6 +102,7 @@ export function MedicationDetail({
   // A Last day passes at midnight on the live clock.
   const liveToday = istanbulDate(new Date(liveNow))
   const ended = schedule ? endedOn(schedule, liveToday) : null
+  const paused = schedule ? pausedOn(schedule, liveToday) : null
   // Anchor to the server's save instant, so earlier times today never become the first dose.
   const first =
     schedule && justScheduled
@@ -137,6 +151,9 @@ export function MedicationDetail({
           </AlertDescription>
         </Alert>
       )}
+      {justPaused && paused && schedule?.id === justPaused.id && (
+        <PausedScheduleAlert label={medicine.label} />
+      )}
       <section
         aria-labelledby="routine-heading"
         className="flex flex-col gap-3 [overflow-wrap:anywhere]"
@@ -161,6 +178,7 @@ export function MedicationDetail({
                 now={liveNow}
                 lastDay={schedule.endDate}
                 ended={ended}
+                paused={paused}
               />
             ) : (
               <ClockScheduleCard schedule={schedule} unit={medicine.unit} today={liveToday} />
@@ -169,7 +187,9 @@ export function MedicationDetail({
               medicine={medicine}
               schedule={schedule}
               ended={Boolean(ended)}
+              paused={Boolean(paused)}
               onStopped={setStopped}
+              onPaused={setJustPaused}
             />
           </>
         ) : (

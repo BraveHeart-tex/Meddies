@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { formatShortDay } from '@/lib/calendar-date'
 import { quantityLabel, type DoseUnit } from '@/lib/dose-quantity'
 import { istanbulDate, type DailySchedule } from './contract'
-import { endedOn } from './last-day'
+import { endedOn, pausedOn } from './last-day'
 import { weekdaySummary } from './weekdays'
 
 /**
@@ -36,9 +36,14 @@ export function ScheduleDateLines({
   )
 }
 
+/** A paused schedule's first date line, in place of Started or Changed (233·A4, A6). */
+export const pausedSinceLine = (pausedDay: string, today: string) =>
+  `Paused since ${formatShortDay(pausedDay, today)}`
+
 /**
  * A medication's Clock schedule (107·D1): its days, each time with its quantity, and its start,
- * or, for a changed Schedule version, the day it changed, then its Last day or Ended day.
+ * or, for a changed Schedule version, the day it changed, or "Paused since" (233·A4), then its
+ * Last day or Ended day.
  */
 export function ClockScheduleCard({
   schedule,
@@ -46,10 +51,11 @@ export function ClockScheduleCard({
   today,
 }: {
   schedule: Pick<DailySchedule, 'weekdays' | 'times' | 'startDate'> &
-    Partial<Pick<DailySchedule, 'basedOnId' | 'confirmedAt' | 'endDate' | 'stoppedAt'>>
+    Partial<Pick<DailySchedule, 'basedOnId' | 'confirmedAt' | 'endDate' | 'stoppedAt' | 'pausedAt'>>
   unit: DoseUnit
   today: string
 }) {
+  const paused = pausedOn({ endDate: null, stoppedAt: null, pausedAt: null, ...schedule }, today)
   return (
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2">
@@ -67,9 +73,11 @@ export function ClockScheduleCard({
         </ul>
         <ScheduleDateLines
           started={
-            schedule.basedOnId && schedule.confirmedAt
-              ? `Changed ${formatShortDay(istanbulDate(new Date(schedule.confirmedAt)), today)}`
-              : `${schedule.startDate > today ? 'Starts' : 'Started'} ${formatShortDay(schedule.startDate, today)}`
+            paused
+              ? pausedSinceLine(paused, today)
+              : schedule.basedOnId && schedule.confirmedAt
+                ? `Changed ${formatShortDay(istanbulDate(new Date(schedule.confirmedAt)), today)}`
+                : `${schedule.startDate > today ? 'Starts' : 'Started'} ${formatShortDay(schedule.startDate, today)}`
           }
           lastDay={schedule.endDate}
           ended={endedOn({ endDate: null, stoppedAt: null, ...schedule }, today)}

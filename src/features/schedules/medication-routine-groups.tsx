@@ -6,15 +6,19 @@ import { formatShortDay } from '@/lib/calendar-date'
 import { istanbulDate, type DailySchedule } from './contract'
 import { intervalRowSummary } from './interval-dose-list'
 import { intervalAnchor, intervalLabel, nextIntervalDoses } from './interval-preview'
-import { endedOn, untilLastDay } from './last-day'
+import { pausedSinceLine } from './clock-schedule-card'
+import { endedOn, pausedOn, untilLastDay } from './last-day'
 import { MedicationRow } from './medication-row'
 import { useScheduleNow } from './use-schedule-now'
 import { ALL_WEEKDAYS, weekdaySummary } from './weekdays'
 
-function routineSummary(schedule: DailySchedule, now: string) {
+/** A Medications row's schedule line; a paused one stays in On a schedule (233·A6). */
+export function routineSummary(schedule: DailySchedule, now: string) {
   const today = istanbulDate(new Date(now))
   const ended = endedOn(schedule, today)
   if (ended) return `Ended ${formatShortDay(ended, today)}`
+  const paused = pausedOn(schedule, today)
+  if (paused) return pausedSinceLine(paused, today)
   const hours = schedule.intervalHours
   if (hours != null) {
     const anchor = intervalAnchor(schedule)

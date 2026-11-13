@@ -9,13 +9,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { MedicationBackRow, MedicationIdentity } from '@/features/medicines/medication-sub-screen'
 import { medicationsHref } from '@/features/medicines/routes'
-import { ClockScheduleCard } from '@/features/schedules/clock-schedule-card'
 import {
   IntervalFirstDateField,
   IntervalFirstTimeField,
 } from '@/features/schedules/interval-fields'
-import { intervalAnchor } from '@/features/schedules/interval-preview'
-import { IntervalScheduleCard } from '@/features/schedules/interval-schedule-card'
 import {
   IntervalRow,
   IntervalSheet,
@@ -26,9 +23,9 @@ import {
 import { formatShortDay } from '@/lib/calendar-date'
 import { quantityLabel } from '@/lib/dose-quantity'
 import { cn } from '@/lib/utils'
-import { magnesium, NOW, TODAY } from './lab-fixtures'
+import { magnesium, TODAY } from './lab-fixtures'
 import { resumeDoses, type PausableSchedule, type ResumeValues } from './pause-model'
-import { PausedScheduleCard, PauseScheduleDrawer, type SaveStep } from './pause-parts'
+import { LabScheduleCard, PauseScheduleDrawer, type SaveStep } from './pause-parts'
 
 export type Links = { change: string; pause: string; stop: string; resume: string }
 
@@ -104,21 +101,6 @@ function PausedActions({
   )
 }
 
-function RunningCard({ schedule }: { schedule: PausableSchedule }) {
-  return schedule.intervalHours != null ? (
-    <IntervalScheduleCard
-      hours={schedule.intervalHours}
-      anchor={intervalAnchor(schedule)}
-      quantity={schedule.times[0].quantity}
-      unit={magnesium.unit}
-      now={NOW}
-      lastDay={schedule.endDate}
-    />
-  ) : (
-    <ClockScheduleCard schedule={schedule} unit={magnesium.unit} today={TODAY} />
-  )
-}
-
 /** Medication detail: a running or paused schedule with its actions. */
 export function PauseDetail({
   schedule,
@@ -148,7 +130,7 @@ export function PauseDetail({
           </h2>
           {paused ? (
             <>
-              <PausedScheduleCard schedule={schedule} />
+              <LabScheduleCard schedule={schedule} />
               <PausedActions
                 links={links}
                 interval={schedule.intervalHours != null}
@@ -157,7 +139,7 @@ export function PauseDetail({
             </>
           ) : (
             <>
-              <RunningCard schedule={schedule} />
+              <LabScheduleCard schedule={schedule} />
               <RunningActions links={links} />
             </>
           )}

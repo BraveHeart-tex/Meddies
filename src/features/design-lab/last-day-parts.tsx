@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { LastDayField, LastDayRow } from '@/features/schedules/last-day-controls'
-import { StopScheduleDrawer as StopScheduleConfirm } from '@/features/schedules/stop-schedule-drawer'
+import { ScheduleConfirmDrawer } from '@/features/schedules/schedule-confirm-drawer'
 import { magnesium, TODAY } from './lab-fixtures'
 
 type LastDayProps = {
@@ -32,12 +32,13 @@ export type StopState = 'idle' | 'stopping' | 'unknown'
 export function StopScheduleDrawer({ state = 'idle' }: { state?: StopState }) {
   const [open, setOpen] = useState(true)
   return (
-    <StopScheduleConfirm
+    <ScheduleConfirmDrawer
+      command="stop"
       open={open}
       label={magnesium.label}
       pending={state === 'stopping'}
       problem={state === 'unknown' ? 'unconfirmed' : undefined}
-      onStop={() => {}}
+      onConfirm={() => {}}
       onKeep={() => setOpen(false)}
       onReview={() => setOpen(false)}
     />

@@ -8,34 +8,68 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 import { saveMessages } from '@/lib/save-messages'
 import type { SaveProblem } from '@/lib/session-saves'
 
-/**
- * Stop schedule's confirm step (227·A15, S1, S2): nothing saves until Stop schedule. While
- * stopping it holds open with both buttons disabled; an unknown result offers Retry of the same
- * stop, and a stale one the 215·S2 recovery.
- */
-export function StopScheduleDrawer({
-  open,
-  label,
-  pending,
-  problem,
-  offline = false,
-  onStop,
-  onKeep,
-  onReview,
-  finalFocus,
-}: {
+export type ScheduleConfirmKind = 'stop' | 'pause'
+
+const copy = {
+  stop: {
+    title: 'Stop this schedule?',
+    lines: (label: string) => [
+      "Doses due so far, and any you've logged, stay as they are.",
+      `Meddies won't expect any more doses of ${label}.`,
+      'To start again, use Change schedule.',
+    ],
+    confirm: 'Stop schedule',
+    pending: 'Stopping…',
+    variant: 'destructive',
+  },
+  pause: {
+    title: 'Pause this schedule?',
+    lines: (label: string) => [
+      "Doses due so far, and any you've logged, stay as they are.",
+      `Meddies won't expect any doses of ${label} until you resume.`,
+      'Nothing is added later for the paused days.',
+      'Refill alerts keep going.',
+    ],
+    confirm: 'Pause schedule',
+    pending: 'Pausing…',
+    variant: 'default',
+  },
+} as const
+
+type ConfirmProps = {
   open: boolean
   label: string
   pending: boolean
   problem?: SaveProblem
   offline?: boolean
-  onStop: () => void
+  onConfirm: () => void
   /** Keep schedule, swipe, backdrop and Escape. */
   onKeep: () => void
-  /** Leaves a stale stop for the current schedule. */
+  /** Leaves a stale save for the current schedule. */
   onReview: () => void
   finalFocus?: ComponentProps<typeof DrawerContent>['finalFocus']
-}) {
+}
+
+/**
+ * Stop schedule's and Pause's confirm step (227·A15, S1, S2; 233·A3, S1, S2): nothing saves
+ * until the confirm button. While saving it holds open with both buttons disabled; an unknown
+ * result offers Retry of the same save, a stale one the 215·S2 recovery, and known offline
+ * Connect to save.
+ */
+export function ScheduleConfirmDrawer({
+  command,
+  open,
+  label,
+  pending,
+  problem,
+  offline = false,
+  onConfirm,
+  onKeep,
+  onReview,
+  finalFocus,
+}: ConfirmProps & { command: ScheduleConfirmKind }) {
+  const text = copy[command]
+  const problemId = `${command}-schedule-problem`
   const stale = problem === 'conflict'
   return (
     <Drawer
@@ -50,12 +84,12 @@ export function StopScheduleDrawer({
       <DrawerContent finalFocus={finalFocus}>
         <div className="-mt-2 flex flex-col gap-3" aria-busy={pending}>
           <DrawerHeader className="text-center">
-            <DrawerTitle className="text-heading">Stop this schedule?</DrawerTitle>
+            <DrawerTitle className="text-heading">{text.title}</DrawerTitle>
           </DrawerHeader>
           <ul className="flex flex-col gap-2 text-body-sm text-muted-foreground">
-            <li>Doses due so far, and any you&apos;ve logged, stay as they are.</li>
-            <li>Meddies won&apos;t expect any more doses of {label}.</li>
-            <li>To start again, use Change schedule.</li>
+            {text.lines(label).map((line) => (
+              <li key={line}>{line}</li>
+            ))}
           </ul>
           {stale ? (
             <>
@@ -72,13 +106,13 @@ export function StopScheduleDrawer({
           ) : (
             <>
               {offline && !pending ? (
-                <Alert id="stop-schedule-problem">
+                <Alert id={problemId}>
                   <InfoIcon aria-hidden="true" />
                   <AlertTitle>{saveMessages.offline}</AlertTitle>
                 </Alert>
               ) : (
                 problem === 'unconfirmed' && (
-                  <Alert id="stop-schedule-problem" variant="destructive">
+                  <Alert id={problemId} variant="destructive">
                     <AlertDescription>
                       That might not have saved. Check your connection and try again.
                     </AlertDescription>
@@ -88,19 +122,19 @@ export function StopScheduleDrawer({
               <Button
                 type="button"
                 size="lg"
-                variant="destructive"
+                variant={text.variant}
                 className="w-full"
                 disabled={pending || offline}
-                aria-describedby={problem || offline ? 'stop-schedule-problem' : undefined}
-                onClick={onStop}
+                aria-describedby={problem || offline ? problemId : undefined}
+                onClick={onConfirm}
               >
                 {pending
-                  ? 'Stopping…'
+                  ? text.pending
                   : offline
                     ? saveMessages.connectToSave
                     : problem === 'unconfirmed'
                       ? 'Retry'
-                      : 'Stop schedule'}
+                      : text.confirm}
               </Button>
               <Button
                 type="button"

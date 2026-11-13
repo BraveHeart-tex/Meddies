@@ -70,9 +70,6 @@ export function resumed(schedule: PausableSchedule, anchor?: { date: string; tim
   } satisfies PausableSchedule
 }
 
-export const pausedSince = (schedule: PausableSchedule) =>
-  schedule.pausedAt ? `Paused since ${formatShortDay(schedule.pausedAt, TODAY)}` : null
-
 /** The first dose a resumed version expects after NOW, within its Last day. */
 export function firstDoseAfterResume(schedule: PausableSchedule) {
   const doses =

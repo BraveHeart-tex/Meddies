@@ -7,17 +7,12 @@ import { intervalRowSummary } from '@/features/schedules/interval-dose-list'
 import { intervalAnchor, nextIntervalDoses } from '@/features/schedules/interval-preview'
 import { endedOn } from '@/features/schedules/last-day'
 import { MedicationRow } from '@/features/schedules/medication-row'
+import { routineSummary } from '@/features/schedules/medication-routine-groups'
 import { weekdaySummary } from '@/features/schedules/weekdays'
 import { formatShortDay } from '@/lib/calendar-date'
 import { magnesium, NOW, TODAY } from './lab-fixtures'
 import { ENDED_ON } from './last-day-model'
-import {
-  clockPaused,
-  clockRunning,
-  intervalRunning,
-  pausedSince,
-  type PausableSchedule,
-} from './pause-model'
+import { clockPaused, clockRunning, intervalRunning, type PausableSchedule } from './pause-model'
 
 const iron: Medicine = { ...magnesium, id: '22222222-2222-4222-8222-222222222222', label: 'Iron' }
 const zinc: Medicine = { ...magnesium, id: '33333333-3333-4333-8333-333333333333', label: 'Zinc' }
@@ -67,7 +62,7 @@ export function PausedListFrame() {
     {
       label: 'On a schedule',
       entries: [
-        { medicine: magnesium, summary: pausedSince(clockPaused) },
+        { medicine: magnesium, summary: routineSummary(clockPaused, NOW) },
         { medicine: iron, summary: intervalRowSummary(7, ironNext, TODAY) },
         { medicine: omega, summary: clockLine({ ...clockRunning, endDate: null }) },
       ],
