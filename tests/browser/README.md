@@ -65,10 +65,10 @@ Worker/D1 database and clock file.
   browser (`useSchedulingClock()`); `app.setScheduleTime` moves it. Auth stays real time so
   sessions stay valid. Use `page.clock` only to advance elapsed time, installed at the
   real current time.
-- Spec files run on three workers locally. CI retains one worker because the measured
-  2/3-worker trial found dose drawer flakes ([#255](https://github.com/BraveHeart-tex/Meddies/issues/255));
-  dev mode stays serial because it shares the `.next/dev` lock. Retries stay zero, and
-  tests within a file run serially.
+- Spec files run on three workers locally and in CI. After the flake fixes, three was the
+  fastest count with no failures in the repeated 2/3-worker trial
+  ([#245](https://github.com/BraveHeart-tex/Meddies/issues/245)). Dev mode stays serial
+  because it shares the `.next/dev` lock. Retries stay zero, and tests within a file run serially.
 
 ## Worker controls
 

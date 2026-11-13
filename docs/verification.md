@@ -79,9 +79,11 @@ journeys sit outside this rule.
 
 ### Running journeys
 
-CI uses one worker, its last clean count: the measured 2/3-worker trial found dose drawer
-flakes ([#255](https://github.com/BraveHeart-tex/Meddies/issues/255)). Retries stay zero.
-Local production runs use three workers; dev mode shares the `.next/dev` lock and stays serial.
+CI and local production runs use three workers: after the flake fixes, three was the
+fastest count with no failures in the repeated 2/3-worker trial
+([#245](https://github.com/BraveHeart-tex/Meddies/issues/245)). Retries stay zero; dev mode
+shares the `.next/dev` lock and stays serial. A CI flake reverts the count to the last
+clean setting and gets a `bug` + `needs-triage` issue naming the failing specs.
 
 - **Local runs:** once after implementation, run only the journeys the ticket names plus
   any spec you added or changed, in one `pnpm test:browser:build <names>` run. No smoke
