@@ -5,6 +5,7 @@ import {
   parseScheduleEdit,
   parseScheduleStop,
   parseSchedulePause,
+  parseScheduleResume,
   parseTakenDose,
   parseSkippedDose,
   parseDoseCorrection,
@@ -56,6 +57,11 @@ export function decodeCommand(path: '/medicines' | '/schedules', value: unknown)
       return {
         path,
         command: { operation: 'save', ownerId, schedule: parseSchedule(input.schedule) },
+      }
+    case 'resume':
+      return {
+        path,
+        command: { operation: 'resume', ownerId, resume: parseScheduleResume(input.resume) },
       }
     case 'pause':
       return {

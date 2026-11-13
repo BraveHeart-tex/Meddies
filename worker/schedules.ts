@@ -13,6 +13,8 @@
 //   A restart is a normal edit and never restores doses from the stopped period.
 // - Pause appends the same routine, start and Last day with `pausedAt` at the Edit time.
 //   Paused versions expect no doses; they reject changes and pauses but allow Stop.
+// - Resume requires a paused, non-Ended version and keeps its routine and Last day.
+//   Resume keeps its start date; Interval requires a new Anchor date/time, today or later.
 import { isQuantityForUnit } from '../src/lib/dose-quantity'
 import { and, asc, eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
@@ -23,6 +25,7 @@ import {
   type parseSchedule,
   type ScheduleEditInput,
   type ScheduleStopInput,
+  type ScheduleResumeInput,
 } from '../src/features/schedules/contract'
 import { ApplicationError } from '../src/lib/application-error'
 import { dailySchedules, userMedications } from './schema'
@@ -40,6 +43,7 @@ const scheduleColumns = {
   basedOnId: dailySchedules.basedOnId,
   stoppedAt: dailySchedules.stoppedAt,
   pausedAt: dailySchedules.pausedAt,
+  anchorDate: dailySchedules.anchorDate,
   replacedAt: sql<string | null>`(SELECT confirmed_at FROM daily_schedules successor
     WHERE successor.owner_id = daily_schedules.owner_id AND successor.based_on_id = daily_schedules.id)`.as(
     'replacedAt',
@@ -125,13 +129,14 @@ export async function saveSchedule(
 export async function editSchedule(
   db: DrizzleD1Database,
   ownerId: string,
-  edit: ScheduleEditInput | ScheduleStopInput,
+  edit: ScheduleEditInput | ScheduleStopInput | ScheduleResumeInput,
   clock: () => Date,
-  action?: 'pause',
+  action?: 'pause' | 'resume',
 ): Promise<ScheduleResponses['edit']> {
+  const resuming = action === 'resume'
   const pausing = action === 'pause'
-  const stopping = !('times' in edit) && !pausing
-  const request = JSON.stringify(pausing ? { ...edit, operation: 'pause' } : edit)
+  const stopping = !('times' in edit) && !pausing && !resuming
+  const request = JSON.stringify(action ? { ...edit, operation: action } : edit)
   const readSaved = () =>
     db
       .select({ ...scheduleColumns, editRequest: dailySchedules.editRequest })
@@ -160,18 +165,34 @@ export async function editSchedule(
   if (parent.replacedAt) throw new ApplicationError('conflict', 409)
   const now = clock()
   const today = istanbulDate(now)
-  if ((stopping || pausing) && (parent.stoppedAt || (parent.endDate && parent.endDate < today)))
+  if (
+    (stopping || pausing || resuming) &&
+    (parent.stoppedAt || (parent.endDate && parent.endDate < today))
+  )
     throw new ApplicationError('validation', 400)
-  if (parent.pausedAt && !stopping) throw new ApplicationError('validation', 400)
+  if (resuming && !parent.pausedAt) throw new ApplicationError('validation', 400)
+  if (parent.pausedAt && !stopping && !resuming) throw new ApplicationError('validation', 400)
+  const resume = edit as ScheduleResumeInput
+  if (
+    resuming &&
+    (parent.intervalHours != null
+      ? !resume.anchorDate || !resume.anchorTime
+      : resume.anchorDate !== undefined)
+  )
+    throw new ApplicationError('validation', 400)
   const change: ScheduleEditInput =
     'times' in edit
       ? edit
       : {
           ...edit,
-          times: parent.times,
+          times:
+            resuming && resume.anchorTime
+              ? [{ ...parent.times[0], time: resume.anchorTime }]
+              : parent.times,
+          ...(resuming && resume.anchorDate ? { anchorDate: resume.anchorDate } : {}),
           weekdays: parent.weekdays,
           intervalHours: parent.intervalHours,
-          endDate: pausing ? (parent.endDate ?? null) : null,
+          endDate: pausing || resuming ? (parent.endDate ?? null) : null,
         }
   const interval = change.intervalHours != null
   if (
@@ -185,18 +206,24 @@ export async function editSchedule(
   )
     throw new ApplicationError('validation', 400)
   const startDate =
-    stopping || pausing
+    stopping || pausing || resuming
       ? parent.startDate
       : interval
-        ? (change.anchorDate ?? parent.startDate)
+        ? (change.anchorDate ?? parent.anchorDate ?? parent.startDate)
         : today
-  if (change.endDate !== null && (change.endDate < today || change.endDate < startDate))
+  const anchorDate = interval ? (change.anchorDate ?? parent.anchorDate ?? parent.startDate) : null
+  if (
+    change.endDate !== null &&
+    (change.endDate < today ||
+      change.endDate < startDate ||
+      (anchorDate !== null && change.endDate < anchorDate))
+  )
     throw new ApplicationError('validation', 400)
   await db.run(sql`
     INSERT INTO daily_schedules (owner_id, id, medicine_id, start_date, times, confirmed_at,
-      weekdays, end_date, interval_hours, based_on_id, edit_request, stopped_at, paused_at)
+      weekdays, end_date, interval_hours, based_on_id, edit_request, stopped_at, paused_at, anchor_date)
     SELECT ${ownerId}, ${edit.id}, ${parent.medicineId}, ${startDate}, ${JSON.stringify(change.times)},
-      ${now.toISOString()}, ${JSON.stringify(change.weekdays)}, ${change.endDate}, ${change.intervalHours ?? null}, ${edit.basedOnId}, ${request}, ${stopping ? now.toISOString() : null}, ${pausing ? now.toISOString() : null}
+      ${now.toISOString()}, ${JSON.stringify(change.weekdays)}, ${change.endDate}, ${change.intervalHours ?? null}, ${edit.basedOnId}, ${request}, ${stopping ? now.toISOString() : null}, ${pausing ? now.toISOString() : null}, ${anchorDate}
     WHERE NOT EXISTS (SELECT 1 FROM daily_schedules WHERE owner_id = ${ownerId} AND based_on_id = ${edit.basedOnId})
     ON CONFLICT DO NOTHING
   `)

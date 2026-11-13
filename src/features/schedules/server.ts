@@ -5,6 +5,7 @@ import { requireUser } from '@/features/auth/server'
 import { ApplicationError } from '@/lib/application-error'
 import {
   isInstant,
+  isScheduleDate,
   parseDoseOutcomeRecord,
   parseSchedule,
   parseTakenDose,
@@ -37,6 +38,8 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
         const schedule = parseSchedule(value)
         const confirmedAt = (value as Record<string, unknown>).confirmedAt
         if (!isInstant(confirmedAt)) throw new Error('contract')
+        const anchorDate = (value as Record<string, unknown>).anchorDate
+        if (anchorDate != null && !isScheduleDate(anchorDate)) throw new Error('contract')
         const pausedAt = (value as Record<string, unknown>).pausedAt
         if (pausedAt != null && !isInstant(pausedAt)) throw new Error('contract')
         const stoppedAt = (value as Record<string, unknown>).stoppedAt
@@ -48,6 +51,7 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
         return {
           ...schedule,
           confirmedAt,
+          ...(anchorDate === undefined ? {} : { anchorDate: anchorDate as string | null }),
           ...(pausedAt === undefined ? {} : { pausedAt: pausedAt as string | null }),
           ...(stoppedAt === undefined ? {} : { stoppedAt: stoppedAt as string | null }),
           ...(basedOnId === undefined ? {} : { basedOnId: basedOnId as string | null }),
@@ -59,7 +63,8 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
       command.operation !== 'save' &&
       command.operation !== 'edit' &&
       command.operation !== 'stop' &&
-      command.operation !== 'pause'
+      command.operation !== 'pause' &&
+      command.operation !== 'resume'
     ) {
       if (!Array.isArray(data.records)) throw new Error('contract')
       result.records = data.records.map((value: unknown) =>

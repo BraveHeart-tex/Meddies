@@ -423,3 +423,67 @@ test('schedule pause HTTP boundary guards, authenticates and decodes pauseped ve
     assert.equal((await post(pause)).status, 503)
   }
 })
+
+test('schedule resume HTTP boundary guards, authenticates and decodes running versions', async () => {
+  const { POST } = await import('../src/app/api/schedules/resume/route')
+  const id = '10000000-0000-4000-8000-000000000003'
+  const basedOnId = '10000000-0000-4000-8000-000000000001'
+  const resume = { id, basedOnId }
+  const schedule = {
+    id,
+    basedOnId,
+    medicineId: '10000000-0000-4000-8000-000000000002',
+    startDate: '2026-11-03',
+    times: [{ time: '08:00', quantity: 1 }],
+    confirmedAt: '2026-11-03T11:00:00.000Z',
+    pausedAt: null,
+    stoppedAt: null,
+    endDate: null,
+  }
+  let calls = 0
+  globalThis.fetch = async (_url, options) => {
+    calls++
+    assert.deepEqual(JSON.parse(options!.body as string), {
+      operation: 'resume',
+      ownerId: 'google:test',
+      resume,
+    })
+    return Response.json({ schedules: [schedule] })
+  }
+  const post = (
+    body: unknown,
+    headers: HeadersInit = { origin: 'https://meddies.test', 'content-type': 'application/json' },
+  ) =>
+    POST(
+      new Request('https://meddies.test/api/schedules/resume', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      }),
+    )
+  assert.equal((await post(resume, {})).status, 403)
+  setAuthenticated(false)
+  try {
+    assert.equal((await post(resume)).status, 401)
+  } finally {
+    setAuthenticated(true)
+  }
+  assert.equal(calls, 0)
+  for (const invalid of [
+    { ...resume, id: 'invalid' },
+    { ...resume, basedOnId: id },
+    { ...resume, endDate: null },
+    { ...resume, ownerId: 'google:outsider' },
+  ])
+    assert.equal((await post(invalid)).status, 400)
+  const response = await post(resume)
+  assert.equal(response.status, 200)
+  assert.equal(response.headers.get('cache-control'), 'no-store')
+  assert.equal((await response.json()).schedules[0].pausedAt, schedule.pausedAt)
+  globalThis.fetch = async () => new Response('{}', { status: 409 })
+  assert.equal((await post(resume)).status, 409)
+  for (const pausedAt of ['invalid', '2026-11-03T11:00:00.000Z']) {
+    globalThis.fetch = async () => Response.json({ schedules: [{ ...schedule, pausedAt }] })
+    assert.equal((await post(resume)).status, 503)
+  }
+})

@@ -18,7 +18,14 @@ export function scheduledInstant(date: string, time: string) {
 export function scheduleSlotsOn(
   schedule: Pick<
     DailySchedule,
-    'startDate' | 'endDate' | 'weekdays' | 'times' | 'intervalHours' | 'stoppedAt' | 'pausedAt'
+    | 'startDate'
+    | 'anchorDate'
+    | 'endDate'
+    | 'weekdays'
+    | 'times'
+    | 'intervalHours'
+    | 'stoppedAt'
+    | 'pausedAt'
   >,
   date: string,
 ) {
@@ -26,7 +33,7 @@ export function scheduleSlotsOn(
   if (schedule.intervalHours == null)
     return schedule.times.map((slot) => ({ dueAt: scheduledInstant(date, slot.time), slot }))
   const slot = schedule.times[0]
-  const anchor = Date.parse(scheduledInstant(schedule.startDate, slot.time))
+  const anchor = Date.parse(scheduledInstant(schedule.anchorDate ?? schedule.startDate, slot.time))
   const start = Date.parse(scheduledInstant(date, '00:00'))
   const end = start + 24 * 60 * 60 * 1000
   const step = schedule.intervalHours * 60 * 60 * 1000

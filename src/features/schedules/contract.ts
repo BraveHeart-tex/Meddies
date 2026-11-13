@@ -14,6 +14,8 @@ export type DailyScheduleInput = {
   endDate?: string | null
 }
 export type DailySchedule = DailyScheduleInput & {
+  /** Interval Anchor date after resume; legacy versions count from startDate. */
+  anchorDate?: string | null
   confirmedAt: string
   weekdays: number[]
   /** The Schedule version this one replaced at its Edit time; null for a first schedule. */
@@ -23,6 +25,12 @@ export type DailySchedule = DailyScheduleInput & {
   /** Pause Edit time; no occurrences while this version is paused. */
   pausedAt?: string | null
   replacedAt?: string | null
+}
+export type ScheduleResumeInput = {
+  id: string
+  basedOnId: string
+  anchorDate?: string
+  anchorTime?: string
 }
 export type SchedulePauseInput = { id: string; basedOnId: string }
 export type ScheduleStopInput = { id: string; basedOnId: string }
@@ -39,6 +47,7 @@ export type ScheduleCommand =
   | { operation: 'list'; ownerId: string; date?: string }
   | { operation: 'listOutcomes'; ownerId: string; date: string }
   | { operation: 'save'; ownerId: string; schedule: DailyScheduleInput }
+  | { operation: 'resume'; ownerId: string; resume: ScheduleResumeInput }
   | { operation: 'pause'; ownerId: string; pause: SchedulePauseInput }
   | { operation: 'stop'; ownerId: string; stop: ScheduleStopInput }
   | { operation: 'edit'; ownerId: string; edit: ScheduleEditInput }
@@ -70,6 +79,7 @@ export type ScheduleResponses = {
   save: { schedules: DailySchedule[] }
   edit: { schedules: DailySchedule[] }
   stop: { schedules: DailySchedule[] }
+  resume: { schedules: DailySchedule[] }
   pause: { schedules: DailySchedule[] }
   recordTaken: { records: DoseRecord[] }
   recordSkipped: { records: SkippedDoseRecord[] }
@@ -221,6 +231,20 @@ export function parseScheduleStop(value: unknown): ScheduleStopInput {
   )
     throw new ApplicationError('validation', 400)
   return { id: input.id.toLowerCase(), basedOnId: input.basedOnId.toLowerCase() }
+}
+
+export function parseScheduleResume(value: unknown): ScheduleResumeInput {
+  if (!value || typeof value !== 'object') throw new ApplicationError('validation', 400)
+  const { anchorDate, anchorTime, ...ids } = value as Record<string, unknown>
+  const parsed = parseScheduleStop(ids)
+  if (anchorDate === undefined && anchorTime === undefined) return parsed
+  if (
+    !isScheduleDate(anchorDate) ||
+    typeof anchorTime !== 'string' ||
+    !/^([01]\d|2[0-3]):[0-5]\d$/.test(anchorTime)
+  )
+    throw new ApplicationError('validation', 400)
+  return { ...parsed, anchorDate, anchorTime }
 }
 
 export function parseSchedulePause(value: unknown): SchedulePauseInput {

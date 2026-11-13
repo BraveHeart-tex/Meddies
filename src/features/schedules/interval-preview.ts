@@ -31,8 +31,10 @@ export function nextIntervalDoses({
 }
 
 /** The instant an Interval schedule counts from. */
-export function intervalAnchor(schedule: Pick<DailySchedule, 'startDate' | 'times'>) {
-  return scheduledInstant(schedule.startDate, schedule.times[0].time)
+export function intervalAnchor(
+  schedule: Pick<DailySchedule, 'startDate' | 'anchorDate' | 'times'>,
+) {
+  return scheduledInstant(schedule.anchorDate ?? schedule.startDate, schedule.times[0].time)
 }
 
 /** 'Every hour' or 'Every 8 hours'. */
