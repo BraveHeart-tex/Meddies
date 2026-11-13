@@ -21,7 +21,13 @@ browser storage is used. Losing it on reload, app closure or browser eviction is
   The session feedback host reports confirmation or recovery through the app Toast host.
 - **Dose saves** live in the session dose save store (`dose-saves.ts`). A pending save
   survives the drawer and Today, its row badge reads the store, and a result with no
-  drawer watching arrives as a Toast.
+  drawer watching arrives as a Toast. Unscheduled dose saves (log, change, remove) work the
+  same way in `unscheduled-saves.ts`; a removal has no read evidence, so only its retry
+  confirms it.
+- **Unscheduled doses** have no read of their own: Today's snapshot read and each History
+  date read carry their date's Unscheduled doses and seed `['schedules', 'unscheduled', date]`.
+  A confirmed change or removal stays cached at its new revision, so a stale read never
+  restores it.
 - **Optimistic doses.** The pending badge on Today and History rows is the only optimistic
   state; nothing is written to the cache before the server confirms. A confirmed record,
   from either view, is written into Today's snapshot when the dose is due today and into

@@ -462,7 +462,7 @@ describe('Done for now', () => {
     expect(await screen.findByRole('heading', { name: 'No schedule yet' })).toBeVisible()
     expect(
       screen.getByText(
-        `Set the days and times you take it, or do it later from this page. Today won't list ${saved.label} until it has a schedule.`,
+        `Set the days and times you take it, or do it later from this page. Today lists its doses once it has a schedule, or when you log one.`,
       ),
     ).toBeVisible()
     expect(screen.getByRole('link', { name: 'Set schedule' })).toBeVisible()

@@ -22,6 +22,7 @@
     - link "Change schedule"
     - button "Pause"
     - button "Stop schedule"
+  - button "Log a dose"
   - paragraph
     - text: Details can't be changed here yet.
 - navigation "Primary"

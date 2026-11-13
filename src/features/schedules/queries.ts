@@ -1,6 +1,8 @@
 import { PrivateReadError } from '@/lib/session-check'
 import { useCallback } from 'react'
 import { queryOptions, replaceEqualDeep, useQuery, type QueryClient } from '@tanstack/react-query'
+import type { UnscheduledDose } from '../unscheduled-doses/contract'
+import { seedUnscheduledDay } from '../unscheduled-doses/queries'
 import {
   istanbulDate,
   type DailySchedule,
@@ -28,10 +30,14 @@ export const scheduleKeys = {
   history: (date: string) => [...scheduleKeys.all, 'history', date] as const,
 }
 
-/** Browser read of one History date's doses through the authenticated API route. */
+/**
+ * Browser read of one History date's doses through the authenticated API route. The date's
+ * Unscheduled doses come with it and seed their own cache entry.
+ */
 export async function fetchHistoryDay(
   date: string,
   signal?: AbortSignal,
+  client?: QueryClient,
 ): Promise<DoseOccurrence[]> {
   const timeout = AbortSignal.timeout(12000)
   const response = await fetch(`/api/schedules/history?date=${encodeURIComponent(date)}`, {
@@ -39,7 +45,9 @@ export async function fetchHistoryDay(
     signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
   })
   if (!response.ok) throw new PrivateReadError(response.status)
-  const data: { doses: DoseOccurrence[] } = await response.json()
+  const data: { doses: DoseOccurrence[]; unscheduledDoses?: UnscheduledDose[] } =
+    await response.json()
+  if (client) seedUnscheduledDay(client, date, data.unscheduledDoses ?? [])
   return data.doses
 }
 
@@ -50,21 +58,29 @@ export async function fetchHistoryDay(
 export const historyDayQuery = (date: string) =>
   queryOptions({
     queryKey: scheduleKeys.history(date),
-    queryFn: ({ signal }) => fetchHistoryDay(date, signal),
+    queryFn: ({ signal, client }) => fetchHistoryDay(date, signal, client),
     staleTime: 0,
     structuralSharing: (old, next) =>
       mergeHistoryDay(old as DoseOccurrence[] | undefined, next as DoseOccurrence[]),
   })
 
-/** Browser read of the owner's schedules snapshot through the authenticated API route. */
-export async function fetchScheduleSnapshot(signal?: AbortSignal): Promise<ScheduleSnapshot> {
+/**
+ * Browser read of the owner's schedules snapshot through the authenticated API route. Today's
+ * Unscheduled doses come with it and seed their own cache entry.
+ */
+export async function fetchScheduleSnapshot(
+  signal?: AbortSignal,
+  client?: QueryClient,
+): Promise<ScheduleSnapshot> {
   const timeout = AbortSignal.timeout(12000)
   const response = await fetch('/api/schedules', {
     cache: 'no-store',
     signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
   })
   if (!response.ok) throw new PrivateReadError(response.status)
-  return toScheduleSnapshot(await response.json())
+  const data = await response.json()
+  if (client) seedUnscheduledDay(client, data.today.date, data.unscheduledDoses ?? [])
+  return toScheduleSnapshot(data)
 }
 
 /**
@@ -75,7 +91,7 @@ export async function fetchScheduleSnapshot(signal?: AbortSignal): Promise<Sched
 export const scheduleSnapshotQuery = () =>
   queryOptions({
     queryKey: scheduleKeys.snapshot(),
-    queryFn: ({ signal }) => fetchScheduleSnapshot(signal),
+    queryFn: ({ signal, client }) => fetchScheduleSnapshot(signal, client),
     staleTime: 0,
     structuralSharing: (old, next) =>
       mergeSnapshot(old as ScheduleSnapshot | undefined, next as ScheduleSnapshot),

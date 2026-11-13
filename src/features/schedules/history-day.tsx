@@ -24,10 +24,16 @@ import { doseSaveKey } from './dose-saves'
 import { DoseStatusBadge } from './dose-status-badge'
 import { dayHeadingId, historyHref, useHistoryDayFocus } from './history-date-nav'
 import { useDoseSaves } from './use-dose-outcome-mutation'
+import type { UnscheduledDose } from '../unscheduled-doses/contract'
+import { useUnscheduledDoses } from '../unscheduled-doses/queries'
+import { UnscheduledDoseRow } from '../unscheduled-doses/unscheduled-dose-row'
 
 export type HistoryDayResult =
   | { status: 'loaded'; doses: DoseOccurrence[]; medicines: Medicine[] }
   | { status: 'unavailable'; retry: () => void }
+
+const historyRowClassName =
+  'has-[[data-row-trigger]:active]:scale-[0.98] has-[[data-row-trigger]:active]:bg-muted motion-reduce:has-[[data-row-trigger]:active]:scale-100'
 
 const recorded = (dose: DoseOccurrence) => dose.status === 'Taken' || dose.status === 'Skipped'
 
@@ -52,6 +58,7 @@ export function HistoryDay({
     if (notice === 'invalid') window.history.replaceState(null, '', historyHref(today))
   }, [notice, today])
   const heading = formatLongDay(date, today)
+  const unscheduled = useUnscheduledDoses(date)
 
   // The notice is its own page section, 20px above the day (#143), so this renders two
   // siblings of History's section column.
@@ -71,7 +78,7 @@ export function HistoryDay({
               </Button>
             </AlertDescription>
           </Alert>
-        ) : result.doses.length === 0 ? (
+        ) : result.doses.length === 0 && unscheduled.length === 0 ? (
           <EmptyDay
             date={date}
             today={today}
@@ -85,6 +92,7 @@ export function HistoryDay({
             today={today}
             heading={heading}
             doses={result.doses}
+            unscheduled={unscheduled}
             medicines={result.medicines}
             focusTarget={focusTarget}
           />
@@ -133,11 +141,20 @@ function EmptyDay({
   return <EmptyState {...content} titleAs="h2" titleId={dayHeadingId} titleRef={focusTarget} />
 }
 
+type Row =
+  | { kind: 'scheduled'; at: string; dose: DoseOccurrence }
+  | { kind: 'unscheduled'; at: string; dose: UnscheduledDose }
+
+/**
+ * Unscheduled doses sit in time order among scheduled doses, marked; the count stays scheduled
+ * doses only, since an Unscheduled dose is never due (241·A7).
+ */
 function LoadedDay({
   date,
   today,
   heading,
   doses,
+  unscheduled,
   medicines,
   focusTarget,
 }: {
@@ -145,10 +162,15 @@ function LoadedDay({
   today: string
   heading: string
   doses: DoseOccurrence[]
+  unscheduled: UnscheduledDose[]
   medicines: Medicine[]
   focusTarget: RefObject<HTMLHeadingElement | null>
 }) {
   const logged = doses.filter(recorded).length
+  const rows: Row[] = [
+    ...doses.map((dose) => ({ kind: 'scheduled' as const, at: dose.dueAt, dose })),
+    ...unscheduled.map((dose) => ({ kind: 'unscheduled' as const, at: dose.takenAt, dose })),
+  ].sort((a, b) => a.at.localeCompare(b.at))
   return (
     <>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 px-1">
@@ -157,7 +179,7 @@ function LoadedDay({
           ref={focusTarget}
           tabIndex={-1}
           // Announced on a date change: 'Thursday, 5 November, 7 doses' (#108 a11y).
-          aria-label={`${heading}, ${doses.length} ${doses.length === 1 ? 'dose' : 'doses'}`}
+          aria-label={`${heading}, ${rows.length} ${rows.length === 1 ? 'dose' : 'doses'}`}
           className="text-heading font-extrabold outline-none"
         >
           {heading}
@@ -167,15 +189,27 @@ function LoadedDay({
         </p>
       </div>
       <ol aria-label={`Doses for ${heading}`} className="flex flex-col gap-2.5">
-        {doses.map((dose) => (
-          <HistoryDoseRow
-            key={dose.id}
-            dose={dose}
-            date={date}
-            today={today}
-            medicine={medicines.find((item) => item.id === dose.medicineId)}
-          />
-        ))}
+        {rows.map((row) =>
+          row.kind === 'scheduled' ? (
+            <HistoryDoseRow
+              key={row.dose.id}
+              dose={row.dose}
+              date={date}
+              today={today}
+              medicine={medicines.find((item) => item.id === row.dose.medicineId)}
+            />
+          ) : (
+            <UnscheduledDoseRow
+              key={row.dose.id}
+              dose={row.dose}
+              medicine={medicines.find((item) => item.id === row.dose.medicineId)}
+              today={today}
+              heading="h3"
+              className={historyRowClassName}
+              focusAfterRemove={dayHeadingId}
+            />
+          ),
+        )}
       </ol>
     </>
   )
@@ -202,7 +236,7 @@ function HistoryDoseRow({
     <Item
       render={<li data-dose-id={dose.id} />}
       variant={done ? 'card' : 'dashed'}
-      className="has-[[data-row-trigger]:active]:scale-[0.98] has-[[data-row-trigger]:active]:bg-muted motion-reduce:has-[[data-row-trigger]:active]:scale-100"
+      className={historyRowClassName}
     >
       <span
         aria-hidden="true"

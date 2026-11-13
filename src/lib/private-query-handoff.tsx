@@ -11,6 +11,8 @@ import {
   type ScheduleSnapshot,
 } from '@/features/schedules/queries'
 import type { DoseOccurrence } from '@/features/schedules/contract'
+import type { UnscheduledDose } from '@/features/unscheduled-doses/contract'
+import { isUnscheduledKey, mergeUnscheduledDay } from '@/features/unscheduled-doses/queries'
 
 /** Every private query family must choose its merge (or explicit replacement) policy here. */
 function mergePolicy(key: readonly unknown[]): (current: unknown, incoming: unknown) => unknown {
@@ -28,6 +30,9 @@ function mergePolicy(key: readonly unknown[]): (current: unknown, incoming: unkn
   )
     return (current, incoming) =>
       mergeHistoryDay(current as DoseOccurrence[] | undefined, incoming as DoseOccurrence[])
+  if (isUnscheduledKey(key))
+    return (current, incoming) =>
+      mergeUnscheduledDay(current as UnscheduledDose[] | undefined, incoming as UnscheduledDose[])
   throw new Error(`Private query needs an explicit handoff policy: ${JSON.stringify(key)}`)
 }
 

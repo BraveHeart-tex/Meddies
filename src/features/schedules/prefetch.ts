@@ -5,6 +5,7 @@ import { medicines } from '@/features/medicines/server'
 import { requestQueryClient } from '@/lib/request-query-client'
 import { historyDayQuery, scheduleKeys, scheduleSnapshotQuery, toScheduleSnapshot } from './queries'
 import { schedules } from './server'
+import { seedUnscheduledDay } from '../unscheduled-doses/queries'
 
 /**
  * Reads Today's medicines and schedules snapshot together into the request's Query client and
@@ -17,7 +18,11 @@ export async function prefetchToday() {
     client.prefetchQuery({ ...medicinesQuery(), queryFn: () => medicines.list() }),
     client.prefetchQuery({
       ...scheduleSnapshotQuery(),
-      queryFn: async () => toScheduleSnapshot(await schedules.snapshot()),
+      queryFn: async () => {
+        const data = await schedules.snapshot()
+        seedUnscheduledDay(client, data.today.date, data.unscheduledDoses)
+        return toScheduleSnapshot(data)
+      },
     }),
   ])
   return dehydrate(client)
@@ -37,14 +42,21 @@ export async function prefetchMedications() {
 }
 
 /**
- * Reads one History date's doses and the medicines together into the request's Query client.
+ * Reads one History date's doses, its Unscheduled doses and the medicines together into the request's Query client.
  * A failed read is left out, so the browser reads it itself and shows History's error and retry.
  */
 export async function prefetchHistory(date: string) {
   const client = requestQueryClient()
   await Promise.all([
     client.prefetchQuery({ ...medicinesQuery(), queryFn: () => medicines.list() }),
-    client.prefetchQuery({ ...historyDayQuery(date), queryFn: () => schedules.history(date) }),
+    client.prefetchQuery({
+      ...historyDayQuery(date),
+      queryFn: async () => {
+        const { doses, unscheduledDoses } = await schedules.historySnapshot(date)
+        seedUnscheduledDay(client, date, unscheduledDoses)
+        return doses
+      },
+    }),
   ])
   return dehydrate(client)
 }

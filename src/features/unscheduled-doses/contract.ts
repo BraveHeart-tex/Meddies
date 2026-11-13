@@ -1,6 +1,6 @@
 // Runtime-neutral Unscheduled dose inputs and receipts. Clock and unit checks stay
 // in the Worker after the owner-scoped medication lookup.
-import { isInstant } from '../schedules/contract'
+import { isInstant, istanbulDate } from '../schedules/contract'
 import { isDoseQuantity } from '../../lib/dose-quantity'
 import { ApplicationError } from '../../lib/application-error'
 
@@ -27,6 +27,10 @@ export type UnscheduledDose = {
   revision: number
   removed: boolean
 }
+/** The dose's History date: the Istanbul day it was taken. */
+export const takenDate = (dose: Pick<UnscheduledDose, 'takenAt'>) =>
+  istanbulDate(new Date(dose.takenAt))
+
 export function parseUnscheduledDose(value: unknown): UnscheduledDoseInput {
   if (!value || typeof value !== 'object') throw new ApplicationError('validation', 400)
   const input = value as Record<string, unknown>

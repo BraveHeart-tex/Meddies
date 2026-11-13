@@ -263,7 +263,9 @@ describe('the medication page', () => {
     const heading = await screen.findByRole('heading', { name: 'No schedule yet' })
     const emptyState = heading.closest('[data-slot="empty-state"]')
     expect(emptyState?.querySelector('svg.lucide-clock')).toHaveAttribute('aria-hidden', 'true')
-    expect(screen.getByText("Today won't list Magnesium until it has a schedule.")).toBeVisible()
+    expect(
+      screen.getByText('Today lists its doses once it has a schedule, or when you log one.'),
+    ).toBeVisible()
     expect(setSchedule()).toBeVisible()
   })
 

@@ -23,6 +23,23 @@ import type { SchedulesRead } from './queries'
 import { useScheduleNow } from './use-schedule-now'
 import { doseSaveKey } from './dose-saves'
 import { useDoseSaves } from './use-dose-outcome-mutation'
+import type { UnscheduledDose } from '../unscheduled-doses/contract'
+import { useUnscheduledDoses } from '../unscheduled-doses/queries'
+import { UnscheduledDoseRow } from '../unscheduled-doses/unscheduled-dose-row'
+
+const rowClassName =
+  'grid grid-cols-[2.875rem_minmax(0,1fr)_auto] max-[360px]:grid-cols-[2.875rem_minmax(0,1fr)] has-[[data-row-trigger]:active]:scale-[0.98] has-[[data-row-trigger]:active]:bg-muted motion-reduce:has-[[data-row-trigger]:active]:scale-100 [&_[data-slot=alert]]:col-span-full'
+
+type Row =
+  | { kind: 'scheduled'; at: string; dose: DoseOccurrence }
+  | { kind: 'unscheduled'; at: string; dose: UnscheduledDose }
+
+/** Scheduled doses by due time and Unscheduled doses by taken time, in one order (241·A5). */
+const rowsOf = (scheduled: DoseOccurrence[], unscheduled: UnscheduledDose[] = []): Row[] =>
+  [
+    ...scheduled.map((dose) => ({ kind: 'scheduled' as const, at: dose.dueAt, dose })),
+    ...unscheduled.map((dose) => ({ kind: 'unscheduled' as const, at: dose.takenAt, dose })),
+  ].sort((a, b) => a.at.localeCompare(b.at))
 
 export function TodaySchedule({
   schedulesRead: { snapshot, loading, loadError, refreshFailed, refreshing, retry, ensureFresh },
@@ -49,6 +66,8 @@ export function TodaySchedule({
     if (!snapshot || istanbulDate(new Date(now)) !== snapshot.date) return null
     return scheduleToday(snapshot.schedules, new Date(now), snapshot.records)
   }, [snapshot, now])
+  // Never the next dose and never To log: Unscheduled doses sit in Logged (241·A5, A6).
+  const unscheduled = useUnscheduledDoses(today?.date ?? '')
   const awaitingDay = snapshot !== undefined && today === null
   useEffect(() => {
     if (awaitingDay) ensureFresh()
@@ -85,7 +104,7 @@ export function TodaySchedule({
 
   return (
     <section aria-labelledby="today-heading" className="flex flex-col gap-5">
-      <h2 id="today-heading" className="sr-only">
+      <h2 id="today-heading" tabIndex={-1} className="sr-only">
         Your doses
       </h2>
       {/* The skeleton's status is the section's only one while it loads (DESIGN.md). */}
@@ -144,28 +163,33 @@ export function TodaySchedule({
                 }
               />
             )}
-            {today.doses.length ? (
+            {today.doses.length || unscheduled.length ? (
               <section aria-label="Today’s doses" className="flex flex-col gap-3.5">
                 <ul aria-label="Today's doses" className="flex flex-col gap-2.5">
                   {[
                     {
                       label: 'To log',
-                      doses: today.doses.filter(
-                        (dose) => dose.status === 'Due now' || dose.status === 'Not logged',
+                      rows: rowsOf(
+                        today.doses.filter(
+                          (dose) => dose.status === 'Due now' || dose.status === 'Not logged',
+                        ),
                       ),
                     },
                     {
                       label: 'Later today',
-                      doses: today.doses.filter((dose) => dose.status === 'Upcoming'),
+                      rows: rowsOf(today.doses.filter((dose) => dose.status === 'Upcoming')),
                     },
                     {
                       label: 'Logged',
-                      doses: today.doses.filter(
-                        (dose) => dose.status === 'Taken' || dose.status === 'Skipped',
+                      rows: rowsOf(
+                        today.doses.filter(
+                          (dose) => dose.status === 'Taken' || dose.status === 'Skipped',
+                        ),
+                        unscheduled,
                       ),
                     },
                   ].flatMap((group) =>
-                    group.doses.length
+                    group.rows.length
                       ? [
                           <li
                             key={group.label}
@@ -173,10 +197,25 @@ export function TodaySchedule({
                             className="px-1 pt-2.5 first:pt-0"
                           >
                             <h3 className="text-heading font-extrabold">
-                              {group.label} · {group.doses.length}
+                              {group.label} · {group.rows.length}
                             </h3>
                           </li>,
-                          ...group.doses.map((dose) => {
+                          ...group.rows.map((row) => {
+                            if (row.kind === 'unscheduled')
+                              return (
+                                <UnscheduledDoseRow
+                                  key={row.dose.id}
+                                  dose={row.dose}
+                                  medicine={medicines.find(
+                                    (item) => item.id === row.dose.medicineId,
+                                  )}
+                                  today={today.date}
+                                  heading="h4"
+                                  className={rowClassName}
+                                  focusAfterRemove="today-heading"
+                                />
+                              )
+                            const dose = row.dose
                             const medicine = medicines.find((item) => item.id === dose.medicineId)
                             const done = dose.status === 'Taken' || dose.status === 'Skipped'
                             const recordedAt =
@@ -194,7 +233,7 @@ export function TodaySchedule({
                                     ? 'attention'
                                     : 'card'
                                 }
-                                className="grid grid-cols-[2.875rem_minmax(0,1fr)_auto] max-[360px]:grid-cols-[2.875rem_minmax(0,1fr)] has-[[data-row-trigger]:active]:scale-[0.98] has-[[data-row-trigger]:active]:bg-muted motion-reduce:has-[[data-row-trigger]:active]:scale-100 [&_[data-slot=alert]]:col-span-full"
+                                className={rowClassName}
                               >
                                 <span
                                   aria-hidden="true"

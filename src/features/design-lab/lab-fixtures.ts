@@ -14,14 +14,6 @@ export const magnesium: Medicine = {
   unit: 'tablet',
 }
 
-/** Ibuprofen has no schedule: every dose of it is an Unscheduled dose. */
-export const ibuprofen: Medicine = {
-  id: '66666666-6666-4666-8666-666666666666',
-  label: 'Ibuprofen',
-  strength: '200 mg',
-  unit: 'tablet',
-}
-
 /** Magnesium every day at 08:00 and 20:00 since Mon 2 Nov, Last day Tue 10 Nov. */
 export const magnesiumSchedule: DailySchedule = {
   id: '11111111-1111-4111-8111-1111111111b1',
