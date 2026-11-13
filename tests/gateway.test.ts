@@ -1,31 +1,29 @@
 import type { MedicineCommand } from '../src/features/medicines/contract'
 import type { DoseRecord } from '../src/features/schedules/contract'
 import assert from 'node:assert/strict'
-import { afterAll, test, vi } from 'vitest'
+import { test, vi } from 'vitest'
 import { send as medicineSend } from '../src/features/medicines/server'
 import { send as scheduleSend } from '../src/features/schedules/server'
 import { PUT } from '../src/app/api/schedules/route'
+import { POST as editPost } from '../src/app/api/schedules/edit/route'
+import { POST as stopPost } from '../src/app/api/schedules/stop/route'
+import { POST as pausePost } from '../src/app/api/schedules/pause/route'
+import { POST as resumePost } from '../src/app/api/schedules/resume/route'
+import {
+  POST as unscheduledPost,
+  PATCH as unscheduledPatch,
+} from '../src/app/api/schedules/unscheduled/route'
+import { GET as historyGet } from '../src/app/api/schedules/history/route'
 // Mocked below; the synthetic wiring lets tests toggle the session.
 import { setAuthenticated } from './helpers/server-wiring'
+import { installSyntheticWorker } from './helpers/synthetic-worker'
 
+// Gateway transport and decoding, plus each route's request body and invalid input.
+// Shared route guards (origin, session, no-store, Worker status): route-guards.test.ts.
 // Replace server-only wiring, leaving the feature gateways and transport intact.
 vi.mock('server-only', () => ({}))
 vi.mock('@/features/auth/server', () => import('./helpers/server-wiring'))
-const originalFetch = globalThis.fetch
-const originalUrl = process.env.MEDICINES_WORKER_URL
-const originalSecret = process.env.MEDICINES_WORKER_SECRET
-process.env.MEDICINES_WORKER_URL = 'https://worker.test'
-process.env.MEDICINES_WORKER_SECRET = 'synthetic-capability'
-afterAll(() => {
-  globalThis.fetch = originalFetch
-  for (const [key, value] of [
-    ['MEDICINES_WORKER_URL', originalUrl],
-    ['MEDICINES_WORKER_SECRET', originalSecret],
-  ] as const) {
-    if (value === undefined) delete process.env[key]
-    else process.env[key] = value
-  }
-})
+installSyntheticWorker()
 const list: Extract<MedicineCommand, { operation: 'list' }> = {
   operation: 'list',
   ownerId: 'google:test',
@@ -231,8 +229,21 @@ test('schedule gateway preserves Interval hours and normalizes legacy Clock sche
   )
 })
 
-test('schedule edit HTTP boundary authenticates, guards requests and decodes version metadata', async () => {
-  const { POST } = await import('../src/app/api/schedules/edit/route')
+const post = (
+  route: (request: Request) => Promise<Response>,
+  path: string,
+  body: unknown,
+  method = 'POST',
+) =>
+  route(
+    new Request(`https://meddies.test/api/schedules/${path}`, {
+      method,
+      headers: { origin: 'https://meddies.test', 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  )
+
+test('schedule edit HTTP boundary sends the session owner and decodes version metadata', async () => {
   const id = '10000000-0000-4000-8000-000000000003'
   const basedOnId = '10000000-0000-4000-8000-000000000001'
   const edit = { id, basedOnId, endDate: null, times: [{ time: '10:00', quantity: 1 }] }
@@ -244,47 +255,22 @@ test('schedule edit HTTP boundary authenticates, guards requests and decodes ver
     confirmedAt: '2026-11-03T06:00:00.000Z',
     replacedAt: null,
   }
-  let calls = 0
   globalThis.fetch = async (_url, options) => {
-    calls++
     const command = JSON.parse(options!.body as string)
     assert.equal(command.ownerId, 'google:test')
     assert.equal(command.operation, 'edit')
     assert.equal(command.edit.basedOnId, basedOnId)
     return Response.json({ schedules: [schedule] })
   }
-  const post = (
-    body: unknown,
-    headers: HeadersInit = { origin: 'https://meddies.test', 'content-type': 'application/json' },
-  ) =>
-    POST(
-      new Request('https://meddies.test/api/schedules/edit', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      }),
-    )
-  assert.equal((await post(edit, {})).status, 403)
-  setAuthenticated(false)
-  try {
-    assert.equal((await post(edit)).status, 401)
-  } finally {
-    setAuthenticated(true)
-  }
-  assert.equal(calls, 0)
-  const response = await post(edit)
+  const response = await post(editPost, 'edit', edit)
   assert.equal(response.status, 200)
-  assert.equal(response.headers.get('cache-control'), 'no-store')
   const saved = await response.json()
   assert.equal(saved.schedules[0].id, id)
   assert.equal(saved.schedules[0].replacedAt, null)
-  globalThis.fetch = async () => new Response('{}', { status: 409 })
-  assert.equal((await post(edit)).status, 409)
-  globalThis.fetch = async () =>
-    Response.json({ schedules: [{ ...schedule, replacedAt: 'invalid' }] })
-  assert.equal((await post(edit)).status, 503)
-  globalThis.fetch = async () => Response.json({ schedules: [{ ...schedule, basedOnId: 42 }] })
-  assert.equal((await post(edit)).status, 503)
+  for (const malformed of [{ replacedAt: 'invalid' }, { basedOnId: 42 }]) {
+    globalThis.fetch = async () => Response.json({ schedules: [{ ...schedule, ...malformed }] })
+    assert.equal((await post(editPost, 'edit', edit)).status, 503)
+  }
   globalThis.fetch = async () =>
     Response.json({
       schedules: [{ ...schedule, basedOnId: id, replacedAt: '2026-11-04T06:00:00.000Z' }],
@@ -299,199 +285,58 @@ test('schedule edit HTTP boundary authenticates, guards requests and decodes ver
   assert.equal(decoded.schedules[0].basedOnId, id)
 })
 
-test('schedule stop HTTP boundary guards, authenticates and decodes stopped versions', async () => {
-  const { POST } = await import('../src/app/api/schedules/stop/route')
+test('schedule stop, pause and resume HTTP boundaries send the version change and decode its result', async () => {
   const id = '10000000-0000-4000-8000-000000000003'
   const basedOnId = '10000000-0000-4000-8000-000000000001'
-  const stop = { id, basedOnId }
+  const change = { id, basedOnId }
+  const confirmedAt = '2026-11-03T11:00:00.000Z'
   const schedule = {
     id,
     basedOnId,
     medicineId: '10000000-0000-4000-8000-000000000002',
     startDate: '2026-11-03',
     times: [{ time: '08:00', quantity: 1 }],
-    confirmedAt: '2026-11-03T11:00:00.000Z',
-    stoppedAt: '2026-11-03T11:00:00.000Z',
+    confirmedAt,
     endDate: null,
   }
-  let calls = 0
-  globalThis.fetch = async (_url, options) => {
-    calls++
-    assert.deepEqual(JSON.parse(options!.body as string), {
-      operation: 'stop',
-      ownerId: 'google:test',
-      stop,
-    })
-    return Response.json({ schedules: [schedule] })
-  }
-  const post = (
-    body: unknown,
-    headers: HeadersInit = { origin: 'https://meddies.test', 'content-type': 'application/json' },
-  ) =>
-    POST(
-      new Request('https://meddies.test/api/schedules/stop', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      }),
-    )
-  assert.equal((await post(stop, {})).status, 403)
-  setAuthenticated(false)
-  try {
-    assert.equal((await post(stop)).status, 401)
-  } finally {
-    setAuthenticated(true)
-  }
-  assert.equal(calls, 0)
-  for (const invalid of [
-    { ...stop, id: 'invalid' },
-    { ...stop, basedOnId: id },
-    { ...stop, endDate: null },
-    { ...stop, ownerId: 'google:outsider' },
-  ])
-    assert.equal((await post(invalid)).status, 400)
-  const response = await post(stop)
-  assert.equal(response.status, 200)
-  assert.equal(response.headers.get('cache-control'), 'no-store')
-  assert.equal((await response.json()).schedules[0].stoppedAt, schedule.stoppedAt)
-  globalThis.fetch = async () => new Response('{}', { status: 409 })
-  assert.equal((await post(stop)).status, 409)
-  for (const stoppedAt of ['invalid', null]) {
-    globalThis.fetch = async () => Response.json({ schedules: [{ ...schedule, stoppedAt }] })
-    assert.equal((await post(stop)).status, 503)
+  for (const [operation, route, saved, field, malformed] of [
+    ['stop', stopPost, { stoppedAt: confirmedAt }, 'stoppedAt', ['invalid', null]],
+    ['pause', pausePost, { pausedAt: confirmedAt }, 'pausedAt', ['invalid', null]],
+    [
+      'resume',
+      resumePost,
+      { pausedAt: null, stoppedAt: null },
+      'pausedAt',
+      ['invalid', confirmedAt],
+    ],
+  ] as const) {
+    globalThis.fetch = async (_url, options) => {
+      assert.deepEqual(JSON.parse(options!.body as string), {
+        operation,
+        ownerId: 'google:test',
+        [operation]: change,
+      })
+      return Response.json({ schedules: [{ ...schedule, ...saved }] })
+    }
+    for (const invalid of [
+      { ...change, id: 'invalid' },
+      { ...change, basedOnId: id },
+      { ...change, endDate: null },
+      { ...change, ownerId: 'google:outsider' },
+    ])
+      assert.equal((await post(route, operation, invalid)).status, 400, operation)
+    const response = await post(route, operation, change)
+    assert.equal(response.status, 200, operation)
+    assert.equal((await response.json()).schedules[0][field], saved[field as keyof typeof saved])
+    for (const value of malformed) {
+      globalThis.fetch = async () =>
+        Response.json({ schedules: [{ ...schedule, ...saved, [field]: value }] })
+      assert.equal((await post(route, operation, change)).status, 503, `${operation} ${value}`)
+    }
   }
 })
 
-test('schedule pause HTTP boundary guards, authenticates and decodes pauseped versions', async () => {
-  const { POST } = await import('../src/app/api/schedules/pause/route')
-  const id = '10000000-0000-4000-8000-000000000003'
-  const basedOnId = '10000000-0000-4000-8000-000000000001'
-  const pause = { id, basedOnId }
-  const schedule = {
-    id,
-    basedOnId,
-    medicineId: '10000000-0000-4000-8000-000000000002',
-    startDate: '2026-11-03',
-    times: [{ time: '08:00', quantity: 1 }],
-    confirmedAt: '2026-11-03T11:00:00.000Z',
-    pausedAt: '2026-11-03T11:00:00.000Z',
-    endDate: null,
-  }
-  let calls = 0
-  globalThis.fetch = async (_url, options) => {
-    calls++
-    assert.deepEqual(JSON.parse(options!.body as string), {
-      operation: 'pause',
-      ownerId: 'google:test',
-      pause,
-    })
-    return Response.json({ schedules: [schedule] })
-  }
-  const post = (
-    body: unknown,
-    headers: HeadersInit = { origin: 'https://meddies.test', 'content-type': 'application/json' },
-  ) =>
-    POST(
-      new Request('https://meddies.test/api/schedules/pause', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      }),
-    )
-  assert.equal((await post(pause, {})).status, 403)
-  setAuthenticated(false)
-  try {
-    assert.equal((await post(pause)).status, 401)
-  } finally {
-    setAuthenticated(true)
-  }
-  assert.equal(calls, 0)
-  for (const invalid of [
-    { ...pause, id: 'invalid' },
-    { ...pause, basedOnId: id },
-    { ...pause, endDate: null },
-    { ...pause, ownerId: 'google:outsider' },
-  ])
-    assert.equal((await post(invalid)).status, 400)
-  const response = await post(pause)
-  assert.equal(response.status, 200)
-  assert.equal(response.headers.get('cache-control'), 'no-store')
-  assert.equal((await response.json()).schedules[0].pausedAt, schedule.pausedAt)
-  globalThis.fetch = async () => new Response('{}', { status: 409 })
-  assert.equal((await post(pause)).status, 409)
-  for (const pausedAt of ['invalid', null]) {
-    globalThis.fetch = async () => Response.json({ schedules: [{ ...schedule, pausedAt }] })
-    assert.equal((await post(pause)).status, 503)
-  }
-})
-
-test('schedule resume HTTP boundary guards, authenticates and decodes running versions', async () => {
-  const { POST } = await import('../src/app/api/schedules/resume/route')
-  const id = '10000000-0000-4000-8000-000000000003'
-  const basedOnId = '10000000-0000-4000-8000-000000000001'
-  const resume = { id, basedOnId }
-  const schedule = {
-    id,
-    basedOnId,
-    medicineId: '10000000-0000-4000-8000-000000000002',
-    startDate: '2026-11-03',
-    times: [{ time: '08:00', quantity: 1 }],
-    confirmedAt: '2026-11-03T11:00:00.000Z',
-    pausedAt: null,
-    stoppedAt: null,
-    endDate: null,
-  }
-  let calls = 0
-  globalThis.fetch = async (_url, options) => {
-    calls++
-    assert.deepEqual(JSON.parse(options!.body as string), {
-      operation: 'resume',
-      ownerId: 'google:test',
-      resume,
-    })
-    return Response.json({ schedules: [schedule] })
-  }
-  const post = (
-    body: unknown,
-    headers: HeadersInit = { origin: 'https://meddies.test', 'content-type': 'application/json' },
-  ) =>
-    POST(
-      new Request('https://meddies.test/api/schedules/resume', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      }),
-    )
-  assert.equal((await post(resume, {})).status, 403)
-  setAuthenticated(false)
-  try {
-    assert.equal((await post(resume)).status, 401)
-  } finally {
-    setAuthenticated(true)
-  }
-  assert.equal(calls, 0)
-  for (const invalid of [
-    { ...resume, id: 'invalid' },
-    { ...resume, basedOnId: id },
-    { ...resume, endDate: null },
-    { ...resume, ownerId: 'google:outsider' },
-  ])
-    assert.equal((await post(invalid)).status, 400)
-  const response = await post(resume)
-  assert.equal(response.status, 200)
-  assert.equal(response.headers.get('cache-control'), 'no-store')
-  assert.equal((await response.json()).schedules[0].pausedAt, schedule.pausedAt)
-  globalThis.fetch = async () => new Response('{}', { status: 409 })
-  assert.equal((await post(resume)).status, 409)
-  for (const pausedAt of ['invalid', '2026-11-03T11:00:00.000Z']) {
-    globalThis.fetch = async () => Response.json({ schedules: [{ ...schedule, pausedAt }] })
-    assert.equal((await post(resume)).status, 503)
-  }
-})
-
-test('Unscheduled dose HTTP boundary authenticates, guards writes, decodes receipts and includes reads', async () => {
-  const { POST, PATCH } = await import('../src/app/api/schedules/unscheduled/route')
-  const { GET } = await import('../src/app/api/schedules/history/route')
+test('Unscheduled dose HTTP boundary sends the session owner, decodes receipts and includes reads', async () => {
   const input = {
     actionId: '10000000-0000-4000-8000-000000000001',
     medicineId: '10000000-0000-4000-8000-000000000002',
@@ -499,15 +344,7 @@ test('Unscheduled dose HTTP boundary authenticates, guards writes, decodes recei
     quantity: 0.5,
   }
   const saved = { ...input, id: input.actionId, outcome: 'Taken', revision: 0, removed: false }
-  const request = (method: string, body: unknown, origin = 'https://meddies.test') =>
-    new Request('https://meddies.test/api/schedules/unscheduled', {
-      method,
-      headers: { origin, 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-  let calls = 0
   globalThis.fetch = async (_url, options) => {
-    calls++
     assert.deepEqual(JSON.parse(options!.body as string), {
       operation: 'saveUnscheduled',
       ownerId: 'google:test',
@@ -515,18 +352,15 @@ test('Unscheduled dose HTTP boundary authenticates, guards writes, decodes recei
     })
     return Response.json({ unscheduledDoses: [saved] })
   }
-  assert.equal((await POST(request('POST', input, 'https://other.test'))).status, 403)
-  setAuthenticated(false)
-  try {
-    assert.equal((await POST(request('POST', input))).status, 401)
-  } finally {
-    setAuthenticated(true)
-  }
-  assert.equal(calls, 0)
-  assert.equal((await POST(request('POST', { ...input, quantity: 0.25 }))).status, 400)
-  const response = await POST(request('POST', { ...input, ownerId: 'google:outsider' }))
+  assert.equal(
+    (await post(unscheduledPost, 'unscheduled', { ...input, quantity: 0.25 })).status,
+    400,
+  )
+  const response = await post(unscheduledPost, 'unscheduled', {
+    ...input,
+    ownerId: 'google:outsider',
+  })
   assert.equal(response.status, 200)
-  assert.equal(response.headers.get('cache-control'), 'no-store')
   assert.deepEqual(await response.json(), { dose: saved })
   const change = {
     actionId: '10000000-0000-4000-8000-000000000003',
@@ -544,18 +378,14 @@ test('Unscheduled dose HTTP boundary authenticates, guards writes, decodes recei
       unscheduledDoses: [{ ...saved, actionId: change.actionId, revision: 1, removed: true }],
     })
   }
-  assert.equal((await PATCH(request('PATCH', change))).status, 200)
-  for (const status of [400, 409]) {
-    globalThis.fetch = async () => Response.json({}, { status })
-    assert.equal((await PATCH(request('PATCH', change))).status, status)
-  }
+  assert.equal((await post(unscheduledPatch, 'unscheduled', change, 'PATCH')).status, 200)
   for (const unscheduledDoses of [null, [{}], [{ ...saved, outcome: 'Skipped' }]]) {
     globalThis.fetch = async () => Response.json({ unscheduledDoses })
-    assert.equal((await POST(request('POST', input))).status, 503)
+    assert.equal((await post(unscheduledPost, 'unscheduled', input)).status, 503)
   }
   globalThis.fetch = async () =>
     Response.json({ schedules: [], records: [], unscheduledDoses: [saved] })
-  const history = await GET(
+  const history = await historyGet(
     new Request('https://meddies.test/api/schedules/history?date=2026-11-03'),
   )
   assert.equal(history.status, 200)

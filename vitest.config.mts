@@ -5,7 +5,7 @@ import { toolingTests } from './scripts/tooling-tests.mjs'
 // HTTP and Worker integration tests; production HTTP tests also need a Next.js build.
 const integration = [
   'tests/auth.test.ts',
-  'tests/medicine-storage.test.ts',
+  'tests/medicine-storage-*.test.ts',
   'tests/design-lab-http.test.ts',
 ]
 
