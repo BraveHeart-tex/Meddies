@@ -94,11 +94,14 @@ export function IntervalFirstDateField({
   onBlur,
   today,
   min = today,
+  max = '2099-12-31',
   inputRef,
 }: FieldProps & {
   today: string
   /** Earliest choosable date; earlier than today only to retry an unconfirmed save. */
   min?: string
+  /** Latest choosable date, such as a resumed schedule's Last day. */
+  max?: string
   inputRef?: Ref<PickerHandle>
 }) {
   const tomorrow = shiftDate(today, 1)
@@ -132,7 +135,7 @@ export function IntervalFirstDateField({
           label="First date"
           today={today}
           min={min}
-          max="2099-12-31"
+          max={max}
           value={value}
           onValueChange={onChange}
           onBlur={onBlur}

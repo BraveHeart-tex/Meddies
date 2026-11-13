@@ -4,6 +4,7 @@ export type MedicationsView =
   | { mode: 'add' }
   | { mode: 'detail'; medicineId: string }
   | { mode: 'setup'; medicineId: string }
+  | { mode: 'resume'; medicineId: string }
 
 type SearchParams = URLSearchParams | Record<string, string | string[] | undefined>
 
@@ -20,10 +21,15 @@ function medicineId(params: SearchParams, name: string) {
   return values.length === 1 && value && medicineIdPattern.test(value) ? value : ''
 }
 
-/** Reads the view from server `searchParams` or the browser URL: setup, detail, Add, then list. */
+/**
+ * Reads the view from server `searchParams` or the browser URL: setup, resume, detail, Add, then
+ * list.
+ */
 export function parseMedicationsView(params: SearchParams): MedicationsView {
   const setup = medicineId(params, 'schedule')
   if (setup) return { mode: 'setup', medicineId: setup }
+  const resume = medicineId(params, 'resume')
+  if (resume) return { mode: 'resume', medicineId: resume }
   const detail = medicineId(params, 'medicine')
   if (detail) return { mode: 'detail', medicineId: detail }
   return includes(params, 'add') ? { mode: 'add' } : { mode: 'list' }
@@ -39,12 +45,18 @@ export function medicationsHref(view: MedicationsView) {
       return `/medications?medicine=${encodeURIComponent(view.medicineId)}`
     case 'setup':
       return `/medications?schedule=${encodeURIComponent(view.medicineId)}`
+    case 'resume':
+      return `/medications?resume=${encodeURIComponent(view.medicineId)}`
   }
 }
 
 /** Schedule setup for a medicine, opened at its heading. */
 export const medicationSetupHref = (medicineId: string) =>
   `${medicationsHref({ mode: 'setup', medicineId })}#schedule-heading`
+
+/** An Interval schedule's Resume schedule screen (233·A9), opened at its heading. */
+export const medicationResumeHref = (medicineId: string) =>
+  `${medicationsHref({ mode: 'resume', medicineId })}#schedule-heading`
 
 /** Whether `value` is exactly the href of a Medications view, as sign-in may return to one. */
 export function isMedicationsReturnTo(value: string) {

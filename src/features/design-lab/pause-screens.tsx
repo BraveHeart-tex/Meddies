@@ -3,28 +3,17 @@
 import { useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppShell } from '@/components/layout/app-shell'
-import { StickyActions } from '@/components/layout/sticky-actions'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { MedicationBackRow, MedicationIdentity } from '@/features/medicines/medication-sub-screen'
 import { medicationsHref } from '@/features/medicines/routes'
-import {
-  IntervalFirstDateField,
-  IntervalFirstTimeField,
-} from '@/features/schedules/interval-fields'
-import {
-  IntervalRow,
-  IntervalSheet,
-  intervalStartsAnswer,
-  NextDoses,
-  ScheduleSetupHeader,
-} from '@/features/schedules/interval-setup-parts'
-import { formatShortDay } from '@/lib/calendar-date'
-import { quantityLabel } from '@/lib/dose-quantity'
+import type { ResumeValues } from '@/features/schedules/resume'
+import { ResumeScheduleForm } from '@/features/schedules/resume-schedule-form'
+import { PausedScheduleActions } from '@/features/schedules/schedule-actions'
 import { cn } from '@/lib/utils'
-import { magnesium, TODAY } from './lab-fixtures'
-import { resumeDoses, type PausableSchedule, type ResumeValues } from './pause-model'
+import { magnesium, NOW, TODAY } from './lab-fixtures'
+import type { PausableSchedule } from './pause-model'
 import { LabScheduleCard, PauseScheduleDrawer, type SaveStep } from './pause-parts'
 
 export type Links = { change: string; pause: string; stop: string; resume: string }
@@ -49,10 +38,7 @@ function RunningActions({ links }: { links: Links }) {
   )
 }
 
-/**
- * Resume beside Stop schedule on a paused card (233·A4, A5). A Clock schedule resumes in one tap
- * with no form; an Interval schedule opens the resume screen.
- */
+/** The production paused actions in a fixed save state (233·A4, A5, S3, S4). */
 function PausedActions({
   links,
   interval,
@@ -62,42 +48,19 @@ function PausedActions({
   interval: boolean
   resume?: SaveStep
 }) {
-  const pending = resume === 'saving'
+  const router = useRouter()
   return (
-    <div className="flex flex-col gap-2.5">
-      {resume === 'unknown' && (
-        <Alert id="resume-problem" variant="destructive">
-          <AlertDescription>
-            That might not have saved. Check your connection and try again.
-          </AlertDescription>
-        </Alert>
-      )}
-      <div className="grid grid-cols-2 gap-2.5 *:px-3">
-        {interval ? (
-          <Link href={links.resume} className={buttonVariants({ size: 'lg' })}>
-            Resume
-          </Link>
-        ) : (
-          <Button
-            type="button"
-            size="lg"
-            disabled={pending}
-            aria-describedby={resume === 'unknown' ? 'resume-problem' : undefined}
-          >
-            {pending ? 'Resuming…' : resume === 'unknown' ? 'Retry' : 'Resume'}
-          </Button>
-        )}
-        {pending ? (
-          <Button type="button" size="lg" variant="destructive" disabled>
-            Stop schedule
-          </Button>
-        ) : (
-          <Link href={links.stop} className={destructive}>
-            Stop schedule
-          </Link>
-        )}
-      </div>
-    </div>
+    <PausedScheduleActions
+      interval={interval}
+      resumeHref={links.resume}
+      routerNavigation
+      pending={resume === 'saving'}
+      problem={resume === 'unknown' ? 'unconfirmed' : undefined}
+      offline={false}
+      onResume={() => {}}
+      onStop={() => router.push(links.stop)}
+      onReview={() => {}}
+    />
   )
 }
 
@@ -151,95 +114,45 @@ export function PauseDetail({
   )
 }
 
-/** What resuming keeps: the interval, the quantity and the Last day. */
-function ResumeSummary({ schedule }: { schedule: PausableSchedule }) {
-  const quantity = quantityLabel(schedule.times[0].quantity, magnesium.unit)
-  return (
-    <p className="text-body-sm text-muted-foreground">
-      Every {schedule.intervalHours} hours, {quantity} each time.
-      {schedule.endDate && ` Last day ${formatShortDay(schedule.endDate, TODAY)}.`} Choose when
-      doses start again.
-    </p>
-  )
-}
-
 /**
- * Interval resume (233·A9 to A12, S5): a full screen like Change schedule with the Starts row and
- * sheet (215·A4), the next 3 doses up to the Last day, and Resume schedule pinned to the bottom.
+ * The production Resume schedule screen (233·A9 to A12, S5) at the lab's fixed clock. Nothing
+ * saves in the lab.
  */
 export function ResumeScreen({
   initial,
   schedule,
-  error,
-  saving,
+  validated,
+  saving = false,
   back,
 }: {
   initial: ResumeValues
   schedule: PausableSchedule
-  error?: string
+  /** Shows the state after a Save. */
+  validated?: boolean
   saving?: boolean
   back: string
 }) {
   const router = useRouter()
-  const [values, setValues] = useState(initial)
-  const update = (next: Partial<ResumeValues>) => setValues((v) => ({ ...v, ...next }))
-  const [sheet, setSheet] = useState(false)
-  const [snapshot, setSnapshot] = useState(values)
-  const hours = schedule.intervalHours ?? 8
+  const [client] = useState(() => new QueryClient())
   return (
-    <main className="mx-auto flex min-h-svh max-w-2xl flex-col px-5 pt-[calc(0.875rem+env(safe-area-inset-top,0px))]">
-      <section
-        aria-labelledby="schedule-heading"
-        aria-busy={saving}
-        className="flex flex-1 flex-col gap-5 [overflow-wrap:anywhere]"
-      >
-        <ScheduleSetupHeader
+    <QueryClientProvider client={client}>
+      <main className="mx-auto flex min-h-svh max-w-2xl flex-col gap-5 px-5 pt-[calc(0.875rem+env(safe-area-inset-top,0px))]">
+        <ResumeScheduleForm
           label={magnesium.label}
-          subtitle="Resume schedule"
-          onCancel={() => router.push(back)}
-        />
-        <ResumeSummary schedule={schedule} />
-        <ul className="divide-y rounded-xl border bg-card">
-          <IntervalRow
-            id="resume-starts"
-            label="Starts"
-            value={values.time ? intervalStartsAnswer(values.date, values.time, TODAY) : null}
-            error={error}
-            disabled={saving}
-            onClick={() => {
-              setSnapshot(values)
-              setSheet(true)
-            }}
-          />
-        </ul>
-        <IntervalSheet
-          open={sheet}
-          title="Starts"
-          onCancel={() => {
-            update(snapshot)
-            setSheet(false)
-          }}
-          onDone={() => setSheet(false)}
-        >
-          <IntervalFirstDateField
-            today={TODAY}
-            value={values.date}
-            onChange={(date) => update({ date })}
-          />
-          <IntervalFirstTimeField value={values.time} onChange={(time) => update({ time })} />
-        </IntervalSheet>
-        <NextDoses
-          doses={resumeDoses(values, hours)}
-          hours={hours}
-          lastDay={schedule.endDate}
+          unit={magnesium.unit}
+          schedule={schedule}
           today={TODAY}
+          now={NOW}
+          draftKey={null}
+          pending={saving}
+          offline={false}
+          initialValues={initial}
+          validateOnOpen={validated}
+          onSubmit={() => {}}
+          onCancel={() => router.push(back)}
+          onReview={() => router.push(back)}
         />
-        <StickyActions>
-          <Button type="button" size="lg" disabled={saving} className="w-full whitespace-normal">
-            {saving ? 'Resuming…' : 'Resume schedule'}
-          </Button>
-        </StickyActions>
-      </section>
-    </main>
+      </main>
+    </QueryClientProvider>
   )
 }

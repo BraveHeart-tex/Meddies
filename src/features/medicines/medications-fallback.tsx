@@ -37,7 +37,7 @@ export function MedicationsFallback() {
         <MedicationsScreen serverEntry initialNow={snapshot.now} />
       ) : view.mode === 'detail' ? (
         <MedicationDetailSkeleton />
-      ) : view.mode === 'setup' ? (
+      ) : view.mode === 'setup' || view.mode === 'resume' ? (
         <MedicationSetupSkeleton />
       ) : (
         <MedicationsListSkeleton />

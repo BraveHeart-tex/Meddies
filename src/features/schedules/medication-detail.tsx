@@ -30,6 +30,7 @@ import { intervalAnchor } from './interval-preview'
 import { IntervalScheduleCard } from './interval-schedule-card'
 import { ScheduleActions } from './schedule-actions'
 import { endedOn, pausedOn } from './last-day'
+import { doseWhen, firstDoseAfterResume } from './resume'
 import type { SchedulesRead } from './queries'
 import { useScheduleNow } from './use-schedule-now'
 
@@ -43,11 +44,33 @@ export function PausedScheduleAlert({ label }: { label: string }) {
   )
 }
 
+/** After the server confirms a resume: the next dose, or none left (233·A7, A8, A13). */
+export function ResumedScheduleAlert({
+  label,
+  schedule,
+}: {
+  label: string
+  schedule: DailySchedule
+}) {
+  const today = istanbulDate(new Date(schedule.confirmedAt))
+  const next = firstDoseAfterResume(schedule, schedule.confirmedAt)
+  return (
+    <Alert variant="confirmation" role="status" aria-label="Resumed schedule">
+      <AlertTitle>Schedule resumed for {label}.</AlertTitle>
+      <AlertDescription>
+        {next
+          ? `Next dose: ${doseWhen(next, today)}.`
+          : `No more doses are due.${schedule.endDate === today ? ' Today is its Last day.' : ''}`}
+      </AlertDescription>
+    </Alert>
+  )
+}
+
 /**
  * The `?medicine=ID` page: 110 Fix 1's header above the schedule, 107·D1 to D3, and Change
- * schedule, Pause and Stop schedule under it (215·A1, S3, S4; 227·A13 to A16; 233·A1 to A5). A
- * running schedule shows its Last day, a paused one the day it paused, an Ended one the day it
- * ended (227·A13, A14, A17; 233·A4, A5).
+ * schedule, Pause and Stop schedule under it, or Resume and Stop schedule once paused (215·A1,
+ * S3, S4; 227·A13 to A16; 233·A1 to A8, S3, S4). A running schedule shows its Last day, a paused
+ * one the day it paused, an Ended one the day it ended (227·A13, A14, A17; 233·A4, A5).
  */
 export function MedicationDetail({
   medicineId,
@@ -57,6 +80,8 @@ export function MedicationDetail({
   actions,
   justSaved = false,
   justScheduled = false,
+  resumed = null,
+  onResumed,
   headingRef,
 }: {
   medicineId: string
@@ -67,6 +92,9 @@ export function MedicationDetail({
   actions?: ReactNode
   justSaved?: boolean
   justScheduled?: boolean
+  /** The resume this panel confirmed, here or on the Resume schedule screen. */
+  resumed?: DailySchedule | null
+  onResumed: (resumed: DailySchedule) => void
   headingRef?: Ref<HTMLHeadingElement>
 }) {
   const { medicines, loading: medicinesLoading, loadError: medicinesError } = medicinesRead
@@ -154,6 +182,9 @@ export function MedicationDetail({
       {justPaused && paused && schedule?.id === justPaused.id && (
         <PausedScheduleAlert label={medicine.label} />
       )}
+      {resumed && schedule?.id === resumed.id && !ended && (
+        <ResumedScheduleAlert label={medicine.label} schedule={resumed} />
+      )}
       <section
         aria-labelledby="routine-heading"
         className="flex flex-col gap-3 [overflow-wrap:anywhere]"
@@ -190,6 +221,7 @@ export function MedicationDetail({
               paused={Boolean(paused)}
               onStopped={setStopped}
               onPaused={setJustPaused}
+              onResumed={onResumed}
             />
           </>
         ) : (

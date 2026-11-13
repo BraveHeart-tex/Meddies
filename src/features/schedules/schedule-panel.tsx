@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode, Ref } from 'react'
+import { useState, type ReactNode, type Ref } from 'react'
 import type { Medicine } from '@/features/medicines/contract'
 import { useMedicines } from '@/features/medicines/queries'
 import { SchedulingClockProvider } from './scheduling-clock'
@@ -10,6 +10,8 @@ import { ScheduleSetupForm } from './schedule-setup-form'
 import { istanbulDate } from './contract'
 import { MedicationDetail } from './medication-detail'
 import { MedicationsList } from './medications-list'
+import { ScheduleResumeScreen } from './schedule-resume-screen'
+import type { DailySchedule } from './contract'
 
 export function SchedulePanel({
   mode = 'setup',
@@ -26,7 +28,7 @@ export function SchedulePanel({
 }: {
   /** The server scheduling time at render, until a newer schedules snapshot replaces it. */
   initialNow: string
-  mode?: 'today' | 'setup' | 'list' | 'detail'
+  mode?: 'today' | 'setup' | 'resume' | 'list' | 'detail'
   initialMedicineId?: string
   /** Runs after the server confirms a first schedule. */
   onScheduleSaved?: (medicine: Medicine) => void
@@ -45,6 +47,15 @@ export function SchedulePanel({
   // The latest server scheduling time anchors the clock: a snapshot cached before this render
   // is older than `initialNow`, one read since is newer.
   const now = snapshot && snapshot.now > initialNow ? snapshot.now : initialNow
+  // A confirmed resume, carried from the Resume schedule screen to the detail it replaces. Any
+  // other screen drops it, so Back never shows it again.
+  const [resumed, setResumed] = useState<DailySchedule | null>(null)
+  const screen = `${mode}:${initialMedicineId}`
+  const [previousScreen, setPreviousScreen] = useState(screen)
+  if (previousScreen !== screen) {
+    setPreviousScreen(screen)
+    if (resumed && (mode !== 'detail' || initialMedicineId !== resumed.medicineId)) setResumed(null)
+  }
   return (
     <SchedulingClockProvider serverNow={now}>
       <div className="space-y-10">
@@ -67,7 +78,18 @@ export function SchedulePanel({
             actions={detailActions}
             justSaved={justSaved}
             justScheduled={justScheduled}
+            resumed={resumed}
+            onResumed={setResumed}
             headingRef={detailHeadingRef}
+          />
+        )}
+        {mode === 'resume' && (
+          <ScheduleResumeScreen
+            schedulesRead={schedulesRead}
+            now={now}
+            medicineId={initialMedicineId}
+            onResumed={setResumed}
+            serverEntry={serverEntry}
           />
         )}
         {mode === 'setup' && (

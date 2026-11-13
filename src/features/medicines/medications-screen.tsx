@@ -12,12 +12,12 @@ export function MedicationsScreen({
   serverEntry?: boolean
 }) {
   const view = useMedicationsView()
-  const medicineId = view.mode === 'detail' || view.mode === 'setup' ? view.medicineId : ''
+  const medicineId = 'medicineId' in view ? view.medicineId : ''
   useMedicationsViewScroll(`${view.mode}:${medicineId}`)
   return (
     <MedicinePanel
       scheduleMode={view.mode}
-      scheduleMedicineId={view.mode === 'setup' ? medicineId : ''}
+      scheduleMedicineId={view.mode === 'setup' || view.mode === 'resume' ? medicineId : ''}
       detailMedicineId={view.mode === 'detail' ? medicineId : ''}
       initialNow={initialNow}
       serverEntry={serverEntry}

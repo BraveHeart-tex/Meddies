@@ -12,13 +12,11 @@ import {
   RESUME_YESTERDAY,
   resumed,
   type PausableSchedule,
-  type ResumeValues,
 } from './pause-model'
+import type { ResumeValues } from '@/features/schedules/resume'
 import { PausedListFrame } from './pause-list'
 import { PausedAlert, ResumedAlert } from './pause-parts'
 import { PauseDetail, ResumeScreen, type Links } from './pause-screens'
-
-const TOO_EARLY = 'Choose today or a later date.'
 
 const links = (schedule: PausableSchedule): Links => ({
   change: schedule.intervalHours != null ? '/lab/227-a10' : '/lab/227-a7',
@@ -35,11 +33,11 @@ const detail = (
 const resumedDetail = (schedule: PausableSchedule) =>
   detail(schedule, { alert: <ResumedAlert schedule={schedule} /> })
 
-const resumeScreen = (initial: ResumeValues, error?: string, saving?: boolean) => (
+const resumeScreen = (initial: ResumeValues, validated?: boolean, saving?: boolean) => (
   <ResumeScreen
     initial={initial}
     schedule={intervalPaused}
-    error={error}
+    validated={validated}
     saving={saving}
     back="/lab/233-a5"
   />
@@ -72,7 +70,7 @@ export const pauseFrames: readonly DesignFrame[] = [
   ),
   frame('A9', 'Resume every few hours, empty', () => resumeScreen(RESUME_BLANK)),
   frame('A10', 'Resume, filled with the preview', () => resumeScreen(RESUME_AT_TWO)),
-  frame('A11', 'Resume, Anchor before today', () => resumeScreen(RESUME_YESTERDAY, TOO_EARLY)),
+  frame('A11', 'Resume, Anchor before today', () => resumeScreen(RESUME_YESTERDAY, true)),
   frame('A12', 'Resume, Last day cuts the preview', () => resumeScreen(RESUME_TUESDAY)),
   frame('A13', 'Resumed, every few hours, next dose named', () =>
     resumedDetail(resumed(intervalPaused, RESUME_AT_TWO)),

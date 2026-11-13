@@ -15,7 +15,7 @@ export function MedicinePanel({
   initialNow,
   serverEntry = false,
 }: {
-  scheduleMode?: 'add' | 'setup' | 'list' | 'detail'
+  scheduleMode?: 'add' | 'setup' | 'resume' | 'list' | 'detail'
   scheduleMedicineId?: string
   detailMedicineId?: string
   initialNow: string

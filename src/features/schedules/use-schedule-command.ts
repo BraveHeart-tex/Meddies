@@ -9,39 +9,69 @@ import { isInstant, parseSchedule, type DailySchedule } from './contract'
 import { applySchedule, scheduleKeys } from './queries'
 import type { ScheduleConfirmKind } from './schedule-confirm-drawer'
 
+export type ScheduleCommandKind = ScheduleConfirmKind | 'resume'
+/** An Interval schedule's new Anchor on resume (233·A9). */
+export type ResumeAnchor = { anchorDate: string; anchorTime: string }
+
 // Keyed by medicine: the confirmed save replaces the version it names before the save settles,
 // and the payload names that version. A confirmed or reviewed save clears it.
-export const scheduleCommandKey = (command: ScheduleConfirmKind, medicineId: string) =>
+export const scheduleCommandKey = (command: ScheduleCommandKind, medicineId: string) =>
   `schedule:${command}:${medicineId}`
 
-const field = { stop: 'stoppedAt', pause: 'pausedAt' } as const
-const savedTitle = { stop: 'Schedule stopped for', pause: 'Schedule paused for' } as const
+const savedTitle = {
+  stop: 'Schedule stopped for',
+  pause: 'Schedule paused for',
+  resume: 'Schedule resumed for',
+} as const
 
-/** A confirmed save must be the attempted successor of `basedOnId`, stopped or paused at its Edit time. */
+/**
+ * A confirmed save must be the attempted successor of `basedOnId`: stopped or paused at its Edit
+ * time, or running again from the attempted Anchor.
+ */
 function matchingSave(
-  command: ScheduleConfirmKind,
+  command: ScheduleCommandKind,
   value: unknown,
   payload: Record<string, unknown>,
 ): DailySchedule {
   const saved = parseSchedule(value)
-  const { confirmedAt, [field[command]]: at } = value as Record<string, unknown>
-  if (saved.id !== payload.id || !isInstant(confirmedAt) || !isInstant(at) || at !== confirmedAt)
+  const raw = value as Record<string, unknown>
+  const { confirmedAt } = raw
+  const fail = () => {
     throw new Error(`Schedule ${command} confirmation does not match attempt`)
-  return {
-    ...saved,
-    confirmedAt,
-    [field[command]]: at,
-    basedOnId: payload.basedOnId as string,
   }
+  if (saved.id !== payload.id || !isInstant(confirmedAt)) fail()
+  const basedOnId = payload.basedOnId as string
+  if (command === 'resume') {
+    const anchored = payload.anchorDate !== undefined
+    if (
+      raw.pausedAt ||
+      raw.stoppedAt ||
+      (anchored &&
+        (raw.anchorDate !== payload.anchorDate || saved.times[0]?.time !== payload.anchorTime))
+    )
+      fail()
+    return {
+      ...saved,
+      confirmedAt: confirmedAt as string,
+      ...(anchored ? { anchorDate: payload.anchorDate as string } : {}),
+      pausedAt: null,
+      stoppedAt: null,
+      basedOnId,
+    }
+  }
+  const field = command === 'stop' ? 'stoppedAt' : 'pausedAt'
+  const at = raw[field]
+  if (!isInstant(at) || at !== confirmedAt) fail()
+  return { ...saved, confirmedAt: confirmedAt as string, [field]: at, basedOnId }
 }
 
 /**
- * Stop (#231) or pause (#236) a schedule: owns the save of `command` on `current` through
- * confirmation, like a change. A retry after an unknown result sends the same save; `onSaved`
- * runs once the server confirms, while this screen watches.
+ * Stop (#231), pause (#236) or resume (#237) a schedule: owns the save of `command` on `current`
+ * through confirmation, like a change. A retry after an unknown result sends the same save;
+ * `onSaved` runs once the server confirms, while a screen watches.
  */
 export function useScheduleCommand(
-  command: ScheduleConfirmKind,
+  command: ScheduleCommandKind,
   medicine: Medicine,
   current: DailySchedule,
   onSaved: (saved: DailySchedule) => void,
@@ -67,11 +97,12 @@ export function useScheduleCommand(
     /** A definite rejection means the schedule changed, as a stale save does (215·S2). */
     problem: problem === 'rejected' ? 'conflict' : problem,
     clear: () => store.clear(key),
-    save: () =>
+    /** An Interval schedule's resume sends its new `anchor`. */
+    save: (anchor?: ResumeAnchor) =>
       store.submit(
         key,
         {
-          payload: { basedOnId: current.id },
+          payload: { basedOnId: current.id, ...anchor },
           label: medicine.label,
           kind: 'schedule',
           savedTitle: `${savedTitle[command]} ${medicine.label}`,

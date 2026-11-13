@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { safeReturnTo } from '../src/features/auth/return-to'
 import {
   medicationsHref,
+  medicationResumeHref,
   medicationSetupHref,
   parseMedicationsView,
 } from '../src/features/medicines/routes'
@@ -15,8 +16,11 @@ describe('parseMedicationsView', () => {
     ['?add', { mode: 'add' }],
     [`?medicine=${a}`, { mode: 'detail', medicineId: a }],
     [`?schedule=${a}`, { mode: 'setup', medicineId: a }],
-    // Precedence: setup, then detail, then Add.
+    [`?resume=${a}`, { mode: 'resume', medicineId: a }],
+    // Precedence: setup, then resume, then detail, then Add.
     [`?add&medicine=${a}&schedule=${b}`, { mode: 'setup', medicineId: b }],
+    [`?resume=${a}&schedule=${b}`, { mode: 'setup', medicineId: b }],
+    [`?medicine=${a}&resume=${b}`, { mode: 'resume', medicineId: b }],
     [`?add&medicine=${a}`, { mode: 'detail', medicineId: a }],
     // An invalid id falls through to the next view.
     [`?schedule=nope&medicine=${a}`, { mode: 'detail', medicineId: a }],
@@ -46,12 +50,14 @@ describe('medicationsHref', () => {
     [{ mode: 'add' } as const, '/medications?add'],
     [{ mode: 'detail', medicineId: a } as const, `/medications?medicine=${a}`],
     [{ mode: 'setup', medicineId: a } as const, `/medications?schedule=${a}`],
+    [{ mode: 'resume', medicineId: a } as const, `/medications?resume=${a}`],
   ])('links %j', (view, href) => {
     expect(medicationsHref(view)).toBe(href)
   })
 
   test('setup links land on the schedule heading', () => {
     expect(medicationSetupHref(a)).toBe(`/medications?schedule=${a}#schedule-heading`)
+    expect(medicationResumeHref(a)).toBe(`/medications?resume=${a}#schedule-heading`)
   })
 })
 
@@ -61,6 +67,7 @@ describe('allowed sign-in return destinations', () => {
     '/medications?add',
     `/medications?medicine=${a}`,
     `/medications?schedule=${a}`,
+    `/medications?resume=${a}`,
   ])('keeps %s', (value) => expect(safeReturnTo(value)).toBe(value))
 
   test.each([

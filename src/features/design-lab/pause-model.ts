@@ -1,10 +1,5 @@
-import { nextClockDoses } from '@/features/schedules/clock-preview'
-import { istanbulDate, type DailySchedule } from '@/features/schedules/contract'
-import { nextIntervalDoses } from '@/features/schedules/interval-preview'
-import { scheduledInstant } from '@/features/schedules/occurrences'
-import { untilLastDay } from '@/features/schedules/last-day'
-import { formatShortDay, formatTime } from '@/lib/calendar-date'
-import { isTimeOfDay } from '@/lib/time-of-day'
+import type { DailySchedule } from '@/features/schedules/contract'
+import type { ResumeValues } from '@/features/schedules/resume'
 import { CLOCK_STARTED, EVERY_DAY } from './edit-lab-model'
 import { magnesium, NOW, TODAY } from './lab-fixtures'
 import { TUESDAY } from './last-day-model'
@@ -65,43 +60,11 @@ export function resumed(schedule: PausableSchedule, anchor?: { date: string; tim
     confirmedAt: NOW,
     pausedAt: null,
     ...(anchor
-      ? { startDate: anchor.date, times: [{ ...schedule.times[0], time: anchor.time }] }
+      ? { anchorDate: anchor.date, times: [{ ...schedule.times[0], time: anchor.time }] }
       : {}),
   } satisfies PausableSchedule
 }
 
-/** The first dose a resumed version expects after NOW, within its Last day. */
-export function firstDoseAfterResume(schedule: PausableSchedule) {
-  const doses =
-    schedule.intervalHours != null
-      ? nextIntervalDoses({
-          anchor: scheduledInstant(schedule.startDate, schedule.times[0].time),
-          hours: schedule.intervalHours,
-          now: NOW,
-          count: 1,
-        })
-      : nextClockDoses({
-          weekdays: schedule.weekdays,
-          times: schedule.times.map((slot) => slot.time),
-          now: NOW,
-          count: 1,
-        })
-  return untilLastDay(doses, schedule.endDate ?? null)[0] ?? null
-}
-
-/** "today at 20:00" or "Tue 10 Nov at 08:00". */
-export function doseWhen(dose: string) {
-  const day = istanbulDate(new Date(dose)) === TODAY ? 'today' : formatShortDay(dose, TODAY)
-  return `${day} at ${formatTime(dose)}`
-}
-
-/** A new Anchor's doses after NOW, or null until a valid date and time are chosen. */
-export function resumeDoses({ date, time }: { date: string; time: string }, hours = 8) {
-  if (!date || !isTimeOfDay(time)) return null
-  return nextIntervalDoses({ anchor: scheduledInstant(date, time), hours, now: NOW })
-}
-
-export type ResumeValues = { date: string; time: string }
 export const RESUME_BLANK: ResumeValues = { date: TODAY, time: '' }
 export const RESUME_AT_TWO: ResumeValues = { date: TODAY, time: '14:00' }
 /** Tuesday at 12:00: the Last day leaves room for two doses. */
