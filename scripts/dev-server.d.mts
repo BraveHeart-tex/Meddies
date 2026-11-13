@@ -1,1 +1,1 @@
-export function devServerError(root: string, before?: string): Promise<string | undefined>
+export function devServerError(root: string): Promise<string | undefined>

@@ -3,7 +3,7 @@ import path from 'node:path'
 
 // Lab frame files render on the server (docs/design/README.md#design-lab). From a 'use client'
 // module they may take only components: any other value arrives as a client reference, which
-// fails when the server calls or reads it, and only the lab HTTP test would notice.
+// fails when the server calls or reads it, and otherwise only `pnpm lab:capture` would notice.
 
 const directive = /^(?:\s|\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)*['"]use client['"]/
 const component = /^[A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*$/

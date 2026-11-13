@@ -1,10 +1,11 @@
 Keep plans extremely concise. Sacrifice grammar for concision.
 Always use normal dashes instead of em dashes.
 
-Done means: `pnpm verify:local` passes, every ticket criterion's box is ticked, the change is
-pushed to main, and the evidence comment is in the active GitHub issue. Then close the
-issue without waiting for Release; the maintainer checks the latest green Release run
-containing the commit. Progress and verification live in GitHub Issues; repo docs hold
+Done means: `pnpm verify:local` passes (`pnpm format:check` for a change touching only
+`docs/**` and Markdown), every ticket criterion's box is ticked, the change is pushed to
+main, and the evidence comment is in the active GitHub issue. Then close the issue without
+waiting for Release; the maintainer checks the latest green Release run containing the
+commit. Progress and verification live in GitHub Issues; repo docs hold
 product behavior, durable rules, setup and architecture.
 
 Use [GLOSSARY.md](GLOSSARY.md) terms verbatim in code, docs and tickets; UI copy follows

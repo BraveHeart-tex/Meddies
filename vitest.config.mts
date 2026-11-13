@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
+import { toolingTests } from './scripts/tooling-tests.mjs'
 
 // HTTP and Worker integration tests; production HTTP tests also need a Next.js build.
 const integration = [
@@ -18,7 +19,18 @@ export default defineConfig({
           name: 'unit',
           environment: 'node',
           include: ['tests/**/*.test.ts'],
-          exclude: integration,
+          exclude: [...integration, ...toolingTests],
+          testTimeout: 5_000,
+          hookTimeout: 5_000,
+        },
+      },
+      {
+        // Scripts, workflows and journey harness: scripts/tooling-tests.mjs.
+        extends: true,
+        test: {
+          name: 'tooling',
+          environment: 'node',
+          include: toolingTests,
           testTimeout: 5_000,
           hookTimeout: 5_000,
         },

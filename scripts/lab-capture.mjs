@@ -13,7 +13,7 @@ if (!prefix || prefix.startsWith('-') || (flag && (flag !== '--out' || !dir))) {
   console.error('Usage: pnpm lab:capture <slug-prefix> [--out <dir>]   e.g. pnpm lab:capture 241-')
   process.exit(2)
 }
-const devServer = await devServerError(process.cwd(), 'lab:capture')
+const devServer = await devServerError(process.cwd())
 if (devServer) {
   console.error(`[lab:capture] ${devServer}`)
   process.exit(1)

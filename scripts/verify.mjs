@@ -3,15 +3,18 @@ import { spawn } from 'node:child_process'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { devServerError } from './dev-server.mjs'
 import { productionBuild } from './production-build.mjs'
+import { changedToolingInput } from './tooling-tests.mjs'
 
-// The lab HTTP test starts its own next dev, which a running one blocks with a vague fetch error.
-const devServer = await devServerError(process.cwd())
-if (devServer) {
-  console.error(`[verify] ${devServer}`)
-  process.exit(1)
+// The tooling project runs when one of its inputs changed, or when git cannot tell.
+let tooling
+try {
+  const input = await changedToolingInput(process.cwd())
+  if (input) tooling = `Tooling tests run: ${input} changed.`
+} catch {
+  tooling = 'Tooling tests run: changes against origin/main are unknown.'
 }
+if (tooling) console.log(`[verify] ${tooling}`)
 
 const results = []
 let skippedDevStack = false
@@ -62,12 +65,13 @@ const stage1 = await Promise.all([
 ])
 if (stage1.every(Boolean)) {
   await Promise.all([
-    check('unit and component', async (run) => {
+    check(tooling ? 'unit, component and tooling' : 'unit and component', async (run) => {
       const directory = await mkdtemp(join(tmpdir(), 'meddies-verify-'))
       const report = join(directory, 'unit.json')
       try {
         await run('pnpm', [
           'test:unit',
+          ...(tooling ? ['--project', 'tooling'] : []),
           '--reporter=default',
           '--reporter=json',
           '--outputFile.json',
@@ -102,6 +106,8 @@ if (stage1.every(Boolean)) {
 console.log('\n[verify] Summary')
 for (const { label, passed, seconds } of results)
   console.log(`${passed ? 'PASS' : 'FAIL'} ${label}: ${seconds}s`)
+if (stage1.every(Boolean) && !tooling)
+  console.log('SKIP tooling: no script, workflow, journey harness or test config changed')
 if (skippedDevStack)
   console.log('WARNING: dev stack tests skipped because fixed local ports were unavailable')
 const passed = results.every((result) => result.passed)

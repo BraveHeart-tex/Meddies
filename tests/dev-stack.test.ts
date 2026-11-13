@@ -88,12 +88,17 @@ if (args[0] === 'exec' || args[0] === 'dev') {
   return { cwd, env }
 }
 
+// Both hosts: `pnpm dev` listens on every interface, which a loopback-only bind misses on macOS.
 async function canBind(port: number) {
-  return new Promise((resolve) => {
-    const server = net.createServer()
-    server.once('error', () => resolve(false))
-    server.listen({ host: '127.0.0.1', port }, () => server.close(() => resolve(true)))
-  })
+  for (const host of ['127.0.0.1', undefined]) {
+    const free = await new Promise((resolve) => {
+      const server = net.createServer()
+      server.once('error', () => resolve(false))
+      server.listen({ host, port }, () => server.close(() => resolve(true)))
+    })
+    if (!free) return false
+  }
+  return true
 }
 
 test(

@@ -6,7 +6,8 @@ disable-model-invocation: true
 
 Implement the GitHub issue the user passed with the invocation (a URL or `#n`). No issue
 given: ask for one. Done is the [AGENTS.md](../../../AGENTS.md) definition: `pnpm
-verify:local` green, every criterion ticked, pushed to main, evidence posted, issue closed.
+verify:local` green (`pnpm format:check` for a docs-only change), every criterion ticked,
+pushed to main, evidence posted, issue closed.
 
 Work **lean** throughout:
 

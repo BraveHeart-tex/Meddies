@@ -61,8 +61,8 @@ contracts and seeded into a per-frame Query client, with no data network reads.
   this.
 - **Registry imports stay hook-free.** The `frames.tsx` files are server modules, so frame
   files they import render client screens marked `'use client'` and hold no hooks
-  themselves. The lab HTTP test renders every registered frame, so a break fails
-  `pnpm verify:local`.
+  themselves. `meddies/lab-client-imports` catches a break statically, and `pnpm lab:capture`
+  renders frames under `next dev`.
 - **Frame files take only components from client modules.** Plain values a frame needs live in
   `<topic>-model.ts`; `meddies/lab-client-imports` fails a frame file that imports anything else
   from a `'use client'` module.

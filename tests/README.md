@@ -1,16 +1,18 @@
 # Tests
 
 `pnpm test` builds the Worker bundle, then runs the Vitest projects in
-`vitest.config.mts` (`unit`, `component`, `integration`). The `integration` project runs the
-Worker bundle (`.worker-build`) in local workerd/D1; its auth and design-lab suites also start
-`next start`, so they need a production build in `.next`. The lab suite additionally
-checks `next dev` HTTP behavior.
+`vitest.config.mts` (`unit`, `component`, `tooling`, `integration`). The `integration` project
+runs the Worker bundle (`.worker-build`) in local workerd/D1; its auth and design-lab suites
+also start `next start`, so they need a production build in `.next`. The `tooling` project
+tests scripts, workflows and the journey harness
+([required checks](../docs/verification.md#required-checks)).
 
 ```sh
 pnpm test:unit                           # unit and component projects, no Worker build
 pnpm test:unit tests/http.test.ts       # one file
 pnpm test:unit medications-list          # files matching a name
-pnpm test:related src/lib/save-messages.ts # unit and component tests importing these files
+pnpm test:related src/lib/save-messages.ts # tests importing these files
+pnpm test:tooling                        # tooling project
 pnpm test:integration                    # builds the Worker, then integration
 ```
 

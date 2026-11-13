@@ -9,8 +9,16 @@ pnpm verify:local
 Runs lint, format check and typecheck, then the build, integration, unit and component
 tests. A static-check failure stops before the second stage; second-stage checks all finish
 even when one fails. A warning names dev-stack tests skipped because fixed ports were busy.
-CI also runs every Vitest project in parallel with journeys before Release
+It runs alongside `pnpm dev`.
+
+The `tooling` Vitest project (scripts, workflows and the journey harness, listed in
+`scripts/tooling-tests.mjs`) runs only when one of its inputs changed against `origin/main`
+or in the working tree, or when git cannot tell; the summary says when it was skipped. CI
+runs every Vitest project, `tooling` included, in parallel with journeys before Release
 ([Verify workflow](deployment.md#verify-workflow)).
+
+A change touching only `docs/**` and Markdown runs `pnpm format:check` instead; Release
+skips the same paths.
 
 The verify and journey wrappers reuse a build only when its inputs are unchanged and their
 success marker exists, so a hand-run `pnpm build` is always rebuilt.
@@ -24,7 +32,8 @@ Validation runs in this order:
    pnpm test:related src/features/schedules/schedule-setup-form.tsx
    ```
 
-2. Run `pnpm verify:local` once, at the end, on the final code. It is the done gate.
+2. Run `pnpm verify:local` once, at the end, on the final code. It is the done gate
+   (`pnpm format:check` for a docs-only change).
 3. After a failure, fix it and rerun only the failed cases until they pass, then run
    `pnpm verify:local` once more.
 
@@ -44,8 +53,8 @@ Add a test when it catches a credible regression, not one per acceptance criteri
 - **No new test for:**
   - copy, styling or layout
   - a pure move, reviewed with the [unmoved diff](#refactors)
-  - design lab frames beyond the render smoke, the lab HTTP test that renders every
-    registered frame ([design lab rules](design/README.md#rules))
+  - design lab frames; `pnpm lab:capture` renders them
+    ([design lab rules](design/README.md#rules))
   - behavior an existing test already proves; the evidence cites that test instead
 
 Each test names the regression it catches. A shared primitive is tested once; each feature

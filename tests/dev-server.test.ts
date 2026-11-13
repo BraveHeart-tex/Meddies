@@ -34,15 +34,15 @@ async function spawnIdle(...argv: string[]) {
   return child.pid!
 }
 
-test('a running next dev in this checkout stops verify', async () => {
+test('a running next dev in this checkout stops lab:capture', async () => {
   // The locking process retitles itself, as `ps` shows it.
   await lock(await spawnIdle('next-server (v16.4.4)'))
   expect(await devServerError(root)).toBe(
-    'Stop the dev server (pnpm dev) before verify:local. next dev is running in this checkout.',
+    'Stop the dev server (pnpm dev) before lab:capture. next dev is running in this checkout.',
   )
 })
 
-test('no lock, a stale lock or an unrelated process on a reused pid lets verify run', async () => {
+test('no lock, a stale lock or an unrelated process on a reused pid lets lab:capture run', async () => {
   expect(await devServerError(root)).toBeUndefined()
   const exited = spawn(process.execPath, ['-e', ''])
   await once(exited, 'exit')
