@@ -1,0 +1,5 @@
+interface:
+  display_name: 'Triage issue'
+  short_description: 'Grill, slice and rewrite one GitHub issue'
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,5 @@
+interface:
+  display_name: 'Implement issue'
+  short_description: 'Implement one GitHub issue end to end'
+policy:
+  allow_implicit_invocation: false

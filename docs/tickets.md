@@ -1,7 +1,7 @@
 # Tickets
 
 How to write GitHub issues so an agent can finish them without guessing. The
-`/to-tickets` and `/triage` skills follow these rules. Labels are defined in
+`/to-tickets` and `/triage-issue` skills follow these rules. Labels are defined in
 [triage labels](triage-labels.md). Product
 behavior lives in [docs/product](product/README.md); an issue cites and narrows it, never
 restates or changes it. A behavior change lands as a doc edit in the same change set.
