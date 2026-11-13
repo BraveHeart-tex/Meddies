@@ -210,7 +210,7 @@ describe('the medication page', () => {
     expect(screen.getByText('tablet')).toBeVisible()
   })
 
-  test('107·D1 holds the Back row, header and schedule card with one status', async () => {
+  test('the medication page fallback holds the Back row, header and schedule card with one status', async () => {
     const reads = api()
     const held = gate()
     reads.beforeMedicines = held.wait
@@ -240,7 +240,7 @@ describe('the medication page', () => {
     expect(await screen.findByText('No schedule yet')).toBeVisible()
   })
 
-  test('107·D2 not found offers Open Medications and no Set schedule', async () => {
+  test('not found offers Open Medications and no Set schedule', async () => {
     api()
     renderDetail(unknownId)
     const alert = await screen.findByRole('alert')
@@ -268,7 +268,7 @@ describe('the medication page', () => {
     expect(setSchedule()).toHaveClass('bg-primary')
   })
 
-  test('107·D2 does not wait for the schedule read, or show its failure', async () => {
+  test('not found does not wait for the schedule read, or show its failure', async () => {
     const reads = api()
     reads.failSchedules = true
     renderDetail(unknownId)
@@ -276,7 +276,7 @@ describe('the medication page', () => {
     expect(screen.queryByText(/couldn't be checked/)).not.toBeInTheDocument()
   })
 
-  test('107·D3 keeps the identity and hides Set schedule until Retry succeeds', async () => {
+  test('a failed schedule read keeps the identity and hides Set schedule until Retry succeeds', async () => {
     const reads = api()
     reads.failSchedules = true
     const user = renderDetail()
@@ -370,7 +370,7 @@ describe('schedule setup', () => {
     expect(placeholders()).toHaveLength(0)
   })
 
-  test('107·D2 not found has the same card and way out', async () => {
+  test('not found has the same card and way out', async () => {
     api()
     renderSetup(unknownId)
     expect(await screen.findByText("This medication isn't in your list")).toBeVisible()
@@ -379,7 +379,7 @@ describe('schedule setup', () => {
     expect(screen.queryByRole('button', { name: 'Save schedule' })).not.toBeInTheDocument()
   })
 
-  test('107·D3 keeps the identity and shows no form until Retry succeeds', async () => {
+  test('a failed schedule read keeps the identity and shows no form until Retry succeeds', async () => {
     const reads = api()
     reads.failSchedules = true
     const user = renderSetup()

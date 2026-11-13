@@ -40,10 +40,7 @@ gh cache list --key Linux-next-cache- --limit 1000 --json id --jq '.[].id' \
 
 ## Ordered releases
 
-A **non-runtime-only** commit changes only `docs/**`, `**/*.md` or
-`.agents/skills/meddies-design/**`. The design skill is a reference export: no application or
-Worker imports it; TypeScript and Vitest input lists exclude it, production CSS excludes it
-from Tailwind scanning, and ESLint and Prettier ignore it. Other `.agents` scripts remain CI
+A **non-runtime-only** commit changes only `docs/**` or `**/*.md`. `.agents` scripts remain CI
 inputs. Tests pin the workflow patterns and prove release-guard parity.
 
 `.github/workflows/release.yml` runs on `main` pushes, except non-runtime-only ones, and on

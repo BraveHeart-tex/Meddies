@@ -10,7 +10,7 @@ import {
 import { addDays, insertScheduledMedicine } from './seed'
 import type { WorkerRoute } from './worker-proxy'
 
-// #143 (108·H1 to H7): History spaces its header, date bar and day results like Today, with
+// #143: History spaces its header, date bar and day results like Today, with
 // DESIGN.md's 20px section spacing rather than the mock's 14px.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
@@ -85,7 +85,7 @@ for (const { width, height } of viewports)
         })
       })
 
-      await test.step('loaded day (108·H1, H2)', async () => {
+      await test.step('loaded day', async () => {
         const yesterday = addDays(today, -1)
         await page.goto(`/history?date=${yesterday}`)
         const loaded = historyDay(page, 'Thursday, 14 June, 1 dose')
@@ -96,7 +96,7 @@ for (const { width, height } of viewports)
         await page.screenshot({ path: testInfo.outputPath(`history-loaded-${width}.png`) })
       })
 
-      await test.step('empty day (108·H3)', async () => {
+      await test.step('empty day', async () => {
         await page.goto(`/history?date=${addDays(startDate, -1)}`)
         await expectSectionGaps(
           appHeader(page),
@@ -106,7 +106,7 @@ for (const { width, height } of viewports)
         await page.screenshot({ path: testInfo.outputPath(`history-empty-${width}.png`) })
       })
 
-      await test.step('invalid-date notice above today (108·H6)', async () => {
+      await test.step('invalid-date notice above today', async () => {
         await page.goto('/history?date=2035-12-24')
         await expectSectionGaps(
           appHeader(page),
@@ -117,14 +117,14 @@ for (const { width, height } of viewports)
         await page.screenshot({ path: testInfo.outputPath(`history-invalid-${width}.png`) })
       })
 
-      await test.step('results fallback (108·H4)', async () => {
+      await test.step('results fallback', async () => {
         for (const route of historyReads) app.worker.hold(route)
         await page.goto('/history', { waitUntil: 'commit' })
         await expectSectionGaps(appHeader(page), dateNav(page), historyFallbackSection(page))
         app.worker.release()
       })
 
-      await test.step('unavailable day (108·H5)', async () => {
+      await test.step('unavailable day', async () => {
         for (const route of historyReads) app.worker.fail(route, 503)
         await page.goto('/history')
         await expectSectionGaps(

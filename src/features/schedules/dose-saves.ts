@@ -39,7 +39,7 @@ export type {
 export const doseSaveKey = (dose: Pick<DoseOccurrence, 'scheduleId' | 'dueAt'>) =>
   `${dose.scheduleId}|${dose.dueAt}`
 
-/** An unconfirmed attempt still offers Retry and is rechecked on focus and reconnect (F5, F6). */
+/** An unconfirmed attempt still offers Retry and is rechecked on focus and reconnect. */
 export const isUnconfirmed = (save: DoseSave | undefined) =>
   !!save?.attempt && !save.pending && save.problem?.kind === 'uncertain' && !save.needsReview
 
@@ -200,7 +200,7 @@ class DoseSaves {
       : { outcome }
   }
 
-  /** Saves whose result the user could not see after signing out (D18). */
+  /** Saves whose result the user could not see after signing out. */
   outstanding(): OutstandingSave[] {
     return [...this.entries.values()].flatMap((save) =>
       save.attempt && (save.pending || save.problem?.kind === 'uncertain')
@@ -348,7 +348,7 @@ class DoseSaves {
     }
   }
 
-  /** A result that arrives with no drawer watching reaches the user wherever they are (F1). */
+  /** A result that arrives with no drawer watching reaches the user wherever they are. */
   private notifyAway(key: string, dose: DoseOccurrence) {
     const save = this.entries.get(key)
     if (!save || this.observers.get(key)) return
@@ -369,7 +369,7 @@ class DoseSaves {
   }
 
   /**
-   * Focus and reconnect read again where each unconfirmed attempt's dose lives (F5): Today for
+   * Focus and reconnect read again where each unconfirmed attempt's dose lives: Today for
    * a dose due on its date, otherwise the dose's History date.
    */
   private recheck() {

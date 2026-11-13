@@ -40,7 +40,7 @@ import {
   type TakenFormValues,
 } from './taken-form-schema'
 
-// A swipe that starts on a control never closes the drawer (108·D14).
+// A swipe that starts on a control never closes the drawer.
 const swipeIgnore = { 'data-base-ui-swipe-ignore': 'y' }
 
 function offsetLabel(local: string, dueAt: string) {
@@ -64,7 +64,7 @@ const primaryLabels: Record<Mode, { save: string; retry: string }> = {
 }
 
 /**
- * Actual intake details for a Taken outcome (108·R2/R3, C1 to C5). `record` opens from the
+ * Actual intake details for a Taken outcome. `record` opens from the
  * drawer's outcome choice, `correct` changes a Skipped dose to Taken, and `edit` opens a recorded
  * intake through Edit dose. Values stay here; the parent's mutation owns saving, the duplicate
  * lock, retry identity and errors.
@@ -93,7 +93,7 @@ export function TakenForm({
   onOpen: (open: boolean) => void
   onSubmit: (details: TakenFormOutput, form: AttemptForm) => Promise<void>
   mode?: Mode
-  /** An unconfirmed attempt's values and Now minute, so reopening retries it exactly (F6). */
+  /** An unconfirmed attempt's values and Now minute, so reopening retries it exactly. */
   restore?: AttemptForm
   /** Keeps unsaved values for the session across navigation (#120 store). */
   draftKey?: string | null
@@ -101,7 +101,7 @@ export function TakenForm({
   nowRef?: RefObject<HTMLButtonElement | null>
 }) {
   const id = useId()
-  // A pending or unconfirmed Now save keeps its minute, so a retry has the same details (D12, F4).
+  // A pending or unconfirmed Now save keeps its minute, so a retry has the same details.
   const uncertain = problem?.kind === 'uncertain'
   const now = useCurrentMinute(!saving && !uncertain, uncertain ? restore?.now : undefined)
   const offline = useKnownOffline()
@@ -130,14 +130,14 @@ export function TakenForm({
   const draft = useSessionFormDraft(draftKey, form)
   const values = useWatch({ control: form.control })
   // Validated details of the last submit. The mutation reuses its action id while they match,
-  // so a change after an unconfirmed save starts a new one (F4).
+  // so a change after an unconfirmed save starts a new one.
   const [submitted, setSubmitted] = useState<string | null>(() =>
     restore ? JSON.stringify(schema.safeParse(restore.values).data ?? null) : null,
   )
   const changedSinceSave =
     uncertain && submitted !== JSON.stringify(schema.safeParse(values).data ?? null)
 
-  // The scheduled minute itself is neither early nor passed (108·W2, R6).
+  // The scheduled minute itself is neither early nor passed.
   const beforeScheduled = now < scheduled
   const scheduledHasPassed = scheduled < now
   const takenAt = takenAtLocal(values, now, scheduled)

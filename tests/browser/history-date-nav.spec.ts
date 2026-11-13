@@ -4,7 +4,7 @@ import { scrollsHorizontally } from './actions'
 import { datePicker } from './pickers'
 import { addDays, insertScheduledMedicine } from './seed'
 
-// #131 (108·H7): the on-request review of the History date bar's sizes and alignment.
+// #131: the on-request review of the History date bar's sizes and alignment.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
 const startDate = addDays(today, -3)
@@ -37,7 +37,7 @@ test('History date bar sizes and alignment @visual', async ({ page }, testInfo) 
     expect(box?.height).toBeGreaterThanOrEqual(44)
   }
 
-  await test.step('at 320px the date bar keeps its three parts on one row (108·H7)', async () => {
+  await test.step('at 320px the date bar keeps its three parts on one row', async () => {
     await page.setViewportSize({ width: 320, height: 740 })
     await page.goto(`/history?date=${addDays(today, -1)}`)
     await expect(dayHeading(page, 'Thursday, 14 June, 1 dose')).toBeVisible()

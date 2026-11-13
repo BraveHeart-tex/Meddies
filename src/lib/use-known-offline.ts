@@ -12,7 +12,7 @@ function subscribeOnline(notify: () => void) {
 }
 
 /**
- * Known offline (110·D22): only when the browser reports no network. Writes then show a
+ * Known offline: only when the browser reports no network. Writes then show a
  * disabled "Connect to save" with an Alert; they are never queued.
  */
 export function useKnownOffline() {

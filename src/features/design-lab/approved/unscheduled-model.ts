@@ -82,7 +82,7 @@ export type DoseValues = { when: TakenAtChoice; date: string; time: string; quan
 
 export const nowValues: DoseValues = { when: 'now', date: '', time: '', quantity: '1' }
 
-/** A saved dose opens on Other at its own minute and quantity, as Edit dose does (108·C3). */
+/** A saved dose opens on Other at its own minute and quantity, as Edit dose does. */
 export const savedValues = (dose: UnscheduledDose): DoseValues => {
   const local = localMinute(dose.takenAt)
   return {

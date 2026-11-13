@@ -18,9 +18,9 @@ import { blockPrefetch, expectReadsOverlap, expectStreamingOrder } from './strea
 import type { WorkerRoute } from './worker-proxy'
 
 // Medications streams one section for its data views (#87): the shell, title and Add render
-// first, 107·L2 holds the list while the server reads, the browser reuses the hydrated data, and
+// first, the list skeleton holds the list while the server reads, the browser reuses the hydrated data, and
 // view changes use the native History API. #88 adds the medication page and schedule setup,
-// whose direct links hold 107·D1 and its setup equivalent.
+// whose direct links hold the medication page skeleton and its setup equivalent.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
 
@@ -336,7 +336,7 @@ test.describe('direct links to one medication', () => {
     expectNoRepeatedReads(api)
   })
 
-  test('a link to a medication that is not in the list shows 107·D2', async ({ page, app }) => {
+  test('a link to a medication that is not in the list shows not found', async ({ page, app }) => {
     for (const route of reads) app.worker.hold(route)
     await page.goto(`/medications?medicine=${randomUUID()}`, { waitUntil: 'commit' })
     await expect(medicationFallback(page)).toBeVisible()

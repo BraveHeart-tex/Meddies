@@ -13,7 +13,7 @@ export function isQuantityForUnit(value: unknown, unit: DoseUnit): value is numb
   return isDoseQuantity(value) && (unit === 'tablet' || Number.isInteger(value))
 }
 
-/** Step, minimum and new-row text per unit: tablets in halves, capsules whole (107·D3). */
+/** Step, minimum and new-row text per unit: tablets in halves, capsules whole. */
 export function quantityRule(unit: DoseUnit) {
   return unit === 'capsule'
     ? { step: 1, min: 1, initial: '1' }

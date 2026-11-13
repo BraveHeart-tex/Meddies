@@ -53,7 +53,7 @@ export type ScheduleChange = {
 }
 
 /**
- * First schedule for one saved medicine (107·A7 to A9, S1 to S4; 110·D22), or a `change`
+ * First schedule for one saved medicine, or a `change`
  * to its current Schedule version without a Start date (215·A2, A3, A9). Values stay in session
  * memory; `onSaved` runs only after the server confirms, and `onConflict` when first setup finds
  * the medicine already has a schedule.
@@ -191,7 +191,7 @@ export function ScheduleForm({
                       key={day}
                       value={String(day)}
                       aria-label={WEEKDAY_NAMES[day]}
-                      // RHF focuses Monday when no day is chosen (107·S1).
+                      // RHF focuses Monday when no day is chosen.
                       ref={index === 0 ? field.ref : undefined}
                       aria-invalid={fieldState.invalid || undefined}
                       className="min-w-0 px-0"

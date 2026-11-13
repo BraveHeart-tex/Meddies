@@ -10,7 +10,7 @@ import { scheduleKeys } from './queries'
 
 /**
  * Suspense fallback for History's streamed results. A warm navigation shows the session's cached
- * date while the server reads; otherwise the 108·H4 skeleton holds its place. The cache is only
+ * date while the server reads; otherwise the results skeleton holds its place. The cache is only
  * watched, so a cold load never starts a browser read of its own.
  */
 export function HistoryDayFallback({

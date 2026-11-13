@@ -121,7 +121,7 @@ async function recordTaken(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('button', { name: 'I took it' }))
 }
 
-test('F1: leaving Today keeps a pending save going and its confirmation reaches the user', async () => {
+test('leaving Today keeps a pending save going and its confirmation reaches the user', async () => {
   const held = deferred()
   const state = api(async (body) => {
     await held.promise
@@ -142,7 +142,7 @@ test('F1: leaving Today keeps a pending save going and its confirmation reaches 
   expect(await row()).not.toHaveTextContent('Saving')
 })
 
-test('F6: a closed unconfirmed save keeps its badge across navigation and retries the same request', async () => {
+test('a closed unconfirmed save keeps its badge across navigation and retries the same request', async () => {
   const state = api(async (body, count) => {
     if (count === 1) return HttpResponse.json({}, { status: 503 })
     state.records = [taken(body)]
@@ -173,7 +173,7 @@ test('F6: a closed unconfirmed save keeps its badge across navigation and retrie
   expect(state.puts[1]).toEqual(state.puts[0])
 })
 
-test('F5: focus and reconnect recheck an unconfirmed save; a found record confirms once', async () => {
+test('focus and reconnect recheck an unconfirmed save; a found record confirms once', async () => {
   const state = api(async () => HttpResponse.json({}, { status: 503 }))
   const app = session()
   await recordTaken(app.user)
@@ -206,7 +206,7 @@ test('F5: focus and reconnect recheck an unconfirmed save; a found record confir
   expect(state.puts).toHaveLength(1)
 })
 
-test('F8: a record made elsewhere while the drawer is open keeps the draft and saves nothing', async () => {
+test('a record made elsewhere while the drawer is open keeps the draft and saves nothing', async () => {
   const state = api(async () => HttpResponse.json({}, { status: 409 }))
   const app = session()
   await recordTaken(app.user)

@@ -2,14 +2,15 @@
 
 How Meddies speaks. These rules cover every string the user sees or hears: labels, messages,
 toasts, validation, empty, loading and error states, screen-reader text and push reminders.
-Where wording quoted elsewhere differs, such as in DESIGN.md or a design snapshot, this doc wins.
+Where wording quoted elsewhere differs, such as in DESIGN.md or a design lab frame, this doc wins.
 
 ## Voice
 
 A calm friend who keeps your pill box tidy: warm and brief, never clinical, never cutesy.
 
 - Address the user as "you", and by first name in greetings.
-- Use sentence case and short instructions.
+- Use sentence case and short instructions. Uppercase is only for small eyebrows ("UP NEXT").
+- Buttons name the result: "Save as taken", never "OK".
 - Reassure through facts. Confirmations state exactly what was saved.
 - Never imply a dose was taken unless it was recorded.
 - No guilt or pressure, no exclamation marks, no emoji.
@@ -45,6 +46,11 @@ in JSX text or in an `aria-label`, `label` or `title` prop in `src`. Review cove
 "routine", which stays fine in sentences like the sign-in tagline, "medicine", and plain string
 constants.
 
+## Numbers
+
+Put a space between a number and its unit (`200 mg`, `1000 IU`), and give quantities their unit
+(`1 tablet`, `8 left`). Separate facts on one line with a middle dot: `200 mg · tablet`.
+
 ## Dates and times
 
 Every date and time comes from `src/lib/calendar-date.ts`, in Istanbul time whatever the device
@@ -65,6 +71,8 @@ Say what happened, what is safe, and what to do next.
 
 - Never say "failed" when the result is unknown. Say it might not have saved.
 - Only say the details are still here when the form holds details.
+- Sign-out and session end never cancel a save: say Meddies can't show its result until the user
+  signs in again, never that it was cancelled.
 
 ## Changing copy
 

@@ -4,7 +4,7 @@ import { expect, test, type App } from './fixtures'
 import { doseTrigger, drawer, historyRow } from './locators'
 import { addDays, insertScheduledMedicine, insertTakenRecord } from './seed'
 
-// #110 step 16 on a History correction (109·X1 to X5).
+// #110 step 16 on a History correction.
 const initialScheduleTime = '2035-06-15T14:00:00+03:00'
 const date = addDays(initialScheduleTime.slice(0, 10), -1)
 const dueAt = new Date(`${date}T14:00:00+03:00`).toISOString()
@@ -49,7 +49,7 @@ async function startCorrection(page: Page) {
   return save
 }
 
-/** The session-end screen with a save outstanding (109·X4). */
+/** The session-end screen with a save outstanding. */
 async function expectSaveInProgressSignIn(page: Page, app: App) {
   await expect(page).toHaveURL(`${app.origin}${expiredUrl}&notice=save-in-progress`)
   await expect(page.getByText('Your session ended.', { exact: true })).toBeVisible()
@@ -70,7 +70,7 @@ async function expectDateAfterSignIn(page: Page, app: App, outcome: 'Taken' | 'S
   await expect(drawer(page)).toHaveCount(0)
 }
 
-test('X1 to X3: session end clears an unsaved correction and returns to the old outcome', async ({
+test('session end clears an unsaved correction and returns to the old outcome', async ({
   page,
   app,
 }) => {
@@ -90,7 +90,7 @@ test('X1 to X3: session end clears an unsaved correction and returns to the old 
   await expectDateAfterSignIn(page, app, 'Taken')
 })
 
-test('X4, X5: a correction in flight that landed shows the corrected outcome after sign-in', async ({
+test('a correction in flight that landed shows the corrected outcome after sign-in', async ({
   page,
   app,
 }) => {
@@ -108,10 +108,7 @@ test('X4, X5: a correction in flight that landed shows the corrected outcome aft
   await expectDateAfterSignIn(page, app, 'Skipped')
 })
 
-test('X4, X5: a correction refused by the expired session keeps the old outcome', async ({
-  page,
-  app,
-}) => {
+test('a correction refused by the expired session keeps the old outcome', async ({ page, app }) => {
   const save = await startCorrection(page)
 
   await app.expireSession()

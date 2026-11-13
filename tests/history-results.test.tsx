@@ -130,7 +130,7 @@ test('a cached date renders at once and refreshes quietly', async () => {
   )
 })
 
-test('an uncached date shows the 108·H4 fallback, then its doses', async () => {
+test('an uncached date shows the results fallback, then its doses', async () => {
   search = new URLSearchParams('date=2026-11-03')
   let release!: () => void
   const held = new Promise<void>((resolve) => (release = resolve))

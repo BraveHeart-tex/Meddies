@@ -12,7 +12,7 @@ export const historyHref = (date: string) => `/history?date=${date}`
 
 /**
  * The History date in the URL. Bare `/history` means today; the server already replaced a future
- * or malformed date with today (108·H6), so anything else invalid reads as today too.
+ * or malformed date with today, so anything else invalid reads as today too.
  */
 export function useHistoryDate(today: string) {
   const date = useSearchParams().get('date')
@@ -48,7 +48,7 @@ const currentDayHeading: RefObject<HTMLElement | null> = {
 }
 
 /**
- * History's date bar (D11): Previous day, the DatePicker and Next day. Every change pushes
+ * History's date bar: Previous day, the DatePicker and Next day. Every change pushes
  * `/history?date=` with the native History API, so the results read the dated query without a
  * server round trip, Back returns to the date seen before and reload keeps the current one.
  */

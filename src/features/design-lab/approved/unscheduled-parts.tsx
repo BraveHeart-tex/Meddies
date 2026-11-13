@@ -37,7 +37,7 @@ import type { DoseValues } from './unscheduled-model'
 
 export type SaveStep = 'idle' | 'saving' | 'unknown' | 'rejected'
 
-// A swipe that starts on a control never closes the drawer (108·D14).
+// A swipe that starts on a control never closes the drawer.
 const swipeIgnore = { 'data-base-ui-swipe-ignore': 'y' }
 
 /** "Log a dose" on Medication detail: an outline button under the schedule (241·A1, A2). */
@@ -355,7 +355,7 @@ export function LabDoseDrawer({
 }
 
 /**
- * The save message: a Toast once the server has saved (108·F2). Stays up for the capture. A
+ * The save message: a Toast once the server has saved. Stays up for the capture. A
  * removal passes `type={null}`, so no check: a check means Taken.
  */
 export function LabToast({ title, type = 'success' }: { title: string; type?: 'success' | null }) {

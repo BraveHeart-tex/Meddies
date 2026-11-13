@@ -49,7 +49,7 @@ const returnToToday = (page: Page) =>
   page.getByRole('link', { name: 'Today', exact: true }).first().click()
 
 // Allowed reasons: Back and Forward restore a session draft; navigation preserves a pending save.
-test('F1: Back and Forward restore the drawer draft; a pending save confirms after leaving Today', async ({
+test('Back and Forward restore the drawer draft; a pending save confirms after leaving Today', async ({
   page,
   app,
 }) => {

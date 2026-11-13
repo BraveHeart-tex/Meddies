@@ -4,7 +4,7 @@ import { LoadingSection, Skeleton } from '@/components/ui/skeleton'
 import { HistoryDaySkeleton } from '@/features/schedules/history-skeleton'
 
 // Before the page resolves its session and date. The date bar needs that date, so it stays a
-// placeholder here; once the shell streams, 108·H4 takes over for the results alone. Bare
+// placeholder here; once the shell streams, the results fallback takes over for the results alone. Bare
 // /history means today, whose date label wraps on the narrowest phones; shorter labels for earlier
 // days fit one line, so those direct loads settle 18px shorter.
 export default function Loading() {

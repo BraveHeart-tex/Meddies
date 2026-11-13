@@ -46,7 +46,7 @@ A reminder is never confused with confirmed intake. Every dose outcome is explic
 
 ## Evidence on Hand
 
-- Approved visual direction "Cozy Care": `.agents/skills/meddies-design/` and [DESIGN.md](DESIGN.md).
+- Approved visual direction "Cozy Care": [DESIGN.md](DESIGN.md), `src/global.css` and the [design lab](docs/design/README.md).
 - Production screens are in `src/app`. They use synthetic data only.
 - There are no testimonials, metrics, press or marketing content, and none should be invented.
 

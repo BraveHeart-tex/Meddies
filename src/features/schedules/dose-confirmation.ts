@@ -3,7 +3,7 @@ import { quantityLabel, type DoseUnit } from '@/lib/dose-quantity'
 import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
 
 /**
- * The confirmation toast after a server-confirmed save (108·F2, C5), for example
+ * The confirmation toast after a server-confirmed save, for example
  * 'Melatonin 22:30 · updated to taken at 23:00 on Thu 5 Nov, ½ tablet'. The scheduled time never
  * changes; an intake on another day than scheduled names that day.
  */
@@ -35,7 +35,7 @@ export function outcomeConfirmation({
 }
 
 /**
- * A later check found the record of an unconfirmed save (108·F5), for example
+ * A later check found the record of an unconfirmed save, for example
  * 'Omega-3 14:00 · already saved as taken at 14:00, 2 capsules'.
  */
 export function reconciledConfirmation({

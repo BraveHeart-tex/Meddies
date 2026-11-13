@@ -39,7 +39,7 @@ export function DoseDrawer({
   onClose: () => void
   children: ReactNode
 }) {
-  // The title takes focus on open, so nothing is chosen for her (108·R1).
+  // The title takes focus on open, so nothing is chosen for her.
   const titleRef = useRef<HTMLHeadingElement>(null)
   return (
     <Drawer

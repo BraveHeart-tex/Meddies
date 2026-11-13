@@ -16,7 +16,7 @@ import { blockPrefetch, expectReadsOverlap, expectStreamingOrder } from './strea
 import type { WorkerRoute } from './worker-proxy'
 
 // History streams one date's results (#132): the shell, heading and date bar render first, the
-// 108·H4 fallback holds the results while the server reads, and the browser reuses the hydrated
+// results fallback holds the results while the server reads, and the browser reuses the hydrated
 // data. Later date changes read that date in the browser.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)

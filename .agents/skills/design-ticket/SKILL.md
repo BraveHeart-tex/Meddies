@@ -5,9 +5,11 @@ user-invocable: true
 ---
 
 A design ticket ends with approved lab frames and a build ticket that cites them by frame ID;
-then it closes.
-`meddies-design` is the visual reference; this skill is the process. Lab rules (registry
-imports, fixtures, stable ids) live in [docs/design/README.md](../../../docs/design/README.md#design-lab).
+then it closes. You act as the designer: [DESIGN.md](../../../DESIGN.md) and `src/global.css` are
+the visual source, production components the material. Lab rules (registry imports, fixtures,
+stable ids) live in [docs/design/README.md](../../../docs/design/README.md#design-lab). The
+comparison page is temporary standalone HTML, never committed. Invoked without a design ticket:
+ask what to design, then follow the steps as far as the need goes.
 Precedents: #212 and #215 (design tickets), #217 (build ticket citing frames).
 
 Write `<n>` for the design ticket's issue number; examples below show `215`.

@@ -17,24 +17,24 @@ Read the matching doc before starting the work.
 Docs state current rules. When behavior changes, rewrite the rule in place; history goes in
 commits and issues, and per-feature detail in the owning module's header comment.
 
-| Work                                              | Read                                                                |
-| ------------------------------------------------- | ------------------------------------------------------------------- |
-| Committing, PR descriptions                       | [commits](docs/commits.md)                                          |
-| Product behavior, approved decisions              | [product docs](docs/product/README.md)                              |
-| Tickets: selecting, writing, splitting, closing   | [tickets](docs/tickets.md), [triage labels](docs/triage-labels.md)  |
-| UI: screens, components                           | [DESIGN](DESIGN.md), visual source `.agents/skills/meddies-design/` |
-| UI copy: labels, messages, push reminders         | [copy](docs/copy.md)                                                |
-| Design frames and lab such as `109·L1`            | [design snapshots](docs/design/README.md)                           |
-| Design tickets: directions, approval, hand-off    | [design-ticket skill](.agents/skills/design-ticket/SKILL.md)        |
-| Forms                                             | [forms](docs/forms.md)                                              |
-| Routes, rendering, data loading, TanStack Query   | [Next.js](docs/nextjs.md)                                           |
-| Saves, drafts, retries, session end               | [client state](docs/client-state.md)                                |
-| Layers: operations, contracts, Worker, migrations | [architecture](docs/architecture.md)                                |
-| Sign-in, sessions, authorization                  | [authentication](docs/authentication.md)                            |
-| Tests, evidence                                   | [verification](docs/verification.md)                                |
-| Browser journeys: allowed, writing, running       | [browser journeys](docs/verification.md#browser-journeys)           |
-| Running the app with local Worker/D1              | [local stack](docs/local-stack.md)                                  |
-| Releases, deployment, recovery                    | [deployment](docs/deployment.md)                                    |
+| Work                                              | Read                                                               |
+| ------------------------------------------------- | ------------------------------------------------------------------ |
+| Committing, PR descriptions                       | [commits](docs/commits.md)                                         |
+| Product behavior, approved decisions              | [product docs](docs/product/README.md)                             |
+| Tickets: selecting, writing, splitting, closing   | [tickets](docs/tickets.md), [triage labels](docs/triage-labels.md) |
+| UI: screens, components                           | [DESIGN](DESIGN.md)                                                |
+| UI copy: labels, messages, push reminders         | [copy](docs/copy.md)                                               |
+| Design lab frames such as `109·L1`                | [design lab](docs/design/README.md)                                |
+| Design tickets: directions, approval, hand-off    | [design-ticket skill](.agents/skills/design-ticket/SKILL.md)       |
+| Forms                                             | [forms](docs/forms.md)                                             |
+| Routes, rendering, data loading, TanStack Query   | [Next.js](docs/nextjs.md)                                          |
+| Saves, drafts, retries, session end               | [client state](docs/client-state.md)                               |
+| Layers: operations, contracts, Worker, migrations | [architecture](docs/architecture.md)                               |
+| Sign-in, sessions, authorization                  | [authentication](docs/authentication.md)                           |
+| Tests, evidence                                   | [verification](docs/verification.md)                               |
+| Browser journeys: allowed, writing, running       | [browser journeys](docs/verification.md#browser-journeys)          |
+| Running the app with local Worker/D1              | [local stack](docs/local-stack.md)                                 |
+| Releases, deployment, recovery                    | [deployment](docs/deployment.md)                                   |
 
 ## GitHub Issues
 

@@ -14,7 +14,7 @@ import { addDays, insertScheduledMedicine } from './seed'
 import { blockPrefetch, expectReadsOverlap, expectStreamingOrder } from './streaming'
 import type { WorkerRoute } from './worker-proxy'
 
-// Today streams its doses section (#125): the shell and header render first, the 108·T1
+// Today streams its doses section (#125): the shell and header render first, the doses
 // fallback holds the section while the server reads, and the browser reuses the hydrated data.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)

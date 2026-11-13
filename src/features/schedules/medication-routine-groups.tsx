@@ -43,7 +43,7 @@ export function MedicationRoutineGroups({
   medicines: Medicine[]
   schedules: DailySchedule[]
   serverNow: string
-  /** The row to focus once, when the list shows after Done for now (107·B1). */
+  /** The row to focus once, when the list shows after Done for now. */
   focusMedicineId?: string | null
   onMedicineFocused?: () => void
 }) {

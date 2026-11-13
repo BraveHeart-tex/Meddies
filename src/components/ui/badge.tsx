@@ -20,9 +20,9 @@ const badgeVariants = cva(
         skipped: 'bg-dose-skipped text-dose-skipped-foreground',
         scheduled: 'border-border-strong py-1.5 text-secondary-foreground',
         due: 'bg-accent text-accent-foreground',
-        // A save in flight (110·D21): dashed outline, e.g. "Saving · Taken".
+        // A save in flight: dashed outline, e.g. "Saving · Taken".
         pending: 'border-dashed border-border-strong py-1.5 text-secondary-foreground',
-        // A save that could not be confirmed (110·D21): dashed amber with a warning glyph.
+        // A save that could not be confirmed: dashed amber with a warning glyph.
         unconfirmed:
           'border-dashed border-dose-unlogged-foreground/50 bg-dose-unlogged py-1.5 text-dose-unlogged-foreground',
       },

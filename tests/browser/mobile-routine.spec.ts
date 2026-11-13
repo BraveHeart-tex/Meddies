@@ -53,7 +53,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await chooseMedicineType(page, 'Tablet')
     await page.getByRole('button', { name: 'Save medication' }).press('Enter')
     await expect(page.getByText('Routine Medicine saved.')).toBeVisible()
-    expect(pageRequests, 'D7 makes no document or RSC request').toBe(0)
+    expect(pageRequests, 'the saved handoff makes no document or RSC request').toBe(0)
     await expect(page.getByRole('heading', { name: 'Routine Medicine' })).toBeFocused()
     await expect(page.getByRole('link', { name: 'Set schedule', exact: true })).toHaveCount(1)
     await page.getByRole('link', { name: 'Done for now' }).click()
@@ -61,7 +61,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
       page.getByRole('link', { name: 'View details for Routine Medicine' }),
     ).toBeFocused()
     await page.goBack()
-    // D7 replaces Add: Back returns to the list, never the submitted form.
+    // The saved medicine replaces Add: Back returns to the list, never the submitted form.
     await page.goBack()
     await expect(page).toHaveURL(app.origin + '/medications')
     await page.goForward()
@@ -101,7 +101,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await expectTime(page, 'Time 1', time)
     await page.getByRole('button', { name: 'Try saving schedule again' }).press('Enter')
     await expect(page.getByText('Schedule saved for Routine Medicine.')).toBeVisible()
-    expect(pageRequests, 'D4 makes no document or RSC request').toBe(0)
+    expect(pageRequests, 'the schedule handoff makes no document or RSC request').toBe(0)
     // The saved message shows before the replace to ?medicine=ID; reloading earlier reopens setup.
     await expect(page).toHaveURL(/[?&]medicine=/)
     await expect(page.getByRole('heading', { name: 'Routine Medicine' })).toBeFocused()

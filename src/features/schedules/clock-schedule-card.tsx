@@ -41,7 +41,7 @@ export const pausedSinceLine = (pausedDay: string, today: string) =>
   `Paused since ${formatShortDay(pausedDay, today)}`
 
 /**
- * A medication's Clock schedule (107·D1): its days, each time with its quantity, and its start,
+ * A medication's Clock schedule: its days, each time with its quantity, and its start,
  * or, for a changed Schedule version, the day it changed, or "Paused since" (233·A4), then its
  * Last day or Ended day.
  */

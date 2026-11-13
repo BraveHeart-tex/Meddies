@@ -24,14 +24,7 @@ try {
     )
       .split('\0')
       .filter(Boolean)
-    if (
-      paths.some(
-        (path) =>
-          !path.startsWith('docs/') &&
-          !path.endsWith('.md') &&
-          !path.startsWith('.agents/skills/meddies-design/'),
-      )
-    ) {
+    if (paths.some((path) => !path.startsWith('docs/') && !path.endsWith('.md'))) {
       if (mode !== '--early') throw new Error(`Runtime changes in ${commit}`)
       eligible = false
       break

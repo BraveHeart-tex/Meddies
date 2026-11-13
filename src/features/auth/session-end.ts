@@ -18,7 +18,7 @@ export function onSessionEnded(listener: (ended: SessionEnded) => void) {
 }
 
 /**
- * The one session end path (D17). Clears all private browser state, keeping only whether a save
+ * The one session end path. Clears all private browser state, keeping only whether a save
  * was outstanding, then replaces the page with sign-in at the current supported location.
  */
 export function endSession(reason: SessionEndReason) {

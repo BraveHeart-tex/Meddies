@@ -8,9 +8,7 @@ import { designFrames } from '../src/features/design-lab/frames'
 // A design without frames is archived: its citations resolve through the issue's
 // "Approved design" table.
 
-/** Snapshot designs keep their HTML until #252, which deletes this list and the files. */
-const SNAPSHOT_DESIGNS_UNTIL_252 = new Set(['106', '107', '108', '109', '110', '193', '200'])
-/** Snapshot designs whose frames were never ported to the lab: citing them is an error. */
+/** Deleted snapshot designs whose frames were never ported to the lab: citing them is an error. */
 const DELETED_SNAPSHOT_DESIGNS = new Set(['106', '107', '108', '110', '200'])
 
 const SCANNED = ['src', 'tests', 'docs', '.agents', 'DESIGN.md', 'PRODUCT.md', 'AGENTS.md']
@@ -24,7 +22,6 @@ function citationProblems(text: string, registered: readonly string[]) {
       const at = `line ${index + 1}: ${cited}`
       if (frame === '${' || template)
         problems.push(`line ${index + 1}: a citation of ${design} is built from a template`)
-      else if (SNAPSHOT_DESIGNS_UNTIL_252.has(design)) continue
       else if (DELETED_SNAPSHOT_DESIGNS.has(design))
         problems.push(`${at} cites a deleted snapshot design`)
       else if (designsWithFrames.has(design) && !registered.includes(cited))
@@ -76,6 +73,10 @@ test('the citation rule flags unregistered, deleted and templated citations', ()
   ])
   expect(citationProblems('see 900·B·Drawer', registered)).toEqual([
     'line 1: 900·B·Drawer is not a registered frame',
+  ])
+  // Split so this file's own scan doesn't read them as citations.
+  expect(citationProblems('see 107·' + 'M6', registered)).toEqual([
+    'line 1: 107·' + 'M6 cites a deleted snapshot design',
   ])
   for (const templated of ['900·' + '${id}', '900·A' + '${n}'])
     expect(citationProblems(templated, registered)).toEqual([

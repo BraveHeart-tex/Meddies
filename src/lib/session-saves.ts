@@ -16,7 +16,7 @@ export type SaveAttempt = {
   /** The confirmation Toast's title, when the save's kind doesn't say what was saved. */
   savedTitle?: string
 }
-/** A pending or unconfirmed save, named for the sign-out warning (D18). */
+/** A pending or unconfirmed save, named for the sign-out warning. */
 export type OutstandingSave = { kind: 'medicine' | 'schedule' | 'dose'; label: string }
 
 /** Shared HTTP outcome classification. Connectivity loss never implies a rejected write. */

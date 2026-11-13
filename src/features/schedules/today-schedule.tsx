@@ -77,7 +77,7 @@ export function TodaySchedule({
     const heading = document.getElementById(`dose-${dose.id}`)
     const active = document.activeElement
     if (active === document.body || heading?.parentElement?.contains(active)) heading?.focus()
-    // A confirmed save announces itself with a Toast from DoseActions (108·F2).
+    // A confirmed save announces itself with a Toast from DoseActions.
     if (!reconciled) return setIntakeMessage('')
     const description = `${name(dose.medicineId)} scheduled for ${formatTime(dose.dueAt)}`
     setIntakeMessage(`${description} was already recorded as ${record.outcome.toLowerCase()}.`)

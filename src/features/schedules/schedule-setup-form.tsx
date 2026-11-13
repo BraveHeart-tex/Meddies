@@ -32,7 +32,7 @@ import { useScheduleAttempt } from './use-schedule-save'
 
 /**
  * Schedule setup for the `?schedule=ID` medicine, a full-screen modal that covers the tab bar
- * (212·C0). With no schedule it sets the first one (107·A7, S5, S6); otherwise it changes the
+ * (212·C0). With no schedule it sets the first one; otherwise it changes the
  * current Schedule version (215·A2 to S2). The form shows only once Meddies knows which;
  * `onSaved` runs after server confirmation.
  */

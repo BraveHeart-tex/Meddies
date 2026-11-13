@@ -6,7 +6,6 @@ on:
     paths-ignore:
       - docs/**
       - '**/*.md'
-      - .agents/skills/meddies-design/**
   workflow_dispatch:
 
 permissions:

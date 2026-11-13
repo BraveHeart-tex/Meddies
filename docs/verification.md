@@ -92,7 +92,9 @@ For meaningful UI changes (visible content, layout, typography, controls, feedba
 motion), inspect the affected screens at 402×874 CSS px, including loading, empty,
 populated, validation, saving and recovery states where the change affects them. Capture
 Today and Medications with the [screen-capture journey](../tests/browser/README.md#screen-captures);
-lab frames use `pnpm lab:capture <slug-prefix>` instead.
+lab frames use `pnpm lab:capture <slug-prefix>` instead. Compare against the screen's built frame,
+and give a significant visual change to a design-critical screen the
+[capture review](design/README.md#capture).
 
 Add focused checks by risk:
 

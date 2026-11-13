@@ -48,7 +48,7 @@ and an "Out of scope:" line naming the issue that owns each nearby item.
 
 ## Acceptance criteria
 
-- [ ] One checkable outcome per line, citing design frames as `107·M6`
+- [ ] One checkable outcome per line, citing design frames as `241·A3`
 ```
 
 - The parent is a native sub-issue link, not a body section.

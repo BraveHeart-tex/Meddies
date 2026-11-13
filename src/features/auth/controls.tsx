@@ -24,7 +24,7 @@ export function AuthControl({
 const savedNames = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' })
 const saveNouns = { medicine: 'medication', schedule: 'schedule', dose: 'dose' } as const
 
-/** D18: names the affected saves. Never claims a save was cancelled or lost. */
+/** The sign-out warning names the affected saves. Never claims a save was cancelled or lost. */
 function SaveWarning({ saves }: { saves: OutstandingSave[] }) {
   const names = saves.map((save) =>
     save.kind === 'schedule' ? `the schedule for ${save.label}` : save.label,

@@ -214,8 +214,6 @@ const eslintConfig = defineConfig([
     '.cache/**',
     '.browser-artifacts/**',
     '.impeccable',
-    // Design references run outside the production application.
-    '.agents/skills/meddies-design/**',
     // Default ignores of eslint-config-next:
     '.next/**',
     'out/**',

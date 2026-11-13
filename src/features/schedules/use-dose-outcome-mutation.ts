@@ -64,7 +64,7 @@ export function useDoseOutcomeMutation({
 
   const needsReview = save?.needsReview ?? false
   const problem = save?.problem ?? null
-  // An unconfirmed attempt keeps its problem until retried, reconciled or reviewed (D13).
+  // An unconfirmed attempt keeps its problem until retried, reconciled or reviewed.
   const uncertain = problem?.kind === 'uncertain' && !!save?.attempt
   return {
     submit(command: DoseCommand, form?: AttemptForm) {
@@ -87,7 +87,7 @@ export function useDoseOutcomeMutation({
     error: save?.error ?? '',
     needsReview,
     problem,
-    /** The attempt a reopened drawer restores, with its outcome and form values (D13, F6). */
+    /** The attempt a reopened drawer restores, with its outcome and form values. */
     attempt: save?.attempt ? { outcome: save.attempt.payload.outcome, form: save.form } : null,
     clearFeedback() {
       if (uncertain) return

@@ -57,7 +57,7 @@ export default async function HistoryPage({
       `/?returnTo=${encodeURIComponent(`/history${returnDate ? `?date=${returnDate}` : ''}`)}`,
     )
 
-  // A future or malformed date shows today instead (108·H6).
+  // A future or malformed date shows today instead.
   const notice = validDate ? undefined : ('invalid' as const)
   const date = validDate ? (requestedDate as string) : today
 

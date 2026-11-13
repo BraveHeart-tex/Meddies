@@ -2,7 +2,7 @@
 
 export const ALL_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6]
 
-/** Display order, Monday first (107·A7). */
+/** Display order, Monday first. */
 export const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
 
 export const WEEKDAY_NAMES = [

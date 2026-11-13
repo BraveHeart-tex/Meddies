@@ -14,7 +14,7 @@ import {
 import { datePicker, expectTime, pickTime } from './pickers'
 import { addDays, insertScheduledMedicine, insertTakenRecord } from './seed'
 
-// #110 steps 8 to 15 as one routine (108·W1 to W11, 109·G1, G2, S7). Interruptions at each
+// #110 steps 8 to 15 as one routine. Interruptions at each
 // step stay with their route specs.
 const initialScheduleTime = '2035-06-15T14:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
@@ -74,7 +74,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await expect(focusInside(row)).toHaveCount(1)
   }
 
-  await test.step('W1: Today groups doses and offers the next one', async () => {
+  await test.step('Today groups doses and offers the next one', async () => {
     await page.goto('/')
     await expect(groupHeadings).toHaveText([
       'Up next',
@@ -87,7 +87,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     ).toBeVisible()
   })
 
-  await test.step('W2: Taken on Up next opens the drawer without saving', async () => {
+  await test.step('Taken on Up next opens the drawer without saving', async () => {
     await page.getByRole('button', { name: `Record ${omega} at 14:00 as taken` }).click()
     await expect(dialog.getByRole('button', { name: 'I took it' })).toHaveAttribute(
       'aria-pressed',
@@ -98,7 +98,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await expect(doseStatus(omegaRow)).toHaveAccessibleDescription(/Due now/)
   })
 
-  await test.step('W3: saving marks the row and locks the drawer', async () => {
+  await test.step('saving marks the row and locks the drawer', async () => {
     await app.worker.hold(takenWrite)
     await dialog.getByRole('button', { name: 'Save as taken' }).click()
     await expect.poll(() => app.worker.held(takenWrite)).toBe(1)
@@ -109,7 +109,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await expect(dialog).toBeVisible()
   })
 
-  await test.step('W4: the confirmed dose moves to Logged and Up next moves on', async () => {
+  await test.step('the confirmed dose moves to Logged and Up next moves on', async () => {
     await app.worker.release(takenWrite)
     await expect(toastMessage(page, `${omega} 14:00 · taken at 14:00, 2 tablets`)).toBeVisible()
     // Focus after an Up next save is asserted in the W4 test below.
@@ -129,13 +129,13 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     ).toBeVisible()
   })
 
-  await test.step('W5: a Not logged row opens with no outcome chosen', async () => {
+  await test.step('a Not logged row opens with no outcome chosen', async () => {
     await doseTrigger(ironRow, iron).click()
     await expect(dialog.getByText('Nothing is recorded until you choose and save.')).toBeVisible()
     await expect(dialog.getByRole('button', { name: 'Choose what happened' })).toBeDisabled()
   })
 
-  await test.step('W6: Skip names the dose, records nothing else and returns focus', async () => {
+  await test.step('Skip names the dose, records nothing else and returns focus', async () => {
     await dialog.getByRole('button', { name: 'I skipped it' }).click()
     await expect(dialog.getByRole('group', { name: `Skip ${iron}` })).toBeVisible()
     await dialog.getByRole('button', { name: 'Save as skipped' }).click()
@@ -144,14 +144,14 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await expect(doseStatus(ironRow)).toHaveAccessibleDescription(/Skipped/)
   })
 
-  await test.step('W7: a recorded dose opens to a summary', async () => {
+  await test.step('a recorded dose opens to a summary', async () => {
     await doseTrigger(magnesiumRow, magnesium).click()
     await expect(dialog).toContainText('09:20')
     await expect(dialog).toContainText('1 tablet')
     await expect(dialog.getByRole('button', { name: 'Save changes' })).toHaveCount(0)
   })
 
-  await test.step('W8: edit intake starts from the recorded values and returns focus', async () => {
+  await test.step('edit intake starts from the recorded values and returns focus', async () => {
     await dialog.getByRole('button', { name: `Edit dose for ${magnesium} at 09:00` }).click()
     await expect(dialog.getByLabel(/^Amount/)).toHaveValue('1')
     await expectTime(dialog, 'Taken time in Istanbul', '09:20')
@@ -169,8 +169,8 @@ test('the daily routine runs from Today through History to sign out', async ({ p
   const pastOmega = historyRow(page, yesterday, instantOn(yesterday, '14:00'))
   const pastIron = historyRow(page, yesterday, instantOn(yesterday, '08:00'))
 
-  await test.step('W9: Previous day pushes a dated History', async () => {
-    // Today's History lists doses already due; 108·W11 is a few minutes after Omega's 14:00.
+  await test.step('Previous day pushes a dated History', async () => {
+    // Today's History lists doses already due; this is a few minutes after Omega's 14:00.
     await app.setScheduleTime(`${today}T14:03:00+03:00`)
     await nav.getByRole('link', { name: 'History' }).click()
     await expect(datePicker(page, 'Choose a date')).toHaveText('Today, Fri 15 Jun')
@@ -187,7 +187,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await expect(pastIron.getByRole('button')).toHaveCount(0)
   })
 
-  await test.step('W10: correct an outcome and return focus to its row', async () => {
+  await test.step('correct an outcome and return focus to its row', async () => {
     await doseTrigger(pastOmega, omega).click()
     await dialog.getByRole('button', { name: `Change dose for ${omega} at 14:00` }).click()
     await expect(dialog.getByRole('button', { name: 'I took it' })).toBeDisabled()
@@ -202,7 +202,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await expect(pastOmega).not.toContainText('took')
   })
 
-  await test.step('W11: Back returns to the date seen before', async () => {
+  await test.step('Back returns to the date seen before', async () => {
     await page.goBack()
     await expect(page).toHaveURL(`${app.origin}/history`)
     await expect(datePicker(page, 'Choose a date')).toHaveText('Today, Fri 15 Jun')
@@ -213,7 +213,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await expect(page.getByText(evening)).toHaveCount(0)
   })
 
-  await test.step('G1, G2, S7: Settings signs out to a private sign-in', async () => {
+  await test.step('Settings signs out to a private sign-in', async () => {
     let finishSignOut = () => {}
     const signOutHeld = new Promise<void>((done) => (finishSignOut = done))
     await page.route('**/api/auth/signout', async (route) => {
@@ -235,9 +235,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
 })
 
 // Allowed reason: real pointer gestures, including focus after the drawer exit transition.
-test('W4: saving taken and skipped from Up next returns focus to each saved row', async ({
-  page,
-}) => {
+test('saving taken and skipped from Up next returns focus to each saved row', async ({ page }) => {
   await page.goto('/')
   for (const [outcome, label, time] of [
     ['taken', omega, '14:00'],

@@ -9,10 +9,10 @@ import { DoseStatusBadge } from './dose-status-badge'
 import { useSchedulingClock } from './scheduling-clock'
 
 /**
- * The drawer's scheduled time with live status (108·R1, R6): "Scheduled 08:00 today" or
+ * The drawer's scheduled time with live status: "Scheduled 08:00 today" or
  * "Scheduled 22:30 on Thu 5 Nov". The status follows Today's refreshes, so a due-time rollover
  * moves it without touching the form. While saving it reads "Saving · Taken"; an unconfirmed
- * save reads "Might not have saved" (110·D21). Renders inside the open drawer, after hydration.
+ * save reads "Might not have saved". Renders inside the open drawer, after hydration.
  */
 export function ScheduledChip({
   dose,

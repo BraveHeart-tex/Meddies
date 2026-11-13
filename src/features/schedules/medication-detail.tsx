@@ -67,7 +67,7 @@ export function ResumedScheduleAlert({
 }
 
 /**
- * The `?medicine=ID` page: 110 Fix 1's header above the schedule, 107·D1 to D3, and Change
+ * The `?medicine=ID` page (238·A3): the Back row and identity header above the schedule, and Change
  * schedule, Pause and Stop schedule under it, or Resume and Stop schedule once paused (215·A1,
  * S3, S4; 227·A13 to A16; 233·A1 to A8, S3, S4). A running schedule shows its Last day, a paused
  * one the day it paused, an Ended one the day it ended (227·A13, A14, A17; 233·A4, A5).

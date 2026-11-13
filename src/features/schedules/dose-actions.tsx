@@ -74,7 +74,7 @@ export function DoseActions({
     today: () => istanbulDate(clock.now()),
     onRecorded(record, superseded) {
       onRecorded?.(record)
-      // Confirmed by the server: a Toast without Undo (108·F2, C5).
+      // Confirmed by the server: a Toast without Undo.
       toast.add({
         title: superseded
           ? 'Your earlier save went through. This dose has changed since then.'
@@ -95,7 +95,7 @@ export function DoseActions({
       setEditor(null)
       setDrawerOpen(false)
       setOpenedWithoutOutcome(false)
-      // Up next's button now shows the following dose, so the close must not return to it (108·W4).
+      // Up next's button now shows the following dose, so the close must not return to it.
       returnFocus.current = rowTrigger.current
       requestAnimationFrame(() => rowTrigger.current?.focus())
     },
@@ -136,7 +136,7 @@ export function DoseActions({
     }
   }
 
-  // Reopening an unconfirmed attempt shows its details with Retry (D13, F6).
+  // Reopening an unconfirmed attempt shows its details with Retry.
   const unconfirmed = problem?.kind === 'uncertain' && attempt !== null && !needsReview
   function openDrawer() {
     returnFocus.current = rowTrigger.current
@@ -332,7 +332,7 @@ export function DoseActions({
             problem={editor === 'Taken' && attemptMatches('Taken') ? problem : null}
             mode={correcting && recorded ? 'correct' : 'record'}
             restore={attempt?.outcome === 'Taken' ? attempt.form : undefined}
-            // An unconfirmed attempt's own values win over any draft (D13).
+            // An unconfirmed attempt's own values win over any draft.
             draftKey={correcting || attempt?.outcome === 'Taken' ? null : draft.takenKey}
             onOpen={closeEditor}
             onSubmit={(details, form) => save({ outcome: 'Taken', ...details }, form)}

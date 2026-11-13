@@ -11,8 +11,8 @@ import { historyDayQuery } from './queries'
 /**
  * The selected History date's results, owned by Query after hydration. The date comes from the
  * URL, so Previous, Next and the DatePicker change it without a server round trip: a cached date
- * shows at once and refreshes quietly, an uncached one shows the 108·H4 fallback while it reads.
- * `notice` is the server's invalid-date notice (108·H6) for the date first shown.
+ * shows at once and refreshes quietly, an uncached one shows the results fallback while it reads.
+ * `notice` is the server's invalid-date notice for the date first shown.
  */
 export function HistoryResults({ today, notice }: { today: string; notice?: 'invalid' }) {
   const date = useHistoryDate(today)
