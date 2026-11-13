@@ -310,6 +310,8 @@ describe('with no cache', () => {
     expect(screen.queryByText(count(0))).not.toBeInTheDocument()
   })
 
+  /* eslint-disable meddies/no-cosmetic-class-assertions -- the header Add's emphasis follows
+     whether the list is known to be empty; its variant class is the only observable signal. */
   test('the header Add is soft only while the list is known to be empty', async () => {
     medicinesApi([])
     renderList()
@@ -327,6 +329,7 @@ describe('with no cache', () => {
     expect(await screen.findByText(count(1))).toBeVisible()
     expect(screen.getByRole('link', { name: 'Add a medication' })).toHaveClass('bg-primary')
   })
+  /* eslint-enable meddies/no-cosmetic-class-assertions */
 
   test('a medication with no schedule says so in its list row', async () => {
     medicinesApi(listOf(1))

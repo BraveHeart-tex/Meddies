@@ -31,28 +31,31 @@ Work **lean** throughout:
    spec section and design frame the issue cites.
    _Done when_ each acceptance criterion maps to the rule or frame that governs it.
 
-3. **Set test seams.** The seams are the acceptance criteria, each proven at the
-   [cheapest level](../../../docs/verification.md#cheapest-proof). Ask the user only when an
-   ambiguity changes scope; otherwise pick the reading that matches the cited spec and
-   name it in the evidence.
-   _Done when_ every criterion has a named test or check.
+3. **Name the evidence.** Each acceptance criterion names its evidence: an existing test, a
+   new test where [one is required](../../../docs/verification.md#when-a-test-is-required),
+   or a visual or manual check. A required test goes at the
+   [cheapest level](../../../docs/verification.md#cheapest-proof) and names the regression it
+   catches. Ask the user only when an ambiguity changes scope; otherwise pick the reading
+   that matches the cited spec and name it in the evidence.
+   _Done when_ every criterion names its evidence.
 
-4. **Build.** Test-first at those seams (use the `tdd` skill). Iterate on
-   `pnpm test:related <changed files>` and `pnpm typecheck`. Work that touches a
+4. **Build.** Test-first only for the new tests step 3 requires (use the `tdd` skill).
+   While iterating, run only `pnpm test:related <changed files>` and `pnpm typecheck`. Work that touches a
    design-critical screen follows [built frames](../../../docs/design/README.md#built-frames):
    a design's build ticket moves its frames for design-critical screens to `built/` and
    deletes the rest, and a screen change updates its [outline](../../../docs/design/README.md#outlines).
    A significant visual change runs `pnpm lab:capture` for those frames before building and
    again after.
-   _Done when_ every seam's test passes, and every changed outline and capture is reviewed.
+   _Done when_ every new test passes, and every changed outline and capture is reviewed.
 
 5. **Review.** Read `git diff $base` against two axes: the standards in AGENTS.md and the
    docs from step 2, and each acceptance criterion. Fix what you accept.
-   _Done when_ every criterion points to code plus a passing test, and every finding is
+   _Done when_ every criterion points to code plus its named evidence, and every finding is
    fixed or rejected with a one-line reason.
 
-6. **Verify.** `pnpm verify:local >"$log" 2>&1`, then read the summary. On failure, fix,
-   rerun the failed cases alone until they pass, then rerun `pnpm verify:local`.
+6. **Verify.** Run `pnpm verify:local >"$log" 2>&1` once, then read the summary. On
+   failure, fix, rerun only the failed cases until they pass, then run `pnpm verify:local`
+   once more.
    _Done when_ `pnpm verify:local` exits 0 on the final code.
 
 7. **Ship.** Commit per [commits](../../../docs/commits.md) and push to main. Tick each

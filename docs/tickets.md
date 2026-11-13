@@ -60,11 +60,14 @@ and an "Out of scope:" line naming the issue that owns each nearby item.
   blocker cannot be linked.
 - Describe behaviour, not file paths. Link stable docs and design artifacts.
 - Five acceptance criteria at most. More means the ticket holds two slices: split it.
+- Each criterion names its evidence: an existing test, a new test where
+  [one is required](verification.md#when-a-test-is-required), or a visual or manual check.
+  Never a test per criterion by default.
 - Evidence is an assertion, not a record: "the journey asserts layout shift ≤ 0.01",
   not "measure and record a budget". The assertion's comment carries the justification.
 - A ticket may ask for a browser journey only by naming an
-  [allowed reason](verification.md#when-a-journey-is-allowed). Otherwise it says
-  "Tests prove…".
+  [allowed reason](verification.md#when-a-journey-is-allowed). Otherwise it names a cheaper
+  proof: "Tests prove…", or a visual or manual check.
 - A ticket with sub-issues is a parent. It lists the ownership list and the shared rules,
   and its only criterion is that the sub-issues are closed.
 

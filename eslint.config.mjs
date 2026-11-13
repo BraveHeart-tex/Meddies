@@ -5,6 +5,7 @@ import playwright from 'eslint-plugin-playwright'
 import architecture from './eslint-rules/architecture.mjs'
 import bannedUiWords from './eslint-rules/banned-ui-words.mjs'
 import labClientImports from './eslint-rules/lab-client-imports.mjs'
+import noCosmeticClassAssertions from './eslint-rules/no-cosmetic-class-assertions.mjs'
 import noRawDateFormat from './eslint-rules/no-raw-date-format.mjs'
 import noWidthLoopTests from './eslint-rules/no-width-loop-tests.mjs'
 
@@ -14,6 +15,7 @@ const meddies = {
     architecture,
     'banned-ui-words': bannedUiWords,
     'lab-client-imports': labClientImports,
+    'no-cosmetic-class-assertions': noCosmeticClassAssertions,
     'no-raw-date-format': noRawDateFormat,
     'no-width-loop-tests': noWidthLoopTests,
   },
@@ -177,6 +179,13 @@ const eslintConfig = defineConfig([
         },
       ],
     },
+  },
+  // Component tests assert behavior, not styling (docs/verification.md). Exceptions need an
+  // inline disable naming why the class is the behavior's only observable signal.
+  {
+    files: ['tests/**/*.test.tsx'],
+    plugins: { meddies },
+    rules: { 'meddies/no-cosmetic-class-assertions': 'error' },
   },
   // Browser journeys: role-first locators, web-first assertions, no fixed waits.
   {

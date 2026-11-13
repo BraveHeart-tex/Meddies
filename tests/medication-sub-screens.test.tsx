@@ -265,7 +265,6 @@ describe('the medication page', () => {
     expect(emptyState?.querySelector('svg.lucide-clock')).toHaveAttribute('aria-hidden', 'true')
     expect(screen.getByText("Today won't list Magnesium until it has a schedule.")).toBeVisible()
     expect(setSchedule()).toBeVisible()
-    expect(setSchedule()).toHaveClass('bg-primary')
   })
 
   test('not found does not wait for the schedule read, or show its failure', async () => {

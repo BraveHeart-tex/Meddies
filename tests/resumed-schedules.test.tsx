@@ -176,10 +176,9 @@ async function openResume(view: { rerender: (ui: React.ReactElement) => void }, 
 }
 
 describe('Resume a Clock schedule', () => {
-  test('233·A4 Resume is primary beside Stop schedule', async () => {
+  test('233·A4 Resume replaces Change schedule beside Stop schedule', async () => {
     await openDetail([clockPaused])
     expect(resumeButton().nextElementSibling).toBe(button('Stop schedule'))
-    expect(resumeButton()).toHaveClass('bg-primary')
     expect(screen.queryByRole('link', { name: 'Change schedule' })).not.toBeInTheDocument()
   })
 

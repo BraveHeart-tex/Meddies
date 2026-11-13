@@ -144,12 +144,10 @@ async function pause(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('Pause', () => {
-  test('233·A1, A2 sits beside Stop schedule under a full-width Change schedule', async () => {
+  test('233·A1, A2 sits beside Stop schedule under Change schedule', async () => {
     await openDetail([version(1, { startDate: '2026-11-12' })])
     const pauseButton = button('Pause')
     const change = screen.getByRole('link', { name: 'Change schedule' })
-    expect(pauseButton).toHaveClass('border')
-    expect(change).toHaveClass('col-span-full')
     expect(pauseButton.nextElementSibling).toBe(button('Stop schedule'))
     expect(change.nextElementSibling).toBe(pauseButton)
   })

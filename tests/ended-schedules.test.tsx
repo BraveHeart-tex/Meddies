@@ -181,7 +181,6 @@ describe('Stop schedule', () => {
   test('227·A13, A14 sits beside Change schedule on a running or not-yet-started schedule', async () => {
     await openDetail([version(1, magnesium.id, { startDate: '2026-11-12' })])
     const stop = button('Stop schedule')
-    expect(stop).toHaveClass('text-destructive')
     expect(stop.parentElement).toContainElement(
       screen.getByRole('link', { name: 'Change schedule' }),
     )

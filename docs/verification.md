@@ -15,19 +15,57 @@ CI also runs every Vitest project in parallel with journeys before Release
 The verify and journey wrappers reuse a build only when its inputs are unchanged and their
 success marker exists, so a hand-run `pnpm build` is always rebuilt.
 
-While iterating, run the unit and component tests that import the changed files, rather
-than a guessed list; `pnpm verify:local` stays the done gate:
+Validation runs in this order:
 
-```sh
-pnpm test:related src/features/schedules/schedule-setup-form.tsx
-```
+1. While iterating, run the unit and component tests that import the changed files, rather
+   than a guessed list:
+
+   ```sh
+   pnpm test:related src/features/schedules/schedule-setup-form.tsx
+   ```
+
+2. Run `pnpm verify:local` once, at the end, on the final code. It is the done gate.
+3. After a failure, fix it and rerun only the failed cases until they pass, then run
+   `pnpm verify:local` once more.
 
 Test commands: [tests/README.md](../tests/README.md).
 
+## When a test is required
+
+Add a test when it catches a credible regression, not one per acceptance criterion.
+
+- **A test is required for:**
+  - a bug fix, at the lowest level that fails without the fix
+  - new logic: scheduling, dates, quantities, parsing
+  - a new save or recovery state change
+  - a new Worker operation or migration. It gets real-D1 cases for the risks it actually
+    introduces, such as retry identity, owner scope, stale revisions, races or existing
+    rows, chosen per operation rather than from a fixed matrix.
+- **No new test for:**
+  - copy, styling or layout
+  - a pure move, reviewed with the [unmoved diff](#refactors)
+  - design lab frames beyond the render smoke, the lab HTTP test that renders every
+    registered frame ([design lab rules](design/README.md#rules))
+  - behavior an existing test already proves; the evidence cites that test instead
+
+Each test names the regression it catches. A shared primitive is tested once; each feature
+that uses it proves its wiring with one case.
+
+Assert behavior, not cosmetic implementation detail: no styling utility classes, sibling
+order that only expresses layout, or pixel values outside `@visual`. A class or attribute
+assertion stays allowed when it is the behavior's observable signal, such as a state with
+no accessible equivalent; `toHaveClass` itself is not banned. Lint fails `toHaveClass` with
+a styling utility class in a component test; a real exception is an inline disable stating
+the reason.
+
+Every acceptance criterion names its evidence: an existing test, a new test where one is
+required, or a [visual](#visual-verification) or [manual](#manual-checks) check. Test-first
+applies only where a test is required.
+
 ## Cheapest proof
 
-Prove each behavior at the cheapest level that can prove it, with delays and failures
-injected through MSW or journey fixtures, never timers in product code.
+Prove each behavior that needs a test at the cheapest level that can prove it, with delays
+and failures injected through MSW or journey fixtures, never timers in product code.
 
 - **Unit tests** prove logic: parsing, scheduling rules, reducers.
 - **[Component tests](../tests/README.md#component-tests)** prove UI states with MSW:
@@ -36,8 +74,7 @@ injected through MSW or journey fixtures, never timers in product code.
 - **[Browser journeys](../tests/browser/README.md)** prove only the
   [allowed reasons](#when-a-journey-is-allowed).
 
-A bug's regression test goes at the lowest level that fails without the fix. A purely
-visual fix gets a [visual check](#visual-verification) with no CI test.
+A purely visual fix gets a [visual check](#visual-verification) with no CI test.
 
 Every change to data-driven UI reviews each applicable state in
 [DESIGN.md](../DESIGN.md#loading-and-saving) against the [Next.js rules](nextjs.md). Prove
@@ -51,7 +88,8 @@ failure blocks Release. `@visual` journeys run only on request with
 
 ### When a journey is allowed
 
-A journey is allowed only when it proves one of these reasons:
+A journey is allowed only when it proves one of these reasons. The list is closed: a new
+reason changes this rule.
 
 - navigation during a save
 - Back, Forward or reload behavior
@@ -59,6 +97,7 @@ A journey is allowed only when it proves one of these reasons:
 - session end with real cookies
 - real pointer gestures
 - data consistency across routes
+- focus moved by script after hydration or a route change
 
 These never earn a journey: alignment, spacing, form validation, copy, tap-target size and
 width variants. Everything else is proven at a [cheaper level](#cheapest-proof). `@visual`
@@ -145,7 +184,8 @@ needs a reason. Prettier rewraps after indentation changes also remain.
 
 ## Evidence
 
-Record one evidence comment in the active GitHub issue: the commit, journeys added or
+Record one evidence comment in the active GitHub issue: the commit, each acceptance
+criterion's evidence (existing test, new test, or visual or manual check), journeys added or
 changed (by file), visual and manual checks performed, limitations, unverified deployment
 behavior and outstanding device checks. The assertions are the evidence: link them and
 existing evidence rather than copying measurements, results or another issue's evidence.
