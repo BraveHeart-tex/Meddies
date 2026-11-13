@@ -29,7 +29,7 @@ export function HistoryResults({ today, notice }: { today: string; notice?: 'inv
   if (dayError || medicines.loadError) {
     const retry = () => {
       // The alert and its button give way to the loading state, so focus follows to the day.
-      requestDayFocus()
+      requestDayFocus(date)
       if (dayError) void day.refetch()
       if (medicines.loadError) medicines.retry()
     }

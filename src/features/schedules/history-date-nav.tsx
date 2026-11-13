@@ -22,22 +22,22 @@ export function useHistoryDate(today: string) {
 /** The current History day's focus target: its heading, or the alert or empty message. */
 export const dayHeadingId = 'history-day-heading'
 
-// Set by a date change here and consumed by the next History day that mounts, so focus moves to
-// its heading after navigation but not on a direct load or reload (#108 a11y).
-let focusRequested = false
+// Only the requested date may consume focus. The entry day can mount late during hydration
+// after the date bar has already navigated; it must not steal the selected day's request (#262).
+let focusRequested: string | undefined
 
 /** Moves focus to the next History day that mounts, as after a date change or Retry. */
-export function requestDayFocus() {
-  focusRequested = true
+export function requestDayFocus(date: string) {
+  focusRequested = date
 }
 
 /** Focuses `target` when it mounts after a History date change. */
-export function useHistoryDayFocus(target: RefObject<HTMLElement | null>) {
+export function useHistoryDayFocus(target: RefObject<HTMLElement | null>, date: string) {
   useEffect(() => {
-    if (!focusRequested) return
-    focusRequested = false
+    if (focusRequested !== date || !target.current) return
+    focusRequested = undefined
     target.current?.focus()
-  }, [target])
+  }, [target, date])
 }
 
 // Resolved when read, so it always names the day on screen.
@@ -68,7 +68,7 @@ export function HistoryDateNav({ today }: { today: string }) {
   function go(next: string) {
     if (next === value || next > today) return
     setValue(next)
-    requestDayFocus()
+    requestDayFocus(next)
     window.history.pushState(null, '', historyHref(next))
   }
   return (

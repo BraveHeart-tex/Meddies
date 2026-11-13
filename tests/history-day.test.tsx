@@ -156,6 +156,18 @@ test('stepping to another day focuses its heading', async () => {
   expect(screen.getByRole('heading', { name: 'Thursday, 5 November, 1 dose' })).toHaveFocus()
 })
 
+test('a late entry day cannot consume focus requested for the failed selected day', async () => {
+  render(<HistoryDateNav today="2026-11-06" />)
+  const previous = screen.getByRole('button', { name: 'Previous day' })
+  await userEvent.click(previous)
+  // The entry day can finish hydrating after the date bar has already changed the URL.
+  const entry = renderDay({ date: '2026-11-06' })
+  expect(previous).toHaveFocus()
+  entry.unmount()
+  renderDay({ date: '2026-11-05', result: { status: 'unavailable', retry: vi.fn() } })
+  expect(screen.getByText(/^History for .* didn't load just now\.$/)).toHaveFocus()
+})
+
 test('picking an empty day focuses its title, which names the day', async () => {
   render(<HistoryDateNav today="2026-11-06" />)
   await userEvent.click(screen.getByRole('button', { name: /Choose a date/ }))

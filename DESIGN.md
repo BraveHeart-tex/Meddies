@@ -16,6 +16,7 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 
 - Build with the shadcn components in `src/components/ui` (Base UI primitives), themed to Cozy Care through their variants: Button, Drawer, Card, Item, Badge, ToggleGroup, Field, Input, Select, DatePicker (Popover + Calendar), TimePicker (hour and minute Selects), Alert, Toast. They cover every drawer, select, option set and status pill; dates and times always use DatePicker and TimePicker, never native date or time inputs.
 - Use real route links for navigation.
+- On entry, focus the page heading. A History date change or Retry focuses the selected day's title, including empty and error titles; a late entry day must not consume that focus request. Script-focused headings and titles have no control ring, and later keyboard interaction keeps its focus.
 - New places push a history entry. A confirmed medicine or schedule save replaces the URL with that medication's page (`?medicine=ID`) and shows the confirmation there, so Back never returns to a filled form and reload keeps the saved result. The dose drawer never changes the URL.
 - The bottom bar holds four tabs: Today, Medications, History and Settings (sliders icon), and the current page's tab is selected. Tabs share the bar's width equally but never shrink below their label, so _Medications_ stays whole at 320px (`238·A1`-`A5`).
 - Page headers carry only page actions beside the title, never Settings; a title-only header stands alone with no spacer. A Medication sub-screen's row is its Back link alone.

@@ -47,7 +47,7 @@ export function HistoryDay({
   notice?: 'invalid'
 }) {
   const focusTarget = useRef<HTMLHeadingElement>(null)
-  useHistoryDayFocus(focusTarget)
+  useHistoryDayFocus(focusTarget, date)
   useEffect(() => {
     if (notice === 'invalid') window.history.replaceState(null, '', historyHref(today))
   }, [notice, today])

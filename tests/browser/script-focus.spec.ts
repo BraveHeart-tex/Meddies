@@ -90,12 +90,15 @@ function focusScenarios(checkRing: (actual: unknown, expected: unknown) => void)
 
   test('the History day title stays focused when the day fails to load', async ({ page, app }) => {
     await page.goto('/history')
+    await expect(page.getByRole('heading', { level: 1, name: 'History' })).toBeFocused()
     await expect(page.getByText('Nothing due yet today')).toBeVisible()
     app.worker.fail({ method: 'POST', path: '/schedules', operation: 'listOutcomes' }, 503)
     await page.getByRole('button', { name: 'Previous day' }).press('Enter')
     const dayTitle = page.getByText(/^History for .* didn't load just now\.$/)
     await expect(dayTitle).toBeFocused()
     checkRing(await focusRing(dayTitle), noRing)
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('button', { name: 'Try this date again' })).toBeFocused()
   })
 }
 
