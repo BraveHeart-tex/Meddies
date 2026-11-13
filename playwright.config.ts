@@ -9,8 +9,8 @@ export default defineConfig({
   outputDir: '.browser-artifacts',
   globalSetup: './tests/browser/global-setup.ts',
   // Each test owns its Next.js server, port, in-memory D1 and clock file, so spec files run in
-  // parallel locally. CI keeps one worker for its smaller runner; dev mode shares the
-  // .next/dev lock, so it stays serial too.
+  // parallel locally. CI retains its last clean count of one: the 2/3-worker trial found
+  // dose drawer flakes (#255). Dev mode shares the .next/dev lock, so it stays serial too.
   workers: process.env.CI || process.env.MEDDIES_BROWSER_DEV === '1' ? 1 : 3,
   fullyParallel: false,
   retries: 0,
