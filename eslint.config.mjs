@@ -4,6 +4,7 @@ import prettier from 'eslint-config-prettier/flat'
 import playwright from 'eslint-plugin-playwright'
 import architecture from './eslint-rules/architecture.mjs'
 import bannedUiWords from './eslint-rules/banned-ui-words.mjs'
+import labClientImports from './eslint-rules/lab-client-imports.mjs'
 import noRawDateFormat from './eslint-rules/no-raw-date-format.mjs'
 import noWidthLoopTests from './eslint-rules/no-width-loop-tests.mjs'
 
@@ -12,6 +13,7 @@ const meddies = {
   rules: {
     architecture,
     'banned-ui-words': bannedUiWords,
+    'lab-client-imports': labClientImports,
     'no-raw-date-format': noRawDateFormat,
     'no-width-loop-tests': noWidthLoopTests,
   },
@@ -92,6 +94,12 @@ const eslintConfig = defineConfig([
     files: ['src/**/*.tsx'],
     plugins: { meddies },
     rules: { 'meddies/banned-ui-words': 'error' },
+  },
+  // Lab frame files render on the server: only components from client modules.
+  {
+    files: ['src/features/design-lab/frames.tsx', 'src/features/design-lab/*-frames.tsx'],
+    plugins: { meddies },
+    rules: { 'meddies/lab-client-imports': 'error' },
   },
   // Every UI date and time comes from the central date module (docs/copy.md).
   {

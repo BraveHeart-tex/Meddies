@@ -51,6 +51,9 @@ Lab rules that the checks enforce or that bit before:
 - **Registry imports stay hook-free.** `frames.tsx` is a server module, so frame files it
   imports render client screens marked `'use client'` and hold no hooks themselves. The
   lab HTTP test renders every registered frame, so a break fails `pnpm verify:local`.
+- **Frame files take only components from client modules.** Plain values a frame needs live in
+  `<topic>-model.ts`; `meddies/lab-client-imports` fails a frame file that imports anything else
+  from a `'use client'` module.
 - **Shared example data lives in `lab-fixtures.ts`**, typed against feature contracts, so
   frames show the same medicine, clock and schedules.
 - **Server-rendered ids are stable.** Frames render on the server first, so ids come from
