@@ -6,7 +6,7 @@ on:
     outputs:
       eligible:
         description: Whether this SHA still qualifies for release
-        value: ${{ jobs.verify.outputs.eligible }}
+        value: ${{ jobs.eligibility.outputs.eligible }}
 
 permissions:
   contents: read
@@ -17,8 +17,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  verify:
-    name: Verify
+  eligibility:
+    name: Release eligibility
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -40,16 +40,38 @@ jobs:
           current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           git -c credential.helper= -c 'credential.helper=!gh auth git-credential' fetch --no-tags origin "$current"
           node scripts/release-guard.mjs "$GITHUB_SHA" "$current" --early
+
+  vitest:
+    name: Vitest
+    needs: eligibility
+    if: needs.eligibility.outputs.eligible == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup-dependencies
-        if: steps.early.outputs.eligible == 'true'
+      # HTTP integration tests start the production server from this build.
+      - run: pnpm build
+      # No project filter: future projects belong to the release gate too.
+      - run: pnpm test
+
+  journeys:
+    name: Journeys
+    needs: eligibility
+    if: needs.eligibility.outputs.eligible == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-dependencies
       - run: pnpm lint
-        if: steps.early.outputs.eligible == 'true'
       - run: pnpm format:check
-        if: steps.early.outputs.eligible == 'true'
       - run: pnpm typecheck
-        if: steps.early.outputs.eligible == 'true'
       - name: Restore Next.js build cache
-        if: steps.early.outputs.eligible == 'true'
         id: next-cache
         uses: actions/cache/restore@v4
         with:
@@ -59,50 +81,45 @@ jobs:
             ${{ runner.os }}-next-cache-${{ hashFiles('pnpm-lock.yaml', 'next.config.ts') }}-
             ${{ runner.os }}-next-cache-
       - name: Production build
-        if: steps.early.outputs.eligible == 'true'
         env:
           CI_SKIP_BUILD_TYPECHECK: '1'
         run: pnpm build
       # Only main saves, so pull requests cannot poison or evict its cache.
       - name: Save Next.js build cache
-        if: steps.early.outputs.eligible == 'true' && (github.ref == 'refs/heads/main' && steps.next-cache.outputs.cache-hit != 'true')
+        if: (github.ref == 'refs/heads/main' && steps.next-cache.outputs.cache-hit != 'true')
         uses: actions/cache/save@v4
         with:
           path: .next/cache
           key: ${{ steps.next-cache.outputs.cache-primary-key }}
 
       - name: Worker build
-        if: steps.early.outputs.eligible == 'true'
         run: pnpm worker:build
       - name: Playwright version
-        if: steps.early.outputs.eligible == 'true'
         id: playwright
         run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
       # Restore and save separately so a failing journey still saves a fresh browser cache.
       - name: Restore Playwright browsers
-        if: steps.early.outputs.eligible == 'true'
         id: playwright-cache
         uses: actions/cache/restore@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
       - name: Install Chromium
-        if: steps.early.outputs.eligible == 'true' && (steps.playwright-cache.outputs.cache-hit != 'true')
+        if: (steps.playwright-cache.outputs.cache-hit != 'true')
         run: pnpm exec playwright install --with-deps chromium
       - name: Save Playwright browsers
-        if: steps.early.outputs.eligible == 'true' && (steps.playwright-cache.outputs.cache-hit != 'true')
+        if: (steps.playwright-cache.outputs.cache-hit != 'true')
         uses: actions/cache/save@v4
         with:
           path: ~/.cache/ms-playwright
           key: ${{ steps.playwright-cache.outputs.cache-primary-key }}
       - name: Install Chromium system dependencies
-        if: steps.early.outputs.eligible == 'true' && (steps.playwright-cache.outputs.cache-hit == 'true')
+        if: (steps.playwright-cache.outputs.cache-hit == 'true')
         run: pnpm exec playwright install-deps chromium
       - name: Browser journeys
-        if: steps.early.outputs.eligible == 'true'
         run: pnpm test:browser
       - name: Upload browser artifacts
-        if: steps.early.outputs.eligible == 'true' && (failure())
+        if: (failure())
         uses: actions/upload-artifact@v4
         with:
           name: browser-artifacts-${{ github.run_attempt }}
