@@ -1,16 +1,34 @@
-import type { Locator, Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 
 // Escape hatches for behavior Playwright cannot drive through user-facing APIs.
 // page.evaluate is allowed only in this file; give each helper a reason.
 
 /**
- * Visible links can precede hydration; no user-facing API proves the client router owns
- * history. Next.js 16.4.4 sets __NA when its App Router commits the history entry. An
+ * Next.js 16.4.4 sets __NA when its App Router commits the history entry. This proves router
+ * initialization, not hydration of a particular link (use waitForClientLink for that). An
  * upgrade could rename this internal marker, causing this helper to time out instead of
  * silently allowing a full document navigation.
  */
 export async function waitForClientRouter(page: Page) {
   await page.waitForFunction(() => window.history.state?.__NA === true)
+}
+
+/**
+ * The router can commit history before a streamed Link hydrates (#261). Wait for the actual
+ * anchor's React click handler, not just the router marker. React 19 stores hydrated DOM props
+ * under __reactProps$; a renamed internal key fails closed by timing out. No visible state
+ * distinguishes the server-rendered anchor from its client-owned version.
+ */
+export async function waitForClientLink(link: Locator) {
+  await expect
+    .poll(() =>
+      link.evaluate((element) => {
+        const key = Object.keys(element).find((name) => name.startsWith('__reactProps$'))
+        const props = key ? (element as unknown as Record<string, unknown>)[key] : undefined
+        return typeof (props as { onClick?: unknown } | undefined)?.onClick === 'function'
+      }),
+    )
+    .toBe(true)
 }
 
 /**

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
-import { waitForClientRouter } from './actions'
+import { waitForClientLink, waitForClientRouter } from './actions'
 import { expect, test } from './fixtures'
 import { doseRow, doseStatus, doseTrigger, drawer, toastMessage } from './locators'
 import { insertScheduledMedicine } from './seed'
@@ -33,7 +33,9 @@ test.use({
 async function openToday(page: Page) {
   await page.goto('/medications')
   await waitForClientRouter(page)
-  await page.getByRole('link', { name: 'Today', exact: true }).click()
+  const todayLink = page.getByRole('link', { name: 'Today', exact: true })
+  await waitForClientLink(todayLink)
+  await todayLink.click()
   await expect(doseStatus(doseRow(page, dueAt))).toHaveAccessibleDescription('Not logged')
 }
 
@@ -45,19 +47,34 @@ async function startTaken(page: Page, amount: string) {
   return field
 }
 
-const returnToToday = (page: Page) =>
-  page.getByRole('link', { name: 'Today', exact: true }).first().click()
+async function returnToToday(page: Page) {
+  const link = page.getByRole('link', { name: 'Today', exact: true })
+  await waitForClientLink(link)
+  await link.click()
+}
 
 // Allowed reasons: Back and Forward restore a session draft; navigation preserves a pending save.
 test('Back and Forward restore the drawer draft; a pending save confirms after leaving Today', async ({
   page,
   app,
 }) => {
+  // A document load intentionally loses session memory. Diagnose it before draft assertions.
+  const documents: string[] = []
+  page.on('request', (request) => {
+    if (request.isNavigationRequest() && request.frame() === page.mainFrame())
+      documents.push(request.url())
+  })
+  const expectSessionDocument = (stage: string) =>
+    expect(documents, `${stage} keeps the session document`).toEqual([`${app.origin}/medications`])
   await openToday(page)
+  expectSessionDocument('Today entry')
   await startTaken(page, '2')
   await page.goBack()
   await expect(page).toHaveURL(`${app.origin}/medications`)
+  expectSessionDocument('Back')
   await page.goForward()
+  await expect(page).toHaveURL(`${app.origin}/`)
+  expectSessionDocument('Forward')
   await expect(drawer(page).getByRole('button', { name: 'I took it' })).toHaveAttribute(
     'aria-pressed',
     'true',
@@ -69,11 +86,14 @@ test('Back and Forward restore the drawer draft; a pending save confirms after l
   await app.worker.hold(takenWrite)
   await drawer(page).getByRole('button', { name: 'Save as taken' }).click()
   await expect.poll(() => app.worker.held(takenWrite)).toBe(1)
+  await expect(doseRow(page, dueAt)).toContainText('Saving · Taken')
   // The modal drawer covers the nav, so leave the way a phone does: Back.
   await page.goBack()
   await expect(page).toHaveURL(`${app.origin}/medications`)
+  expectSessionDocument('Back during the Pending save')
   await app.worker.release(takenWrite)
   await expect(toastMessage(page, `${label} 08:00 · taken at 12:00, 2 tablets`)).toBeVisible()
   await returnToToday(page)
   await expect(doseStatus(doseRow(page, dueAt))).toHaveAccessibleDescription(/Taken/)
+  expectSessionDocument('Return after confirmation')
 })
