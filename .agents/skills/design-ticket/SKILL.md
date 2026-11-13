@@ -22,7 +22,8 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
 2. **Build three directions.** Each direction is a set of lab frames from production
    components: `<n>-a1…`, `<n>-b1…`, `<n>-c1…`. States every direction shares (saving,
    errors, saved) are `<n>-s1…`. Put the frames in `src/features/design-lab/<topic>-frames.tsx`
-   and spread them into `designFrames`; example data goes in `lab-fixtures.ts`.
+   and spread them into `designFrames`; example data shared across designs goes in
+   `lab-fixtures.ts`, data only this design uses in `<topic>-model.ts`.
    _Done when_ every listed state has a frame in each direction (or in `-s*`), and
    `pnpm exec vitest run --project integration tests/design-lab-http.test.ts` passes. It
    starts its own `next dev` and `next start`, so stop `pnpm dev` and keep a `pnpm build`
@@ -72,8 +73,8 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
     it isn't built yet. A missing need becomes a backend ticket criterion, its own ticket,
     or goes back to Bora. Decisions made once the backend ticket has started become
     their own ticket (#217's Start date gap came from one).
-    _Done when_ every need is met by the contract, cited by a backend ticket criterion,
-    or dropped by Bora.
+    _Done when_ a "Backend needs" table (need, frames, met by) is posted on the design
+    ticket and every row cites the contract, a backend ticket criterion, or Bora's drop.
 
 11. **Rewrite the build ticket** from [templates/build-ticket.md](templates/build-ticket.md):
     rules grouped by frame, open questions turned into decisions or named owners, and every

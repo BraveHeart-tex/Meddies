@@ -23,7 +23,9 @@ Work **lean** throughout:
    Record the review baseline: `base=$(git rev-parse HEAD)`. Set Project Status to In
    progress. State the issue title.
    _Done when_ the title is stated, `base` is recorded and every blocker is closed. An open
-   blocker stops the run: report it and ask.
+   blocker stops the run: report it and ask. A design ticket (title starting `Design:`)
+   leaves this skill here and runs the `design-ticket` skill instead; its approval comment
+   is the evidence.
 
 2. **Read the docs.** Pick the rows of the AGENTS.md docs table the work touches, plus every
    spec section and design frame the issue cites.
