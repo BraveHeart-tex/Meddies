@@ -100,7 +100,7 @@ test('a populated day lists doses in time order; every row opens the dose drawer
       dueAt: new Date('2026-11-05T22:30:00+03:00').toISOString(),
       outcome: 'Taken',
       takenAt: new Date('2026-11-06T00:10:00+03:00').toISOString(),
-      quantity: 2,
+      quantity: 1.5,
       revision: 1,
     },
   } as Partial<DoseOccurrence>)
@@ -125,7 +125,7 @@ test('a populated day lists doses in time order; every row opens the dose drawer
   ).toBeVisible()
   // Cross-midnight intake shows its actual day and the amount that differs.
   expect(taken).toHaveTextContent('Taken 00:10')
-  expect(taken).toHaveTextContent('took 2 tablets')
+  expect(taken).toHaveTextContent('took 1½ tablets')
   expect(taken).toHaveTextContent('Taken on Fri 6 Nov')
 })
 

@@ -184,9 +184,12 @@ function LoadedDay({
         >
           {heading}
         </h2>
-        <p className="text-caption font-bold text-muted-foreground">
-          {logged} of {doses.length} {date === today ? 'so far' : 'logged'}
-        </p>
+        {/* Counts scheduled doses only, so a day with none shows no count (#282). */}
+        {doses.length > 0 && (
+          <p className="text-caption font-bold text-muted-foreground">
+            {logged} of {doses.length} {date === today ? 'so far' : 'logged'}
+          </p>
+        )}
       </div>
       <ol aria-label={`Doses for ${heading}`} className="flex flex-col gap-2.5">
         {rows.map((row) =>

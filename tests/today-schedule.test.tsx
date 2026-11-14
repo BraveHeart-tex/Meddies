@@ -947,6 +947,45 @@ describe('wording', () => {
   const failMedicines = () =>
     server.use(http.get('/api/medicines', () => HttpResponse.json({}, { status: 503 })))
 
+  // Catches Today writing raw decimals ('took 1.5 tablets', '0.5 tablets') unlike History (#282).
+  test('dose amounts use the half glyph, like History and the save toast', async () => {
+    const schedule: DailySchedule = {
+      ...scheduleFor('09:00'),
+      times: [
+        { time: '08:00', quantity: 1 },
+        { time: '09:00', quantity: 0.5 },
+      ],
+    }
+    const record: DoseOutcomeRecord = {
+      scheduleId: schedule.id,
+      dueAt: '2026-11-14T05:00:00.000Z',
+      outcome: 'Taken',
+      takenAt: '2026-11-14T05:10:00.000Z',
+      quantity: 1.5,
+      revision: 0,
+    }
+    server.use(
+      http.get('/api/medicines', () => HttpResponse.json({ medicines: [medicine] })),
+      http.get('/api/schedules', () =>
+        HttpResponse.json({
+          schedules: [schedule],
+          records: [record],
+          today: scheduleToday([schedule], new Date(initialNow), [record]),
+        }),
+      ),
+    )
+    renderToday()
+    const rows = within(await doses()).getAllByRole('listitem')
+    const taken = rows.find((row) => row.textContent?.startsWith('08:00'))
+    const planned = rows.find((row) => row.textContent?.startsWith('09:00'))
+    expect(taken).toHaveTextContent('took 1½ tablets')
+    expect(planned).toHaveTextContent('½ tablet')
+    expect(planned).not.toHaveTextContent('0.5')
+    const upNext = screen.getByRole('heading', { name: 'Up next' }).closest('[data-slot="card"]')
+    expect(upNext).toHaveTextContent('½ tablet')
+    expect(upNext).not.toHaveTextContent('0.5')
+  })
+
   test('medications that never loaded say Today cannot show doses', async () => {
     schedulesApi(initialNow)
     failMedicines()

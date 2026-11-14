@@ -249,6 +249,24 @@ test('History shows Unscheduled doses in time order and counts scheduled doses o
   expect(screen.getByText('0 of 2 logged')).toBeVisible()
 })
 
+// Catches '0 of 0 logged' on a day with nothing scheduled (#282).
+test('a History day with only Unscheduled doses shows no logged count', () => {
+  client.setQueryData(unscheduledKeys.day(YESTERDAY), [dose(3, '2026-11-13T20:30:00.000Z')])
+  render(
+    <QueryClientProvider client={client}>
+      <SchedulingClockProvider serverNow={now}>
+        <HistoryDay
+          date={YESTERDAY}
+          today={TODAY}
+          result={{ status: 'loaded', doses: [], medicines: [magnesium, ibuprofen] }}
+        />
+      </SchedulingClockProvider>
+    </QueryClientProvider>,
+  )
+  expect(screen.getByText(/Not on a schedule/)).toBeVisible()
+  expect(screen.queryByText(/ of \d+ (logged|so far)$/)).not.toBeInTheDocument()
+})
+
 test('Log a dose sits under the schedule with or without one and lists no past doses', async () => {
   api()
   const user = renderDetail()

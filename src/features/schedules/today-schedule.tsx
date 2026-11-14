@@ -90,7 +90,7 @@ export function TodaySchedule({
   const [intakeMessage, setIntakeMessage] = useState('')
   const doseText = (dose: DoseOccurrence, quantity = dose.quantity) => {
     const medicine = medicines.find((item) => item.id === dose.medicineId)
-    return `${quantity} ${medicine?.unit ?? 'unit'}${quantity === 1 ? '' : 's'}`
+    return quantityLabel(quantity, medicine?.unit ?? 'tablet')
   }
   function announceOutcome(dose: DoseOccurrence, record: DoseOutcomeRecord, reconciled = false) {
     const heading = document.getElementById(`dose-${dose.id}`)
