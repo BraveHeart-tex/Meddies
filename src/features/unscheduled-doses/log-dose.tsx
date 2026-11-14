@@ -18,11 +18,12 @@ import { useUnscheduledSave } from './use-unscheduled-save'
 const labels = { save: 'Save as taken', retry: 'Try saving as taken again' }
 
 /**
- * Log a dose on Medication detail (241·A1 to A4): an outline button under the schedule for any
- * medication, opening the dose drawer without a scheduled time. Unsaved details reopen the drawer
- * after navigation; dismissing it is its Clear form.
+ * Log a dose on Medication detail (241·A1 to A4): a button under the schedule for any medication,
+ * opening the dose drawer without a scheduled time. It is the page's primary when the medication
+ * has no schedule (#275), else outline. Unsaved details reopen the drawer after navigation;
+ * dismissing it is its Clear form.
  */
-export function LogDose({ medicine }: { medicine: Medicine }) {
+export function LogDose({ medicine, primary = false }: { medicine: Medicine; primary?: boolean }) {
   const client = useQueryClient()
   const clock = useSchedulingClock()
   const draftKey = logDraftKey(medicine.id)
@@ -44,7 +45,7 @@ export function LogDose({ medicine }: { medicine: Medicine }) {
         ref={trigger}
         id={triggerId}
         type="button"
-        variant="outline"
+        variant={primary ? 'default' : 'outline'}
         size="lg"
         className="w-full"
         aria-haspopup="dialog"

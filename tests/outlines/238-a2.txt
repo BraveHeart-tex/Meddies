@@ -31,8 +31,7 @@
           - paragraph
             - text: tablet
           - paragraph
-            - text: No schedule yet.
-          - link "Set schedule for Vitamin D"
+            - text: No schedule
           - link "View details for Vitamin D"
 - navigation "Primary"
   - list

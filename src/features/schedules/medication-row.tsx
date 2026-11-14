@@ -2,12 +2,11 @@
 
 import type { Ref } from 'react'
 import { ChevronRightIcon } from 'lucide-react'
-import { buttonVariants } from '@/components/ui/button'
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
 import type { Medicine } from '@/features/medicines/contract'
 import { MedicationTile } from '@/features/medicines/medication-tile'
 import { MedicationsLink } from '@/features/medicines/medications-nav'
-import { medicationSetupHref, medicationsHref } from '@/features/medicines/routes'
+import { medicationsHref } from '@/features/medicines/routes'
 
 /** One Medications row. `scheduleSummary` is null when the medication has no schedule. */
 export function MedicationRow({
@@ -22,7 +21,7 @@ export function MedicationRow({
   return (
     <Item
       render={<li />}
-      variant={scheduleSummary ? 'card' : 'dashed'}
+      variant="card"
       className="p-3.5 [&>svg]:size-5 has-[[data-row-link]:active]:scale-[0.98] has-[[data-row-link]:active]:bg-muted motion-reduce:has-[[data-row-link]:active]:scale-100"
     >
       <MedicationTile medicineId={medicine.id} />
@@ -33,24 +32,8 @@ export function MedicationRow({
         <ItemDescription>
           {[medicine.strength, medicine.unit].filter(Boolean).join(' · ')}
         </ItemDescription>
-        {scheduleSummary ? (
-          <p className="text-label font-bold">{scheduleSummary}</p>
-        ) : (
-          <>
-            <p className="text-label font-semibold text-muted-foreground">No schedule yet.</p>
-            <MedicationsLink
-              href={medicationSetupHref(medicine.id)}
-              aria-label={`Set schedule for ${medicine.label}`}
-              className={buttonVariants({
-                variant: 'soft',
-                size: 'sm',
-                className: 'relative z-1 mt-1.5 self-start',
-              })}
-            >
-              Set schedule
-            </MedicationsLink>
-          </>
-        )}
+        {/* No schedule is a complete record for occasional use, not unfinished setup (#275). */}
+        <p className="text-label font-bold">{scheduleSummary ?? 'No schedule'}</p>
       </ItemContent>
       <ChevronRightIcon aria-hidden="true" className="text-muted-foreground" />
       <MedicationsLink

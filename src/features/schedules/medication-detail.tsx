@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, type ReactNode, type Ref } from 'react'
-import { Clock } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { EmptyState } from '@/components/ui/empty-state'
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { scheduleToday } from './occurrences'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { LoadingSection } from '@/components/ui/skeleton'
@@ -133,6 +132,8 @@ export function MedicationDetail({
   const liveToday = istanbulDate(new Date(liveNow))
   const ended = schedule ? endedOn(schedule, liveToday) : null
   const paused = schedule ? pausedOn(schedule, liveToday) : null
+  // Only a loaded read can say there is no schedule.
+  const unscheduled = !loading && !loadError && !schedule
   // Anchor to the server's save instant, so earlier times today never become the first dose.
   const first =
     schedule && justScheduled
@@ -227,30 +228,29 @@ export function MedicationDetail({
             />
           </>
         ) : (
-          <EmptyState
-            icon={Clock}
-            title="No schedule yet"
-            body={
-              <>
-                {justSaved && 'Set the days and times you take it, or do it later from this page. '}
+          // A complete record for occasional use, not unfinished setup (#275 record rules).
+          <Card>
+            <CardHeader>
+              <CardTitle>No schedule</CardTitle>
+              <CardDescription>
                 Today lists its doses once it has a schedule, or when you log one.
-              </>
-            }
-            action={
-              <>
-                <MedicationsLink
-                  className={buttonVariants({ size: 'lg' })}
-                  href={medicationSetupHref(medicineId)}
-                >
-                  Set schedule
-                </MedicationsLink>
-                {actions}
-              </>
-            }
-          />
+              </CardDescription>
+            </CardHeader>
+          </Card>
         )}
       </section>
-      <LogDose medicine={medicine} />
+      <LogDose medicine={medicine} primary={unscheduled} />
+      {unscheduled && (
+        <>
+          <MedicationsLink
+            className={buttonVariants({ size: 'lg', variant: 'outline', className: 'w-full' })}
+            href={medicationSetupHref(medicineId)}
+          >
+            Set schedule
+          </MedicationsLink>
+          {actions}
+        </>
+      )}
       <p className="text-label text-muted-foreground">Details can&apos;t be changed here yet.</p>
     </div>
   )

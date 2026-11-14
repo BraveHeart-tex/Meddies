@@ -199,7 +199,7 @@ describe('the medication page', () => {
     expect(backRow('Medications')).toHaveAttribute('href', '/medications')
     expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Medications' })).not.toBeInTheDocument()
-    expect(await screen.findByText('No schedule yet')).toBeVisible()
+    expect(await screen.findByText('No schedule', { exact: true })).toBeVisible()
     expect(setSchedule()).toBeVisible()
   })
 
@@ -237,7 +237,7 @@ describe('the medication page', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Loading schedule')
     expect(setSchedule()).not.toBeInTheDocument()
     held.release()
-    expect(await screen.findByText('No schedule yet')).toBeVisible()
+    expect(await screen.findByText('No schedule', { exact: true })).toBeVisible()
   })
 
   test('not found offers Open Medications and no Set schedule', async () => {
@@ -257,17 +257,35 @@ describe('the medication page', () => {
     expect(setSchedule()).not.toBeInTheDocument()
   })
 
-  test('a medication with no schedule says what is missing and offers Set schedule', async () => {
+  /* eslint-disable meddies/no-cosmetic-class-assertions -- which action is the page's primary
+     follows whether the medication has a schedule; the variant class is its only signal. */
+  test('a medication with no schedule reads No schedule and leads with Log a dose (#275)', async () => {
     api()
     renderDetail()
-    const heading = await screen.findByRole('heading', { name: 'No schedule yet' })
-    const emptyState = heading.closest('[data-slot="empty-state"]')
-    expect(emptyState?.querySelector('svg.lucide-clock')).toHaveAttribute('aria-hidden', 'true')
+    expect(await screen.findByText('No schedule', { exact: true })).toBeVisible()
+    expect(screen.queryByText(/No schedule yet|As needed/)).not.toBeInTheDocument()
     expect(
       screen.getByText('Today lists its doses once it has a schedule, or when you log one.'),
     ).toBeVisible()
-    expect(setSchedule()).toBeVisible()
+    const logDose = screen.getByRole('button', { name: 'Log a dose' })
+    const set = setSchedule()
+    expect(logDose).toHaveClass('bg-primary', 'min-h-13')
+    expect(set).toHaveClass('border-border-strong', 'min-h-13')
+    expect(set).not.toHaveClass('bg-primary')
+    expect(set).toHaveAttribute('href', `/medications?schedule=${magnesium.id}#schedule-heading`)
+    expect(logDose.compareDocumentPosition(set!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
+
+  test('a scheduled medication keeps Log a dose outline', async () => {
+    api({ schedules: [schedule] })
+    renderDetail()
+    await screen.findByRole('link', { name: 'Change schedule' })
+    const logDose = screen.getByRole('button', { name: 'Log a dose' })
+    expect(logDose).toHaveClass('border-border-strong')
+    expect(logDose).not.toHaveClass('bg-primary')
+    expect(setSchedule()).not.toBeInTheDocument()
+  })
+  /* eslint-enable meddies/no-cosmetic-class-assertions */
 
   test('not found does not wait for the schedule read, or show its failure', async () => {
     const reads = api()
@@ -285,7 +303,7 @@ describe('the medication page', () => {
     expect(alert).toHaveTextContent(unchecked)
     await identity('Magnesium')
     expect(setSchedule()).not.toBeInTheDocument()
-    expect(screen.queryByText('No schedule yet')).not.toBeInTheDocument()
+    expect(screen.queryByText('No schedule', { exact: true })).not.toBeInTheDocument()
 
     await user.click(within(alert).getByRole('button', { name: 'Retry' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(unchecked)
@@ -293,7 +311,7 @@ describe('the medication page', () => {
 
     reads.failSchedules = false
     await user.click(screen.getByRole('button', { name: 'Retry' }))
-    expect(await screen.findByText('No schedule yet')).toBeVisible()
+    expect(await screen.findByText('No schedule', { exact: true })).toBeVisible()
     expect(setSchedule()).toBeVisible()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
@@ -418,7 +436,7 @@ describe('refreshes', () => {
     seedCache([magnesium], stale)
     renderDetail()
     await identity('Magnesium')
-    expect(screen.getByText('No schedule yet')).toBeVisible()
+    expect(screen.getByText('No schedule', { exact: true })).toBeVisible()
     await waitFor(() => expect(reads.medicineReads).toBe(1))
     expect(placeholders()).toHaveLength(0)
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
@@ -480,7 +498,7 @@ describe('the mounted screen', () => {
     // Browser Back: only Cancel asks before leaving.
     window.history.replaceState(null, '', `/medications?medicine=${magnesium.id}`)
     rerender(screenAt())
-    expect(await screen.findByText('No schedule yet')).toBeVisible()
+    expect(await screen.findByText('No schedule', { exact: true })).toBeVisible()
 
     await user.click(screen.getByRole('link', { name: 'Set schedule' }))
     expect(window.location.search).toBe(`?schedule=${magnesium.id}`)

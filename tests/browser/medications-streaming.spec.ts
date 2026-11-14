@@ -202,7 +202,10 @@ test('view changes make no server request, and Back, Forward and reload restore 
   await page.goBack()
   await expect(row(page, unscheduled)).toBeVisible()
 
-  await page.getByRole('link', { name: `Set schedule for ${unscheduled}` }).click()
+  // #275: the row opens the medication's page, which offers Set schedule.
+  await page.getByRole('link', { name: `View details for ${unscheduled}` }).click()
+  await expect(page).toHaveURL(/\/medications\?medicine=/)
+  await page.getByRole('link', { name: 'Set schedule', exact: true }).click()
   await expect(page).toHaveURL(/\/medications\?schedule=.*#schedule-heading$/)
   await expect(page.getByRole('heading', { name: 'Schedule' }).first()).toBeVisible()
 
@@ -241,7 +244,7 @@ test('failed reads show one alert with Retry and Add, and Retry recovers', async
   await page.goto('/medications')
   await expect(page.getByRole('alert').filter({ hasText: "didn't load just now" })).toHaveCount(1)
   await expect(add(page)).toBeVisible()
-  await expect(page.getByText('No schedule yet.')).toHaveCount(0)
+  await expect(page.getByText('No schedule', { exact: true })).toHaveCount(0)
   app.worker.clear()
   await page.getByRole('button', { name: 'Retry' }).click()
   await expect(row(page, scheduled)).toBeVisible()

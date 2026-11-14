@@ -331,15 +331,15 @@ describe('with no cache', () => {
   })
   /* eslint-enable meddies/no-cosmetic-class-assertions */
 
-  test('a medication with no schedule says so in its list row', async () => {
+  test('a medication with no schedule says so in its plain list row (#275)', async () => {
     medicinesApi(listOf(1))
     renderList()
-    expect(await screen.findByText('No schedule yet.')).toBeVisible()
+    const summary = await screen.findByText('No schedule', { selector: 'p' })
+    expect(summary).toBeVisible()
+    expect(summary.closest('[data-slot="item"]')).toHaveAttribute('data-variant', 'card')
+    expect(screen.queryByText(/No schedule yet|As needed/)).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'View details for Medicine 1' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Set schedule for Medicine 1' })).toHaveAttribute(
-      'href',
-      `/medications?schedule=${medicine(1).id}#schedule-heading`,
-    )
+    expect(screen.queryByRole('link', { name: /Set schedule/ })).not.toBeInTheDocument()
   })
 
   test('a failed schedules read shows the load error with its retry', async () => {
@@ -377,7 +377,7 @@ describe('a medication detail', () => {
     medicinesApi(listOf(1))
     cache(listOf(1))
     renderDetail(medicine(1).id)
-    expect(await screen.findByText('No schedule yet')).toBeVisible()
+    expect(await screen.findByText('No schedule', { exact: true })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Schedule', level: 2 })).toBeVisible()
     expect(screen.getByText('tablet')).toBeVisible()
     expect(screen.getByText("Details can't be changed here yet.")).toBeVisible()
@@ -459,11 +459,9 @@ describe('Done for now', () => {
     await waitFor(() => expect(window.location.search).toBe(`?medicine=${saved.id}`))
     rerender(medicationsScreen())
     expect(await screen.findByRole('heading', { name: saved.label })).toHaveFocus()
-    expect(await screen.findByRole('heading', { name: 'No schedule yet' })).toBeVisible()
+    expect(await screen.findByText('No schedule', { exact: true })).toBeVisible()
     expect(
-      screen.getByText(
-        `Set the days and times you take it, or do it later from this page. Today lists its doses once it has a schedule, or when you log one.`,
-      ),
+      screen.getByText('Today lists its doses once it has a schedule, or when you log one.'),
     ).toBeVisible()
     expect(screen.getByRole('link', { name: 'Set schedule' })).toBeVisible()
     await user.click(screen.getByRole('link', { name: 'Done for now' }))

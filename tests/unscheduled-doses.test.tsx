@@ -270,7 +270,7 @@ test('a History day with only Unscheduled doses shows no logged count', () => {
 test('Log a dose sits under the schedule with or without one and lists no past doses', async () => {
   api()
   const user = renderDetail()
-  expect(await screen.findByRole('heading', { name: 'No schedule yet' })).toBeVisible()
+  expect(await screen.findByText('No schedule', { exact: true })).toBeVisible()
   expect(screen.getByRole('button', { name: 'Log a dose' })).toBeVisible()
   expect(screen.queryByText(/Not on a schedule/)).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Log a dose' }))
