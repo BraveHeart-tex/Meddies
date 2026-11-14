@@ -6,10 +6,13 @@
 //   cross-outcome triggers, 0005's unique occurrence/revision and owner/action keys, and
 //   one conditional compare-and-append per correction. Migration 0008 retains those
 //   constraints and rejects new outcomes on replaced doses at insertion time.
+// - Taken saves and time-setting corrections follow the Taken time window (isTakenTimeAllowed);
+//   a correction that keeps the expected saved time is accepted outside it.
 import { and, eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import { isQuantityForUnit } from '../../src/lib/dose-quantity'
 import { ApplicationError } from '../../src/lib/application-error'
+import { isTakenTimeAllowed } from '../../src/features/schedules/contract'
 import type {
   DoseCorrectionInput,
   TakenDoseInput,
@@ -39,8 +42,9 @@ export async function correctDoseOutcome(
     !schedule ||
     !validOccurrence(schedule, correction, now) ||
     (correction.outcome === 'Taken' &&
-      (Date.parse(correction.takenAt!) > now.getTime() ||
-        !isQuantityForUnit(correction.quantity, schedule.unit)))
+      (!isQuantityForUnit(correction.quantity, schedule.unit) ||
+        (!isTakenTimeAllowed(correction.takenAt, correction.dueAt, now) &&
+          correction.takenAt !== (await expectedTakenAt(db, ownerId, correction)))))
   )
     throw new ApplicationError('validation', 400)
   const takenAt = correction.outcome === 'Taken' ? correction.takenAt : null
@@ -105,6 +109,41 @@ export async function correctDoseOutcome(
   return correction.outcome === 'Taken'
     ? { ...key, outcome: 'Taken', takenAt: correction.takenAt, quantity: correction.quantity }
     : { ...key, outcome: 'Skipped', recordedAt: now.toISOString() }
+}
+
+// The Taken time a correction expects to replace. Keeping it skips the Taken time window, which an
+// earlier save may predate; a stale expectation still fails the compare-and-append below.
+async function expectedTakenAt(
+  db: DrizzleD1Database,
+  ownerId: string,
+  correction: DoseCorrectionInput,
+): Promise<string | null> {
+  if (correction.expectedOutcome !== 'Taken') return null
+  const row = correction.expectedRevision
+    ? await db
+        .select({ takenAt: doseCorrections.takenAt })
+        .from(doseCorrections)
+        .where(
+          and(
+            eq(doseCorrections.ownerId, ownerId),
+            eq(doseCorrections.scheduleId, correction.scheduleId),
+            eq(doseCorrections.dueAt, correction.dueAt),
+            eq(doseCorrections.revision, correction.expectedRevision),
+          ),
+        )
+        .get()
+    : await db
+        .select({ takenAt: doseRecords.takenAt })
+        .from(doseRecords)
+        .where(
+          and(
+            eq(doseRecords.ownerId, ownerId),
+            eq(doseRecords.scheduleId, correction.scheduleId),
+            eq(doseRecords.dueAt, correction.dueAt),
+          ),
+        )
+        .get()
+  return row?.takenAt ?? null
 }
 
 async function readCorrection(db: DrizzleD1Database, ownerId: string, actionId: string) {
@@ -180,7 +219,7 @@ export async function recordTaken(
     if (
       !schedule ||
       !validOccurrence(schedule, record, now) ||
-      Date.parse(record.takenAt) > now.getTime() ||
+      !isTakenTimeAllowed(record.takenAt, record.dueAt, now) ||
       !isQuantityForUnit(record.quantity, schedule.unit)
     )
       throw new ApplicationError('validation', 400)

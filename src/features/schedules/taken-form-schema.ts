@@ -2,10 +2,11 @@ import { z } from 'zod'
 import { formatTime } from '@/lib/calendar-date'
 import { isTimeOfDay } from '@/lib/time-of-day'
 import { formatQuantity, parseQuantity, quantityProblem, type DoseUnit } from '@/lib/dose-quantity'
-import { isScheduleDate, istanbulDate } from './contract'
+import { isScheduleDate, isTakenDateAllowed, istanbulDate } from './contract'
 
-// Client-side Taken intake rules for inline feedback. parseTakenDose and parseDoseCorrection stay
-// authoritative on the server. Times are Istanbul local minutes, 'YYYY-MM-DDTHH:MM'.
+// Client-side Taken intake rules for inline feedback; the Worker stays authoritative. A scheduled
+// dose (dueAt given) follows the Taken time window (isTakenTimeAllowed); an Unscheduled dose keeps
+// today or yesterday. Times are Istanbul local minutes, 'YYYY-MM-DDTHH:MM'.
 
 export type TakenAtChoice = 'now' | 'scheduled' | 'other'
 
@@ -39,13 +40,23 @@ export type TakenFormOptions = {
   now: string
   /** The dose's scheduled minute; never changes. */
   scheduled: string
+  /** A scheduled dose's due instant: its Taken time window limits the date. */
+  dueAt?: string
   /** A correction's current intake: an unchanged minute keeps its exact instant. */
   original?: { local: string; instant: string }
 }
 
-export function takenFormSchema({ unit, now, scheduled, original }: TakenFormOptions) {
+export function takenFormSchema({ unit, now, scheduled, dueAt, original }: TakenFormOptions) {
   const today = now.slice(0, 10)
   const yesterday = previousDate(today)
+  // A scheduled correction may keep its saved minute even when an earlier save put it outside.
+  const allowed = (local: string) =>
+    dueAt
+      ? original?.local === local || isTakenDateAllowed(local.slice(0, 10), dueAt)
+      : local.slice(0, 10) === today || local.slice(0, 10) === yesterday
+  const dateMessage = dueAt
+    ? 'Choose a date within a day of the dose.'
+    : 'Choose today or yesterday.'
   return z
     .object({
       when: z.enum(['now', 'scheduled', 'other']),
@@ -56,9 +67,15 @@ export function takenFormSchema({ unit, now, scheduled, original }: TakenFormOpt
     .superRefine((values, ctx) => {
       if (values.when === 'scheduled' && scheduled > now)
         ctx.addIssue({ code: 'custom', message: 'Choose a time that has passed.', path: ['when'] })
+      if (values.when === 'now' && !allowed(now))
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Choose a time within a day of the dose.',
+          path: ['when'],
+        })
       if (values.when === 'other') {
-        if (!isScheduleDate(values.date) || (values.date !== today && values.date !== yesterday))
-          ctx.addIssue({ code: 'custom', message: 'Choose today or yesterday.', path: ['date'] })
+        if (!isScheduleDate(values.date) || !allowed(`${values.date}T${values.time}`))
+          ctx.addIssue({ code: 'custom', message: dateMessage, path: ['date'] })
         else if (!isTimeOfDay(values.time))
           ctx.addIssue({ code: 'custom', message: 'Choose a time.', path: ['time'] })
         else if (`${values.date}T${values.time}` > now)

@@ -936,3 +936,134 @@ test('Interval end cutoff excludes midnight while retaining earlier doses for re
     /validation/,
   )
 })
+
+test('the Taken time window rejects out-of-window saves and time changes but keeps an earlier saved time', async () => {
+  // #275 examples. Istanbul is UTC+3; 08:00 local is 05:00Z.
+  let now = new Date('2026-11-09T04:00:00.000Z')
+  const handler = createWorker(() => now)
+  const db = await runtime.getD1Database('DB')
+  const ownerId = 'google:taken-window'
+  const tablet = { ...medicine, id: randomUUID() }
+  await call({ operation: 'save', ownerId, medicine: tablet })
+  const send: SendSchedule = async <C extends ScheduleCommand>(command: C) => {
+    const response = await handler.fetch(
+      new Request('http://worker/schedules', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${secret}` },
+        body: JSON.stringify(command),
+      }),
+      { DB: db, MEDICINES_WORKER_SECRET: secret },
+    )
+    const body = await response.json()
+    if (!response.ok) throw new Error((body as { error: string }).error)
+    return body as ScheduleResponse<C>
+  }
+  const operations = createScheduleOperations({
+    requireUser: async () => ({ id: ownerId }),
+    send,
+    now: () => now,
+  })
+  const [schedule] = await operations.save({
+    id: randomUUID(),
+    medicineId: tablet.id,
+    startDate: '2026-11-09',
+    times: [{ time: '08:00', quantity: 1 }],
+  })
+  const takenTime = async (date: string) =>
+    ((await operations.history(date))[0] as Extract<DoseOccurrence, { status: 'Taken' }>).record
+      .takenAt
+  // Earlier saved time: a Taken row written before these rules, five days after its dose.
+  const earlier = { scheduleId: schedule.id, dueAt: '2026-11-10T05:00:00.000Z' }
+  const earlierTakenAt = '2026-11-14T07:00:00.000Z'
+  await db
+    .prepare(
+      'INSERT INTO dose_records (owner_id, schedule_id, due_at, taken_at, quantity, outcome) VALUES (?, ?, ?, ?, 1, ?)',
+    )
+    .bind(ownerId, earlier.scheduleId, earlier.dueAt, earlierTakenAt, 'Taken')
+    .run()
+  now = new Date('2026-11-14T09:00:00.000Z')
+
+  // Outside the window: a Taken save two days after its dose writes nothing.
+  const late = { scheduleId: schedule.id, dueAt: '2026-11-11T05:00:00.000Z' }
+  await assert.rejects(
+    () => operations.recordTaken({ ...late, takenAt: '2026-11-13T05:30:00.000Z', quantity: 1 }),
+    /validation/,
+  )
+  assert.equal((await operations.history('2026-11-11'))[0].status, 'Not logged')
+  // From History: the day after its dose is accepted.
+  await operations.recordTaken({ ...late, takenAt: '2026-11-12T05:30:00.000Z', quantity: 1 })
+  const moveOutside: DoseCorrectionInput = {
+    ...late,
+    actionId: randomUUID(),
+    expectedRevision: 0,
+    expectedOutcome: 'Taken',
+    outcome: 'Taken',
+    takenAt: '2026-11-13T05:30:00.000Z',
+    quantity: 1,
+  }
+  await assert.rejects(() => operations.correctOutcome(moveOutside), /validation/)
+  assert.equal(await takenTime('2026-11-11'), '2026-11-12T05:30:00.000Z')
+  await operations.correctOutcome({
+    ...late,
+    actionId: randomUUID(),
+    expectedRevision: 0,
+    expectedOutcome: 'Taken',
+    outcome: 'Skipped',
+  })
+  await assert.rejects(
+    () =>
+      operations.correctOutcome({
+        ...moveOutside,
+        actionId: randomUUID(),
+        expectedRevision: 1,
+        expectedOutcome: 'Skipped',
+      }),
+    /validation/,
+  )
+  assert.equal((await operations.history('2026-11-11'))[0].status, 'Skipped')
+  const ledger = await db
+    .prepare('SELECT COUNT(*) AS count FROM dose_corrections WHERE owner_id = ? AND due_at = ?')
+    .bind(ownerId, late.dueAt)
+    .first<{ count: number }>()
+  assert.equal(ledger?.count, 1)
+
+  // Earlier saved time: keeping it is accepted, from the original row and from a correction.
+  const keep: DoseCorrectionInput = {
+    ...earlier,
+    actionId: randomUUID(),
+    expectedRevision: 0,
+    expectedOutcome: 'Taken',
+    outcome: 'Taken',
+    takenAt: earlierTakenAt,
+    quantity: 0.5,
+  }
+  const kept = await operations.correctOutcome(keep)
+  assert.equal(kept.revision, 1)
+  const keptAgain = await operations.correctOutcome({
+    ...keep,
+    actionId: randomUUID(),
+    expectedRevision: 1,
+    quantity: 1.5,
+  })
+  assert.equal(keptAgain.revision, 2)
+  // Changing its time to Nov 14 11:00 is rejected and writes nothing.
+  await assert.rejects(
+    () =>
+      operations.correctOutcome({
+        ...keep,
+        actionId: randomUUID(),
+        expectedRevision: 2,
+        takenAt: '2026-11-14T08:00:00.000Z',
+      }),
+    /validation/,
+  )
+  assert.equal(await takenTime('2026-11-10'), earlierTakenAt)
+  // A stale expectation gains nothing from keeping the time.
+  await assert.rejects(
+    () => operations.correctOutcome({ ...keep, actionId: randomUUID() }),
+    /conflict/,
+  )
+  // A replayed action still returns its saved record.
+  now = new Date('2026-11-20T09:00:00.000Z')
+  assert.deepEqual(await operations.correctOutcome(keep), kept)
+})

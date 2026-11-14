@@ -5,9 +5,10 @@ import type {
 } from '../unscheduled-doses/contract'
 import { isDoseQuantity } from '../../lib/dose-quantity'
 import { ApplicationError } from '../../lib/application-error'
+import { istanbulDate, shiftDate } from '../../lib/calendar-date'
 import { ALL_WEEKDAYS } from './weekdays'
 
-export { istanbulDate } from '../../lib/calendar-date'
+export { istanbulDate }
 
 export type DailyScheduleInput = {
   id: string
@@ -285,6 +286,24 @@ export function scheduleRunsOn(
 
 export function isInstant(value: unknown): value is string {
   return typeof value === 'string' && /^\d{4}-/.test(value) && new Date(value).toJSON() === value
+}
+
+/**
+ * The Taken time window (#275): a scheduled dose's Taken time is never after now and falls on its
+ * due date, the day before or the day after, in Istanbul time. The Worker checks it on every Taken
+ * save and every correction that sets a time; the Taken form checks it for inline feedback.
+ */
+export function isTakenTimeAllowed(takenAt: string, dueAt: string, now: Date): boolean {
+  return (
+    Date.parse(takenAt) <= now.getTime() &&
+    isTakenDateAllowed(istanbulDate(new Date(takenAt)), dueAt)
+  )
+}
+
+/** Whether an Istanbul date 'YYYY-MM-DD' is the dose's due date, the day before or the day after. */
+export function isTakenDateAllowed(takenDate: string, dueAt: string): boolean {
+  const dueDate = istanbulDate(new Date(dueAt))
+  return takenDate >= shiftDate(dueDate, -1) && takenDate <= shiftDate(dueDate, 1)
 }
 
 export function parseTakenDose(value: unknown): TakenDoseInput {

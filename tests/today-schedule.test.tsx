@@ -538,7 +538,7 @@ describe('recording a dose', () => {
     await user.click(screen.getByRole('button', { name: 'Close dose details' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(rows[0]).toHaveTextContent(
-      'Not saved. The time taken has to be in the past. Change the time and save again.',
+      'Not saved. The time taken has to be in the past and within a day of the dose. Change the time and save again.',
     )
   })
 

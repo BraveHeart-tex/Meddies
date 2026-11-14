@@ -53,7 +53,10 @@ test.each([
 })
 
 test.each([
-  ['Taken', 'Not saved.The time taken has to be in the past. Change the time and save again.'],
+  [
+    'Taken',
+    'Not saved.The time taken has to be in the past and within a day of the dose. Change the time and save again.',
+  ],
   [
     'Skipped',
     "Not saved.This dose can't be skipped any more. Refresh Today to see where it stands.",

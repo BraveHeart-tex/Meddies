@@ -66,6 +66,47 @@ test('Other takes a passed time today or yesterday', () => {
   assert.deepEqual(errorsOf(other('', '')), { date: 'Choose today or yesterday.' })
 })
 
+test('a scheduled dose takes dates in its Taken time window, the same rule as the Worker', () => {
+  // From History on Jun 15: the Jun 10 08:00 dose (05:00Z) accepts Jun 9, 10 and 11 only.
+  const history: TakenFormOptions = {
+    ...options,
+    scheduled: '2035-06-10T08:00',
+    dueAt: '2035-06-10T05:00:00.000Z',
+  }
+  const other = (date: string, time: string) => values({ when: 'other', date, time })
+  for (const date of ['2035-06-09', '2035-06-10', '2035-06-11'])
+    assert.deepEqual(errorsOf(other(date, '08:30'), history), {}, date)
+  // Outside the window, including today, and Now on a later day.
+  for (const date of ['2035-06-08', '2035-06-12', '2035-06-15'])
+    assert.deepEqual(errorsOf(other(date, '08:30'), history), {
+      date: 'Choose a date within a day of the dose.',
+    })
+  assert.deepEqual(errorsOf(values(), history), {
+    when: 'Choose a time within a day of the dose.',
+  })
+  // Today's dose: the day after is still not in the past.
+  const todayDose = { ...options, dueAt: '2035-06-15T05:00:00.000Z' }
+  assert.deepEqual(errorsOf(other('2035-06-14', '08:00'), todayDose), {})
+  assert.deepEqual(errorsOf(other('2035-06-16', '08:00'), todayDose), {
+    time: 'Choose a time that has passed.',
+  })
+})
+
+test('Earlier saved time: a correction keeps an out-of-window minute but cannot move to another', () => {
+  const original = { local: '2035-06-15T10:00', instant: '2035-06-15T07:00:00.000Z' }
+  const history: TakenFormOptions = {
+    ...options,
+    scheduled: '2035-06-10T08:00',
+    dueAt: '2035-06-10T05:00:00.000Z',
+    original,
+  }
+  const kept = values({ when: 'other', date: '2035-06-15', time: '10:00', quantity: '2' })
+  assert.deepEqual(takenFormSchema(history).parse(kept), { takenAt: original.instant, quantity: 2 })
+  assert.deepEqual(errorsOf({ ...kept, time: '11:00' }, history), {
+    date: 'Choose a date within a day of the dose.',
+  })
+})
+
 test('quantities follow the unit and blank never becomes zero', () => {
   assert.deepEqual(errorsOf(values({ quantity: '' })), { quantity: 'Enter a quantity.' })
   assert.deepEqual(errorsOf(values({ quantity: '1.25' })), {

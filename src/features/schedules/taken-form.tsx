@@ -114,6 +114,7 @@ export function TakenForm({
     unit: medicine.unit,
     now,
     scheduled,
+    dueAt: dose.dueAt,
     original: mode === 'edit' ? original : undefined,
   })
   const form = useForm<TakenFormValues, unknown, TakenFormOutput>({
