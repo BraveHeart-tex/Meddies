@@ -9,6 +9,10 @@ const integration = [
   'tests/design-lab-http.test.ts',
 ]
 
+// ESLint rule tests share one module cache, so the repo ESLint config and its plugins load
+// once per run instead of once per file. Each file still builds its own ESLint instance.
+const lintRules = ['tests/*-lint.test.ts']
+
 export default defineConfig({
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   test: {
@@ -19,7 +23,18 @@ export default defineConfig({
           name: 'unit',
           environment: 'node',
           include: ['tests/**/*.test.ts'],
-          exclude: [...integration, ...toolingTests],
+          exclude: [...integration, ...toolingTests, ...lintRules],
+          testTimeout: 5_000,
+          hookTimeout: 5_000,
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'lint-rules',
+          environment: 'node',
+          include: lintRules,
+          isolate: false,
           testTimeout: 5_000,
           hookTimeout: 5_000,
         },
