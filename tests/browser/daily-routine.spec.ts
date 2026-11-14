@@ -200,7 +200,21 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await expect(pastEvening).toContainText('Taken')
     await expect(pastEvening).not.toContainText('Not logged')
     await expect(pastIron).toContainText('Not logged')
-    await expect(pastIron.getByRole('button')).toHaveCount(0)
+  })
+
+  await test.step('a past Not logged row opens the record drawer', async () => {
+    // Every History row opens the dose drawer on any day (#278).
+    await expect(doseTrigger(pastIron, iron)).toHaveAccessibleName(
+      new RegExp(`^Record dose for ${iron} scheduled at 08:00`),
+    )
+    await doseTrigger(pastIron, iron).click()
+    await expect(dialog).toContainText(iron)
+    await expect(dialog).toContainText('08:00')
+    await expect(dialog.getByText('Nothing is recorded until you choose and save.')).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Choose what happened' })).toBeDisabled()
+    await dialog.getByRole('button', { name: 'Close dose details' }).click()
+    await expectFocusReturned(pastIron)
+    await expect(pastIron).toContainText('Not logged')
   })
 
   await test.step('correct an outcome and return focus to its row', async () => {
@@ -211,7 +225,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await expect(dialog.getByRole('group', { name: `Skip ${omega}` })).toBeVisible()
     await dialog.getByRole('button', { name: 'Save as skipped' }).click()
     await expect(
-      toastMessage(page, new RegExp(`^${omega} 14:00 · changed to skipped`)),
+      toastMessage(page, new RegExp(`^${omega} 14:00 on Thu 14 Jun · changed to skipped`)),
     ).toBeVisible()
     await expectFocusReturned(pastOmega)
     await expect(pastOmega.getByText('Skipped', { exact: true })).toBeVisible()
@@ -226,7 +240,8 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await expect(rows).toHaveCount(3)
     await expect(rows.filter({ hasText: omega })).toContainText('Taken')
     await expect(rows.filter({ hasText: iron })).toContainText('Skipped')
-    await expect(page.getByText(evening)).toHaveCount(0)
+    // The #281 Evening toast may still show; today's 20:00 isn't due yet.
+    await expect(rows.filter({ hasText: evening })).toHaveCount(0)
   })
 
   await test.step('Settings signs out to a private sign-in', async () => {
