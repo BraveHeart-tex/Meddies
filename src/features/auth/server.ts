@@ -2,10 +2,10 @@ import 'server-only'
 
 import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
+import { acceptsGoogleProfile, allowedEmails, isAllowedEmail } from './allowlist'
 import { callbackReturnTo } from './return-to'
 
 const lifetimeSeconds = 7 * 24 * 60 * 60
-const allowedEmail = () => process.env.AUTH_ALLOWED_EMAIL?.trim().toLowerCase()
 const sessionVersion = () => process.env.AUTH_SESSION_VERSION || '1'
 
 export function authConfigured() {
@@ -19,7 +19,7 @@ export function authConfigured() {
       process.env.AUTH_SECRET &&
       process.env.AUTH_GOOGLE_ID &&
       process.env.AUTH_GOOGLE_SECRET &&
-      allowedEmail(),
+      allowedEmails().length > 0,
     )
   } catch {
     return false
@@ -51,12 +51,7 @@ export const { handlers, auth } = NextAuth({
     },
     signIn({ account, profile }) {
       return Boolean(
-        authConfigured() &&
-        account?.provider === 'google' &&
-        profile?.email_verified === true &&
-        profile.email?.toLowerCase() === allowedEmail() &&
-        typeof profile.sub === 'string' &&
-        profile.sub.length > 0,
+        authConfigured() && account?.provider === 'google' && acceptsGoogleProfile(profile),
       )
     },
     jwt({ token, account, profile }) {
@@ -73,7 +68,7 @@ export const { handlers, auth } = NextAuth({
       // Ignore client session updates. Authorization comes exclusively from signed claims.
       if (
         !authConfigured() ||
-        token.email !== allowedEmail() ||
+        !isAllowedEmail(token.email) ||
         token.version !== sessionVersion() ||
         typeof token.sub !== 'string' ||
         !/^google:.+/.test(token.sub) ||

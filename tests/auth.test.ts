@@ -17,6 +17,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { afterAll, beforeAll, test } from 'vitest'
 import { encode } from 'next-auth/jwt'
 import { createWorker } from '../worker/index'
+import { acceptsGoogleProfile, allowedEmails, isAllowedEmail } from '../src/features/auth/allowlist'
 import { istanbulDate } from '../src/features/schedules/contract'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
 import { applyD1Migrations } from './helpers/d1-migrations.mjs'
@@ -83,7 +84,7 @@ beforeAll(async () => {
         AUTH_SECRET: secret,
         AUTH_GOOGLE_ID: 'synthetic-client',
         AUTH_GOOGLE_SECRET: 'synthetic-secret',
-        AUTH_ALLOWED_EMAIL: 'approved@example.test',
+        AUTH_ALLOWED_EMAILS: ' approved@example.test, , Second@Example.test ',
         AUTH_SESSION_VERSION: '1',
       },
       stdio: 'ignore',
@@ -203,6 +204,56 @@ test('wrong identity, revoked, expired and malformed sessions are rejected', asy
   ]) {
     assert.equal((await request('/api/session', { headers: { cookie: value } })).status, 401)
   }
+})
+
+test('each approved account signs in; unlisted or unverified emails are rejected', () => {
+  const previous = process.env.AUTH_ALLOWED_EMAILS
+  try {
+    process.env.AUTH_ALLOWED_EMAILS = ' First@Example.test, ,second@example.test '
+    assert.deepEqual(allowedEmails(), ['first@example.test', 'second@example.test'])
+    const profile = { email_verified: true, sub: 'google-subject' }
+    for (const email of ['first@example.test', 'SECOND@example.test'])
+      assert.equal(acceptsGoogleProfile({ ...profile, email }), true, email)
+    for (const patch of [
+      { email: 'someone-else@example.test' },
+      { email: 'first@example.test', email_verified: false },
+      { email: 'first@example.test', email_verified: 'true' },
+      { email: 'first@example.test', sub: '' },
+      { email: undefined },
+    ])
+      assert.equal(acceptsGoogleProfile({ ...profile, ...patch }), false, JSON.stringify(patch))
+    assert.equal(acceptsGoogleProfile(undefined), false)
+    for (const value of [undefined, '', ' , ']) {
+      if (value === undefined) delete process.env.AUTH_ALLOWED_EMAILS
+      else process.env.AUTH_ALLOWED_EMAILS = value
+      assert.deepEqual(allowedEmails(), [], String(value))
+      assert.equal(acceptsGoogleProfile({ ...profile, email: 'first@example.test' }), false)
+    }
+  } finally {
+    if (previous === undefined) delete process.env.AUTH_ALLOWED_EMAILS
+    else process.env.AUTH_ALLOWED_EMAILS = previous
+  }
+})
+
+test('removing an email from the approved accounts rejects its session on the next read', () => {
+  const previous = process.env.AUTH_ALLOWED_EMAILS
+  try {
+    process.env.AUTH_ALLOWED_EMAILS = 'first@example.test,second@example.test'
+    assert.equal(isAllowedEmail('second@example.test'), true)
+    process.env.AUTH_ALLOWED_EMAILS = 'first@example.test'
+    assert.equal(isAllowedEmail('second@example.test'), false)
+    assert.equal(isAllowedEmail('first@example.test'), true)
+  } finally {
+    if (previous === undefined) delete process.env.AUTH_ALLOWED_EMAILS
+    else process.env.AUTH_ALLOWED_EMAILS = previous
+  }
+})
+
+test('a second approved account reads its own session', async () => {
+  const claims = { ...valid(), sub: 'google:second-subject', email: 'second@example.test' }
+  const response = await request('/api/session', { headers: { cookie: await cookie(claims) } })
+  assert.equal(response.status, 200)
+  assert.equal((await response.json()).id, 'google:second-subject')
 })
 
 test('client session updates cannot replace the authenticated identity or extend expiry', async () => {
@@ -615,7 +666,7 @@ test('missing private configuration disables sign-in and preserves accessible re
         AUTH_SECRET: '',
         AUTH_GOOGLE_ID: '',
         AUTH_GOOGLE_SECRET: '',
-        AUTH_ALLOWED_EMAIL: '',
+        AUTH_ALLOWED_EMAILS: ' , ',
       },
       stdio: 'ignore',
     },

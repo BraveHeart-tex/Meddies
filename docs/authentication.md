@@ -10,13 +10,15 @@ these exact callback URLs for the application:
 
 Use `.env.example` for the private server variable inventory. Set the canonical
 application origin in `AUTH_URL`, using HTTPS in deployment. Generate `AUTH_SECRET`
-from at least 32 random bytes. Configure the OAuth credentials and single approved
-Google account locally and in the intended Vercel environment.
+from at least 32 random bytes. Configure the OAuth credentials and the approved
+accounts in `AUTH_ALLOWED_EMAILS`, a comma-separated list of Google emails, locally
+and in the intended Vercel environment. An empty list leaves sign-in disabled.
 
 ## Authorization
 
-Only Google identities with a verified, allowlisted email can enter. The stable
-`google:<subject>` identity scopes ownership; the email is never a resource ID.
+Only Google identities with a verified email from the approved accounts can enter.
+Each approved account keeps its own data: the stable `google:<subject>` identity scopes
+ownership, and the email is never a resource ID. Accounts never share data.
 
 `src/features/auth/server.ts` is server-only. `requireUser()` authenticates each
 operation; pass an existing resource's server-read owner ID to reject a mismatch,
@@ -28,8 +30,8 @@ boundary.
 
 Signed encrypted session cookies have a seven-day absolute lifetime. Reading a
 session does not extend that deadline. Each read rechecks the current allowlist and
-session version. Change the allowlist/version or rotate the secret and redeploy
-to invalidate existing sessions. Sign-out clears this browser's cookie; it does
+session version. Remove an approved account, change the version or rotate the
+secret and redeploy to invalidate existing sessions. Sign-out clears this browser's cookie; it does
 not revoke copied cookies on other devices or sign out of Google.
 
 `GET /api/session` exposes only the authenticated ID and absolute expiry, with

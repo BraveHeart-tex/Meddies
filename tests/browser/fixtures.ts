@@ -176,7 +176,7 @@ export const test = base.extend<
               AUTH_SECRET: token ? secret : '',
               AUTH_GOOGLE_ID: token ? 'synthetic-client' : '',
               AUTH_GOOGLE_SECRET: token ? 'synthetic-secret' : '',
-              AUTH_ALLOWED_EMAIL: token ? email : '',
+              AUTH_ALLOWED_EMAILS: token ? email : '',
               AUTH_SESSION_VERSION: token ? '1' : '',
             },
             stdio: ['ignore', 'pipe', 'pipe'],

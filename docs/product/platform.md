@@ -53,7 +53,7 @@ Keep shared application behavior independent of invocation transport; avoid gene
 
 ## Approved operations, privacy and recovery requirements
 
-- Private single-user Google identity with an allowlist, server-side ownership checks and private deployment configuration; no hard-coded global user. Personal medication/catalog storage remain logically separate, and catalog replacements must never modify personal history.
+- Private Google identity limited to an allowlist of approved accounts, each with its own data; server-side ownership checks and private deployment configuration; no hard-coded global user. Personal medication/catalog storage remain logically separate, and catalog replacements must never modify personal history.
 - D1/Drizzle migrations and constraints; atomic intake+stock reconciliation and safe concurrent reminder claims. Stable action IDs/revisions and provider-attempt recording must handle duplicate/retry ambiguity. DB writes and external push submission are **not** a single atomic transaction.
 - International hosting permitted. Minimize personal data; exclude medication details, OAuth secrets, notification endpoints and push credentials from routine logs and scheduler responses. No advertising analytics.
 - Daily encrypted backups independently stored from D1, retained up to **30 days**; independently recoverable keys, tested decryption/restore, failed-backup monitoring and deletion-safe restore/replay protection. Time Travel is supplemental. Recovery targets are at most **24 hours of disaster data loss** and service restoration within **24 hours** (targets, not guarantees).
