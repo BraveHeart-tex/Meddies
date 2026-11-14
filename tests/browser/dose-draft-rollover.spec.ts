@@ -59,7 +59,7 @@ test('an open Taken draft survives the due-time rollover', async ({ page, app },
   })
 
   await test.step('pass the due time and refresh Today with the draft open', async () => {
-    await app.setScheduleTime(`${today}T09:06:00+03:00`)
+    await app.setScheduleTime(`${today}T09:20:00+03:00`)
     await focusWindow(page)
     await expect(status).toHaveAccessibleDescription(/Not logged/)
     await page.screenshot({ path: testInfo.outputPath('draft-after-rollover.png') })
