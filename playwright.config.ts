@@ -22,7 +22,8 @@ export default defineConfig({
     browserName: 'chromium',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    // Video cost every test and context close; the trace already holds failure screenshots.
+    video: 'off',
     actionTimeout: 5_000,
   },
   projects: [

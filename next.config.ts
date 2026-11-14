@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import type { NextConfig } from 'next'
@@ -11,8 +11,11 @@ function copyZxingWasm() {
   const fromDetector = createRequire(fromScanner.resolve('barcode-detector'))
   const wasm = fromDetector.resolve('zxing-wasm/reader/zxing_reader.wasm')
   const targetDir = path.join(process.cwd(), 'public/zxing')
+  const target = path.join(targetDir, path.basename(wasm))
+  // Copy only changed bytes: a rewrite moves `public` mtimes and marks the journey build stale.
+  if (existsSync(target) && readFileSync(target).equals(readFileSync(wasm))) return
   mkdirSync(targetDir, { recursive: true })
-  copyFileSync(wasm, path.join(targetDir, path.basename(wasm)))
+  copyFileSync(wasm, target)
 }
 
 copyZxingWasm()

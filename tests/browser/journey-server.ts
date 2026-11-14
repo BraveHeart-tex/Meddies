@@ -1,6 +1,9 @@
 import type { ChildProcess } from 'node:child_process'
 import { setTimeout as delay } from 'node:timers/promises'
 
+// Next.js answers within tens of milliseconds of listening, so a short poll gap trims startup.
+const READINESS_POLL_MS = 10
+
 /** Per-journey service evidence, shared by inline errors and attachments. */
 export class JourneyService {
   private child?: ChildProcess
@@ -100,7 +103,7 @@ export class JourneyService {
           if (!controller.signal.aborted) last = String(error)
         }
         if (!controller.signal.aborted)
-          await delay(100, undefined, { signal: controller.signal }).catch(() => {})
+          await delay(READINESS_POLL_MS, undefined, { signal: controller.signal }).catch(() => {})
       }
       return 'stopped' as const
     }

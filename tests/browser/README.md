@@ -39,7 +39,7 @@ cd ../meddies-base && pnpm install && pnpm test:browser:build today-skipped
 git worktree remove ../meddies-base
 ```
 
-**Failures** keep a trace, screenshot, video and redacted `service.log` in ignored
+**Failures** keep a trace, screenshot and redacted `service.log` in ignored
 `.browser-artifacts/` (cleared each run); open a trace with
 `pnpm exec playwright show-trace <path>/trace.zip`. CI uploads that folder as
 `browser-artifacts-<attempt>`.
