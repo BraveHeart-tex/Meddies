@@ -7,7 +7,7 @@ The entities below are conceptual distinctions, not an approved database schema.
 - **UserMedication** is the personal medication record, independent of a later **CatalogProduct**. It may have no catalog reference and no recurring schedule.
 - **MedicationSchedule** defines recurrence, effective dates and versioned expectations. **DoseOccurrence** identifies one expected dose; **DoseRecord** holds an explicit outcome, actual taken time, quantity and corrections. Unscheduled intake does not require an occurrence.
 - **StockMovement** represents intake consumption, refill and count reconciliation independently of reminder delivery. Medication strength (e.g., mg) and recorded quantity are different fields.
-- Only user confirmation establishes **Taken** or **Skipped**, attributed to the intended occurrence; a reminder being delivered, acknowledged or opened never does. Past unconfirmed occurrences are **Not logged**, not automatically missed or skipped. Actual intake time is distinct from scheduled due time.
+- Only user confirmation establishes **Taken** or **Skipped**, attributed to the intended occurrence; a reminder being delivered, acknowledged or opened never does. An unconfirmed occurrence is **Due now** for 15 minutes from its due time, then **Not logged**, never automatically missed or skipped ([#275 rules](#275---approved-dose-status-and-late-logging-rules-november-14-2026)). Actual intake time is distinct from scheduled due time.
 - Supported Medicine types and quantities follow [Medicine types and quantity units](#medicine-types-and-quantity-units). Fractional capsules and unlisted forms are unsupported.
 - Taken consumes the explicitly recorded quantity; Skipped consumes nothing. Corrections, refills and retries reconcile stock once. A zero/insufficient count never blocks truthful intake; displayed stock is non-negative with a correction prompt.
 - Optimistic dose outcomes are unconfirmed presentation only. Server records remain authoritative; success announcements, reminder cancellation and confirmed stock require server receipt. Rejection and uncertain receipt follow the topic 02 [session contract](./ux-journeys.md#session-contract).
@@ -66,6 +66,63 @@ See **Unscheduled dose** and **History date** (GLOSSARY.md).
 | Cross-midnight    | At Nov 4 00:20, log a dose taken Nov 3 23:30                  | It shows on the Nov 3 History, not on Nov 4 Today; the save message names Nov 3.               |
 | Separate logs     | Two logs of 1 capsule at 14:10 with different action IDs      | Two Unscheduled doses; neither merges with the other.                                          |
 | Remove            | Remove the 14:10 dose after its confirm step                  | It leaves Today and History; its revisions stay on the server; stock treats it as never taken. |
+
+### #275 - Approved dose status and late logging rules (November 14, 2026)
+
+See **Due now** and **Not logged** (GLOSSARY.md). These rules decide what Today and History show
+and accept; reminder timing stays in [topic 04](./reminders.md) and changes with none of them. The
+Due now and Up next windows present doses; they are not medical guidance.
+
+- **Due now** lasts from an occurrence's due instant until 15 minutes after it, exclusive; then the
+  occurrence is Not logged. Follow-ups at +40 and +80 minutes still follow topic 04. A Not logged
+  occurrence stays loggable and correctable.
+- **Up next** features the most recently due unresolved occurrence due within the last 80 minutes,
+  inclusive, the last automatic follow-up slot. Occurrences due at the same instant follow To log's
+  order. With none in that window it features the next Scheduled occurrence. Older unresolved
+  occurrences stay in To log.
+- **Today** also lists, in To log, unresolved occurrences due in the 24 hours before now, showing
+  their date. Logging one removes it from Today, and its save message names its History date.
+  Logged lists only today's doses.
+- **History** lets the user log or skip a Not logged occurrence on any History date, and review
+  and change a Taken or Skipped one, with the same dose drawer and rules as Today.
+- **Taken time** for an occurrence is never after now and falls on its due date, the day before or
+  the day after, in Istanbul time. The server enforces this on every Taken save and every
+  correction that sets a time; a correction that keeps the saved time is accepted even when an
+  earlier save placed it outside this window. The record drawer offers only those dates, never a
+  future one, as actual calendar dates. Unscheduled doses keep their own today-or-yesterday rule
+  (#28).
+
+| Example            | Setup                                                               | Expected                                                                                                            |
+| ------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Due now window     | Daily 09:00, nothing recorded                                       | Due now from 09:00:00 to 09:14:59; Not logged from 09:15. Follow-ups still target 09:40 and 10:20.                  |
+| Up next window     | 09:00 Not logged and 21:00 scheduled; now 10:20, then 10:21         | At 10:20 Up next is 09:00, Not logged. At 10:21 Up next is 21:00; 09:00 stays in To log.                            |
+| Most recent first  | A due 09:00 and B due 09:30, both unresolved; now 09:35             | Up next is B, Due now. A is Not logged in To log.                                                                   |
+| Same instant       | A, B and C due 08:00, unresolved; now 08:05                         | Up next is the first of them in To log; once A is saved, B.                                                         |
+| Same medicine      | Every 1 hour, 09:00 and 10:00 unresolved; now 10:05                 | Up next is 10:00, Due now; 09:00 is Not logged in To log.                                                           |
+| Across midnight    | Daily 23:30, unresolved; now Nov 14 00:10                           | To log lists the Nov 13 23:30 dose with its date; Up next features it until 00:50. It leaves Today at Nov 14 23:30. |
+| From History       | Nov 10 08:00 Not logged; on Nov 14 open the Nov 10 History          | The row opens the record drawer offering Nov 9, 10 and 11; Taken Nov 10 08:30 saves on the Nov 10 History.          |
+| Outside the window | Same dose; Taken time Nov 12 08:30                                  | The server rejects it; nothing saves.                                                                               |
+| Day before         | At Nov 14 00:20, record the Nov 14 00:15 dose as taken Nov 13 23:50 | Accepted; it shows on the Nov 14 History, taken on Nov 13.                                                          |
+| Earlier saved time | Nov 10 dose saved before these rules as taken Nov 14 10:00          | Changing only its quantity is accepted. Changing its time to Nov 14 11:00 is rejected.                              |
+
+### #275 - Approved medicine record rules (November 14, 2026)
+
+See **Detail correction**, **Strength change** and **Archived medicine** (GLOSSARY.md).
+
+- A Medicine with no schedule is a complete record for occasional use, not unfinished setup. It
+  reads "No schedule", leads with logging a dose and offers setting a schedule second.
+- Editing a Medicine never changes the details its earlier doses were recorded with; History and
+  export keep them.
+- A **Detail correction** fixes details entered wrongly. Every dose shows the fixed details, and
+  the server keeps the earlier values for export.
+- A **Strength change** records that the user now takes a different strength of the same
+  Medicine. Earlier doses keep their strength in History and export; later doses use the new one.
+- Archiving a Medicine keeps every dose, outcome and detail in History and export.
+
+Still open, owned by #292: which instant decides a dose's strength
+after a Strength change; whether either edit may change the Medicine type or Quantity unit; what
+archiving does to a running schedule, reminders and stock; whether archiving can be undone; and
+whether a Medicine with no doses can be deleted.
 
 ## Required product behavior
 

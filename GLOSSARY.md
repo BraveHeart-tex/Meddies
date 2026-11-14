@@ -18,6 +18,21 @@ What a Medicine's dose amount counts or measures, such as tablets, capsules, ml,
 It is separate from the Medicine's strength and the container it comes in.
 _Avoid_: type, when naming the Quantity unit; strength unit
 
+**Detail correction**:
+An edit that fixes a Medicine's wrongly entered details. Every dose shows the fixed details; the
+server keeps the earlier values.
+_Avoid_: rename, update, when the kind of edit matters
+
+**Strength change**:
+An edit recording that the user now takes a different strength of the same Medicine. Earlier
+doses keep the strength they were recorded with.
+_Avoid_: correction, new pack, new medicine
+
+**Archived medicine**:
+A Medicine the user no longer takes, kept out of the Medications list. Its doses and outcomes
+stay in History and export.
+_Avoid_: deleted, removed, inactive medicine
+
 ## Schedules
 
 **Clock schedule**:
@@ -91,9 +106,14 @@ A Dose outcome recording a deliberate skip at its confirmation time, with no int
 quantity.
 _Avoid_: missed, dismissed
 
+**Due now**:
+An Occurrence with no Dose outcome, from its due time until 15 minutes after it. It is a status on
+screen only: reminders keep their own timing.
+_Avoid_: active, current, pending dose
+
 **Not logged**:
-An Occurrence whose due time has passed with no Dose outcome. It proves neither intake nor a skip
-and can still be logged.
+An Occurrence with no Dose outcome once its Due now window has passed. It proves neither intake
+nor a skip and can still be logged.
 _Avoid_: missed, overdue
 
 **Unscheduled dose**:
