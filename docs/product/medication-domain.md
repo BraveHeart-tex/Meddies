@@ -9,7 +9,7 @@ The entities below are conceptual distinctions, not an approved database schema.
 - **StockMovement** represents intake consumption, refill and count reconciliation independently of reminder delivery. Medication strength (e.g., mg) and recorded quantity are different fields.
 - Only user confirmation establishes **Taken** or **Skipped**, attributed to the intended occurrence; a reminder being delivered, acknowledged or opened never does. An unconfirmed occurrence is **Due now** for 15 minutes from its due time, then **Not logged**, never automatically missed or skipped ([#275 rules](#275---approved-dose-status-and-late-logging-rules-november-14-2026)). Actual intake time is distinct from scheduled due time.
 - Supported Medicine types and quantities follow [Medicine types and quantity units](#medicine-types-and-quantity-units). Fractional capsules and unlisted forms are unsupported.
-- Taken consumes the explicitly recorded quantity; Skipped consumes nothing. Corrections, refills and retries reconcile stock once. A zero/insufficient count never blocks truthful intake; displayed stock is non-negative with a correction prompt.
+- Taken consumes the explicitly recorded quantity; Skipped consumes nothing. Corrections, refills and retries reconcile stock once. A count correction is a reconciliation point: a Taken dose whose Taken time is before the latest count correction never changes current stock. A zero/insufficient count never blocks truthful intake; displayed stock is non-negative with a correction prompt.
 - Optimistic dose outcomes are unconfirmed presentation only. Server records remain authoritative; success announcements, reminder cancellation and confirmed stock require server receipt. Rejection and uncertain receipt follow the topic 02 [session contract](./ux-journeys.md#session-contract).
 - Stable occurrence IDs, schedule versions, client action IDs and revisions preserve history, prevent duplicate effects and support conflict resolution. Online stale revisions/conflicting outcomes require explicit recovery, not silent last-write-wins; preserve existing evidence, idempotency and server correctness. Stock is uncertain and affected reminders stop when a genuine unresolved conflict is known to the server. Offline queue and expanded multi-device UX delivery are deferred.
 - Unscheduled intake does not reschedule future expected doses. Server history remains until deliberate history/account deletion; deleting history does not reverse past inventory consumption. Full deletion and current online/session scope (including deferred offline capability) belong to [02 - UX & User Journeys](./ux-journeys.md).
@@ -113,16 +113,23 @@ See **Detail correction**, **Strength change** and **Archived medicine** (GLOSSA
   reads "No schedule", leads with logging a dose and offers setting a schedule second.
 - Editing a Medicine never changes the details its earlier doses were recorded with; History and
   export keep them.
-- A **Detail correction** fixes details entered wrongly. Every dose shows the fixed details, and
-  the server keeps the earlier values for export.
-- A **Strength change** records that the user now takes a different strength of the same
-  Medicine. Earlier doses keep their strength in History and export; later doses use the new one.
-- Archiving a Medicine keeps every dose, outcome and detail in History and export.
-
-Still open, owned by #292: which instant decides a dose's strength
-after a Strength change; whether either edit may change the Medicine type or Quantity unit; what
-archiving does to a running schedule, reminders and stock; whether archiving can be undone; and
-whether a Medicine with no doses can be deleted.
+- Strength is kept as effective-dated revisions, and every dose saves a snapshot of the strength
+  in effect at its Taken time, or at its due time when it has none.
+- A **Detail correction** fixes details entered wrongly, including a mistyped strength. It amends
+  the revision it fixes, so every dose recorded under that revision shows the fixed value; the
+  server keeps the earlier value for export.
+- A **Strength change** records that the user now takes a different strength of the same Medicine.
+  It adds a revision effective from the moment it names, never in the future and never before the
+  latest Taken time already recorded for that Medicine, so no recorded dose changes strength.
+  Later doses use the new strength.
+- When a late Taken time falls under a different strength revision than the one now in effect,
+  the record drawer shows the strength that will be saved before the user saves.
+- The Medicine type and Quantity unit are locked once the Medicine has had a schedule or a dose.
+- Archiving a Medicine stops its schedule at its Edit time and cancels its unsent dose, food and
+  refill reminders. Every dose, outcome and detail stays in History and export, and stock is
+  unchanged. Unarchiving restores the Medicine without restarting anything; schedules restart only
+  through an explicit schedule change.
+- Only a Medicine that has never had a schedule or a dose can be deleted.
 
 ## Required product behavior
 

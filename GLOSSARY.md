@@ -19,18 +19,18 @@ It is separate from the Medicine's strength and the container it comes in.
 _Avoid_: type, when naming the Quantity unit; strength unit
 
 **Detail correction**:
-An edit that fixes a Medicine's wrongly entered details. Every dose shows the fixed details; the
-server keeps the earlier values.
+An edit that fixes a Medicine's wrongly entered details, such as a mistyped strength. Every dose
+shows the fixed details; the server keeps the earlier values.
 _Avoid_: rename, update, when the kind of edit matters
 
 **Strength change**:
-An edit recording that the user now takes a different strength of the same Medicine. Earlier
-doses keep the strength they were recorded with.
+An edit recording that the user takes a different strength of the same Medicine from a named
+moment. It adds a strength revision; doses already recorded keep the strength they saved.
 _Avoid_: correction, new pack, new medicine
 
 **Archived medicine**:
-A Medicine the user no longer takes, kept out of the Medications list. Its doses and outcomes
-stay in History and export.
+A Medicine the user no longer takes, kept out of the Medications list, with its schedule stopped
+and reminders cancelled. Its doses and outcomes stay in History and export.
 _Avoid_: deleted, removed, inactive medicine
 
 ## Schedules
