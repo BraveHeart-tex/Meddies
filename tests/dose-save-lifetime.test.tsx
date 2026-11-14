@@ -78,7 +78,7 @@ function deferred() {
 let client: QueryClient
 
 beforeEach(() => {
-  vi.useFakeTimers({ shouldAdvanceTime: true })
+  vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 1 })
   client = createQueryClient()
   client.setQueryData(medicineKeys.list(), [medicine], { updatedAt: Date.now() })
 })

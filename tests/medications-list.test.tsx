@@ -90,7 +90,7 @@ let client: QueryClient
 
 beforeEach(() => {
   // Query's stale time follows the faked clock; timers still run so React and MSW settle.
-  vi.useFakeTimers({ shouldAdvanceTime: true })
+  vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 1 })
   client = createQueryClient()
 })
 

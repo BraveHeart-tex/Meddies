@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
@@ -41,8 +41,21 @@ function renderScanner() {
   expect(frame.citation).toBe('193·B·Scanner')
 }
 
+const user = () =>
+  userEvent.setup({ advanceTimers: (ms) => act(() => vi.advanceTimersByTimeAsync(ms)) })
+
+/**
+ * Once the camera request is made, skip the library's 500ms settle delay and the Scanner's
+ * 200ms stream check instead of waiting them out.
+ */
+async function cameraStarted() {
+  await waitFor(() => expect(getUserMedia).toHaveBeenCalledOnce(), cameraReady)
+  await act(() => vi.advanceTimersByTimeAsync(700))
+}
+
 /** The library reads capabilities once, then the Scanner's torch check reads them again. */
 async function torchChecked(track: ReturnType<typeof fakeTrack>) {
+  await cameraStarted()
   await waitFor(
     () => expect(track.getCapabilities.mock.calls.length).toBeGreaterThan(1),
     cameraReady,
@@ -50,6 +63,7 @@ async function torchChecked(track: ReturnType<typeof fakeTrack>) {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 1 })
   getUserMedia.mockReset()
   vi.stubGlobal('isSecureContext', true)
   Object.defineProperty(navigator, 'mediaDevices', {
@@ -96,7 +110,7 @@ test('denied camera access shows the Camera off copy and still offers typing', a
   )
   expect(screen.queryByText('Hold the barcode inside the frame')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Torch' })).not.toBeInTheDocument()
-  await userEvent.click(screen.getByRole('button', { name: 'Type it in instead' }))
+  await user().click(screen.getByRole('button', { name: 'Type it in instead' }))
   expect(await screen.findByText('Scanner closed')).toBeInTheDocument()
 })
 
@@ -106,7 +120,7 @@ test.each(['Close scanner', 'Type it in instead'])('%s stops every camera track'
   renderScanner()
   await torchChecked(tracks[0]!)
   for (const track of tracks) expect(track.stop).not.toHaveBeenCalled()
-  await userEvent.click(screen.getByRole('button', { name }))
+  await user().click(screen.getByRole('button', { name }))
   await waitFor(() => {
     for (const track of tracks) expect(track.stop).toHaveBeenCalledOnce()
   }, cameraReady)
@@ -116,9 +130,10 @@ test('the torch shows when the camera track reports support, and switches it', a
   const track = fakeTrack({ torch: true } as MediaTrackCapabilities)
   getUserMedia.mockResolvedValue(fakeStream(track))
   renderScanner()
+  await cameraStarted()
   const torch = await screen.findByRole('button', { name: 'Torch' }, cameraReady)
   expect(torch).toHaveAttribute('aria-pressed', 'false')
-  await userEvent.click(torch)
+  await user().click(torch)
   expect(track.applyConstraints).toHaveBeenCalledWith({ advanced: [{ torch: true }] })
   await waitFor(() => expect(torch).toHaveAttribute('aria-pressed', 'true'))
 })

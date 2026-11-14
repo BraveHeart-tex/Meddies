@@ -36,8 +36,11 @@ the reference.
 - **Query:** each test creates a client with `createQueryClient()` (the session client
   stays out of tests) and seeds cached data with `setQueryData` and `updatedAt`.
 - **Next.js:** mock `next/navigation` with `vi.mock`.
-- **Time:** `vi.useFakeTimers({ shouldAdvanceTime: true })`; wrap
+- **Time:** `vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 1 })`; wrap
   `vi.advanceTimersByTimeAsync` in `act` and pass it to `userEvent.setup({ advanceTimers })`.
+  The 1ms tick matters: with the 20ms default, React's scheduler and MSW's zero-delay timers
+  wait for the next tick at every step. A fixed library or polling delay is skipped with
+  `vi.advanceTimersByTimeAsync`, never waited out.
 - **Focus and reconnect:** dispatch real DOM events on `window` (`focus` or
   `visibilitychange`, then `offline` and `online`) so the app's listener wiring is proven.
 - `helpers/component-setup.ts` unmounts, resets MSW handlers and restores real timers after
