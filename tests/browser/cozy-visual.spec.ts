@@ -2,7 +2,7 @@ import { mkdir } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { expect, test } from './fixtures'
 import { doseTrigger, drawer } from './locators'
-import { datePicker, timePicker } from './pickers'
+import { timePicker } from './pickers'
 
 // Captures Today, Medications and the Record dose drawer with the Cozy Care UI kit sample
 // data (Thursday 14:38) for visual comparison with the design export. Screenshots are review
@@ -88,11 +88,6 @@ test(
       await shot('prod-drawer-taken')
       await dialog.getByRole('button', { name: 'Other', exact: true }).click()
       await shot('prod-drawer-other')
-      await datePicker(dialog, 'Taken date in Istanbul').click()
-      await expect(page.getByRole('dialog', { name: 'Taken date in Istanbul' })).toBeVisible()
-      await shot('prod-drawer-calendar')
-      await page.keyboard.press('Escape')
-      await expect(datePicker(dialog, 'Taken date in Istanbul')).toBeFocused()
       await timePicker(dialog, 'Taken time in Istanbul').minute.click()
       await expect(page.getByRole('listbox')).toBeVisible()
       await shot('prod-drawer-time-select')

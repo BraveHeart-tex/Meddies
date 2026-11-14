@@ -35,6 +35,13 @@ export const instant = (scope: Page | Locator, iso: string) =>
 export const historyList = (page: Page, date: string) =>
   page.getByRole('list', { name: `Doses for ${formatLongDay(date, date)}` })
 
+/** The record drawer's Taken date choices. */
+export const takenDays = (scope: Page | Locator) => scope.getByRole('group', { name: 'Taken date' })
+
+/** One Taken date choice, named by its long day. Journey dates share the frozen clock's year. */
+export const takenDay = (scope: Page | Locator, date: string) =>
+  takenDays(scope).getByRole('button', { name: formatLongDay(date, date), exact: true })
+
 /** History's date bar: Previous day, the DatePicker and Next day. */
 export const historyDateNav = (page: Page) => page.getByRole('navigation', { name: 'History date' })
 

@@ -2,7 +2,11 @@ import type { TakenFormOptions, TakenFormValues } from '../src/features/schedule
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { parseTakenDose } from '../src/features/schedules/contract'
-import { takenFormDefaults, takenFormSchema } from '../src/features/schedules/taken-form-schema'
+import {
+  takenDayOptions,
+  takenFormDefaults,
+  takenFormSchema,
+} from '../src/features/schedules/taken-form-schema'
 
 // Istanbul is UTC+3: 14:00 local is 11:00Z.
 const now = '2035-06-15T14:00'
@@ -63,7 +67,7 @@ test('Other takes a passed time today or yesterday', () => {
   assert.deepEqual(errorsOf(other('2035-06-15', '14:00')), {})
   assert.deepEqual(errorsOf(other('2035-06-15', '08:')), { time: 'Choose a time.' })
   assert.deepEqual(errorsOf(other('2035-06-13', '08:00')), { date: 'Choose today or yesterday.' })
-  assert.deepEqual(errorsOf(other('', '')), { date: 'Choose today or yesterday.' })
+  assert.deepEqual(errorsOf(other('', '14:00')), { date: 'Choose a date.' })
 })
 
 test('a scheduled dose takes dates in its Taken time window, the same rule as the Worker', () => {
@@ -90,6 +94,35 @@ test('a scheduled dose takes dates in its Taken time window, the same rule as th
   assert.deepEqual(errorsOf(other('2035-06-16', '08:00'), todayDose), {
     time: 'Choose a time that has passed.',
   })
+})
+
+// Regression: a future day or a day outside the window offered as a Taken date choice.
+test('Taken date choices: the due day and the days either side, never after today', () => {
+  const today = '2035-06-15'
+  // Due today: yesterday and today; tomorrow is in the future.
+  assert.deepEqual(takenDayOptions({ today, dueAt: '2035-06-15T05:00:00.000Z' }), [
+    '2035-06-14',
+    '2035-06-15',
+  ])
+  // Due three days ago: its due day and the days either side.
+  assert.deepEqual(takenDayOptions({ today, dueAt: '2035-06-12T05:00:00.000Z' }), [
+    '2035-06-11',
+    '2035-06-12',
+    '2035-06-13',
+  ])
+  // Due 23:30 Istanbul yesterday (20:30Z): the Istanbul date decides, not the UTC one.
+  assert.deepEqual(takenDayOptions({ today, dueAt: '2035-06-14T20:30:00.000Z' }), [
+    '2035-06-13',
+    '2035-06-14',
+    '2035-06-15',
+  ])
+  // Unscheduled: yesterday and today.
+  assert.deepEqual(takenDayOptions({ today }), ['2035-06-14', '2035-06-15'])
+  // A saved day outside the window stays offered, so the saved time can be kept.
+  assert.deepEqual(
+    takenDayOptions({ today, dueAt: '2035-06-10T05:00:00.000Z', saved: '2035-06-15' }),
+    ['2035-06-09', '2035-06-10', '2035-06-11', '2035-06-15'],
+  )
 })
 
 test('Earlier saved time: a correction keeps an out-of-window minute but cannot move to another', () => {

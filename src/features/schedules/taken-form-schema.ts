@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { formatTime } from '@/lib/calendar-date'
+import { formatTime, shiftDate } from '@/lib/calendar-date'
 import { isTimeOfDay } from '@/lib/time-of-day'
 import { formatQuantity, parseQuantity, quantityProblem, type DoseUnit } from '@/lib/dose-quantity'
 import { isScheduleDate, isTakenDateAllowed, istanbulDate } from './contract'
@@ -32,6 +32,27 @@ export function takenAtLocal(
   return isScheduleDate(values.date) && isTimeOfDay(values.time ?? '')
     ? `${values.date}T${values.time}`
     : null
+}
+
+/**
+ * The Taken date choices, oldest first, never after `today`: a scheduled dose's due date and the
+ * days either side, or today and yesterday for an Unscheduled dose. A saved date outside them
+ * stays offered, so a correction can keep its saved time.
+ */
+export function takenDayOptions({
+  today,
+  dueAt,
+  saved,
+}: {
+  today: string
+  dueAt?: string
+  saved?: string
+}): string[] {
+  const days = dueAt
+    ? [-1, 0, 1].map((offset) => shiftDate(istanbulDate(new Date(dueAt)), offset))
+    : [previousDate(today), today]
+  if (saved && isScheduleDate(saved) && !days.includes(saved)) days.push(saved)
+  return days.filter((day) => day <= today).sort()
 }
 
 export type TakenFormOptions = {
@@ -74,7 +95,9 @@ export function takenFormSchema({ unit, now, scheduled, dueAt, original }: Taken
           path: ['when'],
         })
       if (values.when === 'other') {
-        if (!isScheduleDate(values.date) || !allowed(`${values.date}T${values.time}`))
+        if (!isScheduleDate(values.date))
+          ctx.addIssue({ code: 'custom', message: 'Choose a date.', path: ['date'] })
+        else if (!allowed(`${values.date}T${values.time}`))
           ctx.addIssue({ code: 'custom', message: dateMessage, path: ['date'] })
         else if (!isTimeOfDay(values.time))
           ctx.addIssue({ code: 'custom', message: 'Choose a time.', path: ['time'] })

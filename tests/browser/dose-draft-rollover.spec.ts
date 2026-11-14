@@ -1,7 +1,7 @@
 import { expect, test } from './fixtures'
-import { datePicker, expectTime, pickDate, pickTime } from './pickers'
+import { expectTime, pickTime } from './pickers'
 import { focusWindow } from './actions'
-import { doseRow, doseStatus, doseTrigger, instant, drawer } from './locators'
+import { doseRow, doseStatus, doseTrigger, instant, drawer, takenDay } from './locators'
 import { insertScheduledMedicine } from './seed'
 
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
@@ -29,7 +29,7 @@ test('an open Taken draft survives the due-time rollover', async ({ page, app },
   const trigger = doseTrigger(row, 'Rollover Medicine')
   const status = doseStatus(row)
   const dialog = drawer(page)
-  const takenDate = datePicker(dialog, 'Taken date in Istanbul')
+  const takenDate = takenDay(dialog, today)
   const amount = dialog.getByLabel(/^Amount/)
 
   await test.step('open an upcoming dose and start a Taken draft', async () => {
@@ -39,7 +39,7 @@ test('an open Taken draft survives the due-time rollover', async ({ page, app },
     await dialog.getByRole('button', { name: 'I took it' }).click()
     await expect(dialog.getByRole('button', { name: 'Save as taken' })).toBeVisible()
     await dialog.getByRole('button', { name: 'Other', exact: true }).click()
-    await pickDate(page, 'Taken date in Istanbul', today)
+    await takenDate.click()
     await pickTime(page, 'Taken time in Istanbul', draftTime.slice(11))
     await amount.fill('2')
   })
@@ -47,7 +47,7 @@ test('an open Taken draft survives the due-time rollover', async ({ page, app },
   const expectDraftIntact = async () => {
     await expect(dialog).toHaveCount(1)
     await expect(amount).toHaveValue('2')
-    await expect(takenDate).toHaveText('Today, Fri 15 Jun')
+    await expect(takenDate).toHaveAttribute('aria-pressed', 'true')
     await expectTime(dialog, 'Taken time in Istanbul', draftTime.slice(11))
   }
 

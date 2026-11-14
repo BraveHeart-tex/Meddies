@@ -7,7 +7,6 @@ import { QuantityStepper } from '@/components/quantity-stepper'
 import { InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { DatePicker } from '@/components/ui/date-picker'
 import {
   Field,
   FieldError,
@@ -17,7 +16,6 @@ import {
   FieldSet,
   FieldTitle,
 } from '@/components/ui/field'
-import { TimePicker } from '@/components/ui/time-picker'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { formatTime } from '@/lib/calendar-date'
 import { useKnownOffline } from '@/lib/use-known-offline'
@@ -26,13 +24,14 @@ import type { Medicine } from '@/features/medicines/contract'
 import { saveMessages } from '@/lib/save-messages'
 import type { DoseOccurrence } from './contract'
 import { DoseSaveProblem } from './dose-save-problem'
+import { TakenOtherFields } from './taken-other-fields'
 import { useCurrentMinute } from './use-current-minute'
 import type { AttemptForm, SaveProblem } from './dose-saves'
 import {
   instantOf,
   localMinute,
-  previousDate,
   takenAtLocal,
+  takenDayOptions,
   takenFormDefaults,
   takenFormSchema,
   type TakenAtChoice,
@@ -143,7 +142,6 @@ export function TakenForm({
   const scheduledHasPassed = scheduled < now
   const takenAt = takenAtLocal(values, now, scheduled)
   const today = now.slice(0, 10)
-  const yesterday = previousDate(today)
   const labels = primaryLabels[mode]
 
   async function save(details: TakenFormOutput) {
@@ -156,11 +154,10 @@ export function TakenForm({
     if (first) form.setFocus(first)
   }
 
+  // Other starts with the time of the last choice and no day: the user picks the day (#277).
   function choose(next: TakenAtChoice) {
-    if (next === 'other' && !form.getValues('date')) {
-      const from = values.when === 'scheduled' ? scheduled : now
-      form.setValue('date', from.slice(0, 10))
-      form.setValue('time', from.slice(11))
+    if (next === 'other' && !form.getValues('time')) {
+      form.setValue('time', (values.when === 'scheduled' ? scheduled : now).slice(11))
     }
   }
 
@@ -278,53 +275,17 @@ export function TakenForm({
               )}
             />
             {values.when === 'other' && (
-              <div className="grid gap-3 min-[400px]:grid-cols-2">
-                <Controller
-                  name="date"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid} {...swipeIgnore}>
-                      <FieldLabel htmlFor={`${id}-date`}>Taken date</FieldLabel>
-                      <DatePicker
-                        ref={field.ref}
-                        id={`${id}-date`}
-                        label="Taken date in Istanbul"
-                        today={today}
-                        min={yesterday}
-                        max={today}
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        onBlur={field.onBlur}
-                        disabled={saving}
-                        aria-invalid={fieldState.invalid}
-                        aria-describedby={fieldState.invalid ? `${id}-date-error` : undefined}
-                      />
-                      <FieldError id={`${id}-date-error`} errors={[fieldState.error]} />
-                    </Field>
-                  )}
-                />
-                <Controller
-                  name="time"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid} {...swipeIgnore}>
-                      <FieldLabel htmlFor={`${id}-time`}>Taken time</FieldLabel>
-                      <TimePicker
-                        ref={field.ref}
-                        id={`${id}-time`}
-                        label="Taken time in Istanbul"
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        onBlur={field.onBlur}
-                        disabled={saving}
-                        aria-invalid={fieldState.invalid}
-                        aria-describedby={fieldState.invalid ? `${id}-time-error` : undefined}
-                      />
-                      <FieldError id={`${id}-time-error`} errors={[fieldState.error]} />
-                    </Field>
-                  )}
-                />
-              </div>
+              <TakenOtherFields
+                id={id}
+                control={form.control}
+                days={takenDayOptions({
+                  today,
+                  dueAt: dose.dueAt,
+                  saved: mode === 'edit' ? original?.local.slice(0, 10) : undefined,
+                })}
+                today={today}
+                saving={saving}
+              />
             )}
             <Controller
               name="quantity"

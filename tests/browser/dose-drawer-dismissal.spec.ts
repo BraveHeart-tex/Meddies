@@ -1,13 +1,15 @@
 import { expect, test } from './fixtures'
-import { dragHandle, pressBackdrop } from './drawers'
-import { doseRow, doseStatus, doseTrigger, drawer } from './locators'
+import { dragHandle, pressBackdrop, touchSwipeFrom } from './drawers'
+import { doseRow, doseStatus, doseTrigger, drawer, takenDays } from './locators'
 import { insertScheduledMedicine } from './seed'
 
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
 const dueAt = new Date(`${today}T08:30:00+03:00`).toISOString()
 
+// Real pointer gestures: mouse drags on the handle, touch swipes on a form control.
 test.use({
+  hasTouch: true,
   journey: {
     auth: true,
     storage: true,
@@ -44,6 +46,14 @@ test('swipe, backdrop and Escape discard drafts, and never dismiss while saving'
     await startTakenDraft()
     await dragHandle(page, 24)
     await expect(dialog).toBeVisible()
+    await expect(amount).toHaveValue('2')
+  })
+
+  await test.step('a swipe that starts on the date choice keeps the drawer open', async () => {
+    await dialog.getByRole('button', { name: 'Other', exact: true }).click()
+    await touchSwipeFrom(page, takenDays(dialog), 400)
+    await expect(dialog).toBeVisible()
+    await expect(dialog).not.toHaveAttribute('data-ending-style')
     await expect(amount).toHaveValue('2')
   })
 

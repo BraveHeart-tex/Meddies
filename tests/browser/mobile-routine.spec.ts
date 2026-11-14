@@ -1,7 +1,15 @@
 import { expect, test } from './fixtures'
 import { datePicker, expectTime, pickDate, pickTime } from './pickers'
 import { focusWindow, waitForClientRouter } from './actions'
-import { doseRow, doseTrigger, historyRow, historyRows, instant, drawer } from './locators'
+import {
+  doseRow,
+  doseTrigger,
+  historyRow,
+  historyRows,
+  instant,
+  drawer,
+  takenDay,
+} from './locators'
 import { chooseMedicineType } from './drawers'
 
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
@@ -123,7 +131,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await dialog.getByRole('button', { name: 'I took it' }).click()
     await expect(dialog.getByRole('button', { name: 'Save as taken' })).toBeVisible()
     await dialog.getByRole('button', { name: 'Other', exact: true }).click()
-    await pickDate(page, 'Taken date in Istanbul', today)
+    await takenDay(dialog, today).click()
     await pickTime(page, 'Taken time in Istanbul', initialScheduleTime.slice(11, 16))
     await dialog.getByRole('button', { name: 'Save as taken' }).press('Enter')
     await expect(instant(doseRow(page, dueAt), takenAt)).toBeVisible()

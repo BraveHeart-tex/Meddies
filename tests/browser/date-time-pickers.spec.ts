@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { expect, test } from './fixtures'
 import { scrollsHorizontally } from './actions'
-import { calendarDay, doseRow, doseTrigger, drawer, instant } from './locators'
+import { calendarDay, doseRow, doseTrigger, drawer, instant, takenDay } from './locators'
 import { datePicker, expectTime, pickDate, pickTime, timePicker } from './pickers'
 import { insertScheduledMedicine } from './seed'
 
@@ -86,15 +86,8 @@ test('pick schedule dates, dose times and intake in Istanbul time from another t
     await doseTrigger(page, 'Late Medicine').press('Enter')
     await dialog.getByRole('button', { name: 'I took it' }).click()
     await dialog.getByRole('button', { name: 'Other', exact: true }).click()
-    const takenDate = datePicker(dialog, 'Taken date in Istanbul')
-    await expect(takenDate).toHaveText('Today, Fri 15 Jun')
     await expectTime(dialog, 'Taken time in Istanbul', '23:30')
-    await takenDate.click()
-    const intakeCalendar = page.getByRole('dialog', { name: 'Taken date in Istanbul' })
-    await expect(intakeCalendar).toBeVisible()
-    await page.keyboard.press('Escape')
-    await expect(intakeCalendar).toBeHidden()
-    await expect(dialog.getByRole('button', { name: 'Save as taken' })).toBeVisible()
+    await takenDay(dialog, today).click()
     await pickTime(page, 'Taken time in Istanbul', '23:10')
     await expect(dialog).toContainText('10 min after scheduled')
     await dialog.getByRole('button', { name: 'Save as taken' }).click()

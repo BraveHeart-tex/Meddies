@@ -1,6 +1,14 @@
 import { expect, test } from './fixtures'
 import { datePicker, expectTime, pickDate, pickTime } from './pickers'
-import { doseTrigger, historyList, historyRows, intakeTime, drawer, toastMessage } from './locators'
+import {
+  doseTrigger,
+  historyList,
+  historyRows,
+  intakeTime,
+  drawer,
+  takenDay,
+  toastMessage,
+} from './locators'
 import { addDays, insertScheduledMedicine, insertSkippedRecord, insertTakenRecord } from './seed'
 
 // History shows the day before the frozen scheduling clock, in Europe/Istanbul.
@@ -106,7 +114,7 @@ test('review, edit and correct past doses in History', async ({
     await reviewFirst()
     await dialog.getByRole('button', { name: /^Edit dose for/ }).click()
     await expect(dialog.getByLabel(/^Amount/)).toHaveValue('½')
-    await expect(datePicker(dialog, 'Taken date in Istanbul')).toHaveText('Today, Fri 15 Jun')
+    await expect(takenDay(dialog, '2035-06-15')).toHaveAttribute('aria-pressed', 'true')
     await expectTime(dialog, 'Taken time in Istanbul', '09:00')
     await dialog.getByLabel(/^Amount/).fill('1.5')
     await dialog.getByRole('button', { name: 'Save changes' }).click()
@@ -123,7 +131,7 @@ test('review, edit and correct past doses in History', async ({
   await test.step('edit actual time while preserving quantity', async () => {
     await reviewFirst()
     await dialog.getByRole('button', { name: /^Edit dose for/ }).click()
-    await pickDate(page, 'Taken date in Istanbul', date)
+    await takenDay(dialog, date).click()
     await pickTime(page, 'Taken time in Istanbul', '12:00')
     await dialog.getByRole('button', { name: 'Save changes' }).click()
     await expect(intakeTime(first)).toHaveAttribute('datetime', `${date}T09:00:00.000Z`)

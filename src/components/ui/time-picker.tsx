@@ -31,8 +31,13 @@ const optionElements = (items: typeof HOURS) =>
 // mounted item's selection and highlight independently.
 const HOUR_OPTIONS = optionElements(HOURS)
 const MINUTE_OPTIONS = optionElements(MINUTES)
-const HOUR_VALUE = <SelectValue placeholder="HH" />
-const MINUTE_VALUE = <SelectValue placeholder="MM" />
+// Two digits never break apart, even in a narrow trigger at enlarged text (#277 F4).
+const HOUR_VALUE = (
+  <SelectValue placeholder="HH" className="whitespace-nowrap [overflow-wrap:normal]" />
+)
+const MINUTE_VALUE = (
+  <SelectValue placeholder="MM" className="whitespace-nowrap [overflow-wrap:normal]" />
+)
 
 /**
  * Controlled 24-hour time from hour and minute selects. The value is '' until a half is chosen,

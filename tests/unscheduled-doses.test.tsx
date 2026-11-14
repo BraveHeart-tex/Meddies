@@ -271,13 +271,22 @@ test('Log a dose shows field errors, then saves another minute yesterday and nam
   await user.click(await screen.findByRole('button', { name: 'Log a dose' }))
   await screen.findByRole('dialog', { name: 'Ibuprofen' })
   await user.click(screen.getByRole('button', { name: 'Other' }))
+  const days = within(screen.getByRole('group', { name: 'Taken date' })).getAllByRole('button')
+  expect(days.map((day) => [day.textContent, day.getAttribute('aria-label')])).toEqual([
+    ['Fri 13 Nov', 'Friday, 13 November'],
+    ['Sat 14 Nov', 'Saturday, 14 November'],
+  ])
+  // A new log saves only once a day is chosen.
+  await user.click(screen.getByRole('button', { name: 'Save dose' }))
+  expect(await screen.findByText('Choose a date.')).toBeVisible()
+  expect(state.writes).toHaveLength(0)
+  await user.click(screen.getByRole('button', { name: 'Saturday, 14 November' }))
   await pickTime(user, '11:00')
   await user.click(screen.getByRole('button', { name: 'Save dose' }))
   expect(await screen.findByText('Choose a time that has passed.')).toBeVisible()
   expect(screen.getByRole('combobox', { name: /hour$/ })).toHaveFocus()
   expect(state.writes).toHaveLength(0)
-  await user.click(screen.getByRole('button', { name: /^Taken date in Istanbul,/ }))
-  await user.click(screen.getByRole('button', { name: /Friday, 13 November/ }))
+  await user.click(screen.getByRole('button', { name: 'Friday, 13 November' }))
   await pickTime(user, '23:30')
   await user.click(screen.getByLabelText('Fewer: Amount'))
   await user.click(screen.getByRole('button', { name: 'Save dose' }))
@@ -332,6 +341,15 @@ test('changing an Unscheduled dose from Today saves the new intake and says so',
   expect(within(drawer).getByRole('button', { name: 'Other' })).toHaveAttribute(
     'aria-pressed',
     'true',
+  )
+  // A change starts on its saved day; the other choice is yesterday.
+  expect(within(drawer).getByRole('button', { name: 'Saturday, 14 November' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  expect(within(drawer).getByRole('button', { name: 'Friday, 13 November' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
   )
   await pickTime(user, '09:15')
   await user.click(within(drawer).getByRole('button', { name: 'Save changes' }))
