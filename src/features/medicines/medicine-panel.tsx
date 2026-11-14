@@ -5,7 +5,7 @@ import { SchedulePanel } from '@/features/schedules/schedule-panel'
 import { buttonVariants } from '@/components/ui/button'
 import { MedicineAddDrawer } from './medicine-add-drawer'
 import type { Medicine } from './contract'
-import { MedicationsLink, showMedicationsView } from './medications-nav'
+import { MedicationsLink, returnToMedicationPage, showMedicationsView } from './medications-nav'
 import { medicationsHref } from './routes'
 
 export function MedicinePanel({
@@ -65,7 +65,7 @@ export function MedicinePanel({
     setScheduledMedicine(medicine)
     // Never navigate someone who has already left this medicine's setup.
     if (mounted.current && mode.current === 'setup' && setupMedicineId.current === medicine.id)
-      showMedicationsView(medicationsHref({ mode: 'detail', medicineId: medicine.id }), 'replace')
+      returnToMedicationPage(medicine.id)
   }
 
   function saved(medicine: Medicine) {

@@ -110,12 +110,13 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await page.getByRole('button', { name: 'Try saving schedule again' }).press('Enter')
     await expect(page.getByText('Schedule saved for Routine Medicine.')).toBeVisible()
     expect(pageRequests, 'the schedule handoff makes no document or RSC request').toBe(0)
-    // The saved message shows before the replace to ?medicine=ID; reloading earlier reopens setup.
+    // The saved message shows before the return to ?medicine=ID; reloading earlier reopens setup.
     await expect(page).toHaveURL(/[?&]medicine=/)
     await expect(page.getByRole('heading', { name: 'Routine Medicine' })).toBeFocused()
     await expect(page.getByText('First dose: today at 09:05.')).toBeVisible()
+    // #284: the save returned to the medication page's own entry, so one Back leaves it.
     await page.goBack()
-    await expect(page).toHaveURL(/[?&]medicine=/)
+    await expect(page).toHaveURL(app.origin + '/medications')
     await expect(page.getByRole('button', { name: 'Save schedule' })).toHaveCount(0)
     await page.goForward()
     await page.reload()

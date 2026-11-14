@@ -16,7 +16,7 @@ import {
   MedicationSetupSkeleton,
   ScheduleFormSkeleton,
 } from '@/features/medicines/medications-skeleton'
-import { showMedicationsView } from '@/features/medicines/medications-nav'
+import { returnToMedicationPage, showMedicationsView } from '@/features/medicines/medications-nav'
 import { useMedicines } from '@/features/medicines/queries'
 import { medicationsHref } from '@/features/medicines/routes'
 import { discardSessionFormDraft } from '@/lib/session-drafts'
@@ -146,7 +146,7 @@ function ResumeBody({
   const save = useScheduleCommand('resume', medicine, current, (resumed) => {
     discardSessionFormDraft(client, draftKey)
     onResumed(resumed)
-    leaveTo(medicine.id)
+    returnToMedicationPage(medicine.id)
   })
   return (
     <ResumeScheduleForm

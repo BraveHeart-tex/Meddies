@@ -3,7 +3,7 @@
 import { createContext, useContext, useLayoutEffect, type ComponentProps } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { parseMedicationsView } from './routes'
+import { medicationsHref, parseMedicationsView } from './routes'
 
 /** The view in the URL. Native History changes reach it without a server round trip (#87). */
 export function useMedicationsView() {
@@ -24,14 +24,32 @@ export function showMedicationsView(
   { keepScroll = false }: { keepScroll?: boolean } = {},
 ) {
   const { pathname, search, hash } = window.location
-  if (`${pathname}${search}${hash}` === href) {
+  const from = `${pathname}${search}${hash}`
+  if (from === href) {
     window.scrollTo(0, 0)
     return
   }
   // The Add drawer opens and closes over the list without moving it.
   scrollRequested = !keepScroll
-  if (method === 'push') window.history.pushState(null, '', href)
+  // A pushed entry remembers the view it came from; history.state survives reload, and Next.js
+  // copies its own state in beside it.
+  if (method === 'push') window.history.pushState({ [fromKey]: from }, '', href)
   else window.history.replaceState(null, '', href)
+}
+
+const fromKey = 'medicationsFrom'
+
+/**
+ * Leaves a confirmed schedule form for its medication's page (DESIGN.md "Components"). A form
+ * pushed from that page goes back to its entry, so one Back then leaves it; any other form (a
+ * direct link, a router navigation) replaces its own URL with the page.
+ */
+export function returnToMedicationPage(medicineId: string) {
+  const href = medicationsHref({ mode: 'detail', medicineId })
+  const state: unknown = window.history.state
+  const from = state && typeof state === 'object' && fromKey in state ? state[fromKey] : null
+  if (from === href) window.history.back()
+  else showMedicationsView(href, 'replace')
 }
 
 /** After a view change, does what a link would: scroll to its fragment, else to the top. */
