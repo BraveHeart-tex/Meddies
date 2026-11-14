@@ -4,7 +4,7 @@ import { useImperativeHandle, useRef, useState, type Ref } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
-import { formatTime } from '@/lib/calendar-date'
+import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import type { Medicine } from '@/features/medicines/contract'
 import { saveMessages } from '@/lib/save-messages'
 import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
@@ -162,7 +162,11 @@ export function DoseActions({
   const attemptMatches = (outcome: Outcome) =>
     problem?.kind !== 'uncertain' || !attempt || attempt.outcome === outcome
   const verb = recorded ? 'Review' : 'Record'
-  const triggerLabel = `${verb} dose for ${medicine.label} scheduled at ${formatTime(dose.dueAt)}`
+  // A dose from another day names that day: 'Record dose for Melatonin scheduled at 22:30 on Thu 5 Nov'.
+  const reference = todayDate ?? istanbulDate(clock.now())
+  const dueDate = istanbulDate(new Date(dose.dueAt))
+  const dueDay = dueDate === reference ? '' : ` on ${formatShortDay(dueDate, reference)}`
+  const triggerLabel = `${verb} dose for ${medicine.label} scheduled at ${formatTime(dose.dueAt)}${dueDay}`
   const choosing = !recorded || correcting || (openedWithoutOutcome && editor !== null)
 
   return (

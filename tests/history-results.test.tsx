@@ -235,7 +235,9 @@ test.each(['invalid', undefined] as const)(
     const client = seeded({})
     const view = render(
       <QueryClientProvider client={client}>
-        <HistoryDayFallback date={today} today={today} notice={notice} />
+        <SchedulingClockProvider serverNow={`${today}T09:00:00.000Z`}>
+          <HistoryDayFallback date={today} today={today} notice={notice} />
+        </SchedulingClockProvider>
       </QueryClientProvider>,
     )
     expect(screen.getAllByRole('status')).toHaveLength(1)
@@ -247,7 +249,9 @@ test.each(['invalid', undefined] as const)(
     client.setQueryData(scheduleKeys.history(today), [dose(today)])
     view.rerender(
       <QueryClientProvider client={client}>
-        <HistoryDayFallback date={today} today={today} notice={notice} />
+        <SchedulingClockProvider serverNow={`${today}T09:00:00.000Z`}>
+          <HistoryDayFallback date={today} today={today} notice={notice} />
+        </SchedulingClockProvider>
       </QueryClientProvider>,
     )
     await doseList(today)

@@ -215,7 +215,10 @@ function LoadedDay({
   )
 }
 
-/** Today's row anatomy in time order. Not logged rows are dashed and not buttons. */
+/**
+ * Today's row anatomy in time order. Not logged rows are dashed. Every row opens the dose drawer:
+ * a Not logged row to record it, a Taken or Skipped row to review and change it (#278).
+ */
 function HistoryDoseRow({
   dose,
   date,
@@ -261,9 +264,6 @@ function HistoryDoseRow({
               Taken on {formatShortDay(takenDate, today)}
             </span>
           )}
-          {!done && date === today && (
-            <span className="block font-bold text-foreground">Record it on Today</span>
-          )}
         </ItemDescription>
       </ItemContent>
       <DoseStatusBadge
@@ -278,11 +278,12 @@ function HistoryDoseRow({
           ) : undefined
         }
       />
-      {done && medicine && (
+      {medicine && (
         <DoseActions
           dose={dose}
           medicine={medicine}
           appearance="row"
+          todayDate={today}
           describedBy={`dose-status-${dose.id}`}
         />
       )}

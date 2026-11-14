@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, test, vi } from 'vitest'
 import type { Medicine } from '../src/features/medicines/contract'
@@ -92,7 +92,7 @@ function renderDay(props: Partial<Parameters<typeof HistoryDay>[0]> = {}) {
   )
 }
 
-test('a populated day lists doses in time order; Not logged rows are not buttons', () => {
+test('a populated day lists doses in time order; every row opens the dose drawer', () => {
   const late = occurrence('22:30', {
     status: 'Taken',
     record: {
@@ -112,16 +112,38 @@ test('a populated day lists doses in time order; Not logged rows are not buttons
   const [unlogged, taken] = within(
     screen.getByRole('list', { name: 'Doses for Thursday, 5 November' }),
   ).getAllByRole('listitem')
-  expect(within(unlogged).queryByRole('button')).toBeNull()
   expect(unlogged).toHaveTextContent('Not logged')
-  expect(within(taken).getByRole('button', { name: /^Review dose for Melatonin/ })).toBeVisible()
+  expect(
+    within(unlogged).getByRole('button', {
+      name: 'Record dose for Melatonin scheduled at 08:00 on Thu 5 Nov',
+    }),
+  ).toBeVisible()
+  expect(
+    within(taken).getByRole('button', {
+      name: 'Review dose for Melatonin scheduled at 22:30 on Thu 5 Nov',
+    }),
+  ).toBeVisible()
   // Cross-midnight intake shows its actual day and the amount that differs.
   expect(taken).toHaveTextContent('Taken 00:10')
   expect(taken).toHaveTextContent('took 2 tablets')
   expect(taken).toHaveTextContent('Taken on Fri 6 Nov')
 })
 
-test('today so far points Not logged rows to Today', () => {
+test('a past Not logged row opens the record drawer on its own day and returns focus (#278)', async () => {
+  renderDay({ result: { status: 'loaded', doses: [occurrence('08:00')], medicines: [medicine] } })
+  const row = screen.getByRole('button', {
+    name: 'Record dose for Melatonin scheduled at 08:00 on Thu 5 Nov',
+  })
+  await userEvent.click(row)
+  const drawer = await screen.findByRole('dialog', { name: 'Melatonin' })
+  expect(drawer).toHaveTextContent('Scheduled 08:00 on Thu 5 Nov')
+  expect(within(drawer).getByRole('button', { name: 'I took it' })).toBeVisible()
+  expect(within(drawer).getByRole('button', { name: 'I skipped it' })).toBeVisible()
+  await userEvent.keyboard('{Escape}')
+  await waitFor(() => expect(row).toHaveFocus())
+})
+
+test('today so far opens the record drawer from a Not logged row', () => {
   renderDay({
     date: '2026-11-06',
     result: {
@@ -133,7 +155,10 @@ test('today so far points Not logged rows to Today', () => {
     },
   })
   expect(screen.getByText('0 of 1 so far')).toBeVisible()
-  expect(screen.getByText('Record it on Today')).toBeVisible()
+  expect(
+    screen.getByRole('button', { name: 'Record dose for Melatonin scheduled at 08:00' }),
+  ).toBeVisible()
+  expect(screen.queryByText('Record it on Today')).toBeNull()
 })
 
 const emptyStateIcon = (name: string) => document.querySelector(`.lucide-${name}`)

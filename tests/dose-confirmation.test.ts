@@ -16,7 +16,7 @@ const taken = (takenAt: string, quantity: number): DoseRecord => ({
 const skipped: SkippedDoseRecord = { ...key, dueAt, outcome: 'Skipped', recordedAt: dueAt }
 const confirm = (
   args: Omit<Parameters<typeof outcomeConfirmation>[0], 'today'> & { today?: string },
-) => outcomeConfirmation({ today: '2026-11-06', ...args })
+) => outcomeConfirmation({ today: '2026-11-05', ...args })
 
 test('a skip says no intake was recorded', () => {
   assert.equal(
@@ -96,10 +96,33 @@ test('the year of an intake on another day follows the current Istanbul year', (
   }
   assert.equal(
     confirm({ ...args, today: '2036-01-01' }),
-    'Melatonin 23:00 · taken at 00:15 on Tue 1 Jan, 1 tablet',
+    'Melatonin 23:00 on Mon 31 Dec 2035 · taken at 00:15 on Tue 1 Jan, 1 tablet',
   )
   assert.equal(
     confirm({ ...args, today: '2035-12-31' }),
     'Melatonin 23:00 · taken at 00:15 on Tue 1 Jan 2036, 1 tablet',
+  )
+})
+
+test('a dose due on another day names its due day (#278)', () => {
+  assert.equal(
+    confirm({
+      label: 'Melatonin',
+      unit: 'tablet',
+      previous: 'Not logged',
+      record: skipped,
+      today: '2026-11-09',
+    }),
+    'Melatonin 22:30 on Thu 5 Nov · saved as skipped',
+  )
+  assert.equal(
+    confirm({
+      label: 'Melatonin',
+      unit: 'tablet',
+      previous: 'Not logged',
+      record: taken('2026-11-05T21:15:00.000Z', 1),
+      today: '2026-11-09',
+    }),
+    'Melatonin 22:30 on Thu 5 Nov · taken at 00:15 on Fri 6 Nov, 1 tablet',
   )
 })

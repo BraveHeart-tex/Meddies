@@ -292,7 +292,9 @@ test('a lost History correction response checks that date and confirms without a
     history: { [yesterday]: [dose(yesterday)] },
   })
   await correctToSkipped(app.user)
-  expect(await screen.findByText(/Morning Tablet 09:00 · changed to skipped/)).toBeVisible()
+  expect(
+    await screen.findByText(/Morning Tablet 09:00 on Thu 5 Nov · changed to skipped/),
+  ).toBeVisible()
   expect(await historyRow(yesterday)).toHaveTextContent('Skipped')
   expect(await historyRow(yesterday)).not.toHaveTextContent('Might not have saved')
   expect(new Set(state.reads.history)).toEqual(new Set([yesterday]))
@@ -329,7 +331,9 @@ test('any later read of a past History date confirms its unconfirmed correction 
   app.open('medications')
   fireEvent(window, new Event('offline'))
   fireEvent(window, new Event('online'))
-  expect(await screen.findByText('Morning Tablet 09:00 · already saved as skipped')).toBeVisible()
+  expect(
+    await screen.findByText('Morning Tablet 09:00 on Thu 5 Nov · already saved as skipped'),
+  ).toBeVisible()
   expect(state.reads.history.filter((date) => date === yesterday).length).toBeGreaterThan(1)
   app.open('history', yesterday)
   expect(await historyRow(yesterday)).toHaveTextContent('Skipped')
@@ -459,8 +463,98 @@ test('a server-streamed History date confirms a matching unconfirmed correction'
       </PrivateQueryHandoff>
     </QueryClientProvider>,
   )
-  expect(await screen.findByText('Morning Tablet 09:00 · already saved as skipped')).toBeVisible()
+  expect(
+    await screen.findByText('Morning Tablet 09:00 on Thu 5 Nov · already saved as skipped'),
+  ).toBeVisible()
   expect(await historyRow(yesterday)).not.toHaveTextContent('Might not have saved')
   expect(state.writes).toHaveLength(1)
   streamed.clear()
+})
+
+const yesterday = '2026-11-05'
+const recordFromHistory = async (
+  user: ReturnType<typeof userEvent.setup>,
+  outcome: 'Taken' | 'Skipped',
+) => {
+  await user.click(
+    await screen.findByRole('button', {
+      name: 'Record dose for Morning Tablet scheduled at 09:00 on Thu 5 Nov',
+    }),
+  )
+  await user.click(
+    await screen.findByRole('button', { name: outcome === 'Taken' ? 'I took it' : 'I skipped it' }),
+  )
+  await user.click(
+    screen.getByRole('button', { name: outcome === 'Taken' ? 'Save as taken' : 'Save as skipped' }),
+  )
+}
+
+test.each([
+  ['Taken', /^Morning Tablet 09:00 on Thu 5 Nov · taken at \d\d:\d\d on Fri 6 Nov, 1 tablet$/],
+  ['Skipped', /^Morning Tablet 09:00 on Thu 5 Nov · saved as skipped$/],
+] as const)(
+  'saving %s from a past History row updates that date and names its day (#278)',
+  async (outcome, toast) => {
+    const { state, dose } = api()
+    const app = session({
+      view: 'history',
+      date: yesterday,
+      history: { [yesterday]: [dose(yesterday)] },
+    })
+    expect(await screen.findByText('0 of 1 logged')).toBeVisible()
+    await recordFromHistory(app.user, outcome)
+    expect(await screen.findByText(toast)).toBeVisible()
+    await waitFor(async () => expect(await historyRow(yesterday)).toHaveTextContent(outcome))
+    expect(await historyRow(yesterday)).not.toHaveTextContent('Not logged')
+    expect(screen.getByText('1 of 1 logged')).toBeVisible()
+    expect(state.writes).toEqual([expect.objectContaining({ dueAt: dueOn(yesterday), outcome })])
+  },
+)
+
+test('an unconfirmed save from a past History row shows Might not have saved, as on Today', async () => {
+  const { dose } = api({ store: false, reply: async () => HttpResponse.json({}, { status: 503 }) })
+  const app = session({
+    view: 'history',
+    date: yesterday,
+    history: { [yesterday]: [dose(yesterday)] },
+  })
+  await recordFromHistory(app.user, 'Taken')
+  expect(await screen.findByText('That might not have saved.')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Try saving as taken again' })).toBeVisible()
+  await app.user.click(screen.getByRole('button', { name: 'Close dose details' }))
+  expect(await historyRow(yesterday)).toHaveTextContent('Might not have saved')
+  expect(screen.getByText('0 of 1 logged')).toBeVisible()
+})
+
+test('a conflict from a past History row applies nothing and offers review, as on Today', async () => {
+  const { state, dose } = api({
+    store: false,
+    reply: async () => {
+      // Logged elsewhere first.
+      state.records = [
+        {
+          scheduleId: schedule.id,
+          dueAt: dueOn(yesterday),
+          outcome: 'Skipped',
+          recordedAt: now,
+          revision: 0,
+        },
+      ]
+      return HttpResponse.json({}, { status: 409 })
+    },
+  })
+  const app = session({
+    view: 'history',
+    date: yesterday,
+    history: { [yesterday]: [dose(yesterday)] },
+  })
+  await recordFromHistory(app.user, 'Taken')
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'Morning Tablet' })).not.toBeInTheDocument(),
+  )
+  const row = await historyRow(yesterday)
+  await waitFor(() => expect(row).toHaveTextContent('Skipped'))
+  expect(row).not.toHaveTextContent('Taken')
+  expect(row).toHaveTextContent("This dose is already logged. Check what's saved.")
+  expect(within(row).getByRole('button', { name: "Check what's saved" })).toBeVisible()
 })

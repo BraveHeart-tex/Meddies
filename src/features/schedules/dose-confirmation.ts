@@ -2,10 +2,18 @@ import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { quantityLabel, type DoseUnit } from '@/lib/dose-quantity'
 import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
 
+/** 'Melatonin 22:30 ·', or 'Melatonin 22:30 on Thu 5 Nov ·' for a dose due on another day. */
+function doseHead(label: string, dueAt: string, today: string) {
+  const dueDate = istanbulDate(new Date(dueAt))
+  const day = dueDate === today ? '' : ` on ${formatShortDay(dueDate, today)}`
+  return `${label} ${formatTime(dueAt)}${day} ·`
+}
+
 /**
  * The confirmation toast after a server-confirmed save, for example
  * 'Melatonin 22:30 · updated to taken at 23:00 on Thu 5 Nov, ½ tablet'. The scheduled time never
- * changes; an intake on another day than scheduled names that day.
+ * changes; a dose due on another day than today names its due day in the head, and an intake on
+ * another day than scheduled names that day.
  */
 export function outcomeConfirmation({
   label,
@@ -22,7 +30,7 @@ export function outcomeConfirmation({
   /** Istanbul today, for the year rule. */
   today: string
 }) {
-  const head = `${label} ${formatTime(record.dueAt)} ·`
+  const head = doseHead(label, record.dueAt, today)
   const corrected = previous === 'Taken' || previous === 'Skipped'
   if (record.outcome === 'Skipped')
     return `${head} ${corrected ? 'changed to skipped' : 'saved as skipped'}`
@@ -50,7 +58,7 @@ export function reconciledConfirmation({
   /** Istanbul today, for the year rule. */
   today: string
 }) {
-  const head = `${label} ${formatTime(record.dueAt)} · already saved as`
+  const head = `${doseHead(label, record.dueAt, today)} already saved as`
   if (record.outcome === 'Skipped') return `${head} skipped`
   const dueDate = istanbulDate(new Date(record.dueAt))
   const takenDate = istanbulDate(new Date(record.takenAt))
