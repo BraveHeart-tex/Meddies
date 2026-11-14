@@ -11,6 +11,7 @@ import { SchedulePanel } from '../src/features/schedules/schedule-panel'
 import { TodayHeader } from '../src/features/schedules/today-header'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
+import { listedOption } from './helpers/select'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
@@ -92,7 +93,7 @@ function session() {
     )
   }
   render(<App />)
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
+  const user = userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTimeAsync })
   return {
     user,
   }
@@ -110,16 +111,19 @@ async function recordTaken(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('button', { name: 'I took it' }))
 }
 
-async function pickTime(user: ReturnType<typeof userEvent.setup>, time: string) {
-  for (const [part, value] of [
-    ['hour', time.slice(0, 2)],
-    ['minute', time.slice(3)],
-  ] as const) {
-    await user.click(screen.getByRole('combobox', { name: `Taken time in Istanbul ${part}` }))
-    await user.click(await screen.findByRole('option', { name: value }))
-  }
+// Other keeps the last choice's minutes, so one hour pick sets the time.
+async function pickHour(user: ReturnType<typeof userEvent.setup>, hour: string) {
+  await user.click(screen.getByRole('combobox', { name: 'Taken time in Istanbul hour' }))
+  await user.click(await listedOption(hour))
 }
 
+async function enterAmount(user: ReturnType<typeof userEvent.setup>, value: string) {
+  await user.clear(screen.getByLabelText(/^Amount/))
+  await user.paste(value)
+}
+
+// Opening the drawer and two hour picks take about 0.6s alone but measured up to 3.8s in
+// `pnpm verify:local`, where build and integration share the CPU (#295).
 test('inline errors focus the first invalid control, keep values and accept half tablets', async () => {
   const state = api(async (body) => {
     state.records = [taken(body)]
@@ -138,30 +142,30 @@ test('inline errors focus the first invalid control, keep values and accept half
   await user.clear(amount)
   await user.click(screen.getByRole('button', { name: 'Other' }))
   await user.click(screen.getByRole('button', { name: 'Saturday, 14 November' }))
-  await pickTime(user, '10:00')
+  await pickHour(user, '10')
   await user.click(screen.getByRole('button', { name: 'Save as taken' }))
   expect(await screen.findByText('Choose a time that has passed.')).toBeVisible()
   expect(screen.getByText('Enter a quantity.')).toBeVisible()
   expect(amount).toHaveAttribute('aria-invalid', 'true')
   expect(amount).toHaveValue('')
   expect(screen.getByRole('combobox', { name: /hour$/ })).toHaveFocus()
-  await pickTime(user, '08:30')
+  expect(screen.getByRole('combobox', { name: /minute$/ })).toHaveTextContent('05')
+  await pickHour(user, '08')
   await waitFor(() =>
     expect(screen.queryByText('Choose a time that has passed.')).not.toBeInTheDocument(),
   )
-  await user.type(amount, '1.25')
+  await enterAmount(user, '1.25')
   expect(await screen.findByText('Use whole or half tablets.')).toBeVisible()
-  await user.clear(amount)
-  await user.type(amount, '1½')
+  await enterAmount(user, '1½')
   await waitFor(() =>
     expect(screen.queryByText('Use whole or half tablets.')).not.toBeInTheDocument(),
   )
   await user.click(screen.getByRole('button', { name: 'Save as taken' }))
-  expect(await screen.findByText('Morning Tablet 09:00 · taken at 08:30, 1½ tablets')).toBeVisible()
-  expect(state.puts[0]).toMatchObject({ takenAt: '2026-11-14T05:30:00.000Z', quantity: 1.5 })
+  expect(await screen.findByText('Morning Tablet 09:00 · taken at 08:05, 1½ tablets')).toBeVisible()
+  expect(state.puts[0]).toMatchObject({ takenAt: '2026-11-14T05:05:00.000Z', quantity: 1.5 })
   expect(await row()).toHaveTextContent('Taken')
   expect(screen.queryByRole('dialog', { name: medicine.label })).not.toBeInTheDocument()
-})
+}, 10_000)
 
 test.each([false, true])(
   'an unconfirmed save retains details; edited=%s determines attempt identity',

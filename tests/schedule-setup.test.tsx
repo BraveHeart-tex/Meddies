@@ -11,6 +11,7 @@ import { ScheduleForm } from '../src/features/schedules/schedule-form'
 import { SchedulePanel } from '../src/features/schedules/schedule-panel'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
+import { listedOption } from './helpers/select'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
@@ -90,7 +91,7 @@ async function openSetup(medicineId: string) {
   await waitFor(() =>
     expect(document.querySelector('[data-slot="skeleton"]')).not.toBeInTheDocument(),
   )
-  return { ...view, user: userEvent.setup(), onSaved }
+  return { ...view, user: userEvent.setup({ delay: null }), onSaved }
 }
 
 type User = ReturnType<typeof userEvent.setup>
@@ -107,7 +108,7 @@ const days = () => screen.getByRole('group', { name: 'Days' })
 
 async function pickPart(user: User, trigger: HTMLElement, value: string) {
   await user.click(trigger)
-  await user.click(await screen.findByRole('option', { name: value }))
+  await user.click(await listedOption(value))
   await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
 }
 async function pickTime(user: User, row: number, time: string) {
@@ -125,7 +126,7 @@ async function pickDate(user: User, date: string) {
 }
 async function typeQuantity(user: User, row: number, value: string) {
   await user.clear(quantity(row))
-  if (value) await user.type(quantity(row), value)
+  if (value) await user.paste(value)
 }
 
 test('setup opens with the medicine, Istanbul time and one row that cannot be removed', async () => {
@@ -202,6 +203,8 @@ function expectRowsLinked(count: number) {
   expect(new Set(ids).size).toBe(ids.length)
 }
 
+// Six time picks, each rendering a 24- or 60-option list, take about 0.7s alone but measured
+// up to 6.1s in `pnpm verify:local`, where build and integration share the CPU (#296).
 test('new rows take focus, and errors and focus follow their rows through removals', async () => {
   const { posted } = api(capsules)
   const { user } = await openSetup(capsules.id)
@@ -243,7 +246,7 @@ test('new rows take focus, and errors and focus follow their rows through remova
   await user.click(button('Remove time 2'))
   await waitFor(() => expect(addTime()).toHaveFocus())
   expect(screen.queryByRole('button', { name: /^Remove time/ })).not.toBeInTheDocument()
-})
+}, 10_000)
 
 test('known offline blocks saving and keeps the details until the connection returns', async () => {
   const { posted } = api(capsules)
