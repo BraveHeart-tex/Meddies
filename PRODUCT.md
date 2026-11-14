@@ -27,7 +27,7 @@ A reminder is never confused with confirmed intake. Every dose outcome is explic
 
 ## Capabilities and Constraints
 
-- Manual medicine entry with a label, quantity unit, and product strength kept distinct from the quantity taken. Whole or half tablets and whole capsules.
+- Manual medicine entry with a label, Quantity unit, and product strength kept distinct from the quantity taken. Supported Medicine types and quantities follow [Medicine types and quantity units](docs/product/medication-domain.md#medicine-types-and-quantity-units).
 - Schedules: daily at set times, selected weekdays, every X hours from a chosen start, or no schedule for occasional use. Optional Last day. Pause and resume without a backlog. Edits affect future doses only.
 - Fix wrongly entered medicine details, record a strength change, or archive a medicine; history keeps the details each dose was recorded with.
 - Record Taken or Skipped, correct outcome, time or quantity, and log unscheduled intake without moving reminders. Late doses stay loggable from History.

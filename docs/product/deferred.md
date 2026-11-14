@@ -27,8 +27,9 @@ Retries reuse the original action ID and have no repeated outcome/stock effect.
 Genuine conflicts preserve both submissions for user resolution. Once the server
 knows of a Taken/Skipped conflict, suppress that occurrence's unsent dose reminders
 and mark affected stock uncertain; an offline-only client cannot cancel server
-work. Stock reconciliation occurs once after resolution. Supported units remain
-whole/half tablets and whole capsules. Pending stock is not a confirmed server count.
+work. Stock reconciliation occurs once after resolution. Supported Medicine types
+and quantities follow [Medicine types and quantity units](./medication-domain.md#medicine-types-and-quantity-units).
+Pending stock is not a confirmed server count.
 
 ### Acceptance examples
 
