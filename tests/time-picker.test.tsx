@@ -18,6 +18,7 @@ test('shared options keep independent selection, partial values, reset, focus an
       <>
         <p id="error">Choose a time.</p>
         <TimePicker
+          now={() => new Date()}
           ref={handle}
           id="first"
           label="First"
@@ -28,8 +29,15 @@ test('shared options keep independent selection, partial values, reset, focus an
           aria-invalid
           aria-describedby="error"
         />
-        <TimePicker id="second" label="Second" value={second} onValueChange={setSecond} />
         <TimePicker
+          now={() => new Date()}
+          id="second"
+          label="Second"
+          value={second}
+          onValueChange={setSecond}
+        />
+        <TimePicker
+          now={() => new Date()}
           id="disabled"
           label="Disabled"
           value="10:45"
@@ -85,4 +93,74 @@ test('shared options keep independent selection, partial values, reset, focus an
   expect(screen.getByLabelText('First value')).toHaveTextContent(':05')
   act(() => handle.current?.focus())
   expect(first('hour')).toHaveFocus()
+})
+
+// Regression: opening must reveal the current controlled part (or Istanbul hour), without
+// turning that scroll-only fallback into a selection. jsdom cannot prove popup geometry.
+test('opening reveals chosen parts and a fresh Istanbul hour without selecting it', async () => {
+  vi.stubEnv('TZ', 'Pacific/Kiritimati')
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2035-06-15T20:30:00Z'))
+  const scroll = vi.fn()
+  const original = Element.prototype.scrollIntoView
+  Element.prototype.scrollIntoView = scroll
+  const change = vi.fn()
+  const user = userEvent.setup()
+  const picker = (value: string) => (
+    <TimePicker
+      now={() => new Date()}
+      id="opening"
+      label="Opening"
+      value={value}
+      onValueChange={change}
+    />
+  )
+  const { rerender } = render(picker('19:57'))
+  const hour = screen.getByRole('combobox', { name: 'Opening hour' })
+  const minute = screen.getByRole('combobox', { name: 'Opening minute' })
+  const open = async (trigger: HTMLElement, target: string, keyboard = false) => {
+    scroll.mockClear()
+    if (keyboard) {
+      trigger.focus()
+      await user.keyboard('{Enter}')
+    } else await user.click(trigger)
+    const option = await screen.findByRole('option', { name: target })
+    await waitFor(() => expect(scroll.mock.contexts).toContain(option))
+  }
+  const dismiss = async () => {
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
+  }
+  try {
+    await open(hour, '19')
+    await dismiss()
+    await open(minute, '57', true)
+    expect(screen.getAllByRole('option')).toHaveLength(60)
+    expect(screen.getByRole('option', { name: '00' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: '59' })).toBeInTheDocument()
+    await dismiss()
+    rerender(picker('04:03'))
+    await open(hour, '04', true)
+    await dismiss()
+    await open(minute, '03')
+    await dismiss()
+    // The device is already at 10:30 tomorrow; Istanbul is still at 23:30.
+    expect(new Date().getHours()).toBe(10)
+    rerender(picker(''))
+    await open(hour, '23')
+    expect(screen.getByRole('option', { name: '23' })).toHaveAttribute('aria-selected', 'false')
+    await dismiss()
+    expect(hour).toHaveTextContent('HH')
+    expect(minute).toHaveTextContent('MM')
+    vi.setSystemTime(new Date('2035-06-15T21:30:00Z'))
+    rerender(picker(':42'))
+    await open(hour, '00', true)
+    await dismiss()
+    expect(hour).toHaveTextContent('HH')
+    expect(minute).toHaveTextContent('42')
+    expect(change).not.toHaveBeenCalled()
+  } finally {
+    Element.prototype.scrollIntoView = original
+    vi.unstubAllEnvs()
+  }
 })

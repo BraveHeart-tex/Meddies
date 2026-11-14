@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useCompositeBlur } from '@/components/ui/use-composite-blur'
+import { istanbulHour } from '@/lib/calendar-date'
 import { joinTime, timeParts, type TimeParts } from '@/lib/time-of-day'
 
 const twoDigits = (count: number) =>
@@ -43,14 +44,16 @@ const MINUTE_VALUE = (
  * Controlled 24-hour time from hour and minute selects. The value is '' until a half is chosen,
  * then 'HH:', ':MM' or 'HH:MM', so a half-chosen time keeps its half and stays distinguishable
  * from a complete one (check with `isTimeOfDay`). Both halves always show the value, so a reset
- * clears them. `id` lands on the hour trigger for an external label; `ref` focuses the first
- * unchosen half; `onBlur` runs when focus leaves both halves and their lists.
+ * clears them. Lists open at the chosen part, or the current Istanbul hour when unchosen,
+ * without selecting that fallback. `id` lands on the hour trigger for an external label;
+ * `ref` focuses the first unchosen half; `onBlur` runs when focus leaves both halves and their lists.
  */
 export function TimePicker({
   ref,
   id,
   label,
   value,
+  now,
   onValueChange,
   onBlur,
   required,
@@ -63,6 +66,8 @@ export function TimePicker({
   /** Accessible name prefix: triggers announce '<label> hour' and '<label> minute'. */
   label: string
   value: string
+  /** Read the scheduling clock at opening, without choosing its hour. */
+  now: () => Date
   onValueChange: (value: string) => void
   onBlur?: () => void
   required?: boolean
@@ -75,6 +80,11 @@ export function TimePicker({
     hour: null,
     minute: null,
   })
+  const popups = React.useRef<Record<keyof TimeParts, HTMLDivElement | null>>({
+    hour: null,
+    minute: null,
+  })
+  const openingTargets = React.useRef<TimeParts>({ hour: '', minute: '' })
   const { track, onPartBlur } = useCompositeBlur(onBlur)
   React.useImperativeHandle(
     ref,
@@ -90,16 +100,23 @@ export function TimePicker({
   // The popup wrappers carry only stable blur tracking and fixed children. Retaining them
   // avoids rebuilding their subtree on unrelated form updates; Select context stays live.
   const optionLists = React.useMemo(() => {
-    const list = (options: React.ReactNode) => (
+    const list = (part: keyof TimeParts, options: React.ReactNode) => (
       <SelectContent
-        ref={track}
+        ref={(node) => {
+          popups.current[part] = node
+          const untrack = track(node)
+          return () => {
+            popups.current[part] = null
+            untrack?.()
+          }
+        }}
         className="max-h-[min(var(--available-height),18rem)]"
         onBlur={onPartBlur}
       >
         {options}
       </SelectContent>
     )
-    return { hour: list(HOUR_OPTIONS), minute: list(MINUTE_OPTIONS) }
+    return { hour: list('hour', HOUR_OPTIONS), minute: list('minute', MINUTE_OPTIONS) }
   }, [track, onPartBlur])
 
   const field = (part: keyof TimeParts, items: typeof HOURS, options: React.ReactNode) => (
@@ -108,7 +125,21 @@ export function TimePicker({
       value={parts[part] || null}
       onValueChange={(next) => onValueChange(joinTime({ ...parts, [part]: next ?? '' }))}
       onOpenChange={(open) => {
-        if (!open) onPartBlur()
+        if (open) {
+          openingTargets.current[part] =
+            parts[part] ||
+            (part === 'hour' ? String(istanbulHour(now().toISOString())).padStart(2, '0') : '')
+        } else onPartBlur()
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) return
+        // Wait for positioning and opening motion before revealing the target. This scroll
+        // never changes selection or highlight; an unchosen half stays unchosen.
+        const target = openingTargets.current[part]
+        const option = Array.from(
+          popups.current[part]?.querySelectorAll('[role="option"]') ?? [],
+        ).find((item) => item.textContent?.trim() === target)
+        option?.scrollIntoView?.({ block: 'center', inline: 'nearest', behavior: 'instant' })
       }}
       required={required}
       disabled={disabled}

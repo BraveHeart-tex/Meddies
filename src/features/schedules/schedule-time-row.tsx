@@ -8,6 +8,7 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { TimePicker } from '@/components/ui/time-picker'
 import type { DoseUnit } from '@/lib/dose-quantity'
 import type { ScheduleFormOutput, ScheduleFormValues } from './schedule-form-schema'
+import { useSchedulingClock } from './scheduling-clock'
 
 /**
  * One "Time N" row: time on its own line, quantity below it at every width. Each row
@@ -30,6 +31,7 @@ export function ScheduleTimeRow({
   /** Present from two rows on. */
   onRemove?: () => void
 }) {
+  const clock = useSchedulingClock()
   const label = `Time ${index + 1}`
   const rowId = useId()
   const timeId = `dose-time-${rowId}`
@@ -43,6 +45,7 @@ export function ScheduleTimeRow({
           <Field data-invalid={fieldState.invalid}>
             <FieldLabel htmlFor={timeId}>{label}</FieldLabel>
             <TimePicker
+              now={clock.now}
               ref={field.ref}
               id={timeId}
               label={label}

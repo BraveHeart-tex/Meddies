@@ -9,6 +9,7 @@ import { TimePicker } from '@/components/ui/time-picker'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { shiftDate } from '@/lib/calendar-date'
 import type { DoseUnit } from '@/lib/dose-quantity'
+import { useSchedulingClock } from './scheduling-clock'
 
 const HOUR_PRESETS = ['4', '6', '8', '12', '24']
 const fieldError = (message: string | undefined) => (message ? { message } : undefined)
@@ -155,10 +156,12 @@ export function IntervalFirstTimeField({
   onBlur,
   inputRef,
 }: FieldProps & { inputRef?: Ref<PickerHandle> }) {
+  const clock = useSchedulingClock()
   return (
     <Field data-invalid={Boolean(error)}>
       <FieldLabel htmlFor="interval-time">First time</FieldLabel>
       <TimePicker
+        now={clock.now}
         ref={inputRef}
         id="interval-time"
         label="First time"

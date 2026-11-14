@@ -1,3 +1,4 @@
+import { SchedulingClockProvider } from '../src/features/schedules/scheduling-clock'
 import { http, HttpResponse } from 'msw'
 import { server } from './helpers/msw-server'
 import { waitFor } from '@testing-library/react'
@@ -51,14 +52,16 @@ test('schedule drafts keep partial rows per medicine across refresh and day roll
   }
   const view = (id: string, today: string) => (
     <QueryClientProvider client={client}>
-      <ScheduleForm
-        key={id}
-        medicine={{ ...medicine, id }}
-        today={today}
-        serverNow={`${today}T07:00:00.000Z`}
-        onSaved={() => {}}
-        onConflict={() => {}}
-      />
+      <SchedulingClockProvider serverNow={`${today}T07:00:00.000Z`}>
+        <ScheduleForm
+          key={id}
+          medicine={{ ...medicine, id }}
+          today={today}
+          serverNow={`${today}T07:00:00.000Z`}
+          onSaved={() => {}}
+          onConflict={() => {}}
+        />
+      </SchedulingClockProvider>
     </QueryClientProvider>
   )
   const first = render(view('first', '2035-06-15'))
@@ -114,15 +117,17 @@ test('a confirmed schedule save removes the draft before the form is opened agai
   const open = () =>
     render(
       <QueryClientProvider client={client}>
-        <ScheduleForm
-          medicine={medicine}
-          today="2035-06-15"
-          serverNow="2035-06-15T07:00:00.000Z"
-          onSaved={() => {
-            saved = true
-          }}
-          onConflict={() => {}}
-        />
+        <SchedulingClockProvider serverNow="2035-06-15T07:00:00.000Z">
+          <ScheduleForm
+            medicine={medicine}
+            today="2035-06-15"
+            serverNow="2035-06-15T07:00:00.000Z"
+            onSaved={() => {
+              saved = true
+            }}
+            onConflict={() => {}}
+          />
+        </SchedulingClockProvider>
       </QueryClientProvider>,
     )
   const first = open()

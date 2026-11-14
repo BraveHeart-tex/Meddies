@@ -6,6 +6,7 @@ import { TimePicker } from '@/components/ui/time-picker'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { formatLongDay, formatShortDay } from '@/lib/calendar-date'
 import type { TakenFormValues } from './taken-form-schema'
+import { useSchedulingClock } from './scheduling-clock'
 
 // A swipe that starts on a control never closes the drawer.
 const swipeIgnore = { 'data-base-ui-swipe-ignore': 'y' }
@@ -28,6 +29,7 @@ export function TakenOtherFields({
   today: string
   saving: boolean
 }) {
+  const clock = useSchedulingClock()
   return (
     <>
       <Controller
@@ -77,6 +79,7 @@ export function TakenOtherFields({
           <Field data-invalid={fieldState.invalid} {...swipeIgnore}>
             <FieldLabel htmlFor={`${id}-time`}>Taken time</FieldLabel>
             <TimePicker
+              now={clock.now}
               ref={field.ref}
               id={`${id}-time`}
               label="Taken time in Istanbul"

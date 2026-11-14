@@ -1,3 +1,4 @@
+import { SchedulingClockProvider } from '../src/features/schedules/scheduling-clock'
 import { QueryClientProvider, onlineManager, type QueryClient } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -177,13 +178,15 @@ test('time row ids are the same on every render with the same data', () => {
   const html = () =>
     renderToString(
       <QueryClientProvider client={client}>
-        <ScheduleForm
-          medicine={capsules}
-          today="2035-06-15"
-          serverNow={initialNow}
-          onSaved={() => {}}
-          onConflict={() => {}}
-        />
+        <SchedulingClockProvider serverNow={initialNow}>
+          <ScheduleForm
+            medicine={capsules}
+            today="2035-06-15"
+            serverNow={initialNow}
+            onSaved={() => {}}
+            onConflict={() => {}}
+          />
+        </SchedulingClockProvider>
       </QueryClientProvider>,
     )
   const ids = (markup: string) => [...markup.matchAll(/id="([^"]*dose-[^"]*)"/g)].map((m) => m[1])
