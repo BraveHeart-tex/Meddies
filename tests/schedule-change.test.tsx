@@ -207,6 +207,13 @@ describe('Medication detail', () => {
     const saved = await screen.findByRole('status', { name: 'Saved schedule' })
     expect(saved).toHaveTextContent('Schedule saved for Magnesium.')
     expect(saved).toHaveTextContent('Next dose: today at 14:00.')
+    // #286: a default Alert above the actions, not the dark confirmation block.
+    // eslint-disable-next-line meddies/no-cosmetic-class-assertions -- the variant is the signal
+    expect(saved).toHaveClass('bg-card')
+    expect(
+      saved.compareDocumentPosition(screen.getByRole('link', { name: 'Change schedule' })) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
     expect(screen.getByText('Changed Mon 9 Nov')).toBeVisible()
     // Only the current Schedule version is shown.
     expect(screen.getAllByText('08:00')).toHaveLength(1)

@@ -86,6 +86,7 @@ export function MedicationRoutineGroups({
                 key={medicine.id}
                 medicine={medicine}
                 scheduleSummary={schedule ? routineSummary(schedule, now) : null}
+                paused={Boolean(schedule && pausedOn(schedule, today))}
                 linkRef={medicine.id === focusMedicineId ? focusRow : undefined}
               />
             ))}

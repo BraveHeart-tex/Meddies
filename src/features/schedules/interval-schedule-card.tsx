@@ -1,7 +1,12 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { quantityLabel, type DoseUnit } from '@/lib/dose-quantity'
-import { pausedSinceLine, ScheduleDateLines } from './clock-schedule-card'
+import {
+  pausedSinceLine,
+  scheduleCardName,
+  ScheduleCardTitle,
+  ScheduleDateLines,
+} from './clock-schedule-card'
 import { istanbulDate } from './contract'
 import { IntervalDoseList } from './interval-dose-list'
 import { intervalLabel, nextIntervalDoses } from './interval-preview'
@@ -36,9 +41,9 @@ export function IntervalScheduleCard({
   const holding = Boolean(ended || paused)
   const doses = untilLastDay(nextIntervalDoses({ anchor, hours, now }), lastDay)
   return (
-    <Card>
+    <Card role="group" aria-label={scheduleCardName(Boolean(paused))}>
       <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2">
-        <CardTitle>Schedule</CardTitle>
+        <ScheduleCardTitle paused={Boolean(paused)} />
         <CardDescription>{intervalLabel(hours)}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">

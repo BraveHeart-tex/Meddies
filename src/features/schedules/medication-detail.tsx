@@ -37,7 +37,7 @@ import { LogDose } from '../unscheduled-doses/log-dose'
 /** After the server confirms a pause (233·A4). */
 export function PausedScheduleAlert({ label }: { label: string }) {
   return (
-    <Alert variant="confirmation" role="status" aria-label="Paused schedule">
+    <Alert role="status" aria-label="Paused schedule">
       <AlertTitle>Schedule paused for {label}.</AlertTitle>
       <AlertDescription>No doses expected until you resume.</AlertDescription>
     </Alert>
@@ -55,7 +55,7 @@ export function ResumedScheduleAlert({
   const today = istanbulDate(new Date(schedule.confirmedAt))
   const next = firstDoseAfterResume(schedule, schedule.confirmedAt)
   return (
-    <Alert variant="confirmation" role="status" aria-label="Resumed schedule">
+    <Alert role="status" aria-label="Resumed schedule">
       <AlertTitle>Schedule resumed for {label}.</AlertTitle>
       <AlertDescription>
         {next
@@ -155,11 +155,7 @@ export function MedicationDetail({
         </Alert>
       )}
       {(justSaved || justScheduled) && (
-        <Alert
-          variant="confirmation"
-          role="status"
-          aria-label={justSaved ? 'Saved medication' : 'Saved schedule'}
-        >
+        <Alert role="status" aria-label={justSaved ? 'Saved medication' : 'Saved schedule'}>
           <AlertTitle>
             {justSaved ? `${medicine.label} saved.` : `Schedule saved for ${medicine.label}.`}
           </AlertTitle>
@@ -175,7 +171,7 @@ export function MedicationDetail({
         </Alert>
       )}
       {stopped?.stoppedAt && schedule?.id === stopped.id && (
-        <Alert variant="confirmation" role="status" aria-label="Stopped schedule">
+        <Alert role="status" aria-label="Stopped schedule">
           <AlertTitle>Schedule stopped for {medicine.label}.</AlertTitle>
           <AlertDescription>
             No more doses after {formatTime(stopped.stoppedAt)} today.

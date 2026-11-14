@@ -18,10 +18,10 @@ import { ScheduleConfirmDrawer, type ScheduleConfirmKind } from './schedule-conf
 import { useScheduleCommand, type ScheduleCommandKind } from './use-schedule-command'
 
 /**
- * A paused card's actions (233·A4, A5): Resume (primary) beside Stop schedule. A Clock schedule
- * resumes in one tap; while it saves Resume reads "Resuming…" and Stop schedule holds, an unknown
- * result offers Retry of the same resume and a stale one the 215·S2 recovery (233·S3, S4). An
- * Interval schedule's Resume opens the Resume schedule screen. Known offline: Connect to save.
+ * A paused card's actions (233·A4, A5): Resume (primary) beside a ghost Stop schedule. A Clock
+ * schedule resumes in one tap; while it saves Resume reads "Resuming…" and Stop schedule holds, an
+ * unknown result offers Retry of the same resume and a stale one the 215·S2 recovery (233·S3, S4).
+ * An Interval schedule's Resume opens the Resume schedule screen. Known offline: Connect to save.
  */
 export function PausedScheduleActions({
   interval,
@@ -109,7 +109,7 @@ export function PausedScheduleActions({
         <Button
           ref={stopRef}
           type="button"
-          variant="destructive"
+          variant="ghost"
           size="lg"
           className={cn(stale && 'col-span-full')}
           disabled={pending}
@@ -125,10 +125,11 @@ export function PausedScheduleActions({
 const RESUME_PROBLEM = 'resume-schedule-problem'
 
 /**
- * The actions under the schedule card. A running or not-yet-started schedule has Change schedule
- * full width, then Pause beside Stop schedule (233·A1, A2); a paused one Resume beside Stop
- * schedule (233·A4, A5); an Ended one only Change schedule (227·A16, A17). Stays mounted when a
- * save confirms, so the confirmation reaches `onStopped`, `onPaused` or `onResumed`.
+ * The actions under the schedule card. A running or not-yet-started schedule has an outline Change
+ * schedule full width, then ghost Pause beside ghost Stop schedule (233·A1, A2); a paused one
+ * Resume beside Stop schedule (233·A4, A5); an Ended one only Change schedule (227·A16, A17). Only
+ * the Stop confirm is destructive (#286). Stays mounted when a save confirms, so the confirmation
+ * reaches `onStopped`, `onPaused` or `onResumed`.
  */
 export function ScheduleActions({
   medicine,
@@ -218,16 +219,15 @@ export function ScheduleActions({
             Change schedule
           </MedicationsLink>
           {running && (
-            <Button type="button" variant="outline" size="lg" onClick={() => begin('pause')}>
+            <Button type="button" variant="ghost" size="lg" onClick={() => begin('pause')}>
               Pause
             </Button>
           )}
           {running && (
-            // Stopping ends the schedule, so it never matches Change schedule's look.
             <Button
               ref={stopButton}
               type="button"
-              variant="destructive"
+              variant="ghost"
               size="lg"
               onClick={() => begin('stop')}
             >

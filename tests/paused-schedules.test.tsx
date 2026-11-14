@@ -143,6 +143,69 @@ async function pause(user: ReturnType<typeof userEvent.setup>) {
   await user.click(within(await drawer()).getByRole('button', { name: 'Pause schedule' }))
 }
 
+/* eslint-disable meddies/no-cosmetic-class-assertions -- #286: a confirmation's look (default
+   Alert, not the dark confirmation block) and a button's emphasis (ghost, never destructive on
+   the page) have no accessible signal; the variant class is it. */
+function expectDefaultAlertAbove(alert: HTMLElement, action: HTMLElement) {
+  expect(alert).toHaveClass('bg-card')
+  expect(alert).not.toHaveClass('bg-foreground')
+  expect(alert.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+}
+const expectGhost = (element: HTMLElement) => {
+  expect(element).toHaveClass('hover:bg-muted')
+  expect(element).not.toHaveClass('border-border-strong', 'bg-destructive/10')
+}
+
+describe('#286 quiet actions and the Paused Badge', () => {
+  test('a running schedule puts ghost Pause and Stop schedule under the outline Change schedule', async () => {
+    await openDetail([running])
+    expect(screen.getByRole('link', { name: 'Change schedule' })).toHaveClass(
+      'border-border-strong',
+    )
+    expectGhost(button('Pause'))
+    expectGhost(button('Stop schedule'))
+  })
+
+  test('a paused schedule keeps Resume primary beside a ghost Stop schedule', async () => {
+    await openDetail([paused(running)])
+    expect(button('Resume')).toHaveClass('bg-primary')
+    expectGhost(button('Stop schedule'))
+  })
+
+  test('the destructive tint appears only on the Stop confirm', async () => {
+    const { user } = await openDetail([running])
+    await user.click(button('Stop schedule'))
+    const dialog = await screen.findByRole('dialog', { name: 'Stop this schedule?' })
+    expect(within(dialog).getByRole('button', { name: 'Stop schedule' })).toHaveClass(
+      'bg-destructive/10',
+    )
+  })
+
+  test.each([
+    ['Clock', paused(running)],
+    ['Interval', paused(interval)],
+  ])(
+    'a paused %s card shows Paused with the Pause icon and says so in its name',
+    async (_, schedule) => {
+      await openDetail([schedule])
+      const card = screen.getByRole('group', { name: 'Schedule, Paused' })
+      const badge = within(card).getByText('Paused', { exact: true })
+      expect(badge.querySelector('svg.lucide-pause')).toHaveAttribute('aria-hidden', 'true')
+    },
+  )
+
+  test.each([
+    ['running', running],
+    ['not-yet-started', version(1, { startDate: '2026-11-12' })],
+    ['Ended', version(1, { endDate: '2026-11-03' })],
+  ])('a %s card shows no Paused Badge', async (_, schedule) => {
+    await openDetail([schedule])
+    expect(screen.getByRole('group', { name: 'Schedule' })).toBeVisible()
+    expect(screen.queryByText('Paused', { exact: true })).not.toBeInTheDocument()
+  })
+})
+/* eslint-enable meddies/no-cosmetic-class-assertions */
+
 describe('Pause', () => {
   test('233·A1, A2 sits beside Stop schedule under Change schedule', async () => {
     await openDetail([version(1, { startDate: '2026-11-12' })])
@@ -198,6 +261,7 @@ describe('Pause', () => {
     release()
     await drawerClosed()
     const alert = await screen.findByRole('status', { name: 'Paused schedule' })
+    expectDefaultAlertAbove(alert, button('Stop schedule'))
     expect(alert).toHaveTextContent('Schedule paused for Magnesium.')
     expect(alert).toHaveTextContent('No doses expected until you resume.')
     expect(screen.getByText('Paused since Mon 9 Nov')).toBeVisible()
@@ -268,7 +332,8 @@ describe('Pause', () => {
     await user.click(button('Stop schedule'))
     const dialog = await screen.findByRole('dialog', { name: 'Stop this schedule?' })
     await user.click(within(dialog).getByRole('button', { name: 'Stop schedule' }))
-    expect(await screen.findByRole('status', { name: 'Stopped schedule' })).toBeVisible()
+    const alert = await screen.findByRole('status', { name: 'Stopped schedule' })
+    expectDefaultAlertAbove(alert, screen.getByRole('link', { name: 'Change schedule' }))
     expect(screen.getByText('Ended Mon 9 Nov')).toBeVisible()
     await waitFor(() => expect(screen.getByRole('link', { name: 'Change schedule' })).toHaveFocus())
   })
@@ -282,6 +347,10 @@ describe('233·A6 Medications and Today', () => {
     expect(rows('On a schedule')).toEqual([
       expect.stringMatching(/Magnesium.*Paused since Mon 9 Nov/),
     ])
+    // #286: the Paused Badge, with its icon, and the row link's name say it is paused.
+    const link = screen.getByRole('link', { name: 'View details for Magnesium, Paused' })
+    const badge = within(link.closest('li')!).getByText('Paused', { exact: true })
+    expect(badge.querySelector('svg.lucide-pause')).toHaveAttribute('aria-hidden', 'true')
     expect(screen.queryByRole('region', { name: 'Ended' })).not.toBeInTheDocument()
   })
 
@@ -290,6 +359,8 @@ describe('233·A6 Medications and Today', () => {
     renderPanel('list')
     expect(await screen.findByRole('region', { name: 'Ended' })).toBeVisible()
     expect(rows('Ended')).toEqual([expect.stringMatching(/Magnesium.*Ended Sun 8 Nov/)])
+    expect(screen.getByRole('link', { name: 'View details for Magnesium' })).toBeVisible()
+    expect(screen.queryByText('Paused', { exact: true })).not.toBeInTheDocument()
   })
 
   test('Today shows no dose after the pause and no setup nudge', async () => {

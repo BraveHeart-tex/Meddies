@@ -1,3 +1,5 @@
+import { PauseIcon } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatShortDay } from '@/lib/calendar-date'
 import { quantityLabel, type DoseUnit } from '@/lib/dose-quantity'
@@ -36,6 +38,32 @@ export function ScheduleDateLines({
   )
 }
 
+/**
+ * A paused schedule's status, text with the Pause icon (PRODUCT.md), neutral because amber and
+ * the dose colors belong to dose and stock status.
+ */
+export function PausedBadge() {
+  return (
+    <Badge variant="secondary">
+      <PauseIcon aria-hidden="true" data-icon="inline-start" />
+      Paused
+    </Badge>
+  )
+}
+
+/** A schedule card's title, with the Paused Badge while paused. */
+export function ScheduleCardTitle({ paused }: { paused: boolean }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <CardTitle>Schedule</CardTitle>
+      {paused && <PausedBadge />}
+    </div>
+  )
+}
+
+/** A schedule card's accessible name, which says when it is paused. */
+export const scheduleCardName = (paused: boolean) => (paused ? 'Schedule, Paused' : 'Schedule')
+
 /** A paused schedule's first date line, in place of Started or Changed (233·A4, A6). */
 export const pausedSinceLine = (pausedDay: string, today: string) =>
   `Paused since ${formatShortDay(pausedDay, today)}`
@@ -57,9 +85,9 @@ export function ClockScheduleCard({
 }) {
   const paused = pausedOn({ endDate: null, stoppedAt: null, pausedAt: null, ...schedule }, today)
   return (
-    <Card>
+    <Card role="group" aria-label={scheduleCardName(Boolean(paused))}>
       <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2">
-        <CardTitle>Schedule</CardTitle>
+        <ScheduleCardTitle paused={Boolean(paused)} />
         <CardDescription>{weekdaySummary(schedule.weekdays, 'long')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">

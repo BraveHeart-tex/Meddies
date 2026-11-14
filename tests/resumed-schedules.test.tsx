@@ -189,6 +189,12 @@ describe('Resume a Clock schedule', () => {
     const alert = await screen.findByRole('status', { name: 'Resumed schedule' })
     expect(alert).toHaveTextContent('Schedule resumed for Magnesium.')
     expect(alert).toHaveTextContent('Next dose: today at 20:00.')
+    // #286: a default Alert above the actions, not the dark confirmation block.
+    // eslint-disable-next-line meddies/no-cosmetic-class-assertions -- the variant is the signal
+    expect(alert).toHaveClass('bg-card')
+    expect(
+      alert.compareDocumentPosition(button('Pause')) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
     expect(screen.getByText('Changed Mon 9 Nov')).toBeVisible()
     expect(button('Pause')).toBeVisible()
     expect(button('Stop schedule')).toBeVisible()
