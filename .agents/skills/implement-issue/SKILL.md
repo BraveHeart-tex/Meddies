@@ -41,13 +41,20 @@ Work **lean** throughout:
    _Done when_ every criterion names its evidence.
 
 4. **Build.** Test-first only for the new tests step 3 requires (use the `tdd` skill).
-   While iterating, run only `pnpm test:related <changed files>` and `pnpm typecheck`. Work that touches a
+   While iterating, run `pnpm test:related <changed files>`, `pnpm typecheck` and
+   `pnpm exec eslint <changed JS/TS files>` as relevant; check changed-file lint before
+   broad verification. Work that touches a
    design-critical screen follows [built frames](../../../docs/design/README.md#built-frames):
    a design's build ticket moves its frames for design-critical screens to `built/` and
    deletes the rest, and a screen change updates its [outline](../../../docs/design/README.md#outlines).
    A significant visual change runs `pnpm lab:capture` for those frames before building and
-   again after.
-   _Done when_ every new test passes, and every changed outline and capture is reviewed.
+   again after. For visual checks, first use the existing
+   [capture commands](../../../docs/design/README.md#capture),
+   [screen captures](../../../tests/browser/README.md#screen-captures) and relevant browser
+   fixtures. Extend an opt-in visual case when interaction coverage is missing; use an
+   ad-hoc browser session only for checks the existing infrastructure cannot cover.
+   _Done when_ relevant tests and changed-file lint pass, and every changed outline and
+   capture is reviewed.
 
 5. **Review.** Read `git diff $base` against two axes: the standards in AGENTS.md and the
    docs from step 2, and each acceptance criterion. Fix what you accept.
@@ -62,8 +69,10 @@ Work **lean** throughout:
 7. **Ship.** Commit per [commits](../../../docs/commits.md) and push to main. Tick each
    criterion box in the issue body (`gh issue edit <n> --body-file`), post the
    [evidence](../../../docs/verification.md#evidence) comment, read both back, then close
-   per [tickets](../../../docs/tickets.md#closing). Close without waiting for Release.
+   per [tickets](../../../docs/tickets.md#closing). Attach reviewed screenshots with
+   `gh issue comment --attach` when visual checks are evidence, and read back their links.
+   Close without waiting for Release.
    _Done when_ the read-back shows every box ticked, the evidence comment cites the pushed
-   commit, and the issue is closed.
+   commit and includes any required screenshot attachments, and the issue is closed.
 
 Report: what changed, what failed, what's next.

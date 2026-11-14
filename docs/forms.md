@@ -24,7 +24,11 @@ Visual rules and copy: [DESIGN.md](../DESIGN.md).
 - **Date and time:** `DatePicker` and `TimePicker` are fully controlled and stateless, so
   `reset(defaults)` updates them without keys; their JSDoc gives the value format, focus
   target and blur behavior. Pass `field.ref` straight to `ref`, and DatePicker the Istanbul
-  `today`. A half-chosen time is incomplete:
+  `today`. Read current time through
+  [`useSchedulingClock()`](../src/features/schedules/scheduling-clock.tsx) in feature
+  components. Pass `clock.now` as the `TimePicker`'s `now` callback so it reads fresh time
+  when opening; shared primitives receive the callback rather than reading the device clock.
+  A half-chosen time is incomplete:
   `z.string().refine(isTimeOfDay, 'Choose a time.')` with `isTimeOfDay` from
   `@/lib/time-of-day`. [`taken-form.tsx`](../src/features/schedules/taken-form.tsx) shows both
   bound.
