@@ -256,7 +256,7 @@ function SaveProblemAlert({ problem, label }: { problem: SaveProblem; label: str
   const copy = {
     unconfirmed: {
       title: saveMessages.mightNotHaveSaved,
-      body: `Your details are still here. Trying again saves ${label} only once, even if the first try went through. If you change anything, check Medications first so it doesn't save twice.`,
+      body: "Your details are still here - trying again won't add it twice.",
     },
     rejected: {
       title: `${label} wasn't saved.`,
@@ -264,7 +264,7 @@ function SaveProblemAlert({ problem, label }: { problem: SaveProblem; label: str
     },
     conflict: {
       title: 'A different version of this medication is already saved.',
-      body: 'Open Medications to see what was saved before adding it again.',
+      body: 'Check it before adding this one again.',
     },
   }[problem]
   return (
@@ -276,7 +276,7 @@ function SaveProblemAlert({ problem, label }: { problem: SaveProblem; label: str
           href="/medications"
           className={buttonVariants({ variant: 'outline', className: 'mt-2 justify-self-start' })}
         >
-          Open Medications
+          {"See what's saved"}
         </Link>
       )}
     </Alert>

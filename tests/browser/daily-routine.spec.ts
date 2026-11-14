@@ -148,7 +148,9 @@ test('the daily routine runs from Today through History to sign out', async ({ p
   })
 
   await test.step('edit intake starts from the recorded values and returns focus', async () => {
-    await dialog.getByRole('button', { name: `Edit dose for ${magnesium} at 09:00` }).click()
+    await dialog
+      .getByRole('button', { name: `Change time or amount, ${magnesium} at 09:00` })
+      .click()
     await expect(dialog.getByLabel(/^Amount/)).toHaveValue('1')
     await expectTime(dialog, 'Taken time in Istanbul', '09:20')
     await pickTime(page, 'Taken time in Istanbul', '09:10')
@@ -219,7 +221,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
 
   await test.step('correct an outcome and return focus to its row', async () => {
     await doseTrigger(pastOmega, omega).click()
-    await dialog.getByRole('button', { name: `Change dose for ${omega} at 14:00` }).click()
+    await dialog.getByRole('button', { name: `I skipped it instead, ${omega} at 14:00` }).click()
     await expect(dialog.getByRole('button', { name: 'I took it' })).toBeDisabled()
     await dialog.getByRole('button', { name: 'I skipped it' }).click()
     await expect(dialog.getByRole('group', { name: `Skip ${omega}` })).toBeVisible()

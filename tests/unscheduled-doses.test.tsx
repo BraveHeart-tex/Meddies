@@ -296,19 +296,19 @@ test('Log a dose shows field errors, then saves another minute yesterday and nam
     ['Sat 14 Nov', 'Saturday, 14 November'],
   ])
   // A new log saves only once a day is chosen.
-  await user.click(screen.getByRole('button', { name: 'Save dose' }))
+  await user.click(screen.getByRole('button', { name: 'Save as taken' }))
   expect(await screen.findByText('Choose a date.')).toBeVisible()
   expect(state.writes).toHaveLength(0)
   await user.click(screen.getByRole('button', { name: 'Saturday, 14 November' }))
   await pickTime(user, '11:00')
-  await user.click(screen.getByRole('button', { name: 'Save dose' }))
+  await user.click(screen.getByRole('button', { name: 'Save as taken' }))
   expect(await screen.findByText('Choose a time that has passed.')).toBeVisible()
   expect(screen.getByRole('combobox', { name: /hour$/ })).toHaveFocus()
   expect(state.writes).toHaveLength(0)
   await user.click(screen.getByRole('button', { name: 'Friday, 13 November' }))
   await pickTime(user, '23:30')
   await user.click(screen.getByLabelText('Fewer: Amount'))
-  await user.click(screen.getByRole('button', { name: 'Save dose' }))
+  await user.click(screen.getByRole('button', { name: 'Save as taken' }))
   expect(
     await screen.findByText('Ibuprofen · taken at 23:30 on Fri 13 Nov, ½ tablet'),
   ).toBeVisible()
@@ -326,11 +326,11 @@ test('a lost response keeps the details and retries the same attempt, so one dos
   const state = api({ doses: [], replies: ['lost', 'ok'] })
   const user = renderDetail()
   await user.click(await screen.findByRole('button', { name: 'Log a dose' }))
-  await user.click(await screen.findByRole('button', { name: 'Save dose' }))
+  await user.click(await screen.findByRole('button', { name: 'Save as taken' }))
   const drawer = await screen.findByRole('dialog', { name: 'Ibuprofen' })
   expect(await within(drawer).findByText('That might not have saved.')).toBeVisible()
   expect(drawer).toHaveTextContent('Might not have saved')
-  await user.click(within(drawer).getByRole('button', { name: 'Try saving the dose again' }))
+  await user.click(within(drawer).getByRole('button', { name: 'Try saving as taken again' }))
   expect(await screen.findByText('Ibuprofen · taken at 10:00, 1 tablet')).toBeVisible()
   expect(state.writes).toHaveLength(2)
   expect(state.writes[1]).toEqual(state.writes[0])
@@ -341,10 +341,10 @@ test('a rejected save shows Not saved and keeps the drawer open', async () => {
   api({ replies: ['reject'] })
   const user = renderDetail()
   await user.click(await screen.findByRole('button', { name: 'Log a dose' }))
-  await user.click(await screen.findByRole('button', { name: 'Save dose' }))
+  await user.click(await screen.findByRole('button', { name: 'Save as taken' }))
   const drawer = await screen.findByRole('dialog', { name: 'Ibuprofen' })
   expect(await within(drawer).findByText('Not saved.')).toBeVisible()
-  expect(within(drawer).getByRole('button', { name: 'Save dose' })).toBeEnabled()
+  expect(within(drawer).getByRole('button', { name: 'Save as taken' })).toBeEnabled()
 })
 
 test('changing an Unscheduled dose from Today saves the new intake and says so', async () => {
@@ -381,6 +381,23 @@ test('changing an Unscheduled dose from Today saves the new intake and says so',
     quantity: 1,
   })
   await waitFor(async () => expect((await rows())[2]).toMatch(/^09:15.*Ibuprofen/))
+})
+
+// Catches an amount-only change reading as a change of time (#283 F16).
+test('changing only the amount of an Unscheduled dose names the new amount', async () => {
+  api()
+  const user = renderToday()
+  await user.click(
+    await screen.findByRole('button', {
+      name: 'Review dose for Ibuprofen taken at 09:30, not on a schedule',
+    }),
+  )
+  const drawer = await screen.findByRole('dialog', { name: 'Ibuprofen' })
+  const amount = within(drawer).getByLabelText(/^Amount/)
+  await user.clear(amount)
+  await user.type(amount, '2')
+  await user.click(within(drawer).getByRole('button', { name: 'Save changes' }))
+  expect(await screen.findByText('Ibuprofen 09:30 · now 2 tablets')).toBeVisible()
 })
 
 test('Remove dose asks first, then the dose leaves Today with its Toast', async () => {

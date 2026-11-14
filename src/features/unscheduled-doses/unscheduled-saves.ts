@@ -268,7 +268,12 @@ class UnscheduledSaves {
     const title =
       command.kind === 'remove'
         ? removedMessage(save.medicine, command.dose)
-        : savedMessage(save.medicine, dose, today, command.kind === 'change')
+        : savedMessage(
+            save.medicine,
+            dose,
+            today,
+            command.kind === 'change' ? command.dose : undefined,
+          )
     // A removal's Toast has no check: a check means Taken (241·S10).
     toast.add({
       title: reconciled ? `${title}. It was already saved` : title,

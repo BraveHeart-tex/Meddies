@@ -59,13 +59,13 @@ type Mode = 'record' | 'edit' | 'correct'
 const primaryLabels: Record<Mode, { save: string; retry: string }> = {
   record: { save: 'Save as taken', retry: 'Try saving as taken again' },
   edit: { save: 'Save changes', retry: 'Try saving changes again' },
-  correct: { save: 'Save changes', retry: 'Try saving your change again' },
+  correct: { save: 'Save as taken', retry: 'Try saving as taken again' },
 }
 
 /**
  * Actual intake details for a Taken outcome. `record` opens from the
  * drawer's outcome choice, `correct` changes a Skipped dose to Taken, and `edit` opens a recorded
- * intake through Edit dose. Values stay here; the parent's mutation owns saving, the duplicate
+ * intake through Change time or amount. Values stay here; the parent's mutation owns saving, the duplicate
  * lock, retry identity and errors.
  */
 export function TakenForm({
@@ -163,23 +163,30 @@ export function TakenForm({
 
   return (
     <>
-      {mode === 'edit' && (
+      {/* Hidden while its fields are open, so focus moves to the chosen Taken at; Cancel closes them (#283). */}
+      {mode === 'edit' && !open && (
         <Button
           type="button"
           variant="outline"
-          aria-expanded={open}
+          aria-expanded={false}
           aria-controls={id}
-          aria-label={`Edit dose for ${medicine.label} at ${formatTime(dose.dueAt)}`}
+          aria-label={`Change time or amount, ${medicine.label} at ${formatTime(dose.dueAt)}`}
           disabled={saving}
           onClick={() => {
-            if (!open && dose.status === 'Taken') {
+            if (dose.status === 'Taken') {
               setSubmitted(null)
               form.reset(takenFormDefaults(dose.record.quantity, original))
             }
-            onOpen(!open)
+            onOpen(true)
+            requestAnimationFrame(() =>
+              document
+                .getElementById(id)
+                ?.querySelector<HTMLElement>('[aria-pressed="true"]')
+                ?.focus(),
+            )
           }}
         >
-          Edit dose
+          Change time or amount
         </Button>
       )}
       <form

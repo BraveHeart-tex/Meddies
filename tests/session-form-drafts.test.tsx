@@ -169,6 +169,8 @@ test('the add form keeps a save 401 retryable until the session check confirms a
   await user.click(screen.getByRole('combobox', { name: 'Type' }))
   await user.click(await screen.findByRole('option', { name: 'Tablet' }))
   await user.click(screen.getByRole('button', { name: 'Save medication' }))
-  expect(await screen.findByText(/Trying again saves Magnesium only once/)).toBeVisible()
+  expect(
+    await screen.findByText("Your details are still here - trying again won't add it twice."),
+  ).toBeVisible()
   expect(screen.queryByText('Your session ended.')).not.toBeInTheDocument()
 })

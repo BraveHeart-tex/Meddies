@@ -63,6 +63,30 @@ test('an edited intake after midnight names the actual day (C3, C5)', () => {
   )
 })
 
+// Catches an amount-only change reading as a change of time (#283).
+test('an amount-only change names the new amount', () => {
+  assert.equal(
+    confirm({
+      label: 'Melatonin',
+      unit: 'tablet',
+      previous: 'Taken',
+      previousTakenAt: '2026-11-05T19:35:00.000Z',
+      record: taken('2026-11-05T19:35:00.000Z', 1),
+    }),
+    'Melatonin 22:30 · now 1 tablet',
+  )
+  assert.equal(
+    confirm({
+      label: 'Melatonin',
+      unit: 'tablet',
+      previous: 'Taken',
+      previousTakenAt: '2026-11-05T19:30:00.000Z',
+      record: taken('2026-11-05T19:35:00.000Z', 1),
+    }),
+    'Melatonin 22:30 · updated to taken at 22:35, 1 tablet',
+  )
+})
+
 test('a corrected outcome says what it changed to', () => {
   assert.equal(
     confirm({

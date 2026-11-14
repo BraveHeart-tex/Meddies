@@ -86,8 +86,8 @@ test('a new record saves only once a day is chosen', async () => {
   )
 })
 
-test('a change starts on its saved day', async () => {
-  const { user } = renderForm(
+test('a change starts on its saved day', () => {
+  renderForm(
     {
       ...dueThreeDaysAgo,
       status: 'Taken',
@@ -102,7 +102,6 @@ test('a change starts on its saved day', async () => {
     } as DoseOccurrence,
     'edit',
   )
-  await user.click(screen.getByRole('button', { name: /^Edit dose for/ }))
   expect(screen.getByRole('button', { name: 'Thursday, 12 November' })).toHaveAttribute(
     'aria-pressed',
     'true',

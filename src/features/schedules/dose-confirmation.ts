@@ -13,12 +13,14 @@ function doseHead(label: string, dueAt: string, today: string) {
  * The confirmation toast after a server-confirmed save, for example
  * 'Melatonin 22:30 · updated to taken at 23:00 on Thu 5 Nov, ½ tablet'. The scheduled time never
  * changes; a dose due on another day than today names its due day in the head, and an intake on
- * another day than scheduled names that day.
+ * another day than scheduled names that day. A change to the amount alone reads
+ * 'Melatonin 22:30 · now 1 tablet' (#283).
  */
 export function outcomeConfirmation({
   label,
   unit,
   previous,
+  previousTakenAt,
   record,
   today,
 }: {
@@ -26,6 +28,8 @@ export function outcomeConfirmation({
   unit: DoseUnit
   /** The dose's status before this save. */
   previous: DoseOccurrence['status']
+  /** The taken time before this save, when the dose was already Taken. */
+  previousTakenAt?: string
   record: DoseOutcomeRecord
   /** Istanbul today, for the year rule. */
   today: string
@@ -34,6 +38,8 @@ export function outcomeConfirmation({
   const corrected = previous === 'Taken' || previous === 'Skipped'
   if (record.outcome === 'Skipped')
     return `${head} ${corrected ? 'changed to skipped' : 'saved as skipped'}`
+  if (previous === 'Taken' && previousTakenAt === record.takenAt)
+    return `${head} now ${quantityLabel(record.quantity, unit)}`
   const dueDate = istanbulDate(new Date(record.dueAt))
   const takenDate = istanbulDate(new Date(record.takenAt))
   const day = takenDate === dueDate ? '' : ` on ${formatShortDay(takenDate, today)}`

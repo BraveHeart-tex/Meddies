@@ -457,6 +457,9 @@ test.each([
   await pickTime(user, 1, '08:00')
   await user.click(save())
   expect(await screen.findByRole('button', { name: 'Try saving schedule again' })).toBeEnabled()
+  // Names which part might not have saved (#283 F24).
+  expect(screen.getByText('Your schedule might not have saved.')).toBeVisible()
+  expect(screen.getByText('Omega-3 itself is saved.')).toBeVisible()
   expect(hour(1)).toHaveTextContent('08')
   expect(onSaved).not.toHaveBeenCalled()
   await user.click(button('Try saving schedule again'))

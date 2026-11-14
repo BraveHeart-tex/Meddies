@@ -139,7 +139,7 @@ test('private deep links offer sign-in while retaining the requested destination
     const signInTarget = location || html
     assert.ok(signInTarget.includes(`returnTo=${encodeURIComponent(path)}`), path)
     assert.ok(location || html.includes('http-equiv="refresh"'), 'must redirect, not link')
-    assert.doesNotMatch(html, /Save medication|Change this dose|Sign out/)
+    assert.doesNotMatch(html, /Save medication|I skipped it instead|Sign out/)
   }
 })
 

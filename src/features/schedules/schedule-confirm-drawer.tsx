@@ -28,7 +28,6 @@ const copy = {
       "Doses due so far, and any you've logged, stay as they are.",
       `Meddies won't expect any doses of ${label} until you resume.`,
       'Nothing is added later for the paused days.',
-      'Refill alerts keep going.',
     ],
     confirm: 'Pause schedule',
     pending: 'Pausing…',

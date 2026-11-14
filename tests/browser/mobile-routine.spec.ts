@@ -105,7 +105,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
       },
     )
     await page.getByRole('button', { name: 'Save schedule' }).press('Enter')
-    await expect(page.getByText('That might not have saved.')).toBeVisible()
+    await expect(page.getByText('Your schedule might not have saved.')).toBeVisible()
     await expectTime(page, 'Time 1', time)
     await page.getByRole('button', { name: 'Try saving schedule again' }).press('Enter')
     await expect(page.getByText('Schedule saved for Routine Medicine.')).toBeVisible()
@@ -152,7 +152,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
 
   await test.step('correct the History dose and verify it persists after reload', async () => {
     await doseTrigger(scheduled).click()
-    await dialog.getByRole('button', { name: /^Change dose for/ }).click()
+    await dialog.getByRole('button', { name: /^I skipped it instead, / }).click()
     await dialog.getByRole('button', { name: 'I skipped it' }).click()
     await dialog.getByRole('button', { name: 'Save as skipped' }).click()
     await expectHistoryDose('Skipped')

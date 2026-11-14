@@ -42,7 +42,7 @@ async function startCorrection(page: Page) {
   const dialog = drawer(page)
   await page.goto(historyPath)
   await doseTrigger(historyRow(page, date, dueAt), medicine).click()
-  await dialog.getByRole('button', { name: /^Change dose for/ }).click()
+  await dialog.getByRole('button', { name: /^I skipped it instead, / }).click()
   await dialog.getByRole('button', { name: 'I skipped it' }).click()
   const save = dialog.getByRole('button', { name: 'Save as skipped' })
   await expect(save).toBeEnabled()

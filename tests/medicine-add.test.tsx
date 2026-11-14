@@ -122,7 +122,9 @@ test('an unconfirmed save retries the identical request once and locks while pen
   expect(strength()).toHaveValue(' 5 mg ')
   expect(type()).toHaveTextContent('Capsule')
   const retry = button('Try saving medication again')
-  expect(retry).toHaveAccessibleDescription(/Trying again saves Test Medicine only once/)
+  expect(retry).toHaveAccessibleDescription(
+    "That might not have saved. Your details are still here - trying again won't add it twice.",
+  )
   // Two submissions in one turn exercise the synchronous guard before a pending render.
   act(() => {
     fireEvent.submit(retry.closest('form')!)
@@ -194,7 +196,7 @@ test('a conflict locks the form and offers Medications', async () => {
   expect(strength()).toBeDisabled()
   expect(type()).toBeDisabled()
   expect(screen.queryByRole('button', { name: /save medication/i })).not.toBeInTheDocument()
-  expect(screen.getByRole('link', { name: 'Open Medications' })).toHaveAttribute(
+  expect(screen.getByRole('link', { name: "See what's saved" })).toHaveAttribute(
     'href',
     '/medications',
   )

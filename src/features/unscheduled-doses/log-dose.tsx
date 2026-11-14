@@ -15,7 +15,7 @@ import { UnscheduledDoseForm } from './unscheduled-dose-form'
 import { logDraftKey, logSaveKey } from './unscheduled-saves'
 import { useUnscheduledSave } from './use-unscheduled-save'
 
-const labels = { save: 'Save dose', retry: 'Try saving the dose again' }
+const labels = { save: 'Save as taken', retry: 'Try saving as taken again' }
 
 /**
  * Log a dose on Medication detail (241·A1 to A4): an outline button under the schedule for any

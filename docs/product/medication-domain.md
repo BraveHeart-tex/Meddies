@@ -51,7 +51,7 @@ Injection is unsupported until its forms and Quantity units have been separately
 See **Unscheduled dose** and **History date** (GLOSSARY.md).
 
 - An Unscheduled dose is always Taken: it keeps an actual intake time and quantity and never requires a schedule or DoseOccurrence. It never stands in for an occurrence: due and Not logged occurrences, later occurrences, Interval Anchors and reminders stay unchanged.
-- The user logs it from Medication detail, for any medication, whether its schedule is missing, running, paused or Ended. Today and History do not start one.
+- The user logs it from Medication detail, for any medication, whether its schedule is missing, running, paused or Ended. Today and History do not start one. Its save reads _Save as taken_, like every other Taken save (#283, in place of #241's _Save dose_).
 - Intake time is Now, or a minute today or yesterday (Istanbul), never in the future. Quantity starts at 1 of the medication's unit and follows the supported quantities above.
 - It shows on Today and on History for its History date, the Istanbul day it was taken, in time order among scheduled doses and marked as not on a schedule. It never becomes Today's next dose. Today lists it in place of its empty state. Medication detail shows no list of past Unscheduled doses.
 - When the saved intake falls on a day other than today, the save message names that day.

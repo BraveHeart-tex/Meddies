@@ -82,6 +82,7 @@ export function DoseActions({
               label: medicine.label,
               unit: medicine.unit,
               previous: dose.status,
+              previousTakenAt: dose.status === 'Taken' ? dose.record.takenAt : undefined,
               record,
               today: istanbulDate(clock.now()),
             }),
@@ -162,6 +163,8 @@ export function DoseActions({
   const attemptMatches = (outcome: Outcome) =>
     problem?.kind !== 'uncertain' || !attempt || attempt.outcome === outcome
   const verb = recorded ? 'Review' : 'Record'
+  // Names the outcome the review switches to (#283 F6).
+  const switchLabel = dose.status === 'Skipped' ? 'I took it instead' : 'I skipped it instead'
   // A dose from another day names that day: 'Record dose for Melatonin scheduled at 22:30 on Thu 5 Nov'.
   const reference = todayDate ?? istanbulDate(clock.now())
   const dueDate = istanbulDate(new Date(dose.dueAt))
@@ -302,7 +305,7 @@ export function DoseActions({
                 <Button
                   type="button"
                   variant="outline"
-                  aria-label={`Change dose for ${medicine.label} at ${formatTime(dose.dueAt)}`}
+                  aria-label={`${switchLabel}, ${medicine.label} at ${formatTime(dose.dueAt)}`}
                   onClick={() => {
                     pinCorrection({
                       outcome: dose.status,
@@ -311,7 +314,7 @@ export function DoseActions({
                     setCorrecting(true)
                   }}
                 >
-                  Change this dose
+                  {switchLabel}
                 </Button>
               )}
             </fieldset>

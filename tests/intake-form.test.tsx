@@ -295,7 +295,9 @@ test.each(['edit', 'correct'] as const)(
     const trigger = await screen.findByRole('button', { name: /^Review dose for Morning Tablet/ })
     await user.click(trigger)
     await user.click(
-      screen.getByRole('button', { name: mode === 'edit' ? /^Edit dose for/ : /^Change dose for/ }),
+      screen.getByRole('button', {
+        name: mode === 'edit' ? /^Change time or amount, / : /^I skipped it instead, /,
+      }),
     )
     if (mode === 'edit') {
       const amount = screen.getByLabelText(/^Amount/)
@@ -322,7 +324,7 @@ test.each(['edit', 'correct'] as const)(
     expect(screen.getByRole('dialog', { name: medicine.label })).toHaveTextContent(
       'Taken 3 tablets',
     )
-    await user.click(screen.getByRole('button', { name: /^Change dose for/ }))
+    await user.click(screen.getByRole('button', { name: /^I skipped it instead, / }))
     await user.click(screen.getByRole('button', { name: 'I skipped it' }))
     await user.click(screen.getByRole('button', { name: 'Save as skipped' }))
     await waitFor(async () => expect(await row()).toHaveTextContent('Skipped'))
@@ -350,14 +352,15 @@ test('editing only the amount preserves the exact recorded instant', async () =>
   )
   const { user } = session()
   await user.click(await screen.findByRole('button', { name: /^Review dose for Morning Tablet/ }))
-  await user.click(screen.getByRole('button', { name: /^Edit dose for/ }))
+  await user.click(screen.getByRole('button', { name: /^Change time or amount, / }))
   const amount = screen.getByLabelText(/^Amount/)
   expect(amount).toHaveValue('1')
   await user.clear(amount)
   await user.type(amount, '2')
   await user.click(screen.getByRole('button', { name: 'Save changes' }))
   expect(
-    await screen.findByText('Morning Tablet 09:00 · updated to taken at 09:01, 2 tablets'),
+    // Catches an amount-only change reading as a change of time (#283 F16).
+    await screen.findByText('Morning Tablet 09:00 · now 2 tablets'),
   ).toBeVisible()
   expect(await row()).toHaveTextContent('took 2 tablets')
   expect(patches).toHaveLength(1)

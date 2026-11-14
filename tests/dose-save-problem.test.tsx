@@ -101,7 +101,7 @@ test.each([
 test.each([
   ['record', 'Try saving as taken again'],
   ['edit', 'Try saving changes again'],
-  ['correct', 'Try saving your change again'],
+  ['correct', 'Try saving as taken again'],
 ] as const)('the %s form offers its retry in plain words', (mode, name) => {
   const medicine: Medicine = { id: 'medicine', label: 'Iron', strength: null, unit: 'tablet' }
   const dose: DoseOccurrence = {

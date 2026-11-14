@@ -104,15 +104,15 @@ test('review, edit and correct past doses in History', async ({
     await expect(list).toContainText('took ½ tablet')
     await expect(list).toContainText('2 tablets')
     await expect(list).toContainText('1½ tablets')
-    // Not logged rows are not buttons.
-    await expect(rows.nth(2).getByRole('button')).toHaveCount(0)
+    // A past Not logged row offers Record, like every History row (#278).
+    await expect(rows.nth(2).getByRole('button', { name: /^Record dose for / })).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('dose-history.png') })
   })
 
   await test.step('edit actual intake details without changing the schedule', async () => {
     const originalTakenAt = await intakeTime(first).getAttribute('datetime')
     await reviewFirst()
-    await dialog.getByRole('button', { name: /^Edit dose for/ }).click()
+    await dialog.getByRole('button', { name: /^Change time or amount, / }).click()
     await expect(dialog.getByLabel(/^Amount/)).toHaveValue('½')
     await expect(takenDay(dialog, '2035-06-15')).toHaveAttribute('aria-pressed', 'true')
     await expectTime(dialog, 'Taken time in Istanbul', '09:00')
@@ -122,7 +122,7 @@ test('review, edit and correct past doses in History', async ({
     await expect(
       toastMessage(
         page,
-        /^History Fixture Medicine \d\d:\d\d · updated to taken at .*, 1½ tablets$/,
+        /^History Fixture Medicine \d\d:\d\d on \w{3} \d+ \w{3} · now 1½ tablets$/,
       ),
     ).toBeVisible()
     await expect(intakeTime(first)).toHaveAttribute('datetime', originalTakenAt!)
@@ -130,7 +130,7 @@ test('review, edit and correct past doses in History', async ({
 
   await test.step('edit actual time while preserving quantity', async () => {
     await reviewFirst()
-    await dialog.getByRole('button', { name: /^Edit dose for/ }).click()
+    await dialog.getByRole('button', { name: /^Change time or amount, / }).click()
     await takenDay(dialog, date).click()
     await pickTime(page, 'Taken time in Istanbul', '12:00')
     await dialog.getByRole('button', { name: 'Save changes' }).click()
@@ -145,7 +145,7 @@ test('review, edit and correct past doses in History', async ({
 
   await test.step('correct a Taken history outcome to Skipped', async () => {
     await reviewFirst()
-    await dialog.getByRole('button', { name: /^Change dose for/ }).click()
+    await dialog.getByRole('button', { name: /^I skipped it instead, / }).click()
     await dialog.getByRole('button', { name: 'I skipped it' }).click()
     await dialog.getByRole('button', { name: 'Save as skipped' }).click()
     await expect(first.getByText('Skipped', { exact: true })).toBeVisible()

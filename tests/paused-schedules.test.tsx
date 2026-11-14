@@ -168,9 +168,10 @@ describe('Pause', () => {
       "Doses due so far, and any you've logged, stay as they are.",
       "Meddies won't expect any doses of Magnesium until you resume.",
       'Nothing is added later for the paused days.',
-      'Refill alerts keep going.',
     ])
       expect(within(dialog).getByText(line)).toBeVisible()
+    // No refill line until refill alerts exist (#283 F10, #52).
+    expect(within(dialog).queryByText(/Refill/)).not.toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'Keep schedule' }))
     await drawerClosed()
     expect(button('Pause')).toHaveFocus()

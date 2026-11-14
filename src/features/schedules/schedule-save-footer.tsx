@@ -104,8 +104,8 @@ function SaveProblemAlert({
 }) {
   const setup = {
     unconfirmed: {
-      title: saveMessages.mightNotHaveSaved,
-      body: `${label} is saved. Its schedule details are still here, and trying again saves them only once.`,
+      title: 'Your schedule might not have saved.',
+      body: `${label} itself is saved.`,
     },
     rejected: {
       title: "Schedule wasn't saved.",
