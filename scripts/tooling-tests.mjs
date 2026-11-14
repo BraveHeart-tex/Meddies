@@ -16,6 +16,7 @@ export const toolingTests = [
   'tests/journey-worker.test.ts',
   'tests/release-guard.test.ts',
   'tests/release.test.ts',
+  'tests/start-issue.test.ts',
   'tests/verify.test.ts',
 ]
 

@@ -20,18 +20,17 @@ When asked for the next task, take the top row of the Project's **Next up** view
 node scripts/next-issue.mjs | jq '{next, candidates}'
 ```
 
-`next: null` means nothing is ready. The script needs the `project` scope
-(`gh auth refresh -s project`). Read the selected issue, its comments and
-blockers before starting:
+`next: null` means nothing is ready. Start the selected issue with one command:
 
 ```sh
-gh issue view <n> --comments
-gh issue view <n> --json parent,subIssues,blockedBy --jq '{parent: .parent.number,
-  subIssues: [.subIssues.nodes[] | {number, state}], blockedBy: [.blockedBy.nodes[] | {number, state}]}'
+node scripts/start-issue.mjs <n|url>
 ```
 
-Set the Project `Status` to In progress when you start (`gh project item-edit`, or the
-board).
+It refuses a closed issue or one with an open blocker, naming the reason. Otherwise it sets
+the issue's Project `Status` to In progress (adding the issue to the Project first) and
+prints JSON: the issue with its body and comments, `parent`, `subIssues`, `blockedBy`, the
+review baseline commit `base`, and `design` (title starts `Design:`). Both scripts need the
+`project` scope (`gh auth refresh -s project`).
 
 ## Shape
 

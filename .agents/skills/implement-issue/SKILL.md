@@ -19,14 +19,14 @@ Work **lean** throughout:
 
 ## Steps
 
-1. **Load the issue.** Run the read commands in
-   [tickets](../../../docs/tickets.md#selecting-work): body, comments, parent, blockers.
-   Record the review baseline: `base=$(git rev-parse HEAD)`. Set Project Status to In
-   progress. State the issue title.
-   _Done when_ the title is stated, `base` is recorded and every blocker is closed. An open
-   blocker stops the run: report it and ask. A design ticket (title starting `Design:`)
-   leaves this skill here and runs the `design-ticket` skill instead; its approval comment
-   is the evidence.
+1. **Load the issue.** Run `node scripts/start-issue.mjs <n|url>`
+   ([tickets](../../../docs/tickets.md#selecting-work)): it prints the issue, its relations
+   and the review baseline, and sets Project Status to In progress. Record
+   `base=<its base>`. State the issue title.
+   _Done when_ the script exits 0, the title is stated and `base` is recorded. A refusal
+   (closed issue or open blocker) stops the run: report it and ask. A design ticket
+   (`design: true`) leaves this skill here and runs the `design-ticket` skill instead; its
+   approval comment is the evidence.
 
 2. **Read the docs.** Pick the rows of the AGENTS.md docs table the work touches, plus every
    spec section and design frame the issue cites.
