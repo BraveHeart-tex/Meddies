@@ -1,0 +1,5 @@
+interface:
+  display_name: 'Plan issue run'
+  short_description: 'Order a batch of issues into ready-to-paste implement-issue prompts'
+policy:
+  allow_implicit_invocation: false
