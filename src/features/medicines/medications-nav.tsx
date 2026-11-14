@@ -40,9 +40,9 @@ export function showMedicationsView(
 const fromKey = 'medicationsFrom'
 
 /**
- * Leaves a confirmed schedule form for its medication's page (DESIGN.md "Components"). A form
- * pushed from that page goes back to its entry, so one Back then leaves it; any other form (a
- * direct link, a router navigation) replaces its own URL with the page.
+ * Returns from a schedule form after saving or an explicit unsaved exit (DESIGN.md "Components").
+ * A form pushed from its medication's page goes back to that entry, so one Back then leaves it;
+ * any other form (a direct link, a router navigation) replaces its own URL with the page.
  */
 export function returnToMedicationPage(medicineId: string) {
   const href = medicationsHref({ mode: 'detail', medicineId })

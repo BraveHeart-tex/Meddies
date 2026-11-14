@@ -72,3 +72,37 @@ test('a schedule form opened from a direct link replaces its URL on save', async
   await page.goBack()
   await expect(page).toHaveURL(app.origin + '/medications')
 })
+
+// Allowed reason: Back, Forward or reload behavior.
+test('unsaved Change schedule exits leave the medication page in one Back', async ({
+  page,
+  app,
+}) => {
+  await page.goto('/medications')
+  await waitForClientRouter(page)
+  await page.getByRole('link', { name: 'View details for Back Fixture Medicine' }).click()
+  await page.getByRole('link', { name: 'Change schedule' }).click()
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(page).toHaveURL(detailUrl)
+  await page.goBack()
+  await expect(page).toHaveURL(app.origin + '/medications')
+
+  await page.getByRole('link', { name: 'View details for Back Fixture Medicine' }).click()
+  await page.getByRole('link', { name: 'Change schedule' }).click()
+  await page
+    .getByLabel(/^Quantity/)
+    .first()
+    .fill('2')
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await page.getByRole('button', { name: 'Discard', exact: true }).click()
+  await expect(page).toHaveURL(detailUrl)
+  await page.goBack()
+  await expect(page).toHaveURL(app.origin + '/medications')
+
+  await page.goto(`/medications?schedule=${medicineId}`)
+  await waitForClientRouter(page)
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(page).toHaveURL(detailUrl)
+  await page.goBack()
+  await expect(page).toHaveURL(app.origin + '/medications')
+})

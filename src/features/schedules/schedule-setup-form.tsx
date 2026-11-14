@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { MedicationsLink, showMedicationsView } from '@/features/medicines/medications-nav'
+import { MedicationsLink, returnToMedicationPage } from '@/features/medicines/medications-nav'
 import { medicationsHref } from '@/features/medicines/routes'
 import { InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -102,7 +102,7 @@ export function ScheduleSetupForm({
   }
 
   function leave() {
-    showMedicationsView(medicationsHref({ mode: 'detail', medicineId }), 'replace')
+    returnToMedicationPage(medicineId)
   }
 
   function cancel() {

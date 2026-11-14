@@ -110,7 +110,7 @@ export function ScheduleResumeScreen({
             <ScheduleSetupHeader
               label={medicine.label}
               subtitle="Resume schedule"
-              onCancel={() => leaveTo(medicineId)}
+              onCancel={() => returnToMedicationPage(medicineId)}
             />
             <MedicinesRefreshAlert medicinesRead={medicinesRead} />
             {loadError ? (
@@ -161,12 +161,12 @@ function ResumeBody({
       offline={offline}
       onSubmit={({ date, time }) => void save.save({ anchorDate: date, anchorTime: time })}
       // A pending resume carries on after leaving, as it does from any navigation.
-      onCancel={() => leaveTo(medicine.id)}
+      onCancel={() => returnToMedicationPage(medicine.id)}
       onReview={() => {
         save.clear()
         discardSessionFormDraft(client, draftKey)
         void client.invalidateQueries({ queryKey: scheduleKeys.all })
-        leaveTo(medicine.id)
+        returnToMedicationPage(medicine.id)
       }}
     />
   )

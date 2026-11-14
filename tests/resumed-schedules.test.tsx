@@ -281,7 +281,9 @@ describe('Resume a Clock schedule', () => {
 })
 
 describe('Resume an Interval schedule', () => {
-  test('233·A9 Resume opens the Resume schedule screen; Cancel goes back', async () => {
+  test('Resume Cancel returns to the medication page entry without duplicating it', async () => {
+    window.history.replaceState(null, '', '/medications')
+    window.history.pushState(null, '', detailUrl)
     const view = await openDetail([intervalPaused])
     const { user } = view
     await openResume(view, user)
@@ -295,7 +297,10 @@ describe('Resume an Interval schedule', () => {
     expect(screen.getByText("They'll show here.")).toBeVisible()
     expect(button('Resume schedule')).toBeVisible()
     await user.click(button('Cancel'))
-    expect(window.location.search).toBe(`?medicine=${magnesium.id}`)
+    await waitFor(() => expect(window.location.search).toBe(`?medicine=${magnesium.id}`))
+    window.history.back()
+    await waitFor(() => expect(window.location.pathname).toBe('/medications'))
+    await waitFor(() => expect(window.location.search).toBe(''))
   })
 
   test('233·A10, A13 resumes from the new Anchor and names its next dose', async () => {
