@@ -56,18 +56,32 @@ test('submit-first validation focuses the first invalid field and clears correct
   expect(strength()).toHaveAccessibleDescription(
     'Strength is printed on the pack, like 200 mg or 1000 IU. Not how much you take.',
   )
-  expect(type()).toHaveAccessibleDescription(
-    'Schedules use whole or half tablets, or whole capsules.',
-  )
+  expect(type()).not.toHaveAccessibleDescription()
+  expect(
+    screen.queryByText('Schedules use whole or half tablets, or whole capsules.'),
+  ).not.toBeInTheDocument()
   await user.type(strength(), 'x'.repeat(121))
   expect(screen.queryByText('Use 120 characters or fewer.')).not.toBeInTheDocument()
+  await user.clear(strength())
+  expect(screen.queryByText('Enter the medication name.')).not.toBeInTheDocument()
+  await user.click(button('Save medication'))
+  await waitFor(() => expect(name()).toHaveFocus())
+  expect(name()).toHaveAccessibleDescription('Enter the medication name.')
+  expect(type()).toHaveAccessibleDescription('Choose a type.')
+  await user.type(strength(), 'x'.repeat(121))
+  await waitFor(() => expect(strength()).toHaveAttribute('aria-invalid', 'true'))
   await user.click(button('Save medication'))
   await waitFor(() => expect(name()).toHaveFocus())
   expect(name()).toHaveAttribute('aria-invalid', 'true')
   expect(name()).toHaveAccessibleDescription(/Enter the medication name\./)
-  expect(strength()).toHaveAccessibleDescription(/Use 120 characters or fewer\./)
-  expect(type()).toHaveAccessibleDescription(/Choose tablet or capsule\./)
-  expect(screen.getByText('Choose tablet or capsule.')).toBeVisible()
+  expect(strength()).toHaveAccessibleDescription(
+    'Use 120 characters or fewer. Strength is printed on the pack, like 200 mg or 1000 IU. Not how much you take.',
+  )
+  expect(type()).toHaveAccessibleDescription('Choose a type.')
+  expect(
+    screen.queryByText('Schedules use whole or half tablets, or whole capsules.'),
+  ).not.toBeInTheDocument()
+  expect(screen.getByText('Choose a type.')).toBeVisible()
   await user.type(name(), `Medicine ${'L'.repeat(60)}`)
   await waitFor(() => expect(name()).toHaveAttribute('aria-invalid', 'false'))
   await user.clear(strength())
@@ -77,9 +91,10 @@ test('submit-first validation focuses the first invalid field and clears correct
   await waitFor(() => expect(type()).toHaveFocus())
   await chooseType(user, 'Capsule')
   expect(type()).toHaveTextContent('Capsule')
-  await waitFor(() =>
-    expect(screen.queryByText('Choose tablet or capsule.')).not.toBeInTheDocument(),
+  expect(type()).toHaveAccessibleDescription(
+    'Schedules use whole or half tablets, or whole capsules.',
   )
+  await waitFor(() => expect(screen.queryByText('Choose a type.')).not.toBeInTheDocument())
   expect(posts).toBe(0)
 })
 

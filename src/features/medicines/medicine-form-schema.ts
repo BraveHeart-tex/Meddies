@@ -17,7 +17,7 @@ export const medicineFormSchema = z.object({
   // Editing starts with an empty unit; only a chosen unit passes.
   unit: z
     .enum(['', 'tablet', 'capsule'])
-    .pipe(z.enum(['tablet', 'capsule'], { error: 'Choose tablet or capsule.' })),
+    .pipe(z.enum(['tablet', 'capsule'], { error: 'Choose a type.' })),
 })
 
 /** Editing values: unit is empty until chosen. */

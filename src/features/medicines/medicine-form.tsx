@@ -49,8 +49,8 @@ const textRow =
   'grid min-h-14 grid-cols-[5.75rem_minmax(0,1fr)] items-center gap-0 px-4 not-first:border-t first:rounded-t-2xl has-[input:focus-visible]:outline-2 has-[input:focus-visible]:-outline-offset-2 has-[input:focus-visible]:outline-ring'
 const rowInput =
   'h-auto min-h-14 rounded-none border-0 bg-transparent px-0 text-body-lg font-bold placeholder:font-semibold focus-visible:outline-none disabled:bg-transparent aria-invalid:ring-0'
-const underGroup = 'px-1 font-extrabold'
-const rowHelp = 'px-1 text-caption nth-last-2:mt-0'
+const rowError = 'col-span-full pb-3 font-extrabold'
+const rowHelp = 'col-span-full pb-3 text-caption'
 
 /**
  * Add medicine form: the production reference for React Hook Form (docs/forms.md).
@@ -72,7 +72,6 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
     await saveState.submit(values)
   }
 
-  const { errors } = form.formState
   const isSubmitting = Boolean(saveState.pending)
   const problem = saveState.problem
   const problemLabel = saveState.label
@@ -125,6 +124,11 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
                     aria-describedby={fieldState.invalid ? 'medicine-label-error' : undefined}
                     className={rowInput}
                   />
+                  <FieldError
+                    id="medicine-label-error"
+                    className={rowError}
+                    errors={[fieldState.error]}
+                  />
                 </Field>
               )}
             />
@@ -148,6 +152,14 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
                     }
                     className={rowInput}
                   />
+                  <FieldError
+                    id="medicine-strength-error"
+                    className={rowError}
+                    errors={[fieldState.error]}
+                  />
+                  <FieldDescription id="medicine-strength-help" className={rowHelp}>
+                    Strength is printed on the pack, like 200 mg or 1000 IU. Not how much you take.
+                  </FieldDescription>
                 </Field>
               )}
             />
@@ -170,8 +182,10 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
                       aria-labelledby="medicine-unit-label"
                       aria-describedby={
                         fieldState.invalid
-                          ? 'medicine-unit-error medicine-unit-help'
-                          : 'medicine-unit-help'
+                          ? 'medicine-unit-error'
+                          : field.value
+                            ? 'medicine-unit-help'
+                            : undefined
                       }
                       aria-invalid={fieldState.invalid}
                       className='grid min-h-14 grid-cols-[5.75rem_minmax(0,1fr)_1.375rem] gap-0 rounded-none rounded-b-2xl border-0 bg-transparent px-4 text-body-lg focus-visible:-outline-offset-2 aria-invalid:ring-0 [&_svg:not([class*="size-"])]:size-5.5'
@@ -203,24 +217,21 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
                       ))}
                     </SelectContent>
                   </Select>
+                  <FieldError
+                    id="medicine-unit-error"
+                    className="px-4 pb-3 font-extrabold"
+                    errors={[fieldState.error]}
+                  />
+                  {field.value && (
+                    <FieldDescription id="medicine-unit-help" className="px-4 pb-3 text-caption">
+                      Schedules use whole or half tablets, or whole capsules.
+                    </FieldDescription>
+                  )}
                 </Field>
               )}
             />
           </FieldGroup>
         </Card>
-        <FieldError id="medicine-label-error" className={underGroup} errors={[errors.label]} />
-        <FieldError
-          id="medicine-strength-error"
-          className={underGroup}
-          errors={[errors.strength]}
-        />
-        <FieldError id="medicine-unit-error" className={underGroup} errors={[errors.unit]} />
-        <FieldDescription id="medicine-strength-help" className={rowHelp}>
-          Strength is printed on the pack, like 200 mg or 1000 IU. Not how much you take.
-        </FieldDescription>
-        <FieldDescription id="medicine-unit-help" className={rowHelp}>
-          Schedules use whole or half tablets, or whole capsules.
-        </FieldDescription>
       </FieldSet>
       {offline && !isSubmitting && problem !== 'conflict' ? (
         <Alert id="medicine-save-problem">
