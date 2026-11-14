@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'vitest'
-import { nextIntervalDoses } from '../src/features/schedules/interval-preview'
+import {
+  intervalOvernightNote,
+  nextIntervalDoses,
+} from '../src/features/schedules/interval-preview'
 
 const istanbul = (local: string) => new Date(`${local}:00+03:00`).toISOString()
 
@@ -63,3 +66,25 @@ test('paused interval previews expect no doses', () => {
     }),
   ).toEqual([])
 })
+
+describe('intervalOvernightNote', () => {
+  test('counts overnight doses beyond the short preview instead of claiming only one', () => {
+    expect(intervalOvernightNote(istanbul('2026-11-09T10:00'), 4, null)).toBe(
+      'Includes doses overnight, from 22:00.',
+    )
+  })
+})
+
+test.each([
+  ['2026-11-09T16:00', 8, null, 'Includes a dose overnight, at 00:00.'],
+  ['2026-11-09T09:00', 24, null, undefined],
+  ['2026-11-09T07:00', 12, null, undefined],
+  ['2026-11-09T10:00', 4, '2026-11-09', 'Includes a dose overnight, at 22:00.'],
+  ['2026-11-09T16:00', 8, '2026-11-09', undefined],
+  ['2026-11-09T06:59', 24, null, 'Includes a dose overnight, at 06:59.'],
+])(
+  'overnight note respects cardinality, boundaries and Last day: %s / %s / %s',
+  (first, hours, lastDay, expected) => {
+    expect(intervalOvernightNote(istanbul(first), hours, lastDay)).toBe(expected)
+  },
+)

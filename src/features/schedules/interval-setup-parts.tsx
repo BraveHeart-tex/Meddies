@@ -7,7 +7,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { cn } from '@/lib/utils'
 import { istanbulDate } from './contract'
-import { firstOvernightDose, intervalLabel, isOvernightDose } from './interval-preview'
+import { intervalOvernightNote, intervalLabel, isOvernightDose } from './interval-preview'
 import { nextDosesLabel, untilLastDay } from './last-day'
 
 /** The Every row's answer: '8 hours' or 'hour', or null until the text is a count of hours. */
@@ -162,9 +162,8 @@ export function NextDoses({
 }) {
   const doses = untilLastDay(upcoming, lastDay)
   const label = nextDosesLabel(doses?.length ?? 0, lastDay)
-  const firstNight = doses?.length && hours ? firstOvernightDose(doses[0], hours) : undefined
-  // A night dose after the Last day never happens.
-  const night = firstNight && untilLastDay([firstNight], lastDay)[0]
+  const nightNote =
+    doses?.length && hours ? intervalOvernightNote(doses[0], hours, lastDay) : undefined
   return (
     <section aria-labelledby="next-doses-heading" aria-live="polite" className="flex flex-col px-1">
       <h2 id="next-doses-heading" className="text-body-sm font-extrabold text-muted-foreground">
@@ -196,11 +195,7 @@ export function NextDoses({
           No doses after {formatShortDay(lastDay, today)}.
         </p>
       )}
-      {night && (
-        <p className="pt-2 text-body-sm text-muted-foreground">
-          Includes a dose overnight, at {formatTime(night)}.
-        </p>
-      )}
+      {nightNote && <p className="pt-2 text-body-sm text-muted-foreground">{nightNote}</p>}
       {after && <p className="pt-2 text-body-sm text-muted-foreground">{CHANGE_KEEPS_EARLIER}</p>}
     </section>
   )

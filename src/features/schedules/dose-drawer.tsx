@@ -59,13 +59,13 @@ export function DoseDrawer({
         initialFocus={() => initialFocus?.() ?? titleRef.current}
         finalFocus={finalFocus}
       >
-        <DrawerHeader className="flex-row items-center gap-3.5">
+        <DrawerHeader className="grid grid-cols-[1fr_auto] items-center gap-3.5">
           <MedicationTile medicineId={medicineId} size="lg" />
-          <div className="flex min-w-0 flex-1 flex-col gap-0.75 wrap-break-word">
+          <div className="order-3 col-span-full flex min-w-0 flex-col gap-0.75 wrap-break-word">
             <DrawerTitle
               ref={titleRef}
               tabIndex={-1}
-              className="text-[1.4375rem] leading-[1.1] outline-none"
+              className="[overflow-wrap:anywhere] text-[1.4375rem] leading-[1.1] outline-none"
             >
               {title}
             </DrawerTitle>

@@ -48,7 +48,7 @@ export function ScheduleKindForms({
   return (
     <>
       {kind === 'times' && !change && (
-        <p className="text-body-sm text-muted-foreground">
+        <p className="text-body-sm text-pretty text-muted-foreground">
           Times are Istanbul time. Doses start from the next time after you save. Earlier times
           today aren&apos;t added.
         </p>

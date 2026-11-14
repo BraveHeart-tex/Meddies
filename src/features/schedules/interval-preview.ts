@@ -1,6 +1,7 @@
-import { istanbulHour } from '@/lib/calendar-date'
+import { formatTime, istanbulHour } from '@/lib/calendar-date'
 import type { DailySchedule } from './contract'
 import { scheduledInstant } from './occurrences'
+import { untilLastDay } from './last-day'
 
 const HOUR_MS = 3_600_000
 
@@ -49,11 +50,26 @@ export function isOvernightDose(dose: string) {
 }
 
 /** Checks a full day from the first dose, so a short list can't hide a night dose. */
-export function firstOvernightDose(first: string, hours: number) {
+function overnightDoses(first: string, hours: number) {
   return nextIntervalDoses({
     anchor: first,
     hours,
     now: new Date(Date.parse(first) - 1).toISOString(),
     count: Math.ceil(24 / hours),
-  }).find(isOvernightDose)
+  }).filter(isOvernightDose)
+}
+
+/** The first overnight dose in the full-day look-ahead. */
+export function firstOvernightDose(first: string, hours: number) {
+  return overnightDoses(first, hours)[0]
+}
+
+/** Count the full-day look-ahead, excluding doses after Last day, even beyond the short preview. */
+export function intervalOvernightNote(first: string, hours: number, lastDay: string | null) {
+  const doses = untilLastDay(overnightDoses(first, hours), lastDay)
+  if (!doses.length) return undefined
+  const time = formatTime(doses[0])
+  return doses.length === 1
+    ? `Includes a dose overnight, at ${time}.`
+    : `Includes doses overnight, from ${time}.`
 }

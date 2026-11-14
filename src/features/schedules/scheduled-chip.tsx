@@ -54,9 +54,9 @@ export function ScheduledChip({
             <TriangleAlert aria-hidden="true" />
             Might not have saved
           </Badge>
-        ) : (
+        ) : dose.status !== 'Upcoming' ? (
           <DoseStatusBadge status={dose.status} />
-        )}
+        ) : null}
       </ItemActions>
     </Item>
   )

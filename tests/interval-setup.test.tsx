@@ -270,6 +270,7 @@ describe('next 3 doses', () => {
     api()
     const { user } = await openSetup()
     await fillIn(user, '4 hours', '12:00')
+    expect(within(nextDoses()).getByText('Includes doses overnight, from 00:00.')).toBeVisible()
     expect(doseLines()).toEqual(['12:00Today', '16:00Today', '20:00Today'])
     await chooseHours(user, '6 hours')
     expect(doseLines()).toEqual(['12:00Today', '18:00Today', '00:00Tue 10 Nov'])
