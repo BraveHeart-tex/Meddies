@@ -139,8 +139,20 @@ describe('freshness', () => {
     expect(await doses()).toHaveTextContent('Scheduled')
     expect(api.reads()).toBe(1)
     await advance(6 * 60_000)
-    expect(await doses()).toHaveTextContent('Not logged')
+    expect(await doses()).toHaveTextContent('Due now')
     await advance(5 * 60_000)
+    expect(api.reads()).toBe(1)
+  })
+
+  test('a Due now row turns Not logged on the minute tick 15 minutes after its time', async () => {
+    // 09:14:30 in Istanbul; the 09:00 dose is Due now until 09:15:00.
+    const api = schedulesApi('2026-11-14T06:14:30.000Z')
+    renderToday('2026-11-14T06:14:30.000Z')
+    const list = await doses()
+    expect(within(list).getByText('Due now')).toBeVisible()
+    await advance(31_000)
+    expect(within(list).getByText('Not logged')).toBeVisible()
+    expect(within(list).queryByText('Due now')).not.toBeInTheDocument()
     expect(api.reads()).toBe(1)
   })
 
@@ -224,7 +236,7 @@ describe('with a cached snapshot', () => {
   })
 
   test('a newer server time re-anchors the statuses', async () => {
-    const api = schedulesApi('2026-11-14T06:01:00.000Z')
+    const api = schedulesApi('2026-11-14T06:16:00.000Z')
     cache(initialNow)
     const release = api.hold()
     renderToday()

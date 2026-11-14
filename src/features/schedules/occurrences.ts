@@ -47,11 +47,21 @@ export function scheduleSlotsOn(
   return slots
 }
 
+/** How long an unresolved occurrence stays Due now after its due instant (#275). */
+const DUE_NOW_WINDOW_MS = 15 * 60_000
+
+// Due now runs from the due instant until 15 minutes after it, exclusive; then Not logged.
+function unresolvedStatus(dueAt: string, now: number) {
+  const due = Date.parse(dueAt)
+  if (now < due) return 'Upcoming'
+  return now < due + DUE_NOW_WINDOW_MS ? 'Due now' : 'Not logged'
+}
+
 function occurrenceFor(
   schedule: DailySchedule,
   dueAt: string,
   slot: DailySchedule['times'][number],
-  nowIso: string,
+  now: number,
   outcomes: Map<string, DoseOutcomeRecord>,
 ): DoseOccurrence | null {
   if (dueAt <= schedule.confirmedAt) return null
@@ -65,11 +75,7 @@ function occurrenceFor(
     dueAt,
     quantity: slot.quantity,
   }
-  if (!record)
-    return {
-      ...base,
-      status: dueAt < nowIso ? 'Not logged' : dueAt === nowIso ? 'Due now' : 'Upcoming',
-    }
+  if (!record) return { ...base, status: unresolvedStatus(dueAt, now) }
   return record.outcome === 'Taken'
     ? { ...base, status: 'Taken', record }
     : { ...base, status: 'Skipped', record }
@@ -96,7 +102,7 @@ export function scheduleToday(
       const dateString = localDate.toISOString().slice(0, 10)
       if (!scheduleRunsOn(schedule, dateString)) continue
       for (const { dueAt, slot } of scheduleSlotsOn(schedule, dateString)) {
-        const occurrence = occurrenceFor(schedule, dueAt, slot, nowIso, outcomes)
+        const occurrence = occurrenceFor(schedule, dueAt, slot, now.getTime(), outcomes)
         if (occurrence) occurrences.push(occurrence)
       }
       if (dateString > date) break
@@ -108,9 +114,7 @@ export function scheduleToday(
     now: nowIso,
     doses: occurrences.filter((dose) => istanbulDate(new Date(dose.dueAt)) === date),
     next:
-      occurrences.find(
-        (dose) => dose.dueAt >= nowIso && dose.status !== 'Taken' && dose.status !== 'Skipped',
-      ) ?? null,
+      occurrences.find((dose) => dose.status === 'Due now' || dose.status === 'Upcoming') ?? null,
   }
 }
 
@@ -128,8 +132,8 @@ export function scheduleHistoryDay(
   for (const schedule of schedules) {
     if (!scheduleRunsOn(schedule, date)) continue
     for (const { dueAt, slot } of scheduleSlotsOn(schedule, date)) {
-      if (dueAt >= nowIso) continue
-      const occurrence = occurrenceFor(schedule, dueAt, slot, nowIso, outcomes)
+      if (dueAt > nowIso) continue
+      const occurrence = occurrenceFor(schedule, dueAt, slot, now.getTime(), outcomes)
       if (occurrence) doses.push(occurrence)
     }
   }

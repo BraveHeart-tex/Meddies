@@ -148,7 +148,7 @@ test('history reads an earlier Istanbul day with elapsed explicit and unlogged o
   await assert.rejects(() => operations.history('2026-02-30'), /validation/)
 })
 
-test('history for today includes only occurrences strictly before captured now', async () => {
+test('history for today includes only occurrences due at or before captured now', async () => {
   const now = new Date('2026-11-05T07:00:00.000Z')
   const schedule: Omit<DailySchedule, 'weekdays'> & { weekdays?: number[] } = {
     ...input,
@@ -167,7 +167,7 @@ test('history for today includes only occurrences strictly before captured now',
   })
   assert.deepEqual(
     (await operations.history('2026-11-05')).map((dose) => dose.dueAt),
-    ['2026-11-05T06:59:00.000Z'],
+    ['2026-11-05T06:59:00.000Z', '2026-11-05T07:00:00.000Z'],
   )
 })
 
@@ -178,9 +178,9 @@ test('Today keeps stable Istanbul doses across reload, date rollover and device 
     startDate: '2026-11-03',
     times: [
       { time: '00:00', quantity: 0.5 },
-      { time: '23:59', quantity: 1 },
+      { time: '23:40', quantity: 1 },
     ],
-    confirmedAt: '2026-11-03T20:58:00.000Z',
+    confirmedAt: '2026-11-03T20:30:00.000Z',
   }
   const operations = createScheduleOperations({
     requireUser: async () => ({ id: 'google:alice' }),
@@ -191,7 +191,7 @@ test('Today keeps stable Istanbul doses across reload, date rollover and device 
   assert.equal(today.date, '2026-11-03')
   assert.deepEqual(
     today.doses.map(({ dueAt, quantity, status }) => ({ dueAt, quantity, status })),
-    [{ dueAt: '2026-11-03T20:59:00.000Z', quantity: 1, status: 'Not logged' }],
+    [{ dueAt: '2026-11-03T20:40:00.000Z', quantity: 1, status: 'Not logged' }],
   )
   assert.equal(today.next!.dueAt, '2026-11-03T21:00:00.000Z')
   const previousTz = process.env.TZ
