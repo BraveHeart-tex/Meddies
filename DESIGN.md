@@ -32,7 +32,7 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 
 - Forms follow the [form conventions](docs/forms.md), with Add medicine as the reference.
 - Show each error under its control, above its help text, after the first submit; focus the first invalid control.
-- Dose quantities use `QuantityStepper`: tablets step by a half, capsules by one, the minimum is one step, and typing stays allowed. Weekdays are a Mon to Sun ToggleGroup, Monday first, with full day names as accessible labels.
+- Dose quantities use `QuantityStepper`, deriving the minimum, step and initial amount from the shared Quantity unit policy: tablets step by a half, Liquid by 0.1 ml, and capsules, puffs and drops by one. The minimum is one step, new dose amounts start at 1, and typing stays allowed. Liquid uses decimal wording. Weekdays are a Mon to Sun ToggleGroup, Monday first, with full day names as accessible labels.
 - Choices of two or three short options are a ToggleGroup, with nothing preselected when a wrong default could be saved. An option set expected to grow past three is a Select row, also with nothing preselected; Add medicine's Type is the reference.
 - Use one Alert above one full-width primary action. While the device is known offline (the browser reports no network), the primary reads _Connect to save_ (disabled; sign-out reads _Connect to sign out_) and an Alert says the entered values stay for this session. Nothing saves on its own when the connection returns.
 

@@ -9,6 +9,15 @@ drafts, the signed-in session and loading from the user's side.
 Something the user takes and tracks in Meddies, with a label, quantity unit and strength.
 _Avoid_: medicine, in UI copy; write medication there
 
+**Medicine type**:
+The form of a Medicine, such as Tablet, Capsule, Liquid, Inhaler or Drops.
+_Avoid_: unit, when naming the Medicine type; write Type in UI copy
+
+**Quantity unit**:
+What a Medicine's dose amount counts or measures, such as tablets, capsules, ml, puffs or drops.
+It is separate from the Medicine's strength and the container it comes in.
+_Avoid_: type, when naming the Quantity unit; strength unit
+
 ## Schedules
 
 **Clock schedule**:

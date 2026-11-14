@@ -8,13 +8,43 @@ The entities below are conceptual distinctions, not an approved database schema.
 - **MedicationSchedule** defines recurrence, effective dates and versioned expectations. **DoseOccurrence** identifies one expected dose; **DoseRecord** holds an explicit outcome, actual taken time, quantity and corrections. Unscheduled intake does not require an occurrence.
 - **StockMovement** represents intake consumption, refill and count reconciliation independently of reminder delivery. Medication strength (e.g., mg) and recorded quantity are different fields.
 - Only user confirmation establishes **Taken** or **Skipped**, attributed to the intended occurrence; a reminder being delivered, acknowledged or opened never does. Past unconfirmed occurrences are **Not logged**, not automatically missed or skipped. Actual intake time is distinct from scheduled due time.
-- Supported quantities are whole or half **tablets**, or whole **capsules**. Unsupported forms and fractional capsules are outside this MVP.
+- Supported Medicine types and quantities follow [Medicine types and quantity units](#medicine-types-and-quantity-units). Fractional capsules and unlisted forms are unsupported.
 - Taken consumes the explicitly recorded quantity; Skipped consumes nothing. Corrections, refills and retries reconcile stock once. A zero/insufficient count never blocks truthful intake; displayed stock is non-negative with a correction prompt.
 - Optimistic dose outcomes are unconfirmed presentation only. Server records remain authoritative; success announcements, reminder cancellation and confirmed stock require server receipt. Rejection and uncertain receipt follow the topic 02 [session contract](./ux-journeys.md#session-contract).
 - Stable occurrence IDs, schedule versions, client action IDs and revisions preserve history, prevent duplicate effects and support conflict resolution. Online stale revisions/conflicting outcomes require explicit recovery, not silent last-write-wins; preserve existing evidence, idempotency and server correctness. Stock is uncertain and affected reminders stop when a genuine unresolved conflict is known to the server. Offline queue and expanded multi-device UX delivery are deferred.
 - Unscheduled intake does not reschedule future expected doses. Server history remains until deliberate history/account deletion; deleting history does not reverse past inventory consumption. Full deletion and current online/session scope (including deferred offline capability) belong to [02 - UX & User Journeys](./ux-journeys.md).
 
 Low-stock thresholds, re-arming, uncertain stock and refill pushes follow #10 below.
+
+### Medicine types and quantity units
+
+Medicine type describes the form; Quantity unit describes the amount taken. Strength is a
+separate descriptive field. Meddies never derives the amount taken from strength or converts
+between dose amounts and container counts.
+
+| Medicine type | Quantity unit | Allowed dose amounts      | Minimum and step | New dose amount |
+| ------------- | ------------- | ------------------------- | ---------------- | --------------- |
+| Tablet        | tablet        | Positive multiples of 0.5 | 0.5              | 1               |
+| Capsule       | capsule       | Positive whole numbers    | 1                | 1               |
+| Liquid        | ml            | Positive multiples of 0.1 | 0.1              | 1               |
+| Inhaler       | puff          | Positive whole numbers    | 1                | 1               |
+| Drops         | drop          | Positive whole numbers    | 1                | 1               |
+
+These rules apply to Clock and Interval schedules, scheduled Taken quantities and their
+corrections, and Unscheduled doses and their changes. Numeric bounds preserve safe quantity
+arithmetic; there is no medical dose recommendation or arbitrary medical maximum.
+
+Liquid amounts display decimals, such as `0.5 ml` and `1.5 ml`; `ml` never pluralizes. Tablet
+halves keep their existing half-glyph wording. Counted units use singular/plural wording,
+such as `1 puff` and `2 puffs`. The Type menu starts unset and lists Tablet, Capsule, Liquid,
+Inhaler, Drops in that order. Strength help follows the selected Medicine type and describes
+the pack's strength without recommending how much to take.
+
+Future stock counts, refills, count corrections and low-stock thresholds use the Medicine's
+Quantity unit, such as ml, puffs or drops, rather than bottles or inhalers. Stock remains
+optional and follows its existing non-negative display and truthful-intake rules.
+
+Injection is unsupported until its forms and Quantity units have been separately approved.
 
 ### #28 - Approved Unscheduled dose rules (November 13, 2026)
 

@@ -37,6 +37,13 @@ HTTP 503; missing database configuration renders an explicit unavailable state.
 - **Contracts** own domain parsing and command and response types, legacy compatibility
   included. Contracts and `application-error.ts` are runtime-neutral: no Next.js, Node,
   `server-only`, environment or persistence imports.
+- **Medicine types and quantities** have one runtime-neutral policy shared by browser forms,
+  contracts and Worker validation. It defines supported types, their Quantity units, labels,
+  numeric increments and safe bounds, defaults, stepping and quantity wording. Forms retain
+  text conversion and error presentation; UI modules retain decorative rendering. Unknown
+  types reject rather than inheriting another type's rules. A new type adds an explicit
+  policy definition together with its first complete user path, any compatible persistence
+  changes and focused evidence. Do not duplicate per-unit rules across layers.
 - **Feature `server.ts`** owns server-only wiring and Worker response decoding.
   **`medicine-storage.ts`** owns the private capability, Worker URL, timeout, redirect
   policy and network and status mapping; domain envelopes are decoded in `server.ts`.
