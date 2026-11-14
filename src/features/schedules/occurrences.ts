@@ -49,6 +49,30 @@ export function scheduleSlotsOn(
 
 /** How long an unresolved occurrence stays Due now after its due instant (#275). */
 const DUE_NOW_WINDOW_MS = 15 * 60_000
+/**
+ * Up next features an unresolved occurrence due within the last 80 minutes, inclusive (#275):
+ * through the whole 80th minute, so a 09:00 dose leads until the clock reads 10:21.
+ */
+const UP_NEXT_WINDOW_MS = 81 * 60_000
+
+/**
+ * The most recently due unresolved occurrence inside the Up next window, the first in To log's
+ * order among those due at the same instant; otherwise the next Scheduled one. `occurrences` is
+ * in To log's order: by due instant, then id.
+ */
+function upNext(occurrences: DoseOccurrence[], now: number) {
+  const recent = occurrences.filter(
+    (dose) =>
+      (dose.status === 'Due now' || dose.status === 'Not logged') &&
+      now < Date.parse(dose.dueAt) + UP_NEXT_WINDOW_MS,
+  )
+  const latest = recent.at(-1)
+  return (
+    recent.find((dose) => dose.dueAt === latest?.dueAt) ??
+    occurrences.find((dose) => dose.status === 'Upcoming') ??
+    null
+  )
+}
 
 // Due now runs from the due instant until 15 minutes after it, exclusive; then Not logged.
 function unresolvedStatus(dueAt: string, now: number) {
@@ -113,8 +137,7 @@ export function scheduleToday(
     date,
     now: nowIso,
     doses: occurrences.filter((dose) => istanbulDate(new Date(dose.dueAt)) === date),
-    next:
-      occurrences.find((dose) => dose.status === 'Due now' || dose.status === 'Upcoming') ?? null,
+    next: upNext(occurrences, now.getTime()),
   }
 }
 

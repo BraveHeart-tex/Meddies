@@ -83,7 +83,8 @@ test('selected weekdays find the next dose across the week and retain the inclus
   const afterMonday = createScheduleOperations({
     requireUser: async () => ({ id: 'google:alice' }),
     send: (async () => ({ schedules: [noEnd], records: [] })) as SendSchedule,
-    now: () => new Date('2026-11-09T07:00:00.000Z'),
+    // Past Monday's Up next window (#275), so the next Scheduled dose leads.
+    now: () => new Date('2026-11-09T07:30:00.000Z'),
   })
   const nextWeek = (await afterMonday.snapshot()).today.next
   assert.equal(nextWeek!.dueAt, '2026-11-16T06:00:00.000Z')
@@ -193,7 +194,8 @@ test('Today keeps stable Istanbul doses across reload, date rollover and device 
     today.doses.map(({ dueAt, quantity, status }) => ({ dueAt, quantity, status })),
     [{ dueAt: '2026-11-03T20:40:00.000Z', quantity: 1, status: 'Not logged' }],
   )
-  assert.equal(today.next!.dueAt, '2026-11-03T21:00:00.000Z')
+  // The Not logged 23:40 dose is inside the Up next window (#275).
+  assert.equal(today.next!.dueAt, '2026-11-03T20:40:00.000Z')
   const previousTz = process.env.TZ
   try {
     process.env.TZ = 'America/Los_Angeles'
@@ -206,8 +208,8 @@ test('Today keeps stable Istanbul doses across reload, date rollover and device 
   const midnight = (await operations.snapshot()).today
   assert.equal(midnight.date, '2026-11-04')
   assert.equal(midnight.doses[0].status, 'Due now')
-  assert.equal(midnight.doses[0].id, today.next!.id)
-  assert.equal(midnight.next!.id, today.next!.id)
+  assert.equal(midnight.doses[0].dueAt, '2026-11-03T21:00:00.000Z')
+  assert.equal(midnight.next!.id, midnight.doses[0].id)
 })
 
 test('initial confirmation excludes earlier and exactly equal times; future start dates have no Today backlog', async () => {

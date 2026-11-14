@@ -61,25 +61,25 @@ export function NextDose({
           </p>
         </div>
       </CardContent>
-      {onRecord && dueDate === date && (
+      {/* Any featured dose due today or earlier; the drawer still asks What happened? (DESIGN.md). */}
+      {onRecord && dueDate <= date && (
         <CardContent className="flex flex-wrap gap-2.5">
           <Button
             size="lg"
-            className="min-w-[min(100%,7rem)] flex-1"
-            aria-label={`Record ${name} at ${formatTime(dose.dueAt)} as taken`}
+            className="min-w-[min(100%,8rem)] flex-[2_1_auto]"
+            aria-label={`I took it, ${name} at ${formatTime(dose.dueAt)}`}
             onClick={() => onRecord('Taken')}
           >
-            <Check aria-hidden="true" data-icon="inline-start" />
-            Taken
+            <Check aria-hidden="true" data-icon="inline-start" />I took it
           </Button>
           <Button
             size="lg"
             variant="outline"
-            className="w-28 max-w-full border-transparent"
-            aria-label={`Record ${name} at ${formatTime(dose.dueAt)} as skipped`}
+            className="max-w-full flex-[1_1_auto] border-transparent"
+            aria-label={`I skipped it, ${name} at ${formatTime(dose.dueAt)}`}
             onClick={() => onRecord('Skipped')}
           >
-            Skip
+            I skipped it
           </Button>
         </CardContent>
       )}

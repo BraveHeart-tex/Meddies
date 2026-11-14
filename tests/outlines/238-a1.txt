@@ -15,8 +15,8 @@
       - text: Magnesium
     - paragraph
       - text: 400 mg · 1 tablet
-    - button "Record Magnesium at 20:00 as taken"
-    - button "Record Magnesium at 20:00 as skipped"
+    - button "I took it, Magnesium at 20:00"
+    - button "I skipped it, Magnesium at 20:00"
     - region "Today’s doses"
       - list "Today's doses"
         - heading "Later today · 2" [level=3]

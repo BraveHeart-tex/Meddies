@@ -38,10 +38,11 @@ describe('Due now window', () => {
     expect(historyStatus('08:59:59.999')).toBeUndefined()
   })
 
-  test('Up next features the Due now dose, then the next Scheduled one', () => {
+  test('Up next keeps the dose as it turns from Due now to Not logged', () => {
     expect(scheduleToday([schedule], at('09:14:59.999'), []).next?.status).toBe('Due now')
-    expect(scheduleToday([schedule], at('09:15:00.000'), []).next?.dueAt).toBe(
-      '2026-11-15T06:00:00.000Z',
-    )
+    expect(scheduleToday([schedule], at('09:15:00.000'), []).next).toMatchObject({
+      dueAt: '2026-11-14T06:00:00.000Z',
+      status: 'Not logged',
+    })
   })
 })

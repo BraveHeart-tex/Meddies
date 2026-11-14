@@ -353,7 +353,7 @@ describe('recording a dose', () => {
       twoDoses()
       const user = renderToday()
       await doses()
-      const taken = screen.getByRole('button', { name: 'Record Morning Tablet at 09:00 as taken' })
+      const taken = screen.getByRole('button', { name: 'I took it, Morning Tablet at 09:00' })
       await user.click(taken)
       await user.click(await screen.findByRole('button', { name: 'Close dose details' }))
       await drawerClosed()
@@ -977,9 +977,7 @@ describe('focus when the drawer opens', () => {
     schedulesApi(initialNow)
     const user = renderToday()
     await doses()
-    await user.click(
-      screen.getByRole('button', { name: 'Record Morning Tablet at 09:00 as taken' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'I took it, Morning Tablet at 09:00' }))
     await waitFor(() => expect(screen.getByRole('button', { name: /^Now · / })).toHaveFocus())
   })
 
@@ -1045,8 +1043,88 @@ describe('next actions', () => {
     expect(await screen.findByRole('heading', { name: 'Logged · 1' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: /^(To log|Later today)/ })).not.toBeInTheDocument()
     expect(screen.getByText(/Scheduled ·/)).toHaveTextContent('Scheduled · 09:00 on Sun 15 Nov')
-    expect(screen.queryByRole('button', { name: /^Record .* as taken$/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^Record .* as skipped$/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^I took it, / })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^I skipped it, / })).not.toBeInTheDocument()
+  })
+
+  describe('Up next choice', () => {
+    // 09:00 and 10:00; at 09:05 Up next is 09:00, Due now (#275).
+    const twoDoses = () =>
+      schedulesApi('2026-11-14T06:05:00.000Z', [
+        {
+          ...scheduleFor('09:00'),
+          times: [
+            { time: '09:00', quantity: 1 },
+            { time: '10:00', quantity: 1 },
+          ],
+        },
+      ])
+    const choice = (name: 'I took it' | 'I skipped it') =>
+      within(screen.getByRole('dialog', { name: 'Morning Tablet' })).getByRole('button', { name })
+
+    // Catches the hero saving on tap, or opening with no choice or a locked one.
+    test.each([
+      ['I took it', 'I skipped it'],
+      ['I skipped it', 'I took it'],
+    ] as const)(
+      '%s opens the drawer with that choice selected and changeable, saving nothing',
+      async (tapped, other) => {
+        twoDoses()
+        const writes: string[] = []
+        server.events.on('request:start', ({ request }) => {
+          if (request.method !== 'GET') writes.push(`${request.method} ${request.url}`)
+        })
+        const user = renderToday('2026-11-14T06:05:00.000Z')
+        await doses()
+        await user.click(screen.getByRole('button', { name: `${tapped}, Morning Tablet at 09:00` }))
+        await waitFor(() => expect(choice(tapped)).toHaveAttribute('aria-pressed', 'true'))
+        expect(choice(other)).toHaveAttribute('aria-pressed', 'false')
+        expect(screen.getByText('What happened?')).toBeVisible()
+        await user.click(choice(other))
+        expect(choice(other)).toHaveAttribute('aria-pressed', 'true')
+        expect(choice(tapped)).toHaveAttribute('aria-pressed', 'false')
+        await user.click(screen.getByRole('button', { name: 'Close dose details' }))
+        await waitFor(() =>
+          expect(screen.queryByRole('dialog', { name: 'Morning Tablet' })).not.toBeInTheDocument(),
+        )
+        server.events.removeAllListeners('request:start')
+        expect(writes).toEqual([])
+        expect(screen.getByRole('heading', { name: 'To log · 1' })).toBeVisible()
+      },
+    )
+  })
+
+  // Catches the hero pulling its dose out of the list, or a count leaving it out.
+  test.each([
+    ['a Due now', '2026-11-14T06:35:00.000Z', /^Due now · 09:30$/],
+    ['a Scheduled', '2026-11-14T08:00:00.000Z', /^Scheduled · 20:00$/],
+  ])('%s featured dose stays in its group and its count', async (_, now, eyebrow) => {
+    schedulesApi(now, [
+      {
+        ...scheduleFor('09:00'),
+        times: [
+          { time: '09:00', quantity: 1 },
+          { time: '09:30', quantity: 1 },
+          { time: '20:00', quantity: 1 },
+        ],
+      },
+    ])
+    renderToday(now)
+    const list = await doses()
+    const hero = screen.getByRole('heading', { name: 'Up next' }).closest('[data-slot=card]')
+    expect(within(hero as HTMLElement).getByText(/^(Due now|Scheduled) ·/)).toHaveTextContent(
+      eyebrow,
+    )
+    expect(
+      within(list)
+        .getAllByRole('heading', { level: 3 })
+        .map((item) => item.textContent),
+    ).toEqual(['To log · 2', 'Later today · 1'])
+    expect(
+      within(list)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent?.slice(0, 5)),
+    ).toEqual(['09:00', '09:30', '20:00'])
   })
 
   test('an empty day hides Up next even when a future dose exists', async () => {

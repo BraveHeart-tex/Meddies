@@ -67,7 +67,8 @@ test('seven elapsed hours continue from the Anchor without resetting each day', 
 
 test('Today next crosses midnight, accepts any Anchor minute and excludes equality at confirmation', () => {
   const schedule = { ...parseSchedule(input), confirmedAt: '2026-11-03T04:00:00.000Z' }
-  const today = scheduleToday([schedule], new Date('2026-11-03T14:00:00.000Z'), [])
+  // Past the 13:00Z dose's Up next window (#275), so the next Scheduled dose leads.
+  const today = scheduleToday([schedule], new Date('2026-11-03T14:30:00.000Z'), [])
   assert.equal(today.next?.dueAt, '2026-11-03T21:00:00.000Z')
   assert.equal(today.next?.id, `${schedule.id}:2026-11-03T21:00:00.000Z`)
   const exact = {

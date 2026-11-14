@@ -30,7 +30,7 @@ const solidRing = { focusVisible: true, outline: 'solid' }
 // Reuse interactions; only the on-request group asserts appearance.
 function focusScenarios(checkRing: (actual: unknown, expected: unknown) => void) {
   for (const { path, role, name } of [
-    { path: '/', role: 'button', name: `Record ${label} at 09:01 as taken` },
+    { path: '/', role: 'button', name: `I took it, ${label} at 09:01` },
     { path: '/history', role: 'button', name: 'Previous day' },
     { path: '/medications', role: 'link', name: 'Add a medication' },
     { path: '/settings', role: 'button', name: 'Sign out' },

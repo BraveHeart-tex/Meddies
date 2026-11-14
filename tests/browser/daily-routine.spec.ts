@@ -82,13 +82,11 @@ test('the daily routine runs from Today through History to sign out', async ({ p
       'Later today · 1',
       'Logged · 1',
     ])
-    await expect(
-      page.getByRole('button', { name: `Record ${omega} at 14:00 as taken` }),
-    ).toBeVisible()
+    await expect(page.getByRole('button', { name: `I took it, ${omega} at 14:00` })).toBeVisible()
   })
 
   await test.step('Taken on Up next opens the drawer without saving', async () => {
-    await page.getByRole('button', { name: `Record ${omega} at 14:00 as taken` }).click()
+    await page.getByRole('button', { name: `I took it, ${omega} at 14:00` }).click()
     await expect(dialog.getByRole('button', { name: 'I took it' })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -121,12 +119,8 @@ test('the daily routine runs from Today through History to sign out', async ({ p
       'Later today · 1',
       'Logged · 2',
     ])
-    await expect(
-      page.getByRole('button', { name: `Record ${omega} at 14:00 as taken` }),
-    ).toHaveCount(0)
-    await expect(
-      page.getByRole('button', { name: `Record ${evening} at 20:00 as taken` }),
-    ).toBeVisible()
+    await expect(page.getByRole('button', { name: `I took it, ${omega} at 14:00` })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: `I took it, ${evening} at 20:00` })).toBeVisible()
   })
 
   await test.step('a Not logged row opens with no outcome chosen', async () => {
@@ -237,11 +231,11 @@ test('the daily routine runs from Today through History to sign out', async ({ p
 // Allowed reason: real pointer gestures, including focus after the drawer exit transition.
 test('saving taken and skipped from Up next returns focus to each saved row', async ({ page }) => {
   await page.goto('/')
-  for (const [outcome, label, time] of [
-    ['taken', omega, '14:00'],
-    ['skipped', evening, '20:00'],
+  for (const [outcome, label, time, choice] of [
+    ['taken', omega, '14:00', 'I took it'],
+    ['skipped', evening, '20:00', 'I skipped it'],
   ] as const) {
-    await page.getByRole('button', { name: `Record ${label} at ${time} as ${outcome}` }).click()
+    await page.getByRole('button', { name: `${choice}, ${label} at ${time}` }).click()
     await drawer(page)
       .getByRole('button', { name: `Save as ${outcome}` })
       .click()
