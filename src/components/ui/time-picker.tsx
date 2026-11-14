@@ -20,6 +20,20 @@ const twoDigits = (count: number) =>
 const HOURS = twoDigits(24)
 const MINUTES = twoDigits(60)
 
+const optionElements = (items: typeof HOURS) =>
+  items.map((item) => (
+    <SelectItem key={item.value} value={item.value}>
+      {item.label}
+    </SelectItem>
+  ))
+
+// Reuse the fixed elements across renders and pickers. Base UI context still updates each
+// mounted item's selection and highlight independently.
+const HOUR_OPTIONS = optionElements(HOURS)
+const MINUTE_OPTIONS = optionElements(MINUTES)
+const HOUR_VALUE = <SelectValue placeholder="HH" />
+const MINUTE_VALUE = <SelectValue placeholder="MM" />
+
 /**
  * Controlled 24-hour time from hour and minute selects. The value is '' until a half is chosen,
  * then 'HH:', ':MM' or 'HH:MM', so a half-chosen time keeps its half and stays distinguishable
@@ -68,7 +82,22 @@ export function TimePicker({
     [parts.hour, parts.minute],
   )
 
-  const field = (part: keyof TimeParts, items: typeof HOURS) => (
+  // The popup wrappers carry only stable blur tracking and fixed children. Retaining them
+  // avoids rebuilding their subtree on unrelated form updates; Select context stays live.
+  const optionLists = React.useMemo(() => {
+    const list = (options: React.ReactNode) => (
+      <SelectContent
+        ref={track}
+        className="max-h-[min(var(--available-height),18rem)]"
+        onBlur={onPartBlur}
+      >
+        {options}
+      </SelectContent>
+    )
+    return { hour: list(HOUR_OPTIONS), minute: list(MINUTE_OPTIONS) }
+  }, [track, onPartBlur])
+
+  const field = (part: keyof TimeParts, items: typeof HOURS, options: React.ReactNode) => (
     <Select
       items={items}
       value={parts[part] || null}
@@ -95,29 +124,19 @@ export function TimePicker({
         className="min-w-0 flex-1 font-extrabold"
         onBlur={onPartBlur}
       >
-        <SelectValue placeholder={part === 'hour' ? 'HH' : 'MM'} />
+        {part === 'hour' ? HOUR_VALUE : MINUTE_VALUE}
       </SelectTrigger>
-      <SelectContent
-        ref={track}
-        className="max-h-[min(var(--available-height),18rem)]"
-        onBlur={onPartBlur}
-      >
-        {items.map((item) => (
-          <SelectItem key={item.value} value={item.value}>
-            {item.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
+      {options}
     </Select>
   )
 
   return (
     <div role="group" aria-label={label} className="flex min-w-0 items-center gap-1.5">
-      {field('hour', HOURS)}
+      {field('hour', HOURS, optionLists.hour)}
       <span aria-hidden="true" className="text-body-lg font-extrabold text-muted-foreground">
         :
       </span>
-      {field('minute', MINUTES)}
+      {field('minute', MINUTES, optionLists.minute)}
     </div>
   )
 }
