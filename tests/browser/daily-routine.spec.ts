@@ -258,7 +258,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await page.getByRole('button', { name: 'Sign out', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Signing out…' })).toBeDisabled()
     finishSignOut()
-    await expect(page).toHaveURL(`${app.origin}/?reason=signed-out&returnTo=%2Fsettings`)
+    await expect(page).toHaveURL(`${app.origin}/?reason=signed-out&returnTo=%2F`)
     await expect(
       page.getByText("You're signed out of Meddies in this browser.", { exact: true }),
     ).toBeVisible()

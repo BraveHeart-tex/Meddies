@@ -68,9 +68,10 @@ is keyed by the Schedule version it edits, so a newer version opens without an o
 
 Every session end goes through `endSession` (`src/features/auth/session-end.ts`). It clears
 the session Query client, session drafts, pending and unconfirmed saves and private Toasts,
-replaces authenticated content with sign-in, and passes the validated current location as
-`returnTo`. In-flight responses, retained client references and mounted forms cannot restore
-any of it, and a new session starts empty.
+replaces authenticated content with sign-in, and starts a new session empty. Expiry passes
+the validated current location as `returnTo`, including supported query state. Sign-out
+passes `/` so the next session starts on Today. In-flight responses, retained client
+references and mounted forms cannot restore any cleared state.
 
 - **What establishes it.** The absolute deadline, with no request. Otherwise only a 401 from
   a no-store `/api/session` check, run when focus returns and after a 401 from a private read

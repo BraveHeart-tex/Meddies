@@ -19,7 +19,8 @@ export function onSessionEnded(listener: (ended: SessionEnded) => void) {
 
 /**
  * The one session end path. Clears all private browser state, keeping only whether a save
- * was outstanding, then replaces the page with sign-in at the current supported location.
+ * was outstanding, then replaces the page with sign-in. Expiry keeps the current supported
+ * location; sign-out starts the next session on Today.
  */
 export function endSession(reason: SessionEndReason) {
   const client = activeSessionQueryClient()
@@ -28,7 +29,7 @@ export function endSession(reason: SessionEndReason) {
   endSessionQueryClient()
   toast.close()
   const { pathname, search } = window.location
-  const returnTo = safeReturnTo(`${pathname}${search}`)
+  const returnTo = reason === 'signed-out' ? '/' : safeReturnTo(`${pathname}${search}`)
   listeners.forEach((listener) => listener({ reason, returnTo, saveInProgress }))
   const notice = saveInProgress ? `&notice=${saveInProgressNotice}` : ''
   const href = `/?reason=${reason}&returnTo=${encodeURIComponent(returnTo)}${notice}`

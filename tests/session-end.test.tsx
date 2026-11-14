@@ -1,3 +1,4 @@
+import { signIn } from 'next-auth/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -378,6 +379,25 @@ test('a form still mounted at session end cannot write its draft back', async ()
   expect(readSessionDraft(client, 'medicine:add')).toBeUndefined()
 })
 
+test.each(['/settings', '/history?date=2026-11-04'])(
+  'sign-out from %s starts the next session on Today',
+  async (location) => {
+    at(location)
+    sessionAnswers(signedOut)
+    vi.mocked(signIn).mockClear()
+    render(
+      <SessionBoundary ownerId="google:owner" expires={later()}>
+        <AuthControl signedIn />
+      </SessionBoundary>,
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+    await screen.findByRole('heading', { name: 'Good to see you' })
+    expect(replace).toHaveBeenCalledWith('/?reason=signed-out&returnTo=%2F')
+    await userEvent.click(screen.getByRole('button', { name: 'Continue with Google' }))
+    expect(signIn).toHaveBeenCalledWith('google', { redirect: false, redirectTo: '/' })
+  },
+)
+
 test('Sign out anyway ends the session only after the server confirms, keeping the notice', async () => {
   let answer!: () => void
   const held = new Promise<void>((resolve) => (answer = resolve))
@@ -404,7 +424,10 @@ test('Sign out anyway ends the session only after the server confirms, keeping t
   expect(replace).not.toHaveBeenCalled()
   act(() => answer())
   await screen.findByRole('heading', { name: 'Good to see you' })
-  expect(replace).toHaveBeenCalledWith(
-    `/?reason=signed-out&returnTo=${encodeURIComponent('/settings')}&notice=save-in-progress`,
+  expect(replace).toHaveBeenCalledWith('/?reason=signed-out&returnTo=%2F&notice=save-in-progress')
+  await waitFor(() =>
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'A save was still in progress. After signing in, check whether it was recorded.',
+    ),
   )
 })
