@@ -7,7 +7,7 @@ const schedule = (id: string, times: string[], extra: Partial<DailySchedule> = {
   ({
     id: `00000000-0000-4000-8000-0000000000${id}`,
     medicineId: `00000000-0000-4000-8000-0000000000${id}`,
-    startDate: '2026-11-01',
+    startDate: '2026-11-14',
     times: times.map((time) => ({ time, quantity: 1 })),
     weekdays: [0, 1, 2, 3, 4, 5, 6],
     confirmedAt: '2026-10-31T09:00:00.000Z',

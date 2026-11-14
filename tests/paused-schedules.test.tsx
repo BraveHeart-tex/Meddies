@@ -297,7 +297,8 @@ describe('233·A6 Medications and Today', () => {
     await waitFor(() =>
       expect(document.querySelector('[data-slot="skeleton"]')).not.toBeInTheDocument(),
     )
-    expect(screen.queryByText('20:00')).not.toBeInTheDocument()
+    // Today's 20:00 is after the pause; yesterday's unresolved 20:00 may stay in To log (#275).
+    expect(document.querySelector('time[datetime="2026-11-09T17:00:00.000Z"]')).toBeNull()
     expect(screen.queryByRole('link', { name: 'Set schedule' })).not.toBeInTheDocument()
   })
 })

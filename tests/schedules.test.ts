@@ -207,9 +207,11 @@ test('Today keeps stable Istanbul doses across reload, date rollover and device 
   now = new Date('2026-11-03T21:00:00Z')
   const midnight = (await operations.snapshot()).today
   assert.equal(midnight.date, '2026-11-04')
-  assert.equal(midnight.doses[0].status, 'Due now')
-  assert.equal(midnight.doses[0].dueAt, '2026-11-03T21:00:00.000Z')
-  assert.equal(midnight.next!.id, midnight.doses[0].id)
+  // Yesterday's unresolved 23:40 stays in To log (#275); the new day's 00:00 leads Up next.
+  assert.equal(midnight.doses[0].dueAt, '2026-11-03T20:40:00.000Z')
+  assert.equal(midnight.doses[1].dueAt, '2026-11-03T21:00:00.000Z')
+  assert.equal(midnight.doses[1].status, 'Due now')
+  assert.equal(midnight.next!.id, midnight.doses[1].id)
 })
 
 test('initial confirmation excludes earlier and exactly equal times; future start dates have no Today backlog', async () => {

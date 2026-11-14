@@ -15,6 +15,7 @@ import {
   type SendSchedule,
 } from './contract'
 import { ApplicationError } from '../../lib/application-error'
+import { shiftDate } from '../../lib/calendar-date'
 
 export function createScheduleOperations(dependencies: {
   requireUser: () => Promise<{ id: string }>
@@ -199,16 +200,23 @@ export function createScheduleOperations(dependencies: {
     async snapshot() {
       const user = await dependencies.requireUser()
       const now = dependencies.now?.() ?? new Date()
-      const {
-        schedules,
-        records,
-        unscheduledDoses = [],
-      } = await dependencies.send({
-        operation: 'listOutcomes',
-        ownerId: user.id,
-        date: istanbulDate(now),
-      })
-      if (!schedules || !records) throw new ApplicationError('unavailable', 503)
+      const date = istanbulDate(now)
+      // Today's To log also lists yesterday's unresolved doses (#275), so it needs that date's
+      // records too. A second read keeps the Worker command unchanged across deploys.
+      const [
+        { schedules, records: todayRecords, unscheduledDoses = [] },
+        { records: yesterdayRecords },
+      ] = await Promise.all([
+        dependencies.send({ operation: 'listOutcomes', ownerId: user.id, date }),
+        dependencies.send({
+          operation: 'listOutcomes',
+          ownerId: user.id,
+          date: shiftDate(date, -1),
+        }),
+      ])
+      if (!schedules || !todayRecords || !yesterdayRecords)
+        throw new ApplicationError('unavailable', 503)
+      const records = [...yesterdayRecords, ...todayRecords]
       return {
         schedules: schedules.filter((schedule) => !schedule.replacedAt),
         earlierSchedules: schedules.filter((schedule) => schedule.replacedAt),

@@ -1,3 +1,4 @@
+import { shiftDate } from '../../lib/calendar-date'
 import {
   istanbulDate,
   type DailySchedule,
@@ -8,7 +9,8 @@ import {
 } from './contract'
 
 // Immutable Schedule versions are the source of occurrence identities.
-// Generation is bounded to Today and the next configured date, never a growing backlog.
+// Generation is bounded to yesterday's last 24 hours, Today and the next configured date, never a
+// growing backlog.
 export function scheduledInstant(date: string, time: string) {
   // Istanbul uses UTC+03:00 for the supported schedule dates.
   return new Date(`${date}T${time}:00+03:00`).toISOString()
@@ -54,6 +56,8 @@ const DUE_NOW_WINDOW_MS = 15 * 60_000
  * through the whole 80th minute, so a 09:00 dose leads until the clock reads 10:21.
  */
 const UP_NEXT_WINDOW_MS = 81 * 60_000
+/** To log keeps an unresolved occurrence for the 24 hours after its due instant (#275). */
+const TO_LOG_BACKLOG_MS = 24 * 60 * 60_000
 
 /**
  * The most recently due unresolved occurrence inside the Up next window, the first in To log's
@@ -115,9 +119,17 @@ export function scheduleToday(
   )
 
   const date = istanbulDate(now)
+  const yesterday = shiftDate(date, -1)
   const nowIso = now.toISOString()
   const occurrences: DoseOccurrence[] = []
   for (const schedule of schedules) {
+    // Yesterday's doses stay only while unresolved and due in the 24 hours before now (#275).
+    for (const { dueAt, slot } of scheduleSlotsOn(schedule, yesterday)) {
+      if (now.getTime() - Date.parse(dueAt) >= TO_LOG_BACKLOG_MS) continue
+      const occurrence = occurrenceFor(schedule, dueAt, slot, now.getTime(), outcomes)
+      if (occurrence?.status === 'Not logged' || occurrence?.status === 'Due now')
+        occurrences.push(occurrence)
+    }
     const firstDate = schedule.startDate > date ? schedule.startDate : date
     // Scan a bounded week to find the next configured occurrence, including a sole weekday.
     for (let day = 0; day < 8; day++) {
@@ -136,7 +148,7 @@ export function scheduleToday(
   return {
     date,
     now: nowIso,
-    doses: occurrences.filter((dose) => istanbulDate(new Date(dose.dueAt)) === date),
+    doses: occurrences.filter((dose) => istanbulDate(new Date(dose.dueAt)) <= date),
     next: upNext(occurrences, now.getTime()),
   }
 }

@@ -1,4 +1,9 @@
-import type { ScheduleCommand, ScheduleResponse } from '../src/features/schedules/contract'
+import {
+  istanbulDate,
+  type DoseOccurrence,
+  type ScheduleCommand,
+  type ScheduleResponse,
+} from '../src/features/schedules/contract'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { test } from 'vitest'
@@ -13,6 +18,10 @@ import {
 
 // Schedule versions, edits and Last day on real D1.
 startWorkerRuntime()
+
+/** Today's own doses; yesterday's unresolved backlog in To log (#275) is covered elsewhere. */
+const todays = (snapshot: { today: { date: string; doses: DoseOccurrence[] } }) =>
+  snapshot.today.doses.filter((dose) => istanbulDate(new Date(dose.dueAt)) === snapshot.today.date)
 
 test('Schedule versions preserve the D3 Edit time boundary and list only the current version', async () => {
   for (const [editTime, oldTime, newTime, expected] of [
@@ -43,7 +52,7 @@ test('Schedule versions preserve the D3 Edit time boundary and list only the cur
       [editedId],
     )
     assert.deepEqual(
-      snapshot.today.doses.map((d) => d.dueAt),
+      todays(snapshot).map((d) => d.dueAt),
       expected,
     )
     if (expected.length === 0) assert.equal(snapshot.today.next?.dueAt, '2026-11-04T06:00:00.000Z')
@@ -76,7 +85,7 @@ test('Schedule versions retain early Taken outcomes, prior History and earlier-v
     times: [{ time: '11:00', quantity: 1 }],
   })
   assert.deepEqual(
-    (await f.operations.snapshot()).today.doses.map((d) => [d.dueAt, d.status]),
+    todays(await f.operations.snapshot()).map((d) => [d.dueAt, d.status]),
     [
       [dueAt, 'Taken'],
       ['2026-11-03T08:00:00.000Z', 'Upcoming'],
@@ -91,7 +100,7 @@ test('Schedule versions retain early Taken outcomes, prior History and earlier-v
     expectedOutcome: 'Taken',
     outcome: 'Skipped',
   })
-  assert.equal((await f.operations.snapshot()).today.doses[0].status, 'Skipped')
+  assert.equal(todays(await f.operations.snapshot())[0].status, 'Skipped')
   await f.operations.recordSkipped({ scheduleId: id, dueAt: '2026-11-02T07:00:00.000Z' })
   assert.equal((await f.operations.history('2026-11-02'))[0].status, 'Skipped')
   f.setNow('2026-11-04T09:00:00.000Z')
@@ -124,7 +133,7 @@ test('Schedule versions switch Clock and Interval and preserve an Interval Ancho
   await assert.rejects(() => f.operations.edit(switchInput), /validation/)
   await f.operations.edit({ ...switchInput, anchorDate: '2026-11-03' })
   assert.deepEqual(
-    (await f.operations.snapshot()).today.doses.map((d) => [d.dueAt, d.status]),
+    todays(await f.operations.snapshot()).map((d) => [d.dueAt, d.status]),
     [
       ['2026-11-03T05:00:00.000Z', 'Skipped'],
       ['2026-11-03T13:00:00.000Z', 'Upcoming'],
@@ -155,7 +164,7 @@ test('Schedule versions switch Clock and Interval and preserve an Interval Ancho
     times: [{ time: '15:00', quantity: 2 }],
   })
   assert.deepEqual(
-    (await f.operations.snapshot()).today.doses.map((d) => [d.dueAt, d.status]),
+    todays(await f.operations.snapshot()).map((d) => [d.dueAt, d.status]),
     [
       ['2026-11-03T05:00:00.000Z', 'Skipped'],
       ['2026-11-03T11:00:00.000Z', 'Taken'],
@@ -270,7 +279,7 @@ test('an early recording racing an edit is either retained or rejected without r
     }),
   ])
   assert.equal(edited.status, 'fulfilled')
-  const doses = (await f.operations.snapshot()).today.doses
+  const doses = todays(await f.operations.snapshot())
   assert.equal(
     doses.some((d) => d.scheduleId === id),
     recorded.status === 'fulfilled',
@@ -293,7 +302,7 @@ test('Last day today keeps earlier doses and includes the final evening only', a
   const [saved] = await f.operations.edit(edit)
   assert.equal(saved.endDate, '2026-11-03')
   assert.deepEqual(
-    (await f.operations.snapshot()).today.doses.map((d) => [d.scheduleId, d.dueAt]),
+    todays(await f.operations.snapshot()).map((d) => [d.scheduleId, d.dueAt]),
     [
       [id, '2026-11-03T06:00:00.000Z'],
       [edit.id, '2026-11-03T18:00:00.000Z'],
@@ -301,7 +310,7 @@ test('Last day today keeps earlier doses and includes the final evening only', a
   )
   f.setNow('2026-11-04T07:00:00.000Z')
   const snapshot = await f.operations.snapshot()
-  assert.deepEqual(snapshot.today.doses, [])
+  assert.deepEqual(todays(snapshot), [])
   assert.equal(snapshot.today.next, null)
   assert.equal((await f.operations.history('2026-11-03')).length, 2)
   const key = { scheduleId: id, dueAt: '2026-11-03T06:00:00.000Z' }
@@ -394,7 +403,7 @@ test('Ended schedules restart after the Edit time without restoring doses in the
       const edit = { id: randomUUID(), basedOnId: id, times, intervalHours, endDate }
       await f.operations.edit(edit)
       assert.deepEqual(
-        (await f.operations.snapshot()).today.doses.map((d) => [d.scheduleId, d.dueAt]),
+        todays(await f.operations.snapshot()).map((d) => [d.scheduleId, d.dueAt]),
         [[edit.id, '2026-11-05T18:00:00.000Z']],
       )
       assert.deepEqual(await f.operations.history('2026-11-04'), [])

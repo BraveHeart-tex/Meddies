@@ -62,6 +62,26 @@ export const morningTaken: DoseRecord = {
   revision: 1,
 }
 
+/** Yesterday's 20:00 Magnesium and 22:00 Iron, both taken, so To log has no dose from Sun 8 Nov. */
+const yesterdayTaken: DoseRecord[] = [
+  {
+    outcome: 'Taken',
+    scheduleId: magnesiumSchedule.id,
+    dueAt: '2026-11-08T17:00:00.000Z',
+    takenAt: '2026-11-08T17:05:00.000Z',
+    quantity: 1,
+    revision: 1,
+  },
+  {
+    outcome: 'Taken',
+    scheduleId: ironSchedule.id,
+    dueAt: '2026-11-08T19:00:00.000Z',
+    takenAt: '2026-11-08T19:05:00.000Z',
+    quantity: 1,
+    revision: 1,
+  },
+]
+
 /**
  * The routine the built frames show at 10:00 today: Magnesium and Iron on a schedule, Vitamin D
  * without one, and the 08:00 Magnesium taken.
@@ -71,7 +91,7 @@ export const routine = {
   medicines: [magnesium, iron, vitaminD],
   snapshot: {
     schedules: [magnesiumSchedule, ironSchedule],
-    records: [morningTaken],
+    records: [...yesterdayTaken, morningTaken],
     now: NOW,
     date: TODAY,
   },

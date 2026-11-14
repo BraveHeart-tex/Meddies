@@ -1,7 +1,7 @@
 import { expect, test } from './fixtures'
 import { clearFocus, focusRing, rowHeadingFocus, trackRowHeadingFocus } from './actions'
 import { doseTrigger, drawer, toastMessage } from './locators'
-import { addDays, insertScheduledMedicine } from './seed'
+import { insertScheduledMedicine } from './seed'
 import type { WorkerRoute } from './worker-proxy'
 
 // #168: focus moved by script stays on headings and titles without looking like a control.
@@ -17,7 +17,8 @@ test.use({
     seed: ({ db, ownerId }) =>
       insertScheduledMedicine(db, ownerId, {
         label,
-        startDate: addDays(today, -3),
+        // Starts today, so To log has no dose from yesterday (#275) and Today has one row.
+        startDate: today,
         times: [{ time: '09:01', quantity: 1 }],
       }),
   },

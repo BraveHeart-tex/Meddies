@@ -28,7 +28,11 @@ test('Pause now keeps the morning dose loggable without future doses', async () 
   assert.equal(pausedOn(snapshot.schedules[0], '2026-11-03'), '2026-11-03')
   assert.deepEqual(
     snapshot.today.doses.map((d) => [d.dueAt, d.status]),
-    [['2026-11-03T05:00:00.000Z', 'Not logged']],
+    [
+      // Yesterday's unresolved 20:00 stays in To log for 24 hours (#275).
+      ['2026-11-02T17:00:00.000Z', 'Not logged'],
+      ['2026-11-03T05:00:00.000Z', 'Not logged'],
+    ],
   )
   assert.equal(snapshot.today.next, null)
   await f.operations.recordSkipped({ scheduleId: id, dueAt: '2026-11-03T05:00:00.000Z' })
@@ -62,6 +66,8 @@ test('Pause keeps an early record and adds no paused-day doses for Clock and Int
     assert.deepEqual(
       (await f.operations.snapshot()).today.doses.map((d) => [d.dueAt, d.status]),
       [
+        // Yesterday's unresolved 20:00 stays in To log for 24 hours (#275).
+        ['2026-11-02T17:00:00.000Z', 'Not logged'],
         ['2026-11-03T05:00:00.000Z', 'Not logged'],
         [key.dueAt, 'Taken'],
       ],
@@ -302,7 +308,12 @@ test('Resume interval requires a new Anchor and preserves its seven-hour routine
   )
   assert.deepEqual(await f.operations.history('2026-11-04'), [])
   f.setNow('2026-11-06T00:00:00.000Z')
-  assert.equal((await f.operations.snapshot()).today.doses[0].dueAt, '2026-11-05T22:00:00.000Z')
+  // Yesterday's unresolved doses lead To log (#275); today's first dose follows them.
+  const todayDoses = async () =>
+    (await f.operations.snapshot()).today.doses
+      .map((d) => d.dueAt)
+      .filter((dueAt) => dueAt >= '2026-11-05T21:00:00.000Z')
+  assert.equal((await todayDoses())[0], '2026-11-05T22:00:00.000Z')
   assert.deepEqual(await f.operations.resume(request), [saved])
   const [changed] = await f.operations.edit({
     id: randomUUID(),
@@ -312,7 +323,7 @@ test('Resume interval requires a new Anchor and preserves its seven-hour routine
     endDate: saved.endDate,
   })
   assert.equal(changed.startDate, '2026-11-05')
-  assert.equal((await f.operations.snapshot()).today.doses[1].dueAt, '2026-11-06T05:00:00.000Z')
+  assert.equal((await todayDoses())[1], '2026-11-06T05:00:00.000Z')
   await assert.rejects(() => f.operations.resume({ ...request, anchorTime: '12:00' }), {
     status: 409,
   })

@@ -84,7 +84,8 @@ type Reply = 'ok' | 'lost' | 'reject'
  * stores the write and loses the response.
  */
 function api({
-  schedules = [schedule],
+  // Starts today, so no unresolved dose from yesterday joins Today's To log (#275).
+  schedules = [{ ...schedule, startDate: '2026-11-14' }],
   records = [morning],
   doses = [morningIbuprofen],
   replies = [] as Reply[],

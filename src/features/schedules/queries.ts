@@ -3,6 +3,7 @@ import { useCallback } from 'react'
 import { queryOptions, replaceEqualDeep, useQuery, type QueryClient } from '@tanstack/react-query'
 import type { UnscheduledDose } from '../unscheduled-doses/contract'
 import { seedUnscheduledDay } from '../unscheduled-doses/queries'
+import { shiftDate } from '@/lib/calendar-date'
 import {
   istanbulDate,
   type DailySchedule,
@@ -18,7 +19,7 @@ export type ScheduleSnapshot = {
   records: DoseOutcomeRecord[]
   /** Server scheduling time of the read; re-anchors the scheduling clock. */
   now: string
-  /** Istanbul date the records cover. */
+  /** Today's Istanbul date; the records cover it and the day before (#275). */
   date: string
 }
 
@@ -211,14 +212,18 @@ export function mergeHistoryDay(
   return replaceEqualDeep(current, doses)
 }
 
+/** Whether the Today snapshot's records cover `date`: its own date or the day before (#275). */
+const snapshotCovers = (snapshot: ScheduleSnapshot, date: string) =>
+  date === snapshot.date || date === shiftDate(snapshot.date, -1)
+
 /**
- * Writes a confirmed record into Today's cached snapshot when the dose is due on its date and
- * into the dose's cached History date. Returns the keys it covers. Never moves a revision back.
+ * Writes a confirmed record into Today's cached snapshot when the dose is due on a date it covers
+ * and into the dose's cached History date. Returns the keys it covers. Never moves a revision back.
  */
 export function writeRecord(client: QueryClient, record: DoseOutcomeRecord) {
   const date = historyDate(record.dueAt)
   const snapshot = client.getQueryData<ScheduleSnapshot>(scheduleKeys.snapshot())
-  const dueToday = !snapshot || snapshot.date === date
+  const dueToday = !snapshot || snapshotCovers(snapshot, date)
   if (snapshot && dueToday)
     client.setQueryData<ScheduleSnapshot>(scheduleKeys.snapshot(), (current) =>
       mergeSnapshot(current, {

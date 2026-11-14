@@ -26,7 +26,11 @@ test('Stop now preserves the morning dose and reads the stop day without future 
   assert.equal(snapshot.schedules[0].stoppedAt, stopped.stoppedAt)
   assert.deepEqual(
     snapshot.today.doses.map((d) => [d.dueAt, d.status]),
-    [['2026-11-03T05:00:00.000Z', 'Not logged']],
+    [
+      // Yesterday's unresolved 20:00 stays in To log for 24 hours (#275).
+      ['2026-11-02T17:00:00.000Z', 'Not logged'],
+      ['2026-11-03T05:00:00.000Z', 'Not logged'],
+    ],
   )
   assert.equal(snapshot.today.next, null)
   await f.operations.recordSkipped({ scheduleId: id, dueAt: '2026-11-03T05:00:00.000Z' })
@@ -55,6 +59,8 @@ test('Stop keeps an early record, including correction after the stop', async ()
   assert.deepEqual(
     (await f.operations.snapshot()).today.doses.map((d) => [d.dueAt, d.status]),
     [
+      // Yesterday's unresolved 20:00 stays in To log for 24 hours (#275).
+      ['2026-11-02T17:00:00.000Z', 'Not logged'],
       ['2026-11-03T05:00:00.000Z', 'Not logged'],
       [key.dueAt, 'Taken'],
     ],

@@ -179,11 +179,12 @@ test('a 401 the session check does not confirm stays a retryable read, not a ses
   expect(screen.queryByText('Your session ended.')).not.toBeInTheDocument()
 })
 
+// Older than yesterday, so outside the dates Today's records cover (#275).
 test('a past-date History correction reconciles its own date, not Today or other dates', async () => {
-  search = new URLSearchParams('date=2026-11-05')
-  const dueAt = new Date('2026-11-05T08:00:00+03:00').toISOString()
+  search = new URLSearchParams('date=2026-11-04')
+  const dueAt = new Date('2026-11-04T08:00:00+03:00').toISOString()
   const taken = {
-    ...dose('2026-11-05'),
+    ...dose('2026-11-04'),
     status: 'Taken',
     record: {
       scheduleId,
@@ -210,7 +211,7 @@ test('a past-date History correction reconciles its own date, not Today or other
       })
     }),
   )
-  const client = seeded({ '2026-11-05': [taken], '2026-11-04': [dose('2026-11-04')] })
+  const client = seeded({ '2026-11-04': [taken], '2026-11-03': [dose('2026-11-03')] })
   client.setQueryData(scheduleKeys.snapshot(), {
     schedules: [],
     records: [],
@@ -218,14 +219,14 @@ test('a past-date History correction reconciles its own date, not Today or other
     date: today,
   })
   renderResults(client)
-  await doseList('2026-11-05')
+  await doseList('2026-11-04')
   const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: /^Review dose for Melatonin/ }))
   await user.click(screen.getByRole('button', { name: /^Change dose for/ }))
   await user.click(screen.getByRole('button', { name: 'I skipped it' }))
   await user.click(screen.getByRole('button', { name: 'Save as skipped' }))
-  await waitFor(() => expect(reads).toEqual(['2026-11-05']))
-  expect(client.getQueryState(scheduleKeys.history('2026-11-04'))?.isInvalidated).toBe(false)
+  await waitFor(() => expect(reads).toEqual(['2026-11-04']))
+  expect(client.getQueryState(scheduleKeys.history('2026-11-03'))?.isInvalidated).toBe(false)
   expect(client.getQueryState(scheduleKeys.snapshot())?.isInvalidated).toBe(false)
 })
 

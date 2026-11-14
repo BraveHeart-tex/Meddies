@@ -60,7 +60,7 @@ export function TodaySchedule({
   const name = (id: string) =>
     medicines.find((medicine) => medicine.id === id)?.label ?? 'Medication'
   const now = useScheduleNow(serverNow)
-  // Statuses follow the scheduling clock. Records cover only the snapshot's date, so a new day
+  // Statuses follow the scheduling clock. Records cover the snapshot's date and the day before, so a new day
   // waits for its own read instead of inventing coverage.
   const today = useMemo(() => {
     if (!snapshot || istanbulDate(new Date(now)) !== snapshot.date) return null
@@ -218,6 +218,10 @@ export function TodaySchedule({
                             const dose = row.dose
                             const medicine = medicines.find((item) => item.id === dose.medicineId)
                             const done = dose.status === 'Taken' || dose.status === 'Skipped'
+                            // Yesterday's unresolved doses show their short day (#275).
+                            const dueDate = istanbulDate(new Date(dose.dueAt))
+                            const dueDay =
+                              dueDate === today.date ? '' : formatShortDay(dueDate, today.date)
                             const recordedAt =
                               dose.status === 'Taken'
                                 ? dose.record.takenAt
@@ -251,12 +255,15 @@ export function TodaySchedule({
                                       tabIndex={-1}
                                       className="outline-none"
                                     >
-                                      <span className="sr-only">{formatTime(dose.dueAt)} · </span>
+                                      <span className="sr-only">
+                                        {formatTime(dose.dueAt)}
+                                        {dueDay && ` on ${dueDay}`} ·{' '}
+                                      </span>
                                       {name(dose.medicineId)}
                                     </h4>
                                   </ItemTitle>
                                   <ItemDescription>
-                                    {[medicine?.strength, doseText(dose)]
+                                    {[dueDay, medicine?.strength, doseText(dose)]
                                       .filter(Boolean)
                                       .join(' · ')}
                                     {dose.status === 'Taken' &&

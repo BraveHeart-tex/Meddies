@@ -66,6 +66,8 @@ test('the daily routine runs from Today through History to sign out', async ({ p
   const omegaRow = doseRow(page, instantOn(today, '14:00'))
   const ironRow = doseRow(page, instantOn(today, '08:00'))
   const magnesiumRow = doseRow(page, instantOn(today, '09:00'))
+  // Yesterday's unresolved 20:00 is due within the last 24 hours, so To log lists it (#275).
+  const lateEveningRow = doseRow(page, instantOn(yesterday, '20:00'))
   const groupHeadings = page.getByRole('heading', { level: 3 })
 
   // Base UI restores focus once the drawer's exit transition finishes.
@@ -78,7 +80,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await page.goto('/')
     await expect(groupHeadings).toHaveText([
       'Up next',
-      'To log · 2',
+      'To log · 3',
       'Later today · 1',
       'Logged · 1',
     ])
@@ -115,7 +117,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await expect(doseStatus(omegaRow)).toHaveAccessibleDescription(/Taken/)
     await expect(groupHeadings).toHaveText([
       'Up next',
-      'To log · 1',
+      'To log · 2',
       'Later today · 1',
       'Logged · 2',
     ])
@@ -160,8 +162,25 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await expectFocusReturned(magnesiumRow)
   })
 
+  // Allowed reason: data consistency across routes (#281).
+  await test.step("logging yesterday's dose from Today removes it from Today", async () => {
+    await expect(lateEveningRow).toContainText('Thu 14 Jun')
+    await doseTrigger(lateEveningRow, evening).click()
+    await dialog.getByRole('button', { name: 'I took it' }).click()
+    await dialog.getByRole('button', { name: 'Save as taken' }).click()
+    await expect(
+      toastMessage(
+        page,
+        new RegExp(`^${evening} 20:00 on Thu 14 Jun · taken at 14:00 on Fri 15 Jun`),
+      ),
+    ).toBeVisible()
+    await expect(lateEveningRow).toHaveCount(0)
+    await expect(groupHeadings).toHaveText(['Up next', 'Later today · 1', 'Logged · 3'])
+  })
+
   const pastOmega = historyRow(page, yesterday, instantOn(yesterday, '14:00'))
   const pastIron = historyRow(page, yesterday, instantOn(yesterday, '08:00'))
+  const pastEvening = historyRow(page, yesterday, instantOn(yesterday, '20:00'))
 
   await test.step('Previous day pushes a dated History', async () => {
     // Today's History lists doses already due; this is a few minutes after Omega's 14:00.
@@ -177,6 +196,9 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await expect(rows).toHaveCount(4)
     for (const [index, label] of [iron, magnesium, omega, evening].entries())
       await expect(rows.nth(index)).toContainText(label)
+    // Logged from Today, it shows Taken on its own History date (#281).
+    await expect(pastEvening).toContainText('Taken')
+    await expect(pastEvening).not.toContainText('Not logged')
     await expect(pastIron).toContainText('Not logged')
     await expect(pastIron.getByRole('button')).toHaveCount(0)
   })

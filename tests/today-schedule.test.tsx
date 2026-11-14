@@ -35,7 +35,7 @@ const medicine: Medicine = {
 const scheduleFor = (time: string): DailySchedule => ({
   id: '00000000-0000-4000-8000-0000000000a1',
   medicineId: medicine.id,
-  startDate: '2026-11-01',
+  startDate: '2026-11-14',
   times: [{ time, quantity: 1 }],
   weekdays: [0, 1, 2, 3, 4, 5, 6],
   confirmedAt: '2026-10-31T09:00:00.000Z',
@@ -1125,6 +1125,61 @@ describe('next actions', () => {
         .getAllByRole('listitem')
         .map((item) => item.textContent?.slice(0, 5)),
     ).toEqual(['09:00', '09:30', '20:00'])
+  })
+
+  describe("yesterday's doses", () => {
+    // #275 "Across midnight": Fri 13 Nov 23:30 unresolved, now Sat 14 Nov 00:10.
+    const now = '2026-11-13T21:10:00.000Z'
+    const lateNight = () =>
+      schedulesApi(now, [{ ...scheduleFor('23:30'), startDate: '2026-11-13' }])
+
+    // Catches the hero hiding its buttons for a dose due before today.
+    test('To log shows its short day and the hero offers its buttons', async () => {
+      lateNight()
+      renderToday(now)
+      const list = await doses()
+      const hero = screen.getByRole('heading', { name: 'Up next' }).closest('[data-slot=card]')
+      expect(within(hero as HTMLElement).getByText(/^Not logged ·/)).toHaveTextContent(
+        /^Not logged · 23:30 on Fri 13 Nov$/,
+      )
+      expect(
+        screen.getByRole('button', { name: 'I took it, Morning Tablet at 23:30' }),
+      ).toBeVisible()
+      expect(
+        screen.getByRole('button', { name: 'I skipped it, Morning Tablet at 23:30' }),
+      ).toBeVisible()
+      expect(
+        within(list)
+          .getAllByRole('heading', { level: 3 })
+          .map((item) => item.textContent),
+      ).toEqual(['To log · 1', 'Later today · 1'])
+      expect(within(list).getAllByRole('listitem')[0]).toHaveTextContent(
+        /^23:30.*Morning Tablet.*Fri 13 Nov · 1 tablet/,
+      )
+    })
+
+    // Catches a save from Today naming no day, or leaving the dose on Today.
+    test('saving it names its History date and removes it from Today', async () => {
+      lateNight()
+      const user = renderToday(now)
+      await doses()
+      await user.click(
+        screen.getByRole('button', { name: 'I skipped it, Morning Tablet at 23:30' }),
+      )
+      await user.click(await screen.findByRole('button', { name: 'Save as skipped' }))
+      expect(
+        await screen.findByText('Morning Tablet 23:30 on Fri 13 Nov · saved as skipped'),
+      ).toBeVisible()
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { name: /^To log/ })).not.toBeInTheDocument(),
+      )
+      // Logged lists only today's doses.
+      expect(
+        within(await doses())
+          .getAllByRole('heading', { level: 3 })
+          .map((item) => item.textContent),
+      ).toEqual(['Later today · 1'])
+    })
   })
 
   test('an empty day hides Up next even when a future dose exists', async () => {

@@ -19,11 +19,12 @@ const dueAt = '2026-11-03T06:00:00.000Z'
 const takenAt = '2026-11-03T06:05:00.000Z'
 const version = { id, basedOnId }
 // `body` is a valid request, so a signed-in call reaches the Worker. `worker: false`
-// marks a route that never calls it.
-const routes: Record<string, { body?: unknown; query?: string; worker?: false }> = {
+// marks a route that never calls it; `reads` counts Worker calls per request (default 1).
+const routes: Record<string, { body?: unknown; query?: string; worker?: false; reads?: number }> = {
   'medicines GET': {},
   'medicines POST': { body: { id, label: 'Iron', strength: null, unit: 'tablet' } },
-  'schedules GET': {},
+  // Today reads today's and yesterday's records (#275).
+  'schedules GET': { reads: 2 },
   'schedules POST': {
     body: {
       id,
@@ -92,7 +93,7 @@ test('private API routes reject cross-origin writes and signed-out requests, nev
   }
   for (const [key, handler] of await privateRoutes()) {
     const [path, method] = key.split(' ')
-    const { body, query = '', worker } = routes[key]
+    const { body, query = '', worker, reads = 1 } = routes[key]
     const call = async (origin = 'https://meddies.test') => {
       const response = await handler(
         new Request(`https://meddies.test/api/${path}${query}`, {
@@ -125,6 +126,6 @@ test('private API routes reject cross-origin writes and signed-out requests, nev
       upstream = status
       assert.equal(await call(), expected, `${key} Worker ${status}`)
     }
-    assert.equal(calls, 3, key)
+    assert.equal(calls, 3 * reads, key)
   }
 })

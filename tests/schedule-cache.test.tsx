@@ -83,9 +83,9 @@ const lateTaken: DoseOutcomeRecord = {
   revision: 0,
 }
 
-test('a confirmed record lands on its History date and on Today only when due today', async () => {
+test('a confirmed record lands on its History date and on Today only when due today or yesterday', async () => {
   const client = createQueryClient()
-  client.setQueryData(scheduleKeys.snapshot(), { ...base, date: '2026-11-06' })
+  client.setQueryData(scheduleKeys.snapshot(), { ...base, date: '2026-11-07' })
   client.setQueryData(scheduleKeys.history('2026-11-05'), [lateDose])
   client.setQueryData(scheduleKeys.history('2026-11-06'), [])
   await applyRecord(client, lateTaken)
@@ -94,8 +94,10 @@ test('a confirmed record lands on its History date and on Today only when due to
     { ...lateDose, status: 'Taken', record: lateTaken },
   ])
   expect(client.getQueryData(scheduleKeys.history('2026-11-06'))).toEqual([])
+  // Two days on, Today's snapshot no longer covers the dose's date.
   expect(client.getQueryData<ScheduleSnapshot>(scheduleKeys.snapshot())?.records).toEqual([])
-  client.setQueryData(scheduleKeys.snapshot(), { ...base, date: '2026-11-05' })
+  // The day after, Today still lists yesterday's doses, so its records cover them (#275).
+  client.setQueryData(scheduleKeys.snapshot(), { ...base, date: '2026-11-06' })
   await applyRecord(client, lateTaken)
   expect(client.getQueryData<ScheduleSnapshot>(scheduleKeys.snapshot())?.records).toEqual([
     lateTaken,
