@@ -6,6 +6,7 @@ import { dirname, join, resolve } from 'node:path'
 import { test, type TestContext } from 'vitest'
 
 // A fake pnpm in a temporary root records each command and whether the tooling project ran.
+// The build fails unless unit tests already finished, failed or not, so a parallel start fails.
 async function fakeRoot(t: TestContext) {
   const root = await mkdtemp(join(tmpdir(), 'verify-stages-'))
   t.onTestFinished(() => rm(root, { recursive: true, force: true }))
@@ -17,13 +18,16 @@ case "$1" in
   typecheck) touch types-finished ;;
   build)
     test -f types-finished || exit 90
+    test -f unit-finished || exit 92
     test "$CI_SKIP_BUILD_TYPECHECK" = 1 || exit 91
     mkdir -p .next
     echo build > .next/BUILD_ID ;;
   test:unit)
     case " $* " in *" --project tooling "*) touch tooling-ran ;; esac
     for report; do :; done
-    echo '{"testResults":[{"name":"/tests/dev-stack.test.ts","assertionResults":[{"status":"pending"}]}]}' > "$report" ;;
+    echo '{"testResults":[{"name":"/tests/dev-stack.test.ts","assertionResults":[{"status":"pending"}]}]}' > "$report"
+    sleep 0.2
+    touch unit-finished ;;
 esac
 [ "$1" != "$FAIL_CHECK" ]
 `,
@@ -53,8 +57,11 @@ for (const failure of ['build', 'test:unit', 'test:integration', '']) {
     assert.equal(result.status, failure ? 1 : 0, result.stdout + result.stderr)
     const commands = (await readFile(join(root, 'commands'), 'utf8')).trim().split('\n')
     assert.deepEqual(commands.slice(0, 3).sort(), ['format:check', 'lint', 'typecheck'])
-    assert.ok(commands.includes('test:unit'))
-    assert.equal(commands.includes('test:integration'), failure !== 'build')
+    const stage2 =
+      failure === 'build' ? ['test:unit', 'build'] : ['test:unit', 'build', 'test:integration']
+    assert.deepEqual(commands.slice(3), stage2)
+    assert.match(result.stdout, failure === 'build' ? /FAIL build/ : /PASS build/)
+    if (failure === 'test:unit') assert.match(result.stdout, /PASS integration/)
     assert.match(result.stdout, /WARNING: dev stack tests skipped/)
     assert.match(result.stdout, /PASS typecheck: [\d.]+s/)
     assert.match(result.stdout, /Tooling tests run: changes against origin\/main are unknown/)

@@ -6,9 +6,11 @@
 pnpm verify:local
 ```
 
-Runs lint, format check and typecheck, then the build, integration, unit and component
-tests. A static-check failure stops before the second stage; second-stage checks all finish
-even when one fails. A warning names dev-stack tests skipped because fixed ports were busy.
+Runs lint, format check and typecheck in parallel, then, in order, the unit and component
+tests, the build and the integration tests: run alongside, the build and integration starve
+the component tests of CPU. A static-check failure stops before the second stage; second-stage
+checks all run and report even when an earlier one fails, except that a failed build skips
+integration. A warning names dev-stack tests skipped because fixed ports were busy.
 It runs alongside `pnpm dev`.
 
 The `tooling` Vitest project (scripts, workflows and the journey harness, listed in

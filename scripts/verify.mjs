@@ -63,45 +63,42 @@ const stage1 = await Promise.all([
   ),
   check('typecheck', (run) => run('pnpm', ['typecheck'])),
 ])
+// Stage 2 runs in order: unit and component tests time out when the build and integration
+// share the CPU. A unit failure still runs the rest; integration needs the build.
 if (stage1.every(Boolean)) {
-  await Promise.all([
-    check(tooling ? 'unit, component and tooling' : 'unit and component', async (run) => {
-      const directory = await mkdtemp(join(tmpdir(), 'meddies-verify-'))
-      const report = join(directory, 'unit.json')
+  await check(tooling ? 'unit, component and tooling' : 'unit and component', async (run) => {
+    const directory = await mkdtemp(join(tmpdir(), 'meddies-verify-'))
+    const report = join(directory, 'unit.json')
+    try {
+      await run('pnpm', [
+        'test:unit',
+        ...(tooling ? ['--project', 'tooling'] : []),
+        '--reporter=default',
+        '--reporter=json',
+        '--outputFile.json',
+        report,
+      ])
+    } finally {
       try {
-        await run('pnpm', [
-          'test:unit',
-          ...(tooling ? ['--project', 'tooling'] : []),
-          '--reporter=default',
-          '--reporter=json',
-          '--outputFile.json',
-          report,
-        ])
+        const data = JSON.parse(await readFile(report, 'utf8'))
+        skippedDevStack = data.testResults.some(
+          (result) =>
+            result.name.endsWith('/tests/dev-stack.test.ts') &&
+            result.assertionResults.some((assertion) =>
+              ['pending', 'skipped'].includes(assertion.status),
+            ),
+        )
       } finally {
-        try {
-          const data = JSON.parse(await readFile(report, 'utf8'))
-          skippedDevStack = data.testResults.some(
-            (result) =>
-              result.name.endsWith('/tests/dev-stack.test.ts') &&
-              result.assertionResults.some((assertion) =>
-                ['pending', 'skipped'].includes(assertion.status),
-              ),
-          )
-        } finally {
-          await rm(directory, { recursive: true, force: true })
-        }
+        await rm(directory, { recursive: true, force: true })
       }
+    }
+  })
+  const built = await check('build', (run) =>
+    productionBuild({
+      run: (command, args) => run(command, args, { ...process.env, CI_SKIP_BUILD_TYPECHECK: '1' }),
     }),
-    (async () => {
-      const built = await check('build', (run) =>
-        productionBuild({
-          run: (command, args) =>
-            run(command, args, { ...process.env, CI_SKIP_BUILD_TYPECHECK: '1' }),
-        }),
-      )
-      if (built) await check('integration', (run) => run('pnpm', ['test:integration']))
-    })(),
-  ])
+  )
+  if (built) await check('integration', (run) => run('pnpm', ['test:integration']))
 }
 console.log('\n[verify] Summary')
 for (const { label, passed, seconds } of results)

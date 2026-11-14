@@ -203,8 +203,6 @@ function expectRowsLinked(count: number) {
   expect(new Set(ids).size).toBe(ids.length)
 }
 
-// Six time picks, each rendering a 24- or 60-option list, take about 0.7s alone but measured
-// up to 6.1s in `pnpm verify:local`, where build and integration share the CPU (#296).
 test('new rows take focus, and errors and focus follow their rows through removals', async () => {
   const { posted } = api(capsules)
   const { user } = await openSetup(capsules.id)
@@ -246,7 +244,7 @@ test('new rows take focus, and errors and focus follow their rows through remova
   await user.click(button('Remove time 2'))
   await waitFor(() => expect(addTime()).toHaveFocus())
   expect(screen.queryByRole('button', { name: /^Remove time/ })).not.toBeInTheDocument()
-}, 10_000)
+})
 
 test('known offline blocks saving and keeps the details until the connection returns', async () => {
   const { posted } = api(capsules)

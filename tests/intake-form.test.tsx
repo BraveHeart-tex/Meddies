@@ -122,8 +122,6 @@ async function enterAmount(user: ReturnType<typeof userEvent.setup>, value: stri
   await user.paste(value)
 }
 
-// Opening the drawer and two hour picks take about 0.6s alone but measured up to 3.8s in
-// `pnpm verify:local`, where build and integration share the CPU (#295).
 test('inline errors focus the first invalid control, keep values and accept half tablets', async () => {
   const state = api(async (body) => {
     state.records = [taken(body)]
@@ -165,7 +163,7 @@ test('inline errors focus the first invalid control, keep values and accept half
   expect(state.puts[0]).toMatchObject({ takenAt: '2026-11-14T05:05:00.000Z', quantity: 1.5 })
   expect(await row()).toHaveTextContent('Taken')
   expect(screen.queryByRole('dialog', { name: medicine.label })).not.toBeInTheDocument()
-}, 10_000)
+})
 
 test.each([false, true])(
   'an unconfirmed save retains details; edited=%s determines attempt identity',
