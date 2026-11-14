@@ -129,3 +129,10 @@ test('private API routes reject cross-origin writes and signed-out requests, nev
     assert.equal(calls, 3 * reads, key)
   }
 })
+
+// Page aliases are separate from the private API guard table above.
+test('page route guard table redirects sign-in to the existing entry', async () => {
+  const { default: config } = await import('../next.config')
+  const redirects = await config.redirects!()
+  assert.deepEqual(redirects, [{ source: '/sign-in', destination: '/', permanent: false }])
+})

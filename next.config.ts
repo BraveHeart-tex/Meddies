@@ -23,6 +23,7 @@ copyZxingWasm()
 const nextConfig: NextConfig = {
   // Load Next.js guidance through the conditional AGENTS.md pointer.
   agentRules: false,
+  redirects: async () => [{ source: '/sign-in', destination: '/', permanent: false }],
   typescript: {
     // The Verify typecheck step is the type gate, so the build need not repeat it.
     // Vercel and journey builds leave the variable unset and keep the check.

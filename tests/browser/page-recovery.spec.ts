@@ -26,6 +26,9 @@ test.describe('unknown address', () => {
           "The link may be old or mistyped. Your records haven't changed.",
         )
         await expect(selectedNavigation(page)).toHaveCount(0)
+        await expect(page.getByRole('navigation', { name: 'Primary' })).toHaveCount(
+          session.length ? 1 : 0,
+        )
         // Both sessions have exactly the same public content; extra private text fails.
         await expect(page.getByRole('main')).toHaveText(
           /^Page not found\s*This page isn't in Meddies\.\s*The link may be old or mistyped\. Your records haven't changed\.\s*Open Today$/,

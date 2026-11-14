@@ -1,14 +1,14 @@
 import Link from 'next/link'
 import { Info } from 'lucide-react'
 import { AppHeader } from '@/components/layout/app-header'
-import { AppShell } from '@/components/layout/app-shell'
+import { RecoveryShell } from '@/features/auth/recovery-shell'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export default function NotFound() {
   return (
-    <AppShell>
+    <RecoveryShell>
       <div className="flex flex-col gap-5">
         <AppHeader title="Page not found" />
         <Alert>
@@ -22,6 +22,6 @@ export default function NotFound() {
           Open Today
         </Link>
       </div>
-    </AppShell>
+    </RecoveryShell>
   )
 }

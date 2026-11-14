@@ -119,6 +119,15 @@ test('anonymous requests cannot read the account; entry offers private Google si
   assert.match(await page.text(), /Continue with Google/)
 })
 
+test('sign-in alias redirects without swallowing the sign-in error route', async () => {
+  const response = await request('/sign-in')
+  assert.equal(response.status, 307)
+  assert.equal(new URL(response.headers.get('location')!, base).pathname, '/')
+  const error = await request('/sign-in/error?error=AccessDenied')
+  assert.equal(error.status, 200)
+  assert.match(await error.text(), /Choose another Google account/)
+})
+
 test('sign-in explains why the account is back on the entry screen', async () => {
   const messages = [
     ['/?error=AccessDenied', "This Google account can't open Meddies."],

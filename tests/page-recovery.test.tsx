@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
 import ErrorPage from '@/app/error'
 
+import { http, HttpResponse } from 'msw'
+import { server } from './helpers/msw-server'
+
 vi.mock('next/navigation', () => ({ usePathname: () => '/unknown-address' }))
 
 test('unexpected errors keep navigation and offer retry and Today without sign-in advice', async () => {
@@ -21,19 +24,34 @@ test('unexpected errors keep navigation and offer retry and Today without sign-i
   expect(retry).toHaveBeenCalledOnce()
 })
 
-test('unknown addresses show public recovery content with no navigation tab selected', async () => {
-  const { default: NotFound } = await import('@/app/not-found')
-  render(<NotFound />)
-  expect(screen.getByRole('heading', { name: 'Page not found' })).toBeVisible()
-  expect(screen.getByRole('alert')).toHaveTextContent("This page isn't in Meddies.")
-  expect(screen.getByRole('alert')).toHaveTextContent(
-    "The link may be old or mistyped. Your records haven't changed.",
-  )
-  for (const link of within(screen.getByRole('navigation', { name: 'Primary' })).getAllByRole(
-    'link',
-  )) {
-    expect(link).not.toHaveAttribute('aria-current')
-  }
-  expect(screen.getAllByRole('link', { name: 'Settings' })).toHaveLength(1)
-  expect(screen.getByRole('link', { name: 'Open Today' })).toHaveAttribute('href', '/')
-})
+test.each([false, true])(
+  'unknown addresses retain recovery and show tabs only signed in (%s)',
+  async (signedIn) => {
+    server.use(
+      http.get('/api/session', () =>
+        signedIn
+          ? HttpResponse.json({ id: 'google:test', expires: '2099-01-01T00:00:00Z' })
+          : new HttpResponse(null, { status: 401 }),
+      ),
+    )
+    const { default: NotFound } = await import('@/app/not-found')
+    render(<NotFound />)
+    expect(screen.getByRole('heading', { name: 'Page not found' })).toBeVisible()
+    expect(screen.getByRole('alert')).toHaveTextContent("This page isn't in Meddies.")
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      "The link may be old or mistyped. Your records haven't changed.",
+    )
+    if (signedIn) {
+      await screen.findByRole('navigation', { name: 'Primary' })
+      for (const link of within(screen.getByRole('navigation', { name: 'Primary' })).getAllByRole(
+        'link',
+      )) {
+        expect(link).not.toHaveAttribute('aria-current')
+      }
+    } else {
+      expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument()
+    }
+    expect(screen.getByRole('link', { name: 'Open Today' })).toHaveAttribute('href', '/')
+  },
+)

@@ -14,6 +14,10 @@ from at least 32 random bytes. Configure the OAuth credentials and the approved
 accounts in `AUTH_ALLOWED_EMAILS`, a comma-separated list of Google emails, locally
 and in the intended Vercel environment. An empty list leaves sign-in disabled.
 
+The sign-in entry is `/`; `/sign-in` redirects there, while `/sign-in/error` handles
+provider errors. Unknown addresses show public recovery content, with application tabs
+only for a validated signed-in session.
+
 ## Authorization
 
 Only Google identities with a verified email from the approved accounts can enter.
