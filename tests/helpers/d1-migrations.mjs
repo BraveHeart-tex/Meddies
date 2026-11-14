@@ -16,3 +16,19 @@ export async function applyD1Migrations(db, { afterMigration } = {}) {
     await afterMigration?.(file)
   }
 }
+
+/**
+ * Empty every table, leaving the migrated schema in place. Migrations only copy rows between
+ * their own tables, so a migrated database starts empty and this restores that state.
+ */
+export async function clearD1Database(db) {
+  const { results } = await db
+    .prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\'",
+    )
+    .all()
+  await db.batch([
+    db.prepare('PRAGMA defer_foreign_keys = ON'),
+    ...results.map(({ name }) => db.prepare(`DELETE FROM "${name.replaceAll('"', '""')}"`)),
+  ])
+}

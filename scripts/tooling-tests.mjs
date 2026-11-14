@@ -13,6 +13,7 @@ export const toolingTests = [
   'tests/dev-stack.test.ts',
   'tests/journey-build.test.ts',
   'tests/journey-server.test.ts',
+  'tests/journey-worker.test.ts',
   'tests/release-guard.test.ts',
   'tests/release.test.ts',
   'tests/verify.test.ts',

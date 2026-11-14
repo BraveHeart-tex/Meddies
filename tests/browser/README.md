@@ -54,8 +54,14 @@ so assert that content scrolls rather than relying on the full height.
 ## Fixtures
 
 Each spec declares `test.use({ journey: { auth, storage, initialScheduleTime, seed } })`.
-[`fixtures.ts`](fixtures.ts) gives each test its own Next.js server, port, fresh local
-Worker/D1 database and clock file.
+[`fixtures.ts`](fixtures.ts) splits the harness by lifetime:
+
+- **Per Playwright worker:** one local Worker (Miniflare,
+  [`journey-worker.ts`](journey-worker.ts)) with its D1 database migrated once, and its
+  Worker secret. The first journey that declares `storage` starts it.
+- **Per test:** the Next.js server and port, the Worker proxy with its rules and request
+  log, the clock file, and the D1 database emptied before `seed` runs. A journey without
+  `initialScheduleTime` gets real time on the Worker, never an earlier journey's clock.
 
 - **Auth** is a short-lived synthetic Auth.js session; no Google provider or real
   credentials. `app.api` and `page.request` act as the signed-in user; the `request`

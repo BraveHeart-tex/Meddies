@@ -1,11 +1,9 @@
 import { randomBytes } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
-import { readFile, rename, unlink, writeFile } from 'node:fs/promises'
+import { rename, unlink, writeFile } from 'node:fs/promises'
 import { createServer, type AddressInfo } from 'node:net'
-import { resolve } from 'node:path'
 import { test as base, type APIResponse, type BrowserContext } from '@playwright/test'
-import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
 import { encode } from 'next-auth/jwt'
 import {
   routeRenderPath,
@@ -15,15 +13,16 @@ import {
 } from './worker-proxy'
 
 import { cleanupJourney, JourneyService } from './journey-server'
+import { startJourneyWorker, type JourneyDatabase, type JourneyWorker } from './journey-worker'
 
 export { expect } from '@playwright/test'
 
-export type JourneyDatabase = Awaited<ReturnType<Miniflare['getD1Database']>>
+export type { JourneyDatabase }
 
 export type Journey = {
   /** Sign in with a synthetic Auth.js session. No Google provider is used. */
   auth: boolean
-  /** Start a local Worker with a fresh Miniflare D1 database. */
+  /** Use the local Worker with an emptied, migrated Miniflare D1 database. */
   storage: boolean
   /** Freeze the scheduling clock at this instant; move it with `app.setScheduleTime`. */
   initialScheduleTime?: string
@@ -90,51 +89,28 @@ async function freePort() {
   return port
 }
 
-function startWorker(clockFile: string | undefined, workerSecret: string) {
-  const workerRoot = resolve('.worker-build')
-  const workerScript = resolve(workerRoot, 'index.js')
-  return new Miniflare(
-    convertV4MiniflareOptions({
-      ...(clockFile
-        ? {
-            modulesRoot: workerRoot,
-            modules: [
-              {
-                type: 'ESModule',
-                path: resolve(workerRoot, 'journey-entry.js'),
-                contents: `
-                  import { createWorker } from './index.js'
-                  export default {
-                    async fetch(request, env) {
-                      const response = await env.JOURNEY_CLOCK.fetch('http://clock/')
-                      const now = await response.text()
-                      return createWorker(() => new Date(now)).fetch(request, env)
-                    },
-                  }
-                `,
-              },
-              { type: 'ESModule', path: workerScript },
-            ],
-            serviceBindings: {
-              JOURNEY_CLOCK: async () => new Response(await readFile(clockFile, 'utf8')),
-            },
-          }
-        : { modules: true, scriptPath: workerScript }),
-      compatibilityDate: '2026-11-03',
-      host: '127.0.0.1',
-      d1Databases: ['DB'],
-      bindings: { MEDICINES_WORKER_SECRET: workerSecret },
-    }),
-  )
-}
-
-export const test = base.extend<{ journey: Journey; server: Server; app: App }>({
+export const test = base.extend<
+  { journey: Journey; server: Server; app: App },
+  { journeyWorker: () => Promise<JourneyWorker> }
+>({
   journey: [{ auth: false, storage: false }, { option: true }],
 
-  // Per-test Next.js server, fresh D1 database and scheduling-clock file.
-  server: async ({ journey }, use, testInfo) => {
+  // One local Worker per Playwright worker, started by the first journey that uses storage.
+  journeyWorker: [
+    async ({}, use) => {
+      let started: Promise<JourneyWorker> | undefined
+      try {
+        await use(() => (started ??= startJourneyWorker()))
+      } finally {
+        await (await started?.catch(() => undefined))?.dispose()
+      }
+    },
+    { scope: 'worker' },
+  ],
+
+  // Per-test Next.js server, Worker proxy, emptied D1 database and scheduling-clock file.
+  server: async ({ journey, journeyWorker }, use, testInfo) => {
     const secret = randomBytes(32).toString('base64url')
-    const workerSecret = randomBytes(32).toString('base64url')
     const clockFile = journey.initialScheduleTime
       ? testInfo.outputPath('scheduling-clock')
       : undefined
@@ -143,28 +119,26 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
       await writeFile(`${clockFile}.next`, new Date(instant).toISOString())
       await rename(`${clockFile}.next`, clockFile)
     }
-    let worker: Miniflare | undefined
     let proxy: WorkerProxy | undefined
-    const secrets = [secret, workerSecret, 'synthetic-secret']
+    let workerSecret = randomBytes(32).toString('base64url')
+    const secrets = [secret, 'synthetic-secret']
     const service = new JourneyService(secrets)
     let setupFailed = true
     let failure: unknown
     try {
       if (clockFile) await setScheduleTime(journey.initialScheduleTime!)
       if (journey.seed && !journey.storage) throw new Error('Journey seed requires storage')
-      if (journey.storage) {
-        worker = startWorker(clockFile, workerSecret)
-        const db = await worker.getD1Database('DB')
-        // Dynamic import: Playwright loads specs as CommonJS, and this helper uses import.meta.
-        const { applyD1Migrations } = await import('../helpers/d1-migrations.mjs')
-        await applyD1Migrations(db)
+      const worker = journey.storage ? await journeyWorker() : undefined
+      if (worker) {
+        workerSecret = worker.secret
+        secrets.push(workerSecret)
+        const db = await worker.startJourney(clockFile)
         await journey.seed?.({ db, ownerId })
-      }
-      // Next.js reaches the Worker through a proxy, so journeys can control server reads.
-      if (worker)
-        proxy = await startWorkerProxy(await worker.ready, {
+        // Next.js reaches the Worker through a proxy, so journeys can control server reads.
+        proxy = await startWorkerProxy(worker.url, {
           onError: (line) => service.addLog(`${line}\n`),
         })
+      }
       const port = await freePort()
       const origin = `http://localhost:${port}`
       const expires = Math.floor(Date.now() / 1000) + 900
@@ -240,7 +214,6 @@ export const test = base.extend<{ journey: Journey; server: Server; app: App }>(
             })
         },
         async () => proxy?.close(),
-        async () => worker?.dispose(),
         async () => {
           if (clockFile) {
             await unlink(clockFile).catch((error) => {

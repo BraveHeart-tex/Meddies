@@ -8,7 +8,7 @@ export default defineConfig({
   testMatch: '*.spec.ts',
   outputDir: '.browser-artifacts',
   globalSetup: './tests/browser/global-setup.ts',
-  // Each test owns its Next.js server, port, in-memory D1 and clock file, so spec files run in
+  // Each test owns its Next.js server, port, emptied D1 and clock file, so spec files run in
   // parallel locally and in CI. After the flake fixes, three workers were fastest with no
   // failures in the repeated 2/3-worker trial (#245). Dev mode shares the .next/dev lock.
   workers: process.env.MEDDIES_BROWSER_DEV === '1' ? 1 : 3,
