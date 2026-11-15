@@ -127,7 +127,6 @@ test('the daily routine runs from Today through History to sign out', async ({ p
 
   await test.step('a Not logged row opens with no outcome chosen', async () => {
     await doseTrigger(ironRow, iron).click()
-    await expect(dialog.getByText('Nothing is recorded until you choose and save.')).toBeVisible()
     await expect(dialog.getByRole('button', { name: 'Choose what happened' })).toBeDisabled()
   })
 
@@ -212,7 +211,6 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await doseTrigger(pastIron, iron).click()
     await expect(dialog).toContainText(iron)
     await expect(dialog).toContainText('08:00')
-    await expect(dialog.getByText('Nothing is recorded until you choose and save.')).toBeVisible()
     await expect(dialog.getByRole('button', { name: 'Choose what happened' })).toBeDisabled()
     await dialog.getByRole('button', { name: 'Close dose details' }).click()
     await expectFocusReturned(pastIron)

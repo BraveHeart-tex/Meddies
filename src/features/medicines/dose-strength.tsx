@@ -28,11 +28,9 @@ export function DoseStrength({
   medicine,
   takenAt,
   original,
-  scheduled = false,
 }: {
   medicine: Medicine
   takenAt: string | null
-  scheduled?: boolean
   original?: StrengthSnapshot & { takenAt: string }
 }) {
   if (!takenAt || !medicine.strengthRevisions) return null
@@ -41,11 +39,9 @@ export function DoseStrength({
   if (!period) return null
   return (
     <p role="status" className="text-body-sm text-muted-foreground">
-      Strength to save:{' '}
-      <strong className="text-foreground">{period.strength ?? 'No strength entered'}</strong>.
-      {(keeping ? original.strengthRevisionId : 'id' in period ? period.id : undefined) !==
-        medicine.currentStrengthRevisionId &&
-        ` This is an earlier strength period.${scheduled ? ' Scheduled time stays the same.' : ''}`}
+      This dose will use{' '}
+      <strong className="text-foreground">{period.strength ?? 'No strength entered'}</strong>, based
+      on the time taken.
     </p>
   )
 }

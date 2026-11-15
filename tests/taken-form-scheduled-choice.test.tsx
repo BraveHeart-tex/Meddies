@@ -19,7 +19,7 @@ const dose: DoseOccurrence = {
 const beforeTheMinute = '2026-11-05T05:59:00.000Z'
 const duringTheMinute = '2026-11-05T06:00:30.000Z'
 const afterTheMinute = '2026-11-05T06:01:00.000Z'
-const earlyAlert = 'This dose is scheduled for 09:00. Saving now records it early.'
+const earlyAlert = 'Saving now records an early dose.'
 
 function renderForm(serverNow: string, restore?: Parameters<typeof TakenForm>[0]['restore']) {
   const client = createQueryClient()

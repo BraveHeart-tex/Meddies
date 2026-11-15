@@ -673,7 +673,7 @@ describe('recording a dose', () => {
     await user.click(within(dialog).getByRole('button', { name: 'I skipped it' }))
     expect(within(dialog).getByRole('group', { name: 'Skip this dose' })).toBeVisible()
     expect(within(dialog).getByRole('group', { name: 'Skip Morning Tablet' })).toHaveTextContent(
-      'Skip Morning Tablet, scheduled for 09:00? No time or amount is saved.',
+      'Skip this dose?',
     )
     await user.click(within(dialog).getByRole('button', { name: 'I took it' }))
     expect(
@@ -742,7 +742,7 @@ describe('recording a dose', () => {
     await doses()
     await user.click(screen.getByRole('button', { name: /^Review dose for Morning Tablet/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Morning Tablet' })
-    expect(within(dialog).getByText('Skipped. Nothing recorded as taken.')).toBeVisible()
+    expect(within(dialog).getByText('Skipped.')).toBeVisible()
     const change = within(dialog).getByRole('button', {
       name: 'I took it instead, Morning Tablet at 09:00',
     })

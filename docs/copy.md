@@ -104,6 +104,9 @@ Say what happened, what is safe, and what to do next.
 
 The target warmth.
 
+Skipped confirmation asks “Skip this dose?”; keep explicit result buttons. Dose strength
+disclosure names the strength based on the Taken time.
+
 | Instead of                                                       | Write                                                                                       |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | No doses scheduled for today.                                    | No doses scheduled today                                                                    |

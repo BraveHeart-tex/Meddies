@@ -365,9 +365,6 @@ export function DoseActions({
         )}
         {choosing && editor === null && (
           <div className="flex flex-col gap-4.5">
-            <p className="py-1.5 text-center text-body-sm text-muted-foreground">
-              Nothing is recorded until you choose and save.
-            </p>
             <div className="flex flex-col gap-1.5">
               <Button type="button" size="drawer" className="w-full" disabled>
                 Choose what happened

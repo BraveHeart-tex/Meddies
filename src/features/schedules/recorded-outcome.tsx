@@ -16,8 +16,7 @@ export function RecordedOutcome({
   unit: DoseUnit
   today: string
 }) {
-  if (dose.status === 'Skipped')
-    return <p className="font-extrabold">Skipped. Nothing recorded as taken.</p>
+  if (dose.status === 'Skipped') return <p className="font-extrabold">Skipped.</p>
   const taken = istanbulDate(new Date(dose.record.takenAt))
   const due = istanbulDate(new Date(dose.dueAt))
   return (

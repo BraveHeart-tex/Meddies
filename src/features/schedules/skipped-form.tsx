@@ -4,7 +4,6 @@ import { useEffect, useId, useRef, type KeyboardEvent } from 'react'
 import { InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { formatTime } from '@/lib/calendar-date'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import type { Medicine } from '@/features/medicines/contract'
 import { saveMessages } from '@/lib/save-messages'
@@ -62,10 +61,7 @@ export function SkippedForm({
       <div role="group" aria-label={`Skip ${medicine.label}`} className="flex flex-col gap-4.5">
         <Alert className="[overflow-wrap:anywhere]">
           <InfoIcon aria-hidden="true" />
-          <AlertDescription>
-            Skip {medicine.label}, scheduled for {formatTime(dose.dueAt)}? No time or amount is
-            saved.
-          </AlertDescription>
+          <AlertDescription>Skip this dose?</AlertDescription>
         </Alert>
         {!saving && (
           <DoseSaveProblem

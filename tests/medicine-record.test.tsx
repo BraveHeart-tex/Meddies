@@ -201,9 +201,13 @@ test('scheduled Taken disclosure follows chosen time and keeps a saved equality 
     </QueryClientProvider>,
   )
   const user = userEvent.setup()
-  expect(screen.getByRole('status')).toHaveTextContent('Strength to save: 400 mg')
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'This dose will use 400 mg, based on the time taken.',
+  )
   await user.click(screen.getByRole('button', { name: 'At 08:00' }))
-  expect(screen.getByRole('status')).toHaveTextContent('Strength to save: 200 mg')
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'This dose will use 200 mg, based on the time taken.',
+  )
   expect(screen.getByText(/Same as scheduled/)).toBeVisible()
 })
 
@@ -236,9 +240,13 @@ test('Unscheduled disclosure updates from an earlier period to Now before saving
     </QueryClientProvider>,
   )
   const user = userEvent.setup()
-  expect(screen.getByRole('status')).toHaveTextContent('Strength to save: 200 mg')
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'This dose will use 200 mg, based on the time taken.',
+  )
   await user.click(screen.getByRole('button', { name: /Now/ }))
-  expect(screen.getByRole('status')).toHaveTextContent('Strength to save: 400 mg')
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'This dose will use 400 mg, based on the time taken.',
+  )
   await user.click(screen.getByRole('button', { name: 'Save changes' }))
   await waitFor(() =>
     expect(onSubmit).toHaveBeenCalledWith(
@@ -484,9 +492,13 @@ test('a scheduled correction retaining its Taken minute keeps the saved strength
       </SchedulingClockProvider>
     </QueryClientProvider>,
   )
-  expect(screen.getByRole('status')).toHaveTextContent('Strength to save: 200 mg')
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'This dose will use 200 mg, based on the time taken.',
+  )
   await userEvent.setup().click(screen.getByRole('button', { name: /Now/ }))
-  expect(screen.getByRole('status')).toHaveTextContent('Strength to save: 400 mg')
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'This dose will use 400 mg, based on the time taken.',
+  )
 })
 
 function ReadScreen() {

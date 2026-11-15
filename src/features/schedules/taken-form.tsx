@@ -216,9 +216,7 @@ export function TakenForm({
           {mode !== 'edit' && beforeScheduled && (
             <Alert>
               <InfoIcon aria-hidden="true" />
-              <AlertDescription>
-                This dose is scheduled for {formatTime(dose.dueAt)}. Saving now records it early.
-              </AlertDescription>
+              <AlertDescription>Saving now records an early dose.</AlertDescription>
             </Alert>
           )}
           <FieldGroup className="gap-4.5">
@@ -328,7 +326,6 @@ export function TakenForm({
             />
           </FieldGroup>
           <DoseStrength
-            scheduled
             medicine={medicine}
             takenAt={takenAt}
             original={mode === 'edit' && dose.status === 'Taken' ? dose.record : undefined}
