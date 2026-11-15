@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test'
+import { browserUse } from './scripts/browser-config.mjs'
 
 // Browser journeys against the production build. Run in CI's Journeys job after its
 // Turbopack build; opt-in locally via pnpm test:browser:build, not part of verify:local.
@@ -19,7 +20,7 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 5_000 },
   use: {
-    browserName: 'chromium',
+    ...browserUse,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     // Video cost every test and context close; the trace already holds failure screenshots.

@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 // Captures design lab frames for review: one normal-text 402x874 PNG plus one JSON summary
 // per frame, with the Next dev overlay hidden. Exits non-zero on horizontal overflow or a
-// console error. Runs its own next dev, so stop pnpm dev first.
+// console error. Probes the configured browser before builds or services; setup stays explicit.
+// Runs its own next dev, so stop pnpm dev first.
 // Usage: pnpm lab:capture <slug-prefix> [--out <dir>]   e.g. pnpm lab:capture 241-
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import * as playwright from '@playwright/test'
+import { browserUse } from './browser-config.mjs'
 import { devServerError } from './dev-server.mjs'
 
 const [prefix, flag, dir] = process.argv.slice(2)
@@ -23,6 +26,25 @@ const out = dir ? resolve(dir) : join(tmpdir(), 'meddies-lab', prefix)
 function run(command, args, env = process.env) {
   const { status } = spawnSync(command, args, { stdio: 'inherit', env })
   return status ?? 1
+}
+
+try {
+  const browser = await playwright[browserUse.browserName].launch({
+    ...browserUse.launchOptions,
+    headless: browserUse.headless,
+  })
+  try {
+    await browser.newPage()
+  } finally {
+    await browser.close()
+  }
+} catch (error) {
+  console.error(
+    '[lab:capture] Chromium preflight failed. Set up the browser and system libraries with ' +
+      '`pnpm exec playwright install --with-deps chromium`, then retry.\n' +
+      String(error),
+  )
+  process.exit(1)
 }
 
 // Global setup expects the Worker bundle even when no frame reads storage.

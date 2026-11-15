@@ -122,6 +122,11 @@ Capture frames for review by slug prefix, with `pnpm dev` stopped:
 pnpm lab:capture 241-            # or --out <dir>; prints the capture folder
 ```
 
+Before building the Worker or starting services, the command launches and closes a browser
+probe using the capture runner's Chromium configuration. If browser setup is missing, it exits
+with the launch error and a setup command. Install explicitly with
+`pnpm exec playwright install --with-deps chromium`; capture never installs dependencies.
+
 It writes one normal-text `<slug>-402x874.png` (screen-size) and `<slug>.json` per
 frame, with one entry in the existing `captures` array. It hides the Next dev overlay and
 exits non-zero on horizontal overflow or a console error. The design-ticket skill
