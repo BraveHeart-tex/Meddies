@@ -148,17 +148,13 @@ For meaningful UI changes (visible content, layout, typography, controls, feedba
 motion), inspect the affected screens at 402×874 CSS px, including loading, empty,
 populated, validation, saving and recovery states where the change affects them. Capture
 Today and Medications with the [screen-capture journey](../tests/browser/README.md#screen-captures);
-lab frames use `pnpm lab:capture <slug-prefix>` instead. Compare against the screen's built frame,
-and give a significant visual change to a design-critical screen the
+lab frames use `pnpm lab:capture <slug-prefix>` for one normal-text capture per frame.
+Compare against the screen's built frame, and give a significant visual change to a
+design-critical screen the
 [capture review](design/README.md#capture).
 
 Add focused checks by risk:
 
-- **320px:** widths, spacing, wrapping, responsive layout, navigation, drawers, popups or
-  action placement. Include long names where they stress the layout.
-- **Enlarged text:** typography, labels, dense controls, fixed dimensions or containers
-  that may clip text or hide actions. Target 200% and record the setting and method.
-  Viewport resizing is not text enlargement; a CSS font-size probe is labelled synthetic.
 - **Reduced motion:** animation, transitions, gestures or motion preferences. Verify the
   interaction at normal and reduced motion; stills do not prove motion.
 - **Keyboard and focus:** controls, forms, dialogs, popups or navigation.

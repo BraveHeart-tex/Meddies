@@ -13,11 +13,11 @@ Bora approved **Direction {{A}}, {{name}}** after comparing three directions ({{
 **Evidence**
 
 - Commit {{sha}}, pushed to main: `pnpm verify:local` passed.
-- `pnpm lab:capture {{n}}-`: all {{count}} frames at 402x874 and 320x740 with no horizontal
+- `pnpm lab:capture {{n}}-`: all {{count}} frames at normal-text 402x874 with no horizontal
   overflow and no console errors.
 - {{Tests added for any non-lab logic, such as a preview helper.}}
 
-**Not verified:** {{device, VoiceOver, real keyboard, iOS keyboard over pinned controls.}}
+**Not verified:** text enlargement; {{device, VoiceOver, real keyboard, iOS keyboard over pinned controls.}}
 
 **Open for #{{build}}:** {{questions the build ticket must settle}}
 

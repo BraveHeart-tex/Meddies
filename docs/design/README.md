@@ -122,9 +122,10 @@ Capture frames for review by slug prefix, with `pnpm dev` stopped:
 pnpm lab:capture 241-            # or --out <dir>; prints the capture folder
 ```
 
-It writes `<slug>-402x874.png` (screen-size), `<slug>-320x740.png` and `<slug>.json` per
-frame, hides the Next dev overlay, and exits non-zero on horizontal overflow or a console
-error. The design-ticket skill (`.agents/skills/design-ticket/`) runs the full process,
+It writes one normal-text `<slug>-402x874.png` (screen-size) and `<slug>.json` per
+frame, with one entry in the existing `captures` array. It hides the Next dev overlay and
+exits non-zero on horizontal overflow or a console error. The design-ticket skill
+(`.agents/skills/design-ticket/`) runs the full process,
 including attaching captures to the issue. Choose additional checks by risk under
 [verification](../verification.md#visual-verification). The deeper `109·L1` shell geometry
 check stays opt-in:

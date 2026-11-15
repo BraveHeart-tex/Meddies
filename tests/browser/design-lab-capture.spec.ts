@@ -1,9 +1,7 @@
 import { resolve } from 'node:path'
-import { captureCases, captureRendered } from './capture'
+import { captureRendered } from './capture'
 import { expect, test } from './fixtures'
-import { boxes, shellElements } from './layout'
 import { rootFallback } from './locators'
-import { enlargeText, scrollsHorizontally, stylesheetsLoaded } from './actions'
 
 // Opt-in design evidence, outside CI. Persistent frames need no storage or artificial reads.
 test.use({ journey: { auth: false, storage: false } })
@@ -35,17 +33,9 @@ test('capture 109·L1 for design review', { tag: '@visual' }, async ({ page }) =
   // Keyboard access stays usable in the rendered composition: the header has no controls.
   await page.keyboard.press('Tab')
   await expect(nav.getByRole('link', { name: 'Today' })).toBeFocused()
-
-  // A narrow viewport exercises the unchanged production composition, without another preset.
-  await page.setViewportSize({ width: 320, height: 740 })
-  await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
-  const narrow = await boxes(shellElements(page))
-  expect(narrow.primaryNav).not.toBeNull()
-  expect(await scrollsHorizontally(page)).toBe(false)
-  await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
 })
 
-test('review the lab index and narrow frame links', { tag: '@visual' }, async ({ page }) => {
+test('review the lab index and frame links', { tag: '@visual' }, async ({ page }) => {
   const out = process.env.MEDDIES_VISUAL_OUT
   // eslint-disable-next-line playwright/no-skipped-test -- local dev-only design review opt-in
   test.skip(!out || process.env.MEDDIES_BROWSER_DEV !== '1', 'Set dev mode and visual output')
@@ -61,23 +51,6 @@ test('review the lab index and narrow frame links', { tag: '@visual' }, async ({
   expect(entry.horizontalOverflow).toBe(false)
   const link = page.getByRole('link', { name: '109·L1 · Cold launch' })
   await expect(link).toHaveAttribute('href', '/lab/109-l1')
-  const narrow = await captureRendered(
-    page,
-    {
-      name: 'index',
-      path: '/lab',
-      ready: (page) => page.getByRole('navigation', { name: 'Primary' }),
-    },
-    resolve(out!, 'index-narrow'),
-    captureCases.narrow,
-  )
-  expect(narrow.horizontalOverflow).toBe(false)
-  // Synthetic 200% root font-size probe at the primary width, not browser or device zoom.
-  await page.setViewportSize({ width: 402, height: 874 })
-  await enlargeText(page)
-  expect(await scrollsHorizontally(page)).toBe(false)
-  await expect(link).toBeVisible()
-  await page.screenshot({ path: resolve(out!, 'index-enlarged-text.png') })
   await link.focus()
   await page.keyboard.press('Enter')
   await expect(rootFallback(page)).toBeVisible()

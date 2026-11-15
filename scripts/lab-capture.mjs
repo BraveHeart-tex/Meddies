@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Captures design lab frames for review: PNGs at 402x874 and 320x740 plus one JSON summary
+// Captures design lab frames for review: one normal-text 402x874 PNG plus one JSON summary
 // per frame, with the Next dev overlay hidden. Exits non-zero on horizontal overflow or a
 // console error. Runs its own next dev, so stop pnpm dev first.
 // Usage: pnpm lab:capture <slug-prefix> [--out <dir>]   e.g. pnpm lab:capture 241-
