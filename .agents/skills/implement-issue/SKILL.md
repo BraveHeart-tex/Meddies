@@ -11,10 +11,22 @@ pushed to main, evidence posted, issue closed.
 
 Work **lean** throughout:
 
-- Read each doc once: the matching section by heading or `rg`, never whole-file bundles.
-- Send verbose command output to a temp file (`log=$(mktemp)`); read only failures and the
-  final summary.
-- Run the smallest relevant check while iterating; broad verification runs once, at the end.
+- Read only cited documentation sections using `rg` and bounded line ranges. Do not
+  concatenate documentation files. Read complete source files only when necessary to
+  understand or modify them; never reread unchanged content already in context.
+- Batch independent read-only inspections when useful, but cap their combined output.
+- Send verbose command output to a temp file (`log=$(mktemp)`); read only failures and
+  the final summary.
+- Run the smallest relevant check while iterating; broad verification runs at the end.
+- Preflight environment requirements once before implementation when the issue needs
+  local servers, browser tests, or external services.
+- On `EPERM`, `EACCES`, blocked port binding, or sandbox denial, request escalation once
+  if supported. Otherwise record the blocker and stop the affected verification. Never
+  retry an unchanged blocked command or modify application code to work around the
+  execution environment. Never ship or close with required verification blocked.
+- For long-running commands, use a reasonable initial wait and subsequent waits of
+  10-30 seconds instead of polling every second. Do independent work while a command
+  runs when safe; do not poll until its result is needed.
 - One review, done by you. Spawn parallel reviewers or subagents only when the user asks.
 
 ## Steps
@@ -43,12 +55,12 @@ Work **lean** throughout:
 4. **Build.** Test-first only for the new tests step 3 requires (use the `tdd` skill).
    While iterating, run `pnpm test:related <changed files>`, `pnpm typecheck` and
    `pnpm exec eslint <changed JS/TS files>` as relevant; check changed-file lint before
-   broad verification. Work that touches a
-   design-critical screen follows [built frames](../../../docs/design/README.md#built-frames):
-   a design's build ticket moves its frames for design-critical screens to `built/` and
-   deletes the rest, and a screen change updates its [outline](../../../docs/design/README.md#outlines).
-   A significant visual change runs `pnpm lab:capture` for those frames before building and
-   again after. For visual checks, first use the existing
+   broad verification. Work that touches a design-critical screen follows
+   [built frames](../../../docs/design/README.md#built-frames): a design's build ticket
+   moves its frames for design-critical screens to `built/` and deletes the rest, and a
+   screen change updates its [outline](../../../docs/design/README.md#outlines).
+   A significant visual change runs `pnpm lab:capture` for those frames before building
+   and again after. For visual checks, first use the existing
    [capture commands](../../../docs/design/README.md#capture),
    [screen captures](../../../tests/browser/README.md#screen-captures) and relevant browser
    fixtures. Extend an opt-in visual case when interaction coverage is missing; use an
@@ -58,13 +70,15 @@ Work **lean** throughout:
 
 5. **Review.** Read `git diff $base` against two axes: the standards in AGENTS.md and the
    docs from step 2, and each acceptance criterion. Fix what you accept.
-   _Done when_ every criterion points to code plus its named evidence, and every finding is
-   fixed or rejected with a one-line reason.
+   _Done when_ every criterion points to code plus its named evidence, and every finding
+   is fixed or rejected with a one-line reason.
 
-6. **Verify.** Run `pnpm verify:local >"$log" 2>&1` once, then read the summary. On
-   failure, fix, rerun only the failed cases until they pass, then run `pnpm verify:local`
-   once more.
-   _Done when_ `pnpm verify:local` exits 0 on the final code.
+6. **Verify.** For code changes, run `pnpm verify:local >"$log" 2>&1` once, then read the
+   summary. On failure, fix the cause, rerun only the failed cases until they pass, then
+   run `pnpm verify:local` once more. For docs-only changes, run `pnpm format:check` instead.
+   An environment blocker is not a passing result; stop before shipping if required
+   verification cannot complete.
+   _Done when_ the required final verification exits 0 on the final code or docs.
 
 7. **Ship.** Commit per [commits](../../../docs/commits.md) and push to main. Tick each
    criterion box in the issue body (`gh issue edit <n> --body-file`), post the
