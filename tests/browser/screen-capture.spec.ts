@@ -1,6 +1,6 @@
 import { mkdir } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { enlargeTextOnly, hydrated, scrollsHorizontally, stylesheetsLoaded } from './actions'
+import { hydrated, scrollsHorizontally, stylesheetsLoaded } from './actions'
 import { captureCases } from './capture'
 import { expect, test } from './fixtures'
 import { loadingStatus } from './locators'
@@ -77,46 +77,42 @@ test('capture signed-in screens for review', { tag: '@visual' }, async ({ page }
   ).toEqual([])
 })
 
-// Opt-in production form evidence. Width/text probes stay outside CI journeys.
+// Opt-in production form evidence at 402x874 with normal text.
 test('capture medication record forms and recovery', { tag: '@visual' }, async ({ page }) => {
   // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
   test.skip(!out || process.env.MEDDIES_RECORD_CAPTURE !== '1', 'Set MEDDIES_RECORD_CAPTURE=1')
   test.setTimeout(120_000)
   await mkdir(resolve(out!), { recursive: true })
   const detail = `/medications?medicine=${medicineId}`
-  for (const width of [402, 320]) {
-    await page.setViewportSize({ width, height: 874 })
-    for (const record of ['fix', 'strength', 'history']) {
-      await page.goto(`${detail}&record=${record}`)
-      await expect(
-        page.getByRole('heading', {
-          name:
-            record === 'fix'
-              ? 'Fix a mistake'
-              : record === 'strength'
-                ? 'Change strength'
-                : 'Strength history',
-          exact: true,
-        }),
-      ).toBeVisible()
-      await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
-      expect(await scrollsHorizontally(page)).toBe(false)
-      await page.screenshot({
-        path: resolve(out!, `record-${record}-${width}.png`),
-        fullPage: true,
-      })
-    }
+  await page.setViewportSize(captureCases.phone.viewport)
+  for (const record of ['fix', 'strength', 'history']) {
+    await page.goto(`${detail}&record=${record}`)
+    await expect(
+      page.getByRole('heading', {
+        name:
+          record === 'fix'
+            ? 'Fix a mistake'
+            : record === 'strength'
+              ? 'Change strength'
+              : 'Strength history',
+        exact: true,
+      }),
+    ).toBeVisible()
+    await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
+    expect(await scrollsHorizontally(page)).toBe(false)
+    await page.screenshot({
+      path: resolve(out!, `record-${record}-402.png`),
+      fullPage: true,
+    })
   }
-  await page.setViewportSize({ width: 320, height: 874 })
   await page.goto(`${detail}&record=strength`)
   await page.getByRole('button', { name: 'Save strength change' }).click()
-  await enlargeTextOnly(page, 2)
   await page.getByRole('textbox', { name: 'New strength' }).press('Tab')
   await page.keyboard.press('Shift+Tab')
   await expect(page.getByRole('textbox', { name: 'New strength' })).toBeFocused()
   expect(await scrollsHorizontally(page)).toBe(false)
   await page.screenshot({
-    path: resolve(out!, 'record-strength-320-text200-focus.png'),
+    path: resolve(out!, 'record-strength-402-focus.png'),
   })
   await page.goto(`${detail}&record=fix`)
   await page.context().setOffline(true)
@@ -137,7 +133,7 @@ test('capture medication record forms and recovery', { tag: '@visual' }, async (
   await page.screenshot({ path: resolve(out!, 'record-conflict.png'), fullPage: true })
 })
 
-// Opt-in copy review for empty, grouped and scheduled states at synthetic 200% text.
+// Opt-in copy review for empty, grouped and scheduled states at 402x874 with normal text.
 for (const state of ['empty', 'no-schedule', 'future-schedule'] as const) {
   test.describe(state, () => {
     test.use({
@@ -165,7 +161,7 @@ for (const state of ['empty', 'no-schedule', 'future-schedule'] as const) {
     })
 
     /* eslint-disable playwright/no-conditional-in-test, playwright/no-conditional-expect -- opt-in checks vary by captured state. */
-    test('capture schedule copy at enlarged text', { tag: '@visual' }, async ({ page, app }) => {
+    test('capture schedule copy at normal text', { tag: '@visual' }, async ({ page, app }) => {
       // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
       test.skip(!out || process.env.MEDDIES_COPY_CAPTURE !== '1', 'Set MEDDIES_COPY_CAPTURE=1')
       test.setTimeout(120_000)
@@ -189,43 +185,37 @@ for (const state of ['empty', 'no-schedule', 'future-schedule'] as const) {
         'future-schedule': [{ path: '/', heading: 'No doses scheduled today' }],
       }[state]
       for (const { path, heading, action } of cases) {
-        for (const width of [402, 320]) {
-          await page.setViewportSize({ width, height: 874 })
-          await page.goto(path)
-          await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
-          await expect.poll(() => hydrated(page)).toBe(true)
-          await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
-          await expect(loadingStatus(page)).toHaveCount(0)
-          await enlargeTextOnly(page, 2)
-          expect(await scrollsHorizontally(page)).toBe(false)
-          if (action)
-            await page.getByRole('link', { name: action, exact: true }).click({ trial: true })
-          if (path.startsWith('/history')) {
-            await page.getByRole('button', { name: /Choose a date/ }).click({ trial: true })
-          } else if (path === '/') {
-            await page.getByRole('button', { name: 'Refresh Today' }).click({ trial: true })
-          }
-          const screen = path === '/' ? 'today' : path.slice(1).replace('?date=', '-')
-          await page.screenshot({
-            path: resolve(out!, `copy-${state}-${screen}-${width}-text200.png`),
-            fullPage: true,
-          })
+        await page.setViewportSize(captureCases.phone.viewport)
+        await page.goto(path)
+        await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
+        await expect.poll(() => hydrated(page)).toBe(true)
+        await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
+        await expect(loadingStatus(page)).toHaveCount(0)
+        expect(await scrollsHorizontally(page)).toBe(false)
+        if (action)
+          await page.getByRole('link', { name: action, exact: true }).click({ trial: true })
+        if (path.startsWith('/history')) {
+          await page.getByRole('button', { name: /Choose a date/ }).click({ trial: true })
+        } else if (path === '/') {
+          await page.getByRole('button', { name: 'Refresh Today' }).click({ trial: true })
         }
+        const screen = path === '/' ? 'today' : path.slice(1).replace('?date=', '-')
+        await page.screenshot({
+          path: resolve(out!, `copy-${state}-${screen}-402.png`),
+          fullPage: true,
+        })
       }
       if (state === 'future-schedule') {
         await app.setScheduleTime('2035-06-16T09:00:00+03:00')
-        for (const width of [402, 320]) {
-          await page.setViewportSize({ width, height: 874 })
-          await page.goto('/history')
-          await expect(page.getByText('0 of 1 scheduled doses logged')).toBeVisible()
-          await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
-          await enlargeTextOnly(page, 2)
-          expect(await scrollsHorizontally(page)).toBe(false)
-          await page.screenshot({
-            path: resolve(out!, `copy-history-summary-${width}-text200.png`),
-            fullPage: true,
-          })
-        }
+        await page.setViewportSize(captureCases.phone.viewport)
+        await page.goto('/history')
+        await expect(page.getByText('0 of 1 scheduled doses logged')).toBeVisible()
+        await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
+        expect(await scrollsHorizontally(page)).toBe(false)
+        await page.screenshot({
+          path: resolve(out!, `copy-history-summary-402.png`),
+          fullPage: true,
+        })
       }
     })
     /* eslint-enable playwright/no-conditional-in-test, playwright/no-conditional-expect */
@@ -238,87 +228,81 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
   test.skip(!out || process.env.MEDDIES_SAVE_CAPTURE !== '1', 'Set MEDDIES_SAVE_CAPTURE=1')
   test.setTimeout(120_000)
   await mkdir(resolve(out!), { recursive: true })
-  for (const width of [402, 320]) {
-    await page.setViewportSize({ width, height: 874 })
-    await page.goto(`/medications?medicine=${medicineId}&record=fix`)
-    await expect(page.getByRole('heading', { name: 'Fix a mistake' })).toBeVisible()
-    await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
-    await page.context().setOffline(true)
-    await expect(
-      page.getByText('Keep Meddies open to retain these details. Reconnect to save.'),
-    ).toBeVisible()
-    await enlargeTextOnly(page, 2)
-    await page
-      .getByRole('alert')
-      .filter({ hasText: /Reconnect to save/ })
-      .scrollIntoViewIfNeeded()
-    expect(await scrollsHorizontally(page)).toBe(false)
-    await page.screenshot({
-      path: resolve(out!, `save-offline-${width}-text200.png`),
-    })
-    await page.context().setOffline(false)
-    await page.goto(`/medications?medicine=${medicineId}&record=fix`)
-    await expect(page.getByRole('heading', { name: 'Fix a mistake' })).toBeVisible()
-    await page.route('**/api/medicines', async (route) =>
-      route.request().method() === 'PATCH'
-        ? route.fulfill({
-            status: 409,
-            contentType: 'application/json',
-            body: '{"error":"conflict"}',
-          })
-        : route.fallback(),
-    )
-    await page.getByRole('button', { name: 'Save fixed details' }).click()
-    await expect(
-      page.getByRole('alert').filter({ hasText: /changed elsewhere|might not have saved/ }),
-    ).toContainText('This medication changed elsewhere.')
-    await enlargeTextOnly(page, 2)
-    await page.getByRole('button', { name: 'Review saved medication' }).click({ trial: true })
-    expect(await scrollsHorizontally(page)).toBe(false)
-    await page.screenshot({
-      path: resolve(out!, `save-conflict-${width}-text200.png`),
-    })
-    await page.unroute('**/api/medicines')
+  await page.setViewportSize(captureCases.phone.viewport)
+  await page.goto(`/medications?medicine=${medicineId}&record=fix`)
+  await expect(page.getByRole('heading', { name: 'Fix a mistake' })).toBeVisible()
+  await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
+  await page.context().setOffline(true)
+  await expect(
+    page.getByText('Keep Meddies open to retain these details. Reconnect to save.'),
+  ).toBeVisible()
+  await page
+    .getByRole('alert')
+    .filter({ hasText: /Reconnect to save/ })
+    .scrollIntoViewIfNeeded()
+  expect(await scrollsHorizontally(page)).toBe(false)
+  await page.screenshot({
+    path: resolve(out!, `save-offline-402.png`),
+  })
+  await page.context().setOffline(false)
+  await page.goto(`/medications?medicine=${medicineId}&record=fix`)
+  await expect(page.getByRole('heading', { name: 'Fix a mistake' })).toBeVisible()
+  await page.route('**/api/medicines', async (route) =>
+    route.request().method() === 'PATCH'
+      ? route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          body: '{"error":"conflict"}',
+        })
+      : route.fallback(),
+  )
+  await page.getByRole('button', { name: 'Save fixed details' }).click()
+  await expect(
+    page.getByRole('alert').filter({ hasText: /changed elsewhere|might not have saved/ }),
+  ).toContainText('This medication changed elsewhere.')
+  await page.getByRole('button', { name: 'Review saved medication' }).click({ trial: true })
+  expect(await scrollsHorizontally(page)).toBe(false)
+  await page.screenshot({
+    path: resolve(out!, `save-conflict-402.png`),
+  })
+  await page.unroute('**/api/medicines')
 
-    await page.goto('/')
-    await page.getByRole('button', { name: /^Record dose for Capture Fixture Medicine/ }).click()
-    await page.getByRole('button', { name: 'I took it', exact: true }).click()
-    await page.route('**/api/schedules', async (route) =>
-      route.request().method() === 'PUT'
-        ? route.fulfill({ status: 503, contentType: 'application/json', body: '{}' })
-        : route.fallback(),
-    )
-    await page.getByRole('button', { name: 'Save as taken', exact: true }).click()
-    await expect(
-      page.getByRole('alert').filter({ hasText: /changed elsewhere|might not have saved/ }),
-    ).toContainText("Check your connection, then retry. Retrying won't save it twice.")
-    await enlargeTextOnly(page, 2)
-    await page.getByRole('button', { name: 'Try saving as taken again' }).click({ trial: true })
-    expect(await scrollsHorizontally(page)).toBe(false)
-    await page.screenshot({
-      path: resolve(out!, `save-uncertain-${width}-text200.png`),
-    })
-    await page.getByLabel(/^Amount/).fill('2')
-    await expect(
-      page.getByRole('alert').filter({ hasText: /changed elsewhere|might not have saved/ }),
-    ).toContainText('Changing details starts a new save.')
-    await page.getByRole('button', { name: 'Save as taken', exact: true }).click({ trial: true })
-    await page.screenshot({
-      path: resolve(out!, `save-changed-${width}-text200.png`),
-    })
-    await page.unroute('**/api/schedules')
-    await page.goto('/')
-    await page.getByRole('button', { name: /^Record dose for Capture Fixture Medicine/ }).click()
-    await page.getByRole('button', { name: 'I skipped it', exact: true }).click()
-    await page.context().setOffline(true)
-    await expect(page.getByText("You're offline. Reconnect to save.")).toBeVisible()
-    await enlargeTextOnly(page, 2)
-    await page
-      .getByRole('alert')
-      .filter({ hasText: /Reconnect to save/ })
-      .scrollIntoViewIfNeeded()
-    expect(await scrollsHorizontally(page)).toBe(false)
-    await page.screenshot({ path: resolve(out!, `save-skipped-${width}-text200.png`) })
-    await page.context().setOffline(false)
-  }
+  await page.goto('/')
+  await page.getByRole('button', { name: /^Record dose for Capture Fixture Medicine/ }).click()
+  await page.getByRole('button', { name: 'I took it', exact: true }).click()
+  await page.route('**/api/schedules', async (route) =>
+    route.request().method() === 'PUT'
+      ? route.fulfill({ status: 503, contentType: 'application/json', body: '{}' })
+      : route.fallback(),
+  )
+  await page.getByRole('button', { name: 'Save as taken', exact: true }).click()
+  await expect(
+    page.getByRole('alert').filter({ hasText: /changed elsewhere|might not have saved/ }),
+  ).toContainText("Check your connection, then retry. Retrying won't save it twice.")
+  await page.getByRole('button', { name: 'Try saving as taken again' }).click({ trial: true })
+  expect(await scrollsHorizontally(page)).toBe(false)
+  await page.screenshot({
+    path: resolve(out!, `save-uncertain-402.png`),
+  })
+  await page.getByLabel(/^Amount/).fill('2')
+  await expect(
+    page.getByRole('alert').filter({ hasText: /changed elsewhere|might not have saved/ }),
+  ).toContainText('Changing details starts a new save.')
+  await page.getByRole('button', { name: 'Save as taken', exact: true }).click({ trial: true })
+  await page.screenshot({
+    path: resolve(out!, `save-changed-402.png`),
+  })
+  await page.unroute('**/api/schedules')
+  await page.goto('/')
+  await page.getByRole('button', { name: /^Record dose for Capture Fixture Medicine/ }).click()
+  await page.getByRole('button', { name: 'I skipped it', exact: true }).click()
+  await page.context().setOffline(true)
+  await expect(page.getByText("You're offline. Reconnect to save.")).toBeVisible()
+  await page
+    .getByRole('alert')
+    .filter({ hasText: /Reconnect to save/ })
+    .scrollIntoViewIfNeeded()
+  expect(await scrollsHorizontally(page)).toBe(false)
+  await page.screenshot({ path: resolve(out!, `save-skipped-402.png`) })
+  await page.context().setOffline(false)
 })

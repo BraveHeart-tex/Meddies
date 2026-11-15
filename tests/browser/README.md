@@ -170,11 +170,21 @@ Medications (`/medications…`); the run fails on horizontal overflow.
 MEDDIES_VISUAL_OUT=/tmp/meddies-screens MEDDIES_SCREENS='/,/medications,/medications?medicine=00000000-0000-4000-8000-0000000d0001' pnpm test:browser:visual screen-capture
 ```
 
-For Today, Medications and History empty states and the History count, capture at
-402px and 320px with a synthetic 200% text-only probe:
+For Today, Medications and History empty states and the History count, capture each
+state once at 402x874 with normal text (9 screenshots named `copy-…-402.png`):
 
 ```sh
 MEDDIES_COPY_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-copy pnpm test:browser:visual screen-capture --grep "schedule copy"
+```
+
+Record forms include Fix a mistake, Change strength, Strength history, validation with
+keyboard focus, offline and conflict recovery (6 screenshots named `record-…`). Save
+feedback includes offline, conflict, Unconfirmed save, changed details and Skipped
+(5 screenshots named `save-…-402.png`). Both use normal text at 402x874 and retain their
+interaction assertions. Run all three affected capture groups in one invocation:
+
+```sh
+MEDDIES_RECORD_CAPTURE=1 MEDDIES_COPY_CAPTURE=1 MEDDIES_SAVE_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-recovery pnpm test:browser:visual screen-capture --grep "record forms|schedule copy|save recovery"
 ```
 
 `cozy-visual` saves design-review screenshots at the running project's viewport; set
