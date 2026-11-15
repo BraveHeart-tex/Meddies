@@ -16,11 +16,11 @@
       - text: Times
       - text: Istanbul, 24-hour
   - paragraph
-    - text: The same wherever your device is.
+    - text: Uses Istanbul time on every device.
   - button "Sign out"
   - status
   - paragraph
-    - text: Signs you out of Meddies in this browser. Your Google account and Meddies sessions on other devices stay signed in.
+    - text: Signs out this browser only. Google and other devices stay signed in.
 - navigation "Primary"
   - list
     - listitem

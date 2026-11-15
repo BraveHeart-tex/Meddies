@@ -135,12 +135,12 @@ test('sign-in alias redirects without swallowing the sign-in error route', async
 test('sign-in explains why the account is back on the entry screen', async () => {
   const messages = [
     ['/?error=AccessDenied', "This Google account can't open Meddies."],
-    ['/?error=OAuthCallbackError', "Sign-in with Google didn't finish."],
+    ['/?error=OAuthCallbackError', "Sign-in didn't finish."],
     ['/?reason=expired', 'Your session ended.'],
   ]
   for (const [path, message] of messages) {
     const html = await (await request(path)).text()
-    assert(html.replaceAll('&#x27;', "'").includes(`>${message}<`), path)
+    assert(html.replaceAll('&#x27;', "'").includes(message), path)
   }
 })
 

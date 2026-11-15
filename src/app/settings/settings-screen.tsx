@@ -29,8 +29,7 @@ export function SettingsScreen({ expires, now }: { expires: string; now: string 
     >
       <AuthControl signedIn />
       <p className="text-caption text-muted-foreground">
-        Signs you out of Meddies in this browser. Your Google account and Meddies sessions on other
-        devices stay signed in.
+        Signs out this browser only. Google and other devices stay signed in.
       </p>
     </SettingsFrame>
   )

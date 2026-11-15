@@ -16,7 +16,7 @@ export function SettingsFrame({ account, children }: { account: ReactNode; child
       <section className="space-y-5">
         <AppHeader title="Settings" />
         <SettingsGroup title="Account">{account}</SettingsGroup>
-        <SettingsGroup title="Time" note="The same wherever your device is.">
+        <SettingsGroup title="Time" note="Uses Istanbul time on every device.">
           <SettingsRow icon={Clock} label="Times">
             Istanbul, 24-hour
           </SettingsRow>

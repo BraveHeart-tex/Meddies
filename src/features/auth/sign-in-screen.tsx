@@ -34,7 +34,7 @@ export function SignInScreen({
     return () => cancelAnimationFrame(frame)
   }, [reason, error])
   const message = !configured
-    ? ['Sign-in is unavailable right now.', 'Nothing in Meddies has changed. Try again later.']
+    ? ['Sign-in is unavailable right now.']
     : failed
       ? ["Couldn't reach Google.", 'Check your connection and try again.']
       : error === 'AccessDenied'
@@ -43,7 +43,7 @@ export function SignInScreen({
             'Meddies is private to one approved account. Choose that account to continue.',
           ]
         : error
-          ? ["Sign-in with Google didn't finish.", 'Nothing in Meddies changed. Try again.']
+          ? ["Sign-in didn't finish."]
           : reason === 'expired'
             ? ['Your session ended.', "Changes you hadn't saved were cleared."]
             : reason === 'signed-out'
@@ -80,9 +80,8 @@ export function SignInScreen({
     <SignInFrame>
       <div className="flex flex-col gap-1.5">
         <h1 ref={heading} tabIndex={-1} className="text-display font-extrabold outline-none">
-          Good to see you
+          Sign in to Meddies
         </h1>
-        <p className="text-body-lg text-secondary-foreground">Sign in to see what&apos;s next.</p>
       </div>
       <div className="flex flex-col gap-3">
         {message && (
@@ -93,7 +92,9 @@ export function SignInScreen({
           >
             {info ? <Info aria-hidden="true" /> : <TriangleAlert aria-hidden="true" />}
             <AlertTitle aria-hidden={info || undefined}>{message[0]}</AlertTitle>
-            <AlertDescription aria-hidden={info || undefined}>{detail}</AlertDescription>
+            {detail && (
+              <AlertDescription aria-hidden={info || undefined}>{detail}</AlertDescription>
+            )}
             {info && <span className="sr-only">{announce ? `${message[0]} ${detail}` : ''}</span>}
           </Alert>
         )}

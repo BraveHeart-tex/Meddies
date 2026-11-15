@@ -110,6 +110,8 @@ Say what happened, what is safe, and what to do next.
 - Change words only, never layout, flow or behaviour. A confusing flow becomes its own ticket.
 - Rewrite existing strings. Add a new message only where a state gives no next step. Add no new
   greetings, encouragement or tips.
+- Sign-in uses a task heading without a greeting or subtitle. Keep one restrained greeting on
+  Today. Remove generic encouragement when changing copy while retaining natural warmth.
 - Helper text explains consequences rather than repeating labels.
 - Type helpers must not teach a later scheduling task.
 - Include an empty-state body only when it adds information beyond the heading and action.

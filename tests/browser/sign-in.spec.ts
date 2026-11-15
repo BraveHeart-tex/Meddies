@@ -1,9 +1,35 @@
 import { test, expect } from './fixtures'
+import { captureRendered } from './capture'
+import { scrollsHorizontally } from './actions'
 
 // Auth is synthetic; the Google response is replaced only after observing the submitted target.
 test.use({
   journey: { auth: true, storage: true, initialScheduleTime: '2035-06-15T12:00:00+03:00' },
 })
+
+test(
+  'sign-in copy at phone size @visual',
+  { tag: '@visual' },
+  async ({ page, context }, testInfo) => {
+    await context.clearCookies()
+    await page.goto('/')
+    const heading = page.getByRole('heading', { name: 'Sign in to Meddies', exact: true })
+    await expect(heading).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible()
+    const out = process.env.MEDDIES_VISUAL_OUT || testInfo.outputDir
+    const capture = await captureRendered(
+      page,
+      {
+        name: 'sign-in',
+        path: '/',
+        ready: (currentPage) => currentPage.getByRole('heading', { name: 'Sign in to Meddies' }),
+      },
+      out,
+    )
+    expect(capture.horizontalOverflow).toBe(false)
+    expect(await scrollsHorizontally(page)).toBe(false)
+  },
+)
 
 // Allowed reason: Back/Forward and history replacement through the sign-in round trip.
 test('signed-out entry replaces history and returns to History', async ({ page, context, app }) => {
@@ -13,7 +39,7 @@ test('signed-out entry replaces history and returns to History', async ({ page, 
   await page.goto('/not-a-page')
   await page.goto(destination)
   await expect(page).toHaveURL(`${app.origin}/?returnTo=${encodeURIComponent(destination)}`)
-  await expect(page.getByRole('heading', { name: 'Good to see you', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Sign in to Meddies', exact: true })).toBeVisible()
   await page.goBack()
   await expect(page).toHaveURL(`${app.origin}/not-a-page`)
   await page.goForward()
@@ -37,7 +63,7 @@ test('signed-out entry guards Medications and Settings', async ({ page, context,
       await page.goto(destination)
       await expect(page).toHaveURL(`${app.origin}/?returnTo=${encodeURIComponent(destination)}`)
       await expect(
-        page.getByRole('heading', { name: 'Good to see you', exact: true }),
+        page.getByRole('heading', { name: 'Sign in to Meddies', exact: true }),
       ).toBeVisible()
     })
   }
@@ -59,7 +85,7 @@ test('restricted retry keeps the Auth.js callback destination and requests the c
   await expect(page.getByRole('heading', { name: 'Synthetic Google' })).toBeVisible()
   await page.goto('/api/auth/error?error=AccessDenied')
   await expect(page.getByRole('button', { name: 'Choose another Google account' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Good to see you', exact: true })).toBeFocused()
+  await expect(page.getByRole('heading', { name: 'Sign in to Meddies', exact: true })).toBeFocused()
   await page.route('**/api/auth/signin/google*', async (route) => {
     expect(new URLSearchParams(route.request().postData()!).get('callbackUrl')).toBe(destination)
     await route.fallback()

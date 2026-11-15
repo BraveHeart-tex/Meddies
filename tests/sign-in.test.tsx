@@ -9,6 +9,8 @@ test('default sign-in has no Alert; opening Google is disabled and busy', async 
   const { signIn } = await import('next-auth/react')
   vi.mocked(signIn).mockReturnValue(new Promise(() => {}))
   render(<SignInScreen configured returnTo="/history?date=2026-10-30" />)
+  expect(screen.getByRole('heading', { name: 'Sign in to Meddies' })).toBeVisible()
+  expect(screen.queryByText("Sign in to see what's next.")).not.toBeInTheDocument()
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: 'Continue with Google' }))
@@ -25,22 +27,30 @@ test.each([
     { error: 'AccessDenied' },
     "This Google account can't open Meddies.",
     'Choose another Google account',
+    'Meddies is private to one approved account. Choose that account to continue.',
   ],
-  [{ error: 'Callback' }, "Sign-in with Google didn't finish.", 'Try again'],
-  [{ reason: 'expired' }, 'Your session ended.', 'Continue with Google'],
+  [{ error: 'Callback' }, "Sign-in didn't finish.", 'Try again', null],
+  [
+    { reason: 'expired' },
+    'Your session ended.',
+    'Continue with Google',
+    "Changes you hadn't saved were cleared.",
+  ],
   [
     { reason: 'signed-out' },
     "You're signed out of Meddies in this browser.",
     'Continue with Google',
+    'Your Google account stays signed in.',
   ],
   [
     { configured: false, error: 'AccessDenied', reason: 'expired' },
     'Sign-in is unavailable right now.',
     'Reload',
+    null,
   ],
-] as [{ error?: string; reason?: string; configured?: boolean }, string, string][])(
+] as [{ error?: string; reason?: string; configured?: boolean }, string, string, string | null][])(
   'one applicable message and action: %s',
-  async (props, message, action) => {
+  async (props, message, action, detail) => {
     render(<SignInScreen configured {...props} />)
     await screen.findByText(message)
     expect(
@@ -48,6 +58,8 @@ test.each([
         props.reason && props.configured !== false && !props.error ? 'status' : 'alert',
       ),
     ).toHaveTextContent(message)
+    if (detail) expect(screen.getByText(detail)).toBeVisible()
+    else expect(screen.queryByText(/Nothing in Meddies/)).not.toBeInTheDocument()
     expect([...screen.queryAllByRole('alert'), ...screen.queryAllByRole('status')]).toHaveLength(1)
     expect(screen.getByRole('button', { name: action })).toBeEnabled()
     if (props.configured === false)
@@ -67,7 +79,7 @@ test.each([
     expect(status).toHaveAttribute('aria-atomic', 'true')
     expect(status).toHaveTextContent(message)
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    const heading = screen.getByRole('heading', { name: 'Good to see you', level: 1 })
+    const heading = screen.getByRole('heading', { name: 'Sign in to Meddies', level: 1 })
     expect(heading).toHaveFocus()
     expect(heading).not.toHaveAttribute('aria-describedby')
     await userEvent.tab()
