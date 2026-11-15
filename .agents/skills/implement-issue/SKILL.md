@@ -11,13 +11,15 @@ pushed to main, evidence posted, issue closed.
 
 Work **lean** throughout:
 
-- Read only cited documentation sections using `rg` and bounded line ranges. Do not
-  concatenate documentation files. Read complete source files only when necessary to
+- Discover unknown file paths with `rg --files`; read cited sections with `rg` and bounded
+  line ranges. Do not concatenate documentation files. Read complete source files only
+  when necessary to
   understand or modify them; never reread unchanged content already in context.
 - Batch independent read-only inspections when useful, but cap their combined output.
+- Scope large diffs by file or hunk so each read stays bounded.
 - Send verbose command output to a temp file (`log=$(mktemp)`); read only failures and
   the final summary.
-- Run the smallest relevant check while iterating; broad verification runs at the end.
+- Run the smallest relevant check while iterating.
 - Preflight environment requirements once before implementation when the issue needs
   local servers, browser tests, or external services.
 - On `EPERM`, `EACCES`, blocked port binding, or sandbox denial, request escalation once
@@ -73,7 +75,9 @@ Work **lean** throughout:
    _Done when_ every criterion points to code plus its named evidence, and every finding
    is fixed or rejected with a one-line reason.
 
-6. **Verify.** For code changes, run `pnpm verify:local >"$log" 2>&1` once, then read the
+6. **Verify.** Start broad verification only after implementation, tests, captures,
+   outlines, review fixes and targeted checks are complete, with no changes ongoing.
+   For code changes, run `pnpm verify:local >"$log" 2>&1` once, then read the
    summary. On failure, fix the cause, rerun only the failed cases until they pass, then
    run `pnpm verify:local` once more. For docs-only changes, run `pnpm format:check` instead.
    An environment blocker is not a passing result; stop before shipping if required
