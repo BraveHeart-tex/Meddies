@@ -69,21 +69,19 @@ export function ScheduleTimeRow({
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid}>
             <FieldLabel htmlFor={quantityId}>
-              Quantity<span className="sr-only"> for {label.toLowerCase()}</span>
+              Amount<span className="sr-only"> for {label.toLowerCase()}</span>
             </FieldLabel>
             <QuantityStepper
               ref={field.ref}
               id={quantityId}
-              label={`${label} quantity`}
+              label={`${label} amount`}
               unit={unit}
               value={field.value}
               onValueChange={field.onChange}
               onBlur={field.onBlur}
               disabled={disabled}
               aria-invalid={fieldState.invalid}
-              aria-describedby={
-                fieldState.invalid ? `${quantityId}-error quantity-help` : 'quantity-help'
-              }
+              aria-describedby={fieldState.invalid ? `${quantityId}-error` : undefined}
             />
             <FieldError id={`${quantityId}-error`} errors={[fieldState.error]} />
           </Field>

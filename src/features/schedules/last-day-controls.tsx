@@ -134,9 +134,7 @@ export function LastDayRow({
           />
         </div>
         <p className="text-center text-body-sm text-muted-foreground" aria-live="polite">
-          {draft
-            ? `Doses on ${shortDay(draft)} still count. None after it.`
-            : 'No last day. It keeps going until you change it.'}
+          {draft ? `Includes doses on ${shortDay(draft)}.` : null}
         </p>
         <Button
           type="button"

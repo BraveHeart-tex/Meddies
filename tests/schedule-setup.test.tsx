@@ -101,9 +101,9 @@ const save = () => button('Save schedule')
 const addTime = () => button('Add another time')
 const hour = (row: number) => screen.getByRole('combobox', { name: `Time ${row} hour` })
 const minute = (row: number) => screen.getByRole('combobox', { name: `Time ${row} minute` })
-const quantity = (row: number) => screen.getByLabelText(`Quantity for time ${row}`)
+const quantity = (row: number) => screen.getByLabelText(`Amount for time ${row}`)
 const step = (row: number, direction: 'Fewer' | 'More') =>
-  button(`${direction}: Time ${row} quantity`)
+  button(`${direction}: Time ${row} amount`)
 const startDate = () => button(/^Start date, /)
 const days = () => screen.getByRole('group', { name: 'Days' })
 
@@ -134,7 +134,9 @@ test('setup opens with the medicine, Istanbul time and one row that cannot be re
   api(capsules)
   await openSetup(capsules.id)
   expect(screen.getByRole('heading', { name: 'Omega-3' })).toBeVisible()
-  expect(screen.getByText(/^Times are Istanbul time\./)).toBeVisible()
+  expect(
+    screen.getByText('Times use Istanbul time. Only doses after saving are added.'),
+  ).toBeVisible()
   expect(startDate()).toHaveTextContent('Today, Fri 15 Jun')
   expect(days()).toHaveAccessibleDescription('Every day')
   expect(quantity(1)).toHaveValue('1')
@@ -147,10 +149,10 @@ test('capsules step by one and stop at one', async () => {
   expect(step(1, 'Fewer')).toBeDisabled()
   await user.click(step(1, 'More'))
   expect(quantity(1)).toHaveValue('2')
-  expect(quantity(1)).toHaveAccessibleDescription(/^capsules Quantity/)
+  expect(quantity(1)).toHaveAccessibleDescription('capsules')
   await user.click(step(1, 'Fewer'))
   expect(quantity(1)).toHaveValue('1')
-  expect(quantity(1)).toHaveAccessibleDescription(/^capsule Quantity/)
+  expect(quantity(1)).toHaveAccessibleDescription('capsule')
   expect(step(1, 'Fewer')).toBeDisabled()
 })
 
@@ -158,14 +160,14 @@ test('tablets step by half, stop at half and name the unit', async () => {
   const { posted } = api(tablets)
   const { user } = await openSetup(tablets.id)
   expect(quantity(1)).toHaveValue('1')
-  expect(quantity(1)).toHaveAccessibleDescription(/^tablet Quantity/)
+  expect(quantity(1)).toHaveAccessibleDescription('tablet')
   await user.click(step(1, 'Fewer'))
   expect(quantity(1)).toHaveValue('½')
   expect(step(1, 'Fewer')).toBeDisabled()
   await user.click(step(1, 'More'))
   await user.click(step(1, 'More'))
   expect(quantity(1)).toHaveValue('1½')
-  expect(quantity(1)).toHaveAccessibleDescription(/^tablets Quantity/)
+  expect(quantity(1)).toHaveAccessibleDescription('tablets')
   await typeQuantity(user, 1, '0')
   await pickTime(user, 1, '07:30')
   await user.click(save())
@@ -200,7 +202,7 @@ function expectRowsLinked(count: number) {
   for (let row = 1; row <= count; row++) {
     const time = screen.getByText(`Time ${row}`, { selector: 'label' }) as HTMLLabelElement
     expect(document.getElementById(time.htmlFor)).toBe(hour(row))
-    expect(screen.getByLabelText(`Quantity for time ${row}`)).toBe(quantity(row))
+    expect(screen.getByLabelText(`Amount for time ${row}`)).toBe(quantity(row))
   }
   const ids = [...document.querySelectorAll('[id]')].map((element) => element.id)
   expect(new Set(ids).size).toBe(ids.length)

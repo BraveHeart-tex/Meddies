@@ -292,7 +292,7 @@ describe('Resume an Interval schedule', () => {
       ),
     ).toBeVisible()
     expect(startsRow()).toHaveAccessibleName('Starts: Choose')
-    expect(screen.getByText("They'll show here.")).toBeVisible()
+    expect(screen.getByText('Choose an interval and start time to preview doses.')).toBeVisible()
     expect(button('Resume schedule')).toBeVisible()
     await user.click(button('Cancel'))
     await waitFor(() => expect(window.location.search).toBe(`?medicine=${magnesium.id}`))

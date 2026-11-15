@@ -188,7 +188,9 @@ export function NextDoses({
           </ul>
         )
       ) : (
-        <p className="pt-2 text-body-sm text-muted-foreground">They&apos;ll show here.</p>
+        <p className="pt-2 text-body-sm text-muted-foreground">
+          Choose an interval and start time to preview doses.
+        </p>
       )}
       {lastDay && (
         <p className="pt-2 text-body-sm font-bold">
@@ -224,7 +226,7 @@ export function ScheduleDiscardDrawer({
             </DrawerTitle>
           </DrawerHeader>
           <p className="text-center text-body-sm text-muted-foreground">
-            {change ? 'Your schedule stays as it is.' : "The details you entered won't be saved."}
+            {change ? 'Your schedule stays as it is.' : null}
           </p>
           <Button
             type="button"

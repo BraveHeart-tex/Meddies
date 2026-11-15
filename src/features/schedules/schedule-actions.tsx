@@ -239,7 +239,6 @@ export function ScheduleActions({
           key={kind}
           command={kind}
           open={open === kind}
-          label={medicine.label}
           pending={saves[kind].pending}
           problem={saves[kind].problem}
           offline={offline}

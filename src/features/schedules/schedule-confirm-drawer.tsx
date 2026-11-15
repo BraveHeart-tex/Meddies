@@ -13,10 +13,10 @@ export type ScheduleConfirmKind = 'stop' | 'pause'
 const copy = {
   stop: {
     title: 'Stop this schedule?',
-    lines: (label: string) => [
-      "Doses due so far, and any you've logged, stay as they are.",
-      `Meddies won't expect any more doses of ${label}.`,
-      'To start again, use Change schedule.',
+    lines: () => [
+      'No more doses will be scheduled.',
+      'Earlier doses stay unchanged.',
+      'Use Change schedule to start again.',
     ],
     confirm: 'Stop schedule',
     pending: 'Stopping…',
@@ -24,10 +24,10 @@ const copy = {
   },
   pause: {
     title: 'Pause this schedule?',
-    lines: (label: string) => [
-      "Doses due so far, and any you've logged, stay as they are.",
-      `Meddies won't expect any doses of ${label} until you resume.`,
-      'Nothing is added later for the paused days.',
+    lines: () => [
+      'No new doses until you resume.',
+      'Paused days won’t be added later.',
+      'Earlier doses stay unchanged.',
     ],
     confirm: 'Pause schedule',
     pending: 'Pausing…',
@@ -37,7 +37,6 @@ const copy = {
 
 type ConfirmProps = {
   open: boolean
-  label: string
   pending: boolean
   problem?: SaveProblem
   offline?: boolean
@@ -58,7 +57,6 @@ type ConfirmProps = {
 export function ScheduleConfirmDrawer({
   command,
   open,
-  label,
   pending,
   problem,
   offline = false,
@@ -86,7 +84,7 @@ export function ScheduleConfirmDrawer({
             <DrawerTitle className="text-heading">{text.title}</DrawerTitle>
           </DrawerHeader>
           <ul className="flex flex-col gap-2 text-body-sm text-muted-foreground">
-            {text.lines(label).map((line) => (
+            {text.lines().map((line) => (
               <li key={line}>{line}</li>
             ))}
           </ul>

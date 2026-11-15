@@ -92,7 +92,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     pageRequests = 0
     await pickDate(page, 'Start date', today)
     await pickTime(page, 'Time 1', time)
-    await page.getByLabel(/^Quantity/).fill('1')
+    await page.getByLabel(/^Amount/).fill('1')
     // The first save reaches the server, but its response is lost on the way back.
     let loseResponse = true
     await page.route(

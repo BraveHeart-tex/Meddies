@@ -41,8 +41,9 @@ These are banned in UI copy and stay fine in code, docs and tickets, including t
 Say "medication", never "medicine", and call the tab "Medications". The `/medications` URL and code
 names stay.
 
-Use “dose unit” in UI copy for the domain term Quantity unit. Keep Type and dose unit as
-separate facts; domain terminology stays unchanged.
+Use “Amount” for an editable dose quantity in schedule and dose forms. Keep Strength distinct
+from Amount; internal domain terminology stays unchanged. Use “dose unit” in UI copy for the
+domain term Quantity unit. Keep Type and dose unit as separate facts.
 
 `pnpm lint` fails when outcome, intake, confirmed, unconfirmed or correct appears as a whole word
 in JSX text or in an `aria-label`, `label` or `title` prop in `src`. Review covers the rest:
@@ -114,3 +115,10 @@ The target warmth.
 | Save could not be confirmed.                                     | That might not have saved. Check your connection, then retry. Retrying won't save it twice. |
 
 For Strength, keep the pack example short: “On the pack, e.g. 200 mg. Not your dose amount.”
+
+## Scheduling examples
+
+- Clock times use Istanbul time. Only doses after saving are added.
+- An Interval preview needs an interval and start time. Its first dose counts forward from that
+  time, including across midnight.
+- A Last day includes its doses: “Includes doses on Tue 10 Nov.” No Last day needs no helper.

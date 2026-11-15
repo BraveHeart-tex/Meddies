@@ -249,9 +249,6 @@ export function ScheduleForm({
               />
             )}
           />
-          <FieldDescription id="quantity-help">
-            Quantity is how much you take each time, not the strength on the pack.
-          </FieldDescription>
           {rows.fields.map((row, index) => (
             <ScheduleTimeRow
               key={row.id}

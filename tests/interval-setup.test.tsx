@@ -87,7 +87,7 @@ async function openSetup() {
 const button = (name: string | RegExp) => screen.getByRole('button', { name })
 const everyRow = () => button(/^Every:/)
 const startsRow = () => button(/^Starts:/)
-const takeRow = () => button(/^Take:/)
+const takeRow = () => button(/^Amount:/)
 const sheet = (name: string) => screen.findByRole('dialog', { name })
 const nextDoses = () => screen.getByRole('region', { name: 'Next 3 doses' })
 const doseLines = () =>
@@ -149,10 +149,12 @@ describe('choosing a kind of schedule', () => {
     await chooseEveryFewHours(user)
     expect(everyRow()).toHaveAccessibleName('Every: Choose')
     expect(startsRow()).toHaveAccessibleName('Starts: Choose')
-    expect(takeRow()).toHaveAccessibleName('Take: 1 tablet')
+    expect(takeRow()).toHaveAccessibleName('Amount: 1 tablet')
     expect(screen.queryByRole('group', { name: 'Days' })).not.toBeInTheDocument()
     expect(screen.queryByText(/^Times are Istanbul time/)).not.toBeInTheDocument()
-    expect(within(nextDoses()).getByText("They'll show here.")).toBeVisible()
+    expect(
+      within(nextDoses()).getByText('Choose an interval and start time to preview doses.'),
+    ).toBeVisible()
   })
 })
 
@@ -221,12 +223,8 @@ describe('sheets', () => {
     await user.click(within(starts).getByRole('button', { name: 'Cancel' }))
     await sheetClosed('Starts')
     await user.click(takeRow())
-    const take = await sheet('Take')
-    expect(
-      within(take).getByText(
-        'Quantity is how much you take each time, not the strength on the pack.',
-      ),
-    ).toBeVisible()
+    const take = await sheet('Amount')
+    expect(within(take).getByLabelText('Amount')).toBeVisible()
   })
 
   test('an invalid quantity keeps Take open and is explained', async () => {
@@ -234,8 +232,8 @@ describe('sheets', () => {
     const { user } = await openSetup()
     await chooseEveryFewHours(user)
     await user.click(takeRow())
-    const dialog = await sheet('Take')
-    await user.clear(within(dialog).getByLabelText('Quantity'))
+    const dialog = await sheet('Amount')
+    await user.clear(within(dialog).getByLabelText('Amount'))
     await user.click(within(dialog).getByRole('button', { name: 'Done' }))
     expect(await within(dialog).findByText('Enter a quantity.')).toBeVisible()
   })
@@ -360,7 +358,9 @@ describe('Cancel', () => {
     await fillIn(user)
     await user.click(button('Cancel'))
     const dialog = await sheet('Discard this schedule?')
-    expect(within(dialog).getByText("The details you entered won't be saved.")).toBeVisible()
+    expect(
+      within(dialog).queryByText("The details you entered won't be saved."),
+    ).not.toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'Keep editing' }))
     await sheetClosed('Discard this schedule?')
     expect(window.location.search).toBe(`?schedule=${magnesium.id}`)
@@ -467,13 +467,11 @@ describe('the Last day', () => {
     await user.click(lastDayRow())
     const dialog = await sheet('Last day')
     expect(
-      within(dialog).getByText('No last day. It keeps going until you change it.'),
-    ).toBeVisible()
+      within(dialog).queryByText('No last day. It keeps going until you change it.'),
+    ).not.toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'No last day' })).toBeDisabled()
     await user.click(dialog.querySelector('button[data-day="2026-11-10"]')!)
-    expect(
-      within(dialog).getByText('Doses on Tue 10 Nov still count. None after it.'),
-    ).toBeVisible()
+    expect(within(dialog).getByText('Includes doses on Tue 10 Nov.')).toBeVisible()
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     await sheetClosed('Last day')
     expect(lastDayRow()).toHaveAccessibleName('Last day: None')

@@ -190,23 +190,18 @@ export function IntervalQuantityField({
 }: FieldProps & { unit: DoseUnit; inputRef?: Ref<HTMLInputElement> }) {
   return (
     <Field data-invalid={Boolean(error)}>
-      <FieldLabel htmlFor="interval-quantity">Quantity</FieldLabel>
+      <FieldLabel htmlFor="interval-quantity">Amount</FieldLabel>
       <QuantityStepper
         ref={inputRef}
         id="interval-quantity"
-        label="Quantity"
+        label="Amount"
         unit={unit}
         value={value}
         onValueChange={onChange}
         onBlur={onBlur}
         aria-invalid={error ? true : undefined}
-        aria-describedby={
-          error ? 'interval-quantity-error interval-quantity-help' : 'interval-quantity-help'
-        }
+        aria-describedby={error ? 'interval-quantity-error' : undefined}
       />
-      <FieldDescription id="interval-quantity-help">
-        Quantity is how much you take each time, not the strength on the pack.
-      </FieldDescription>
       <FieldError id="interval-quantity-error" errors={[fieldError(error)]} />
     </Field>
   )

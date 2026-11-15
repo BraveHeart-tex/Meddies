@@ -228,9 +228,9 @@ describe('Pause', () => {
     await user.click(button('Pause'))
     const dialog = await drawer()
     for (const line of [
-      "Doses due so far, and any you've logged, stay as they are.",
-      "Meddies won't expect any doses of Magnesium until you resume.",
-      'Nothing is added later for the paused days.',
+      'No new doses until you resume.',
+      'Paused days won’t be added later.',
+      'Earlier doses stay unchanged.',
     ])
       expect(within(dialog).getByText(line)).toBeVisible()
     // No refill line until refill alerts exist (#283 F10, #52).

@@ -44,7 +44,7 @@ import { useScheduleSave } from './use-schedule-save'
 type Sheet = 'every' | 'starts' | 'take'
 type FieldName = keyof IntervalFormValues
 
-const SHEET_TITLES: Record<Sheet, string> = { every: 'Every', starts: 'Starts', take: 'Take' }
+const SHEET_TITLES: Record<Sheet, string> = { every: 'Every', starts: 'Starts', take: 'Amount' }
 const SHEET_FIELDS: Record<Sheet, FieldName[]> = {
   every: ['hours'],
   starts: ['date', 'time'],
@@ -222,7 +222,7 @@ export function IntervalScheduleForm({
         <IntervalRow
           ref={takeRow}
           id="interval-take-row"
-          label="Take"
+          label="Amount"
           value={quantityValue === null ? null : quantityLabel(quantityValue, medicine.unit)}
           error={errors.quantity?.message}
           disabled={isSubmitting}

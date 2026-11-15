@@ -27,7 +27,7 @@ const detailUrl = new RegExp(`/medications\\?medicine=${medicineId}$`)
 
 async function saveChange(page: Page, quantity: string) {
   await page
-    .getByLabel(/^Quantity/)
+    .getByLabel(/^Amount/)
     .first()
     .fill(quantity)
   await page.getByRole('button', { name: 'Save changes' }).press('Enter')
@@ -90,7 +90,7 @@ test('unsaved Change schedule exits leave the medication page in one Back', asyn
   await page.getByRole('link', { name: 'View details for Back Fixture Medicine' }).click()
   await page.getByRole('link', { name: 'Change schedule' }).click()
   await page
-    .getByLabel(/^Quantity/)
+    .getByLabel(/^Amount/)
     .first()
     .fill('2')
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()

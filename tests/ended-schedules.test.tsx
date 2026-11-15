@@ -195,13 +195,9 @@ describe('Stop schedule', () => {
     const { user, stops } = await openDetail([running])
     await user.click(button('Stop schedule'))
     const dialog = await drawer()
-    expect(
-      within(dialog).getByText("Doses due so far, and any you've logged, stay as they are."),
-    ).toBeVisible()
-    expect(
-      within(dialog).getByText("Meddies won't expect any more doses of Magnesium."),
-    ).toBeVisible()
-    expect(within(dialog).getByText('To start again, use Change schedule.')).toBeVisible()
+    expect(within(dialog).getByText('Earlier doses stay unchanged.')).toBeVisible()
+    expect(within(dialog).getByText('No more doses will be scheduled.')).toBeVisible()
+    expect(within(dialog).getByText('Use Change schedule to start again.')).toBeVisible()
     await user.click(within(dialog).getByRole('button', { name: 'Keep schedule' }))
     await drawerClosed()
     expect(button('Stop schedule')).toHaveFocus()
