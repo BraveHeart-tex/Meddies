@@ -3,8 +3,10 @@ import { SignInFrame } from '@/features/auth/sign-in-frame'
 
 // The error is unknown until the page reads it, so only the logo and wordmark are real: nothing
 // here may state what happened or offer an action. Outside the app, so there is no shell or
-// navigation. The alert is sized for AccessDenied, the expected refusal for a one-account app;
-// shorter failure messages settle a line or two higher. Breakpoints follow the measured text wrap.
+// navigation. Match the screen's title-only heading; reserving a subtitle shifts the wordmark
+// when the route resolves. The alert is sized for AccessDenied, the expected refusal for a
+// one-account app; shorter failure messages settle a line or two higher. Breakpoints follow the
+// measured text wrap.
 export default function Loading() {
   return (
     <SignInFrame>
@@ -12,9 +14,6 @@ export default function Loading() {
         <div className="flex flex-col gap-1.5">
           <div className="flex h-[1lh] items-center text-display">
             <Skeleton className="h-6 w-2/3 rounded-lg" />
-          </div>
-          <div className="flex h-[1lh] items-center text-body-lg">
-            <Skeleton className="h-3.5 w-1/2 rounded-md" />
           </div>
         </div>
         <div className="flex flex-col gap-3">

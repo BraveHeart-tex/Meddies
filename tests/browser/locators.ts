@@ -111,7 +111,7 @@ export const signInRouteFallback = (page: Page) =>
   page.getByRole('status').filter({ hasText: 'Opening sign-in' })
 
 /** The sign-in card, real or placeholder; its edges show whether the alert above it held still. */
-export const signInCard = (page: Page) => page.locator('main [data-slot="card"]')
+export const signInCard = (page: Page) => page.locator('main [data-sign-in-card]')
 
 /** Any selected primary destination; recovery pages outside the app have none. */
 export const selectedNavigation = (page: Page) =>

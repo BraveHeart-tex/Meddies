@@ -10,7 +10,10 @@ export function SignInFrame({ children }: { children: ReactNode }) {
           Meddies
         </p>
       </div>
-      <div className="mx-auto flex w-full max-w-lg flex-col gap-5 rounded-t-4xl bg-background px-5 pt-7 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] shadow-drawer">
+      <div
+        data-sign-in-card
+        className="mx-auto flex w-full max-w-lg flex-col gap-5 rounded-t-4xl bg-background px-5 pt-7 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] shadow-drawer"
+      >
         {children}
       </div>
     </main>
