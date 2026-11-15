@@ -29,15 +29,13 @@ test('Add restores editing values across remounts and Clear form discards them',
   expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Draft medicine')
   expect(screen.getByLabelText(/^Strength/)).toHaveValue(' 5 mg ')
   expect(screen.getByRole('combobox', { name: 'Type' })).toHaveTextContent('Capsule')
-  expect(screen.getByText('Pick up where you left off. Your details are still here.')).toBeVisible()
+  expect(screen.getByText('Unsaved details restored.')).toBeVisible()
   await user.click(screen.getByRole('button', { name: 'Clear form' }))
   expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('')
   expect(screen.getByRole('combobox', { name: 'Type' })).toHaveTextContent('Choose')
   second.unmount()
   open()
-  expect(
-    screen.queryByText('Pick up where you left off. Your details are still here.'),
-  ).not.toBeInTheDocument()
+  expect(screen.queryByText('Unsaved details restored.')).not.toBeInTheDocument()
   client.clear()
 })
 
@@ -73,13 +71,11 @@ test('schedule drafts keep partial rows per medicine across refresh and day roll
   expect(screen.getByRole('combobox', { name: 'Time 1 hour' })).toHaveTextContent('08')
   first.rerender(view('second', '2035-06-16'))
   expect(screen.getByRole('combobox', { name: 'Time 1 hour' })).toHaveTextContent('HH')
-  expect(
-    screen.queryByText('Pick up where you left off. Your details are still here.'),
-  ).not.toBeInTheDocument()
+  expect(screen.queryByText('Unsaved details restored.')).not.toBeInTheDocument()
   await user.click(screen.getByRole('combobox', { name: 'Time 1 hour' }))
   await user.click(await screen.findByRole('option', { name: '10' }))
   first.rerender(view('first', '2035-06-16'))
-  expect(screen.getByText('Pick up where you left off. Your details are still here.')).toBeVisible()
+  expect(screen.getByText('Unsaved details restored.')).toBeVisible()
   expect(screen.getByRole('combobox', { name: 'Time 1 hour' })).toHaveTextContent('08')
   expect(screen.getByRole('combobox', { name: 'Time 1 minute' })).toHaveTextContent('MM')
   expect(screen.getByLabelText('Quantity for time 2')).toHaveValue('')
@@ -90,7 +86,7 @@ test('schedule drafts keep partial rows per medicine across refresh and day roll
   expect(screen.getByRole('button', { name: /^Start date,/ })).toHaveAccessibleName(/Today/)
   // Clearing one medicine's draft leaves another's.
   first.rerender(view('second', '2035-06-16'))
-  expect(screen.getByText('Pick up where you left off. Your details are still here.')).toBeVisible()
+  expect(screen.getByText('Unsaved details restored.')).toBeVisible()
   expect(screen.getByRole('combobox', { name: 'Time 1 hour' })).toHaveTextContent('10')
   first.unmount()
   client.clear()
@@ -140,15 +136,13 @@ test('a confirmed schedule save removes the draft before the form is opened agai
   }
   first.unmount()
   const second = open()
-  expect(screen.getByText('Pick up where you left off. Your details are still here.')).toBeVisible()
+  expect(screen.getByText('Unsaved details restored.')).toBeVisible()
   await user.click(screen.getByRole('button', { name: 'Save schedule' }))
   await waitFor(() => expect(saved).toBe(true))
   second.unmount()
   open()
   expect(screen.getByRole('combobox', { name: 'Time 1 hour' })).toHaveTextContent('HH')
-  expect(
-    screen.queryByText('Pick up where you left off. Your details are still here.'),
-  ).not.toBeInTheDocument()
+  expect(screen.queryByText('Unsaved details restored.')).not.toBeInTheDocument()
   client.clear()
 })
 
@@ -175,7 +169,7 @@ test('the add form keeps a save 401 retryable until the session check confirms a
   await user.click(await screen.findByRole('option', { name: 'Tablet' }))
   await user.click(screen.getByRole('button', { name: 'Save medication' }))
   expect(
-    await screen.findByText("Your details are still here - trying again won't add it twice."),
+    await screen.findByText("Check your connection, then retry. Retrying won't save it twice."),
   ).toBeVisible()
   expect(screen.queryByText('Your session ended.')).not.toBeInTheDocument()
 })

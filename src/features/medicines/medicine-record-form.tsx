@@ -350,14 +350,14 @@ export function MedicineRecordForm({
                     : problem === 'unconfirmed'
                       ? saveMessages.mightNotHaveSaved
                       : problem === 'conflict'
-                        ? 'This medication changed'
+                        ? 'This medication changed elsewhere.'
                         : 'Your change wasn’t saved'}
               </AlertTitle>
               <AlertDescription>
                 {offline
                   ? saveMessages.offlineFormDetails
                   : problem === 'conflict'
-                    ? 'Nothing from this edit was applied. Review the saved details before editing again.'
+                    ? "Your changes weren't saved."
                     : 'Your details are still here. Check your connection and try again.'}
               </AlertDescription>
             </Alert>

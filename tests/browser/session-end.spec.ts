@@ -63,7 +63,7 @@ test('expiry with a pending save shows the notice, removes private content and r
   await expect(page).toHaveURL(`${app.origin}/medications?add`)
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('')
   await expect(page.getByLabel(/^Strength/)).toHaveValue('')
-  await expect(page.getByText('Pick up where you left off', { exact: false })).toHaveCount(0)
+  await expect(page.getByText('Unsaved details restored.', { exact: false })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Save medication', exact: true })).toBeEnabled()
   expect(posts).toHaveLength(1)
 })

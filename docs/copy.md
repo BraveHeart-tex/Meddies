@@ -72,7 +72,11 @@ Say what happened, what is safe, and what to do next.
 - Never say "failed" when the result is unknown. Say it might not have saved.
 - Name a cause only when known. Otherwise say, for example, "Camera unavailable. Enter the
   medication details instead."
-- Only say the details are still here when the form holds details.
+- Only promise retained details when the form holds details. For offline forms, state the
+  boundary: "Keep Meddies open to retain these details. Reconnect to save." Forms without
+  entered details say "You're offline. Reconnect to save."
+- Conflicts name what changed elsewhere, then say "Your changes weren't saved." Keep the
+  action to review the current saved details.
 - Sign-out and session end never cancel a save: say Meddies can't show its result until the user
   signs in again, never that it was cancelled.
 
@@ -91,12 +95,12 @@ Say what happened, what is safe, and what to do next.
 
 The target warmth.
 
-| Instead of                                                       | Write                                                                                              |
-| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| No doses scheduled for today.                                    | No doses scheduled today                                                                           |
-| No medicines saved yet.                                          | No medications yet                                                                                 |
-| Today could not be refreshed. Connect to the internet and retry. | Today didn't update just now. Check your connection and try again.                                 |
-| Confirm skipped dose                                             | Skip this dose                                                                                     |
-| Unsaved details from earlier.                                    | Pick up where you left off. Your details are still here.                                           |
-| That date is not available.                                      | Nothing to show for that day.                                                                      |
-| Save could not be confirmed.                                     | That might not have saved. Your details are still here - just check your connection and try again. |
+| Instead of                                                       | Write                                                                                       |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| No doses scheduled for today.                                    | No doses scheduled today                                                                    |
+| No medicines saved yet.                                          | No medications yet                                                                          |
+| Today could not be refreshed. Connect to the internet and retry. | Today didn't update just now. Check your connection and try again.                          |
+| Confirm skipped dose                                             | Skip this dose                                                                              |
+| Unsaved details from earlier.                                    | Unsaved details restored.                                                                   |
+| That date is not available.                                      | Nothing to show for that day.                                                               |
+| Save could not be confirmed.                                     | That might not have saved. Check your connection, then retry. Retrying won't save it twice. |

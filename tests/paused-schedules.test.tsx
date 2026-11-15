@@ -291,7 +291,7 @@ describe('Pause', () => {
     const dialog = screen.getByRole('dialog', { name: 'Pause this schedule?' })
     expect(
       await within(dialog).findByText(
-        'That might not have saved. Check your connection and try again.',
+        'That might not have saved. Check your connection, then retry.',
       ),
     ).toBeVisible()
     fail = false
@@ -307,9 +307,7 @@ describe('Pause', () => {
     )
     await pause(user)
     const dialog = screen.getByRole('dialog', { name: 'Pause this schedule?' })
-    expect(
-      await within(dialog).findByText('This schedule changed while you were editing.'),
-    ).toBeVisible()
+    expect(await within(dialog).findByText('This schedule changed elsewhere.')).toBeVisible()
     await user.click(within(dialog).getByRole('button', { name: 'Review current schedule' }))
     await drawerClosed()
     expect(screen.queryByRole('status', { name: 'Paused schedule' })).not.toBeInTheDocument()

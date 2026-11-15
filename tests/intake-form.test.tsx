@@ -180,7 +180,7 @@ test.each([false, true])(
     await user.type(amount, '1½')
     await user.click(screen.getByRole('button', { name: 'Save as taken' }))
     expect(await screen.findByText('That might not have saved.')).toBeVisible()
-    expect(await screen.findByText(/Meddies checked and can't find it yet/)).toBeVisible()
+    expect(await screen.findByText(/Check your connection, then retry/)).toBeVisible()
     expect(await row()).toHaveTextContent('Might not have saved')
     expect(amount).toHaveValue('1½')
     await user.clear(amount)

@@ -138,7 +138,7 @@ test('an unconfirmed save retries the identical request once and locks while pen
   expect(type()).toHaveTextContent('Capsule')
   const retry = button('Try saving medication again')
   expect(retry).toHaveAccessibleDescription(
-    "That might not have saved. Your details are still here - trying again won't add it twice.",
+    "That might not have saved. Check your connection, then retry. Retrying won't save it twice.",
   )
   // Two submissions in one turn exercise the synchronous guard before a pending render.
   act(() => {
@@ -252,7 +252,7 @@ test('the session draft survives leaving Add and clears explicitly and after con
       HttpResponse.json({ medicines: [await request.json()] }),
     ),
   )
-  const note = 'Pick up where you left off. Your details are still here.'
+  const note = 'Unsaved details restored.'
   let view = openAdd()
   expect(screen.queryByText(note)).not.toBeInTheDocument()
   await fill(view.user)

@@ -237,7 +237,7 @@ describe('Resume a Clock schedule', () => {
     expect(button('Stop schedule')).toBeDisabled()
     release()
     expect(
-      await screen.findByText('That might not have saved. Check your connection and try again.'),
+      await screen.findByText('That might not have saved. Check your connection, then retry.'),
     ).toBeVisible()
     const retry = button('Retry')
     expect(retry).toHaveAccessibleDescription(/might not have saved/)
@@ -253,12 +253,10 @@ describe('Resume a Clock schedule', () => {
       HttpResponse.json({ error: 'conflict' }, { status: 409 }),
     )
     await user.click(resumeButton())
-    expect(await screen.findByText('This schedule changed while you were editing.')).toBeVisible()
+    expect(await screen.findByText('This schedule changed elsewhere.')).toBeVisible()
     await user.click(button('Review current schedule'))
     expect(await screen.findByRole('button', { name: 'Resume' })).toBeVisible()
-    expect(
-      screen.queryByText('This schedule changed while you were editing.'),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText('This schedule changed elsewhere.')).not.toBeInTheDocument()
   })
 
   test('known offline: Resume is disabled with Connect to save', async () => {
@@ -378,7 +376,7 @@ describe('Resume an Interval schedule', () => {
     await openResume(view, view.user)
     await chooseStarts(view.user, 'Today', '14:00')
     await view.user.click(button('Resume schedule'))
-    expect(await screen.findByText('This schedule changed while you were editing.')).toBeVisible()
+    expect(await screen.findByText('This schedule changed elsewhere.')).toBeVisible()
     await view.user.click(button('Review current schedule'))
     expect(window.location.search).toBe(`?medicine=${magnesium.id}`)
   })

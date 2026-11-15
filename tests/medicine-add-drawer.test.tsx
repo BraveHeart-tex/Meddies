@@ -15,7 +15,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
 }))
 
-const note = 'Pick up where you left off. Your details are still here.'
+const note = 'Unsaved details restored.'
 let client: QueryClient
 beforeEach(() => {
   client = createQueryClient()

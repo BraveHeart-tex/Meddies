@@ -20,14 +20,14 @@ describe('an unconfirmed save', () => {
   test('never reads as failed and says what is safe', () => {
     const alert = problemText({ problem: uncertain })
     expect(alert).toHaveTextContent(
-      "That might not have saved.Your details are still here. Check your connection and try again. It won't save twice.",
+      "That might not have saved.Check your connection, then retry. Retrying won't save it twice.",
     )
     expect(alert).not.toHaveTextContent(/failed|not saved/i)
   })
 
-  test('says Meddies looked once a check found nothing', () => {
+  test('keeps the recovery instruction after a check found nothing', () => {
     expect(problemText({ problem: { kind: 'uncertain', checked: true } })).toHaveTextContent(
-      "Meddies checked and can't find it yet.",
+      "Check your connection, then retry. Retrying won't save it twice.",
     )
   })
 
@@ -45,8 +45,8 @@ describe('an unconfirmed save', () => {
 })
 
 test.each([
-  ['Taken', "You're offline. Your details stay here. Save once you're back online."],
-  ['Skipped', "You're offline. Nothing is saved yet. Save once you're back online."],
+  ['Taken', "You're offline. Keep Meddies open to retain these details. Reconnect to save."],
+  ['Skipped', "You're offline. Reconnect to save."],
 ] as const)('offline on the %s form', (outcome, text) => {
   render(<DoseSaveProblem id="problem" outcome={outcome} problem={null} offline />)
   expect(screen.getByText(text)).toBeVisible()

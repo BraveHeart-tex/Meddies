@@ -32,11 +32,7 @@ export function DoseSaveProblem({
       <Alert id={id} variant="destructive">
         <AlertTitle>{saveMessages.mightNotHaveSaved}</AlertTitle>
         <AlertDescription>
-          {outcome === 'Taken' && 'Your details are still here. '}
-          {problem.checked && "Meddies checked and can't find it yet. "}
-          {changed
-            ? 'Changing details starts a new save.'
-            : "Check your connection and try again. It won't save twice."}
+          {changed ? 'Changing details starts a new save.' : saveMessages.retrySameSave}
         </AlertDescription>
       </Alert>
     )
@@ -46,8 +42,7 @@ export function DoseSaveProblem({
         <InfoIcon aria-hidden="true" />
         <AlertDescription>
           {saveMessages.offline}{' '}
-          {outcome === 'Taken' ? 'Your details stay here.' : 'Nothing is saved yet.'} Save once
-          you&apos;re back online.
+          {outcome === 'Taken' ? saveMessages.offlineFormDetails : 'Reconnect to save.'}
         </AlertDescription>
       </Alert>
     )

@@ -163,10 +163,8 @@ export function ResumeScheduleForm({
           {stale ? (
             <>
               <Alert id={PROBLEM_ID} variant="destructive">
-                <AlertTitle>This schedule changed while you were editing.</AlertTitle>
-                <AlertDescription>
-                  Nothing here was saved. Review the current schedule, then make your change again.
-                </AlertDescription>
+                <AlertTitle>This schedule changed elsewhere.</AlertTitle>
+                <AlertDescription>Your changes weren&apos;t saved.</AlertDescription>
               </Alert>
               <Button
                 type="button"
@@ -188,7 +186,7 @@ export function ResumeScheduleForm({
                 problem === 'unconfirmed' && (
                   <Alert id={PROBLEM_ID} variant="destructive">
                     <AlertDescription>
-                      That might not have saved. Check your connection and try again.
+                      That might not have saved. Check your connection, then retry.
                     </AlertDescription>
                   </Alert>
                 )

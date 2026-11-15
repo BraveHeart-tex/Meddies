@@ -159,9 +159,7 @@ test('a schedule retry after remount and midnight keeps the submitted request', 
   await waitFor(() => expect(confirmed).toHaveBeenCalledTimes(1))
   second.unmount()
   open('2035-06-16')
-  expect(
-    screen.queryByText('Pick up where you left off. Your details are still here.'),
-  ).not.toBeInTheDocument()
+  expect(screen.queryByText('Unsaved details restored.')).not.toBeInTheDocument()
   client.clear()
 })
 

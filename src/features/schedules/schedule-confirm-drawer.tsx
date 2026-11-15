@@ -93,10 +93,8 @@ export function ScheduleConfirmDrawer({
           {stale ? (
             <>
               <Alert variant="destructive">
-                <AlertTitle>This schedule changed while you were editing.</AlertTitle>
-                <AlertDescription>
-                  Nothing here was saved. Review the current schedule, then make your change again.
-                </AlertDescription>
+                <AlertTitle>This schedule changed elsewhere.</AlertTitle>
+                <AlertDescription>Your changes weren&apos;t saved.</AlertDescription>
               </Alert>
               <Button type="button" size="lg" className="w-full" onClick={onReview}>
                 Review current schedule
@@ -113,7 +111,7 @@ export function ScheduleConfirmDrawer({
                 problem === 'unconfirmed' && (
                   <Alert id={problemId} variant="destructive">
                     <AlertDescription>
-                      That might not have saved. Check your connection and try again.
+                      That might not have saved. Check your connection, then retry.
                     </AlertDescription>
                   </Alert>
                 )

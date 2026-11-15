@@ -383,12 +383,8 @@ describe('recovery', () => {
     const { user, onSaved, unmount } = await openChange()
     await addTime(user, '14:00')
     await user.click(saveChanges())
-    expect(await screen.findByText('This schedule changed while you were editing.')).toBeVisible()
-    expect(
-      screen.getByText(
-        'Nothing here was saved. Review the current schedule, then make your change again.',
-      ),
-    ).toBeVisible()
+    expect(await screen.findByText('This schedule changed elsewhere.')).toBeVisible()
+    expect(screen.getByText("Your changes weren't saved.")).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
     await user.click(button('Review current schedule'))
     expect(window.location.search).toBe(detailSearch)
@@ -396,7 +392,7 @@ describe('recovery', () => {
     unmount()
     window.history.replaceState(null, '', `/medications${setupSearch}`)
     await openChange()
-    expect(screen.queryByText('This schedule changed while you were editing.')).toBeNull()
+    expect(screen.queryByText('This schedule changed elsewhere.')).toBeNull()
     expect(screen.queryByRole('combobox', { name: 'Time 3 hour' })).not.toBeInTheDocument()
   })
 
@@ -410,7 +406,7 @@ describe('recovery', () => {
     await user.click(saveChanges())
     expect(await screen.findByText('That might not have saved.')).toBeVisible()
     expect(
-      screen.getByText('Your changes are still here, and trying again saves them only once.'),
+      screen.getByText("Check your connection, then retry. Retrying won't save it twice."),
     ).toBeVisible()
     fail = false
     await user.click(button('Try saving changes again'))

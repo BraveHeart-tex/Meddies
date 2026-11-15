@@ -338,9 +338,7 @@ describe('saving', () => {
     render(panel('setup'))
     await screen.findByRole('button', { name: 'Save schedule' })
     await waitFor(() => expect(everyRow()).toHaveAccessibleName('Every: 12 hours'))
-    expect(
-      screen.getByText('Pick up where you left off. Your details are still here.'),
-    ).toBeVisible()
+    expect(screen.getByText('Unsaved details restored.')).toBeVisible()
   })
 })
 
@@ -391,9 +389,7 @@ describe('Cancel', () => {
     render(panel('setup'))
     await screen.findByRole('button', { name: 'Save schedule' })
     expect(button('Set times')).toHaveAttribute('aria-pressed', 'true')
-    expect(
-      screen.queryByText('Pick up where you left off. Your details are still here.'),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Unsaved details restored.')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Try saving schedule again' })).toBeNull()
   })
 })

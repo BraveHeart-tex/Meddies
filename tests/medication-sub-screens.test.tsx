@@ -43,7 +43,7 @@ const schedule: DailySchedule = {
 }
 const unchecked = "Magnesium's schedule couldn't be checked."
 const noSchedule: DailySchedule[] = []
-const draftRestored = 'Pick up where you left off. Your details are still here.'
+const draftRestored = 'Unsaved details restored.'
 // Just past `createQueryClient`'s 30s stale time.
 const stale = 31_000
 

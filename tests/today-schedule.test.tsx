@@ -409,7 +409,7 @@ describe('recording a dose', () => {
     await user.click(screen.getByRole('button', { name: /^Record dose for Morning Tablet/ }))
     await user.click(await screen.findByRole('button', { name: 'I took it' }))
     await user.click(await screen.findByRole('button', { name: 'Save as taken' }))
-    expect(await screen.findByText(/Meddies checked and can't find it yet/)).toBeVisible()
+    expect(await screen.findByText(/Check your connection, then retry/)).toBeVisible()
     expect(api.reads()).toBe(2)
     expect(list).toHaveTextContent('Might not have saved')
     await advance(2 * 60_000)

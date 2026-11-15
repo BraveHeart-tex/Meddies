@@ -45,7 +45,7 @@ test('a swipe discards the draft and is refused while saving', async ({ page, ap
     await expect(page).toHaveURL(`${app.origin}/medications`)
     await addLink(page).click()
     await expect(name(page)).toHaveValue('')
-    await expect(page.getByText('Pick up where you left off', { exact: false })).toHaveCount(0)
+    await expect(page.getByText('Unsaved details restored.', { exact: false })).toHaveCount(0)
   })
 
   await test.step('no dismissal path closes the Drawer while saving', async () => {

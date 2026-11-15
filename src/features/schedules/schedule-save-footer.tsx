@@ -38,10 +38,8 @@ export function ScheduleSaveFooter({
     return (
       <StickyActions>
         <Alert id="schedule-save-problem" variant="destructive">
-          <AlertTitle>This schedule changed while you were editing.</AlertTitle>
-          <AlertDescription>
-            Nothing here was saved. Review the current schedule, then make your change again.
-          </AlertDescription>
+          <AlertTitle>This schedule changed elsewhere.</AlertTitle>
+          <AlertDescription>Your changes weren&apos;t saved.</AlertDescription>
         </Alert>
         <Button
           type="button"
@@ -117,7 +115,7 @@ function SaveProblemAlert({
   const changes = {
     unconfirmed: {
       title: saveMessages.mightNotHaveSaved,
-      body: 'Your changes are still here, and trying again saves them only once.',
+      body: saveMessages.retrySameSave,
     },
     rejected: { title: "Changes weren't saved.", body: checkHint },
   }

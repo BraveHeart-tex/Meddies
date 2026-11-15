@@ -80,9 +80,7 @@ test('Back and Forward restore the drawer draft; a pending save confirms after l
     'true',
   )
   await expect(drawer(page).getByLabel(/^Amount/)).toHaveValue('2')
-  await expect(
-    drawer(page).getByText('Pick up where you left off. Your details are still here.'),
-  ).toBeVisible()
+  await expect(drawer(page).getByText('Unsaved details restored.')).toBeVisible()
   await app.worker.hold(takenWrite)
   await drawer(page).getByRole('button', { name: 'Save as taken' }).click()
   await expect.poll(() => app.worker.held(takenWrite)).toBe(1)

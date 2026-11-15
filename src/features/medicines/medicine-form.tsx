@@ -266,7 +266,7 @@ function SaveProblemAlert({ problem, label }: { problem: SaveProblem; label: str
   const copy = {
     unconfirmed: {
       title: saveMessages.mightNotHaveSaved,
-      body: "Your details are still here - trying again won't add it twice.",
+      body: saveMessages.retrySameSave,
     },
     rejected: {
       title: `${label} wasn't saved.`,
