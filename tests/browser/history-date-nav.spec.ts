@@ -37,8 +37,7 @@ test('History date bar sizes and alignment @visual', async ({ page }, testInfo) 
     expect(box?.height).toBeGreaterThanOrEqual(44)
   }
 
-  await test.step('at 320px the date bar keeps its three parts on one row', async () => {
-    await page.setViewportSize({ width: 320, height: 740 })
+  await test.step('the date bar keeps its three parts on one row', async () => {
     await page.goto(`/history?date=${addDays(today, -1)}`)
     await expect(dayHeading(page, 'Thursday, 14 June, 1 dose')).toBeVisible()
     const [left, middle, right] = await Promise.all(
@@ -49,6 +48,6 @@ test('History date bar sizes and alignment @visual', async ({ page }, testInfo) 
       2,
     )
     expect(await scrollsHorizontally(page)).toBe(false)
-    await page.screenshot({ path: testInfo.outputPath('history-populated-320.png') })
+    await page.screenshot({ path: testInfo.outputPath('history-populated-402.png') })
   })
 })

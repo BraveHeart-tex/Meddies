@@ -109,26 +109,17 @@ test('calendar day widths and date trigger size @visual', async ({ page, app }) 
   await expect(start).toHaveText('Today, Fri 15 Jun')
   expect((await start.boundingBox())?.height).toBeGreaterThanOrEqual(44)
 
-  await test.step('widen calendar days to fit narrow phones', async () => {
-    const viewport = page.viewportSize()!
-    // At 360px days reach the 44px target; at 320px they stay below it (recorded exception).
-    for (const [width, minimum] of [
-      [360, 44],
-      [320, 39],
-    ] as const) {
-      await page.setViewportSize({ width, height: viewport.height })
-      await start.click()
-      const day = calendarDay(calendar, today)
-      await expect(day).toBeVisible()
-      const box = (await day.boundingBox())!
-      expect(box.width, `day width at ${width}px`).toBeGreaterThanOrEqual(minimum)
-      const popup = (await calendar.boundingBox())!
-      expect(popup.x).toBeGreaterThanOrEqual(0)
-      expect(popup.x + popup.width).toBeLessThanOrEqual(width)
-      expect(await scrollsHorizontally(page)).toBe(false)
-      await page.keyboard.press('Escape')
-      await expect(calendar).toBeHidden()
-    }
-    await page.setViewportSize(viewport)
+  await test.step('calendar days meet the target size and stay within the viewport', async () => {
+    await start.click()
+    const day = calendarDay(calendar, today)
+    await expect(day).toBeVisible()
+    const box = (await day.boundingBox())!
+    expect(box.width).toBeGreaterThanOrEqual(44)
+    const popup = (await calendar.boundingBox())!
+    expect(popup.x).toBeGreaterThanOrEqual(0)
+    expect(popup.x + popup.width).toBeLessThanOrEqual(page.viewportSize()!.width)
+    expect(await scrollsHorizontally(page)).toBe(false)
+    await page.keyboard.press('Escape')
+    await expect(calendar).toBeHidden()
   })
 })

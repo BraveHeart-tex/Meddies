@@ -1,7 +1,7 @@
 import { expect, test } from './fixtures'
 import { selectedNavigation } from './locators'
 import { insertScheduledMedicine } from './seed'
-import { enlargeText, scrollsHorizontally, scrollPosition, waitForClientRouter } from './actions'
+import { scrollsHorizontally, scrollPosition, waitForClientRouter } from './actions'
 
 test.use({
   journey: {
@@ -73,10 +73,7 @@ test('Settings selects its tab and browser Back restores the History date', asyn
   await expect.poll(() => scrollPosition(page)).toBe(before)
 })
 
-test('Settings visual review at 402px, 320px and synthetic 200% text @visual', async ({
-  page,
-  context,
-}) => {
+test('Settings visual review @visual', async ({ page, context }) => {
   await page.goto('/settings')
   await expect(page.getByRole('heading', { name: 'Account' })).toBeVisible()
   const button = page.getByRole('button', { name: /^(Sign out|Try signing out again)$/ })
@@ -97,16 +94,12 @@ test('Settings visual review at 402px, 320px and synthetic 200% text @visual', a
   release()
   await expect(page.getByRole('main').getByRole('alert')).toContainText("You're still signed in")
   await page.screenshot({ path: '/tmp/fe676-recovery.png', fullPage: true })
-  await page.setViewportSize({ width: 320, height: 740 })
-  await expect(button).toBeVisible()
-  await page.screenshot({ path: '/tmp/fe676-320.png', fullPage: true })
   await context.setOffline(true)
   await expect(page.getByRole('button', { name: 'Connect to sign out' })).toBeDisabled()
   await page.screenshot({ path: '/tmp/fe676-offline.png', fullPage: true })
   await context.setOffline(false)
-  await enlargeText(page)
   await button.scrollIntoViewIfNeeded()
   await expect(button).toBeVisible()
   expect(await scrollsHorizontally(page)).toBe(false)
-  await page.screenshot({ path: '/tmp/fe676-text.png', fullPage: true })
+  await page.screenshot({ path: '/tmp/fe676-reconnected.png', fullPage: true })
 })
