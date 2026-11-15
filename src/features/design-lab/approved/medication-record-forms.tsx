@@ -54,7 +54,7 @@ export function EditForm({
   const historical = state === 'revision'
   return (
     <>
-      <MedicationBackRow href={frameLink('292-a1')}>
+      <MedicationBackRow href={frameLink('238-a3')}>
         {state === 'unused' ? 'Vitamin D' : 'Magnesium'}
       </MedicationBackRow>
       <MedicationIdentity
@@ -200,7 +200,7 @@ export function EditForm({
           </Notice>
         )}
         {state === 'conflict' ? (
-          <Link href={frameLink('292-s22')} className={buttonVariants({ size: 'lg' })}>
+          <Link href={frameLink('238-a3')} className={buttonVariants({ size: 'lg' })}>
             Review saved medication
           </Link>
         ) : (
@@ -217,7 +217,7 @@ export function EditForm({
           </Button>
         )}
         <Link
-          href={frameLink('292-s18')}
+          href={frameLink('238-a3')}
           aria-disabled={saving || undefined}
           tabIndex={saving ? -1 : undefined}
           className={cn(

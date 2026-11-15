@@ -229,3 +229,18 @@ export async function hydrated(page: Page) {
     return !!element && Object.keys(element).some((key) => key.startsWith('__reactFiber'))
   })
 }
+
+/** Synthetic text-only probe: browser automation has no text-size setting. Keep spacing/icons
+ * unchanged while doubling computed text sizes, including the validation messages already shown.
+ */
+export async function enlargeTextOnly(page: Page, factor: number) {
+  await page.evaluate((scale) => {
+    const changes = Array.from(document.querySelectorAll<HTMLElement>('body *'))
+      .filter((element) => element instanceof HTMLElement)
+      .map((element) => ({ element, size: parseFloat(getComputedStyle(element).fontSize) }))
+    for (const { element, size } of changes) {
+      element.style.fontSize = `${size * scale}px`
+      element.style.lineHeight = 'normal'
+    }
+  }, factor)
+}

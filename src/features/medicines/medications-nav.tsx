@@ -1,13 +1,35 @@
 'use client'
 
-import { createContext, useContext, useLayoutEffect, type ComponentProps } from 'react'
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useSyncExternalStore,
+  type ComponentProps,
+} from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { medicationsHref, parseMedicationsView } from './routes'
 
-/** The view in the URL. Native History changes reach it without a server round trip (#87). */
+const viewChanged = 'medications:viewchange'
+function subscribeView(listener: () => void) {
+  window.addEventListener('popstate', listener)
+  window.addEventListener(viewChanged, listener)
+  return () => {
+    window.removeEventListener('popstate', listener)
+    window.removeEventListener(viewChanged, listener)
+  }
+}
+const browserView = () =>
+  window.location.pathname === '/medications' ? window.location.search.slice(1) : null
+
+/** Read native entries directly, including after restoring an entry whose Next.js tree came
+ * from a reload of another view. The server search params remain the hydration snapshot.
+ */
 export function useMedicationsView() {
-  return parseMedicationsView(useSearchParams())
+  const params = useSearchParams()
+  const search = useSyncExternalStore(subscribeView, browserView, () => null)
+  return parseMedicationsView(new URLSearchParams(search ?? params.toString()))
 }
 
 // Set by a view change here and consumed once the new view renders, so Back and Forward keep the
@@ -29,12 +51,27 @@ export function showMedicationsView(
     window.scrollTo(0, 0)
     return
   }
+  const before = parseMedicationsView(new URL(from, window.location.origin).searchParams)
+  const after = parseMedicationsView(new URL(href, window.location.origin).searchParams)
+  if (
+    before.mode === 'detail' &&
+    after.mode === 'detail' &&
+    before.record &&
+    after.record &&
+    before.medicineId === after.medicineId
+  ) {
+    scrollRequested = !keepScroll
+    window.history.replaceState({ [fromKey]: window.history.state?.[fromKey] }, '', href)
+    window.dispatchEvent(new Event(viewChanged))
+    return
+  }
   // The Add drawer opens and closes over the list without moving it.
   scrollRequested = !keepScroll
   // A pushed entry remembers the view it came from; history.state survives reload, and Next.js
   // copies its own state in beside it.
   if (method === 'push') window.history.pushState({ [fromKey]: from }, '', href)
   else window.history.replaceState(null, '', href)
+  window.dispatchEvent(new Event(viewChanged))
 }
 
 const fromKey = 'medicationsFrom'

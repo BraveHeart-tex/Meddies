@@ -191,7 +191,9 @@ describe('Medication detail', () => {
     const change = await screen.findByRole('link', { name: 'Change schedule' })
     expect(change).toHaveAttribute('href', `/medications${setupSearch}#schedule-heading`)
     expect(screen.getByText('Started Mon 2 Nov')).toBeVisible()
-    expect(screen.getByText("Details can't be changed here yet.")).toBeVisible()
+    expect(screen.getByRole('link', { name: /^Fix a mistake/ })).toBeVisible()
+    expect(screen.getByRole('link', { name: /^Change strength/ })).toBeVisible()
+    expect(screen.getByRole('link', { name: /^Strength history/ })).toBeVisible()
   })
 
   test('215·S3 a changed Clock schedule reads Changed, with the next dose after saving', async () => {

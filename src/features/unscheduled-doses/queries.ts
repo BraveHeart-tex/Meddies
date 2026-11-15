@@ -17,7 +17,7 @@ export const isUnscheduledKey = (queryKey: readonly unknown[]) =>
   typeof queryKey[2] === 'string'
 
 /**
- * A read replaces the date's list, but a cached revision newer than the read's (a confirmed
+ * A read replaces the date's list, but a cached revision at least as new as the read's (a confirmed
  * change or removal) wins, so a stale read never brings a removed dose back.
  */
 export function mergeUnscheduledDay(
@@ -29,7 +29,7 @@ export function mergeUnscheduledDay(
     current,
     incoming.map((dose) => {
       const cached = current.find((item) => item.id === dose.id)
-      return cached && cached.revision > dose.revision ? cached : dose
+      return cached && cached.revision >= dose.revision ? cached : dose
     }),
   )
 }

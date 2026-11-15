@@ -15,6 +15,7 @@ import {
 } from '@/lib/calendar-date'
 import { quantityLabel } from '@/lib/dose-quantity'
 import { cn } from '@/lib/utils'
+import { medicineForDose } from '@/features/medicines/dose-strength'
 import type { Medicine } from '@/features/medicines/contract'
 import { medicationsHref } from '@/features/medicines/routes'
 import { istanbulDate, type DoseOccurrence } from './contract'
@@ -226,13 +227,19 @@ function HistoryDoseRow({
   dose,
   date,
   today,
-  medicine,
+  medicine: currentMedicine,
 }: {
   dose: DoseOccurrence
   date: string
   today: string
   medicine?: Medicine
 }) {
+  const medicine = currentMedicine
+    ? medicineForDose(
+        currentMedicine,
+        dose.status === 'Taken' || dose.status === 'Skipped' ? dose.record : {},
+      )
+    : undefined
   const saves = useDoseSaves()
   const done = recorded(dose)
   const unit = medicine?.unit ?? 'tablet'

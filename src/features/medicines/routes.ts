@@ -2,7 +2,12 @@
 export type MedicationsView =
   | { mode: 'list' }
   | { mode: 'add' }
-  | { mode: 'detail'; medicineId: string }
+  | {
+      mode: 'detail'
+      medicineId: string
+      record?: 'fix' | 'strength' | 'history'
+      periodId?: string
+    }
   | { mode: 'setup'; medicineId: string }
   | { mode: 'resume'; medicineId: string }
 
@@ -31,7 +36,16 @@ export function parseMedicationsView(params: SearchParams): MedicationsView {
   const resume = medicineId(params, 'resume')
   if (resume) return { mode: 'resume', medicineId: resume }
   const detail = medicineId(params, 'medicine')
-  if (detail) return { mode: 'detail', medicineId: detail }
+  if (detail) {
+    const record = params instanceof URLSearchParams ? params.get('record') : params.record
+    const periodId = medicineId(params, 'period')
+    return {
+      mode: 'detail',
+      medicineId: detail,
+      ...(record === 'fix' || record === 'strength' || record === 'history' ? { record } : {}),
+      ...(periodId ? { periodId } : {}),
+    }
+  }
   return includes(params, 'add') ? { mode: 'add' } : { mode: 'list' }
 }
 
@@ -42,7 +56,7 @@ export function medicationsHref(view: MedicationsView) {
     case 'add':
       return '/medications?add'
     case 'detail':
-      return `/medications?medicine=${encodeURIComponent(view.medicineId)}`
+      return `/medications?medicine=${encodeURIComponent(view.medicineId)}${view.record ? `&record=${view.record}` : ''}${view.periodId ? `&period=${encodeURIComponent(view.periodId)}` : ''}`
     case 'setup':
       return `/medications?schedule=${encodeURIComponent(view.medicineId)}`
     case 'resume':
@@ -64,3 +78,10 @@ export function isMedicationsReturnTo(value: string) {
   const { searchParams } = new URL(value, 'http://return-to.invalid')
   return value === medicationsHref(parseMedicationsView(searchParams))
 }
+
+/** Medication record subviews share the medication's URL and session cache. */
+export const medicationRecordHref = (
+  medicineId: string,
+  record?: 'fix' | 'strength' | 'history',
+  periodId?: string,
+) => medicationsHref({ mode: 'detail', medicineId, record, periodId })

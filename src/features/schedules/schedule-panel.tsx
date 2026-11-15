@@ -8,6 +8,8 @@ import { useScheduleSnapshot } from './queries'
 import { TodaySchedule } from './today-schedule'
 import { ScheduleSetupForm } from './schedule-setup-form'
 import { istanbulDate } from './contract'
+import { MedicineRecordScreen } from '@/features/medicines/medicine-record-screen'
+import type { MedicineRecord } from '@/features/medicines/contract'
 import { MedicationDetail } from './medication-detail'
 import { MedicationsList } from './medications-list'
 import { ScheduleResumeScreen } from './schedule-resume-screen'
@@ -25,6 +27,9 @@ export function SchedulePanel({
   justSaved,
   justScheduled,
   detailHeadingRef,
+  record,
+  periodId,
+  onRecordSaved,
 }: {
   /** The server scheduling time at render, until a newer schedules snapshot replaces it. */
   initialNow: string
@@ -39,6 +44,9 @@ export function SchedulePanel({
   justSaved?: boolean
   justScheduled?: boolean
   detailActions?: ReactNode
+  record?: 'fix' | 'strength' | 'history'
+  periodId?: string
+  onRecordSaved?: (medicine: MedicineRecord, kind: 'fix' | 'strength') => void
   detailHeadingRef?: Ref<HTMLHeadingElement>
 }) {
   const schedulesRead = useScheduleSnapshot({ serverEntry: serverEntry || mode === 'today' })
@@ -69,7 +77,17 @@ export function SchedulePanel({
             onMedicineFocused={onMedicineFocused}
           />
         )}
-        {mode === 'detail' && (
+        {mode === 'detail' && record && (
+          <MedicineRecordScreen
+            medicinesRead={medicinesRead}
+            medicineId={initialMedicineId}
+            record={record}
+            periodId={periodId}
+            today={istanbulDate(new Date(now))}
+            onSaved={(medicine, kind) => onRecordSaved?.(medicine, kind)}
+          />
+        )}
+        {mode === 'detail' && !record && (
           <MedicationDetail
             medicineId={initialMedicineId}
             medicinesRead={medicinesRead}

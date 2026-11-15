@@ -3,6 +3,8 @@
 import { useId, useState, type ReactNode } from 'react'
 import { Controller, useForm, useWatch, type FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { DoseStrength } from '@/features/medicines/dose-strength'
+import type { StrengthSnapshot } from '@/lib/strength-snapshot'
 import { QuantityStepper } from '@/components/quantity-stepper'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -24,6 +26,7 @@ import type { AttemptForm, SaveProblem } from '../schedules/dose-save-state'
 import { DoseSaveProblem } from '../schedules/dose-save-problem'
 import {
   takenDayOptions,
+  takenAtLocal,
   takenFormSchema,
   type TakenAtChoice,
   type TakenFormOutput,
@@ -60,7 +63,7 @@ export function UnscheduledDoseForm({
   medicine: Medicine
   defaults: TakenFormValues
   /** A saved dose's intake: an unchanged minute keeps its exact instant. */
-  original?: { local: string; instant: string }
+  original?: StrengthSnapshot & { local: string; instant: string }
   saving: boolean
   /** Why the last save was not confirmed; an uncertain retry with unchanged details saves once. */
   problem: SaveProblem | null
@@ -202,6 +205,11 @@ export function UnscheduledDoseForm({
             )}
           />
         </FieldGroup>
+        <DoseStrength
+          medicine={medicine}
+          takenAt={takenAtLocal(values, now, now)}
+          original={original ? { ...original, takenAt: original.instant } : undefined}
+        />
         {conflict ? (
           <Alert id={`${id}-problem`} variant="destructive">
             <AlertDescription>{conflictMessage}</AlertDescription>

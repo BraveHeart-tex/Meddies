@@ -1,5 +1,7 @@
 'use client'
 
+import { medicineForDose } from '@/features/medicines/dose-strength'
+
 import { Calendar, Check, Clock, Pill } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -89,7 +91,13 @@ export function TodaySchedule({
   }
   const [intakeMessage, setIntakeMessage] = useState('')
   const doseText = (dose: DoseOccurrence, quantity = dose.quantity) => {
-    const medicine = medicines.find((item) => item.id === dose.medicineId)
+    const currentMedicine = medicines.find((item) => item.id === dose.medicineId)
+    const medicine = currentMedicine
+      ? medicineForDose(
+          currentMedicine,
+          dose.status === 'Taken' || dose.status === 'Skipped' ? dose.record : {},
+        )
+      : undefined
     return quantityLabel(quantity, medicine?.unit ?? 'tablet')
   }
   function announceOutcome(dose: DoseOccurrence, record: DoseOutcomeRecord, reconciled = false) {
@@ -216,7 +224,17 @@ export function TodaySchedule({
                                 />
                               )
                             const dose = row.dose
-                            const medicine = medicines.find((item) => item.id === dose.medicineId)
+                            const currentMedicine = medicines.find(
+                              (item) => item.id === dose.medicineId,
+                            )
+                            const medicine = currentMedicine
+                              ? medicineForDose(
+                                  currentMedicine,
+                                  dose.status === 'Taken' || dose.status === 'Skipped'
+                                    ? dose.record
+                                    : {},
+                                )
+                              : undefined
                             const done = dose.status === 'Taken' || dose.status === 'Skipped'
                             // Yesterday's unresolved doses show their short day (#275).
                             const dueDate = istanbulDate(new Date(dose.dueAt))
@@ -259,7 +277,7 @@ export function TodaySchedule({
                                         {formatTime(dose.dueAt)}
                                         {dueDay && ` on ${dueDay}`} ·{' '}
                                       </span>
-                                      {name(dose.medicineId)}
+                                      {medicine?.label ?? name(dose.medicineId)}
                                     </h4>
                                   </ItemTitle>
                                   <ItemDescription>

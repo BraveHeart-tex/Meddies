@@ -3,6 +3,7 @@
 import { useId, useState, type KeyboardEvent, type RefObject } from 'react'
 import { Controller, useForm, useWatch, type FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { DoseStrength } from '@/features/medicines/dose-strength'
 import { QuantityStepper } from '@/components/quantity-stepper'
 import { InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -326,6 +327,12 @@ export function TakenForm({
               )}
             />
           </FieldGroup>
+          <DoseStrength
+            scheduled
+            medicine={medicine}
+            takenAt={takenAt}
+            original={mode === 'edit' && dose.status === 'Taken' ? dose.record : undefined}
+          />
           {!saving && (
             <DoseSaveProblem
               id={`${id}-problem`}

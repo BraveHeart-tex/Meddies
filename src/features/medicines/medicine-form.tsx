@@ -1,5 +1,7 @@
 'use client'
 
+import { medicineTypeOptions } from '@/lib/dose-quantity'
+
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ChevronsUpDownIcon, InfoIcon } from 'lucide-react'
@@ -39,10 +41,7 @@ import {
   type MedicineFormValues,
 } from './medicine-form-schema'
 
-const UNITS = [
-  { value: 'tablet', label: 'Tablet' },
-  { value: 'capsule', label: 'Capsule' },
-] as const
+const UNITS = medicineTypeOptions
 
 // Inset rows from `B·Drawer`: a 92px label column, 56px minimum height, the focus ring on the row.
 const textRow =

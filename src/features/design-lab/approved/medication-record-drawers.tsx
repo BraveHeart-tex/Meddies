@@ -64,7 +64,7 @@ export function ConfirmDrawer({ state }: { state: 'archive' | 'restore' | 'delet
                 ? '292-s9'
                 : state === 'delete'
                   ? '292-s11'
-                  : '292-a1',
+                  : '238-a3',
           )}
           className={buttonVariants({
             size: 'drawer',

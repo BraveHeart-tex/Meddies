@@ -49,9 +49,9 @@ export function MedicationIdentity({
   headingRef?: Ref<HTMLHeadingElement>
 }) {
   return (
-    <div className="flex items-start gap-3 [overflow-wrap:anywhere]">
+    <div className="flex flex-wrap items-start gap-3 [overflow-wrap:anywhere]">
       <MedicationTile medicineId={medicine.id} />
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <div className="flex min-w-[min(100%,12rem)] flex-1 flex-col gap-0.5">
         {eyebrow && (
           <p className="text-label font-extrabold tracking-eyebrow text-muted-foreground uppercase">
             {eyebrow}

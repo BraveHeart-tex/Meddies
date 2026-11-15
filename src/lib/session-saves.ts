@@ -24,10 +24,11 @@ export async function requestSave<T>(
   url: string,
   payload: Record<string, unknown>,
   decode: (data: unknown) => T,
+  method: 'POST' | 'PATCH' = 'POST',
 ): Promise<SaveResult<T>> {
   try {
     const response = await fetch(url, {
-      method: 'POST',
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(12000),

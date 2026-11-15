@@ -1,10 +1,14 @@
 // Dose quantities: how many tablets or capsules one dose takes, never product strength. Editing
 // text may be blank, a decimal ('1.5', '1,5') or a half glyph ('1½'); the server stores numbers.
 
-export type DoseUnit = 'tablet' | 'capsule'
+export const medicineTypeOptions = [
+  { value: 'tablet', label: 'Tablet' },
+  { value: 'capsule', label: 'Capsule' },
+] as const
+export type DoseUnit = (typeof medicineTypeOptions)[number]['value']
 
 export function isDoseUnit(value: unknown): value is DoseUnit {
-  return value === 'tablet' || value === 'capsule'
+  return medicineTypeOptions.some((option) => option.value === value)
 }
 
 /** Positive half units must remain exact when represented as an integer count of halves. */

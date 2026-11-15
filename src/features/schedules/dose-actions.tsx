@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
+import { medicineForDose } from '@/features/medicines/dose-strength'
 import type { Medicine } from '@/features/medicines/contract'
 import { saveMessages } from '@/lib/save-messages'
 import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
@@ -25,7 +26,7 @@ export type DoseDrawerOpener = { open: (outcome: Outcome) => void }
 
 export function DoseActions({
   dose,
-  medicine,
+  medicine: currentMedicine,
   onRecorded,
   appearance = 'button',
   opener,
@@ -40,6 +41,10 @@ export function DoseActions({
   todayDate?: string
   describedBy?: string
 }) {
+  const medicine = medicineForDose(
+    currentMedicine,
+    dose.status === 'Taken' || dose.status === 'Skipped' ? dose.record : {},
+  )
   const clock = useSchedulingClock()
   // Unsaved drawer details survive navigation for the session (#127).
   const draft = useDoseDrawerDraft(dose.id)

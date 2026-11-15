@@ -33,6 +33,9 @@ browser storage is used. Losing it on reload, app closure or browser eviction is
   from either view, is written into Today's snapshot when the dose is due today and into
   the dose's cached History date, then those exact query keys reconcile. Merges never move
   a revision back, so stale reads and late hydration cannot undo it.
+- **Detail correction receipts** amend loaded dose snapshots only for the selected Strength
+  revision, after cancelling older reads. Dose-edit revisions stay unchanged; equal-revision
+  reads and hydration keep those confirmed facts. Strength changes leave earlier snapshots alone.
 - **Server-confirmed only.** Medicine setup, schedule edits and snooze show no optimistic
   state, and new writes need connectivity.
 - **Definite rejection** clears only that save's pending state and writes no cache, never
@@ -47,8 +50,10 @@ browser storage is used. Losing it on reload, app closure or browser eviction is
 
 ## Session drafts
 
-Medicine Add, schedule setup and the dose drawer keep raw editing values in an in-memory
-store scoped to the session Query client, keyed by form and medicine ID. A schedule change
+Medicine Add, Detail correction, Strength change, schedule setup and the dose drawer keep raw editing values in an in-memory
+store scoped to the session Query client, keyed by form and medicine ID. Medicine record drafts retain the selected period and the revision first edited, so
+returning never silently rebases unsaved details. A successful conflict review discards the stale
+draft after reading current saved details. A schedule change
 is keyed by the Schedule version it edits, so a newer version opens without an older draft.
 
 - Returning restores values through React Hook Form `reset`, with the
@@ -58,9 +63,10 @@ is keyed by the Schedule version it edits, so a newer version opens without an o
   also drop a failed save.
 - A confirmed save or Clear form discards the draft; Clear form also resets defaults.
   Navigation, refresh and clock rollover keep it.
-- `/medications` query states (`?add`, `?medicine`, `?schedule`, `?resume`) share one mounted
+- `/medications` query states (`?add`, `?medicine` (including `record` and `period`), `?schedule`, `?resume`) share one mounted
   `MedicinePanel`, so reset per-screen state when the screen changes. Changes between them
-  use the native History API (`medications-nav.tsx`), so they read the Query cache without a
+  use the native History API (`medications-nav.tsx`), with a URL subscription for Back/Forward
+  after reload as well as view changes, so they read the Query cache without a
   server round trip; `features/medicines/routes.ts` owns view parsing and hrefs.
 - The selected History date lives in the URL.
 

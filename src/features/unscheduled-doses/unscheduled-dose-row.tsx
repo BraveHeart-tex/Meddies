@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
+import { medicineForDose } from '@/features/medicines/dose-strength'
 import type { Medicine } from '@/features/medicines/contract'
 import { formatTime } from '@/lib/calendar-date'
 import { quantityLabel } from '@/lib/dose-quantity'
@@ -31,7 +32,7 @@ const labels = { save: 'Save changes', retry: 'Try saving changes again' }
  */
 export function UnscheduledDoseRow({
   dose,
-  medicine,
+  medicine: currentMedicine,
   today,
   heading: Heading,
   className,
@@ -45,6 +46,7 @@ export function UnscheduledDoseRow({
   /** Where focus goes once a removal takes the row and its drawer away. */
   focusAfterRemove: string
 }) {
+  const medicine = currentMedicine ? medicineForDose(currentMedicine, dose) : undefined
   const client = useQueryClient()
   const draftKey = changeDraftKey(dose.id)
   const label = medicine?.label ?? 'Medication'
@@ -159,7 +161,7 @@ export function UnscheduledDoseRow({
               <UnscheduledDoseForm
                 medicine={medicine}
                 defaults={takenFormDefaults(dose.quantity, { local })}
-                original={{ local, instant: dose.takenAt }}
+                original={{ ...dose, local, instant: dose.takenAt }}
                 saving={save.saving}
                 problem={attemptKind === 'change' ? save.problem : null}
                 conflict={save.conflict}

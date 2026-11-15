@@ -72,13 +72,13 @@ function Detail({
           <Heading>Medication details</Heading>
           <ItemGroup>
             <NavigationRow
-              href={frameLink('292-a2')}
+              href={frameLink('238-a3')}
               title="Fix a mistake"
               description="Fix details that were entered wrongly."
               icon={Pencil}
             />
             <NavigationRow
-              href={frameLink('292-a3')}
+              href={frameLink('238-a3')}
               title="Change strength"
               description="Record a different strength you take now."
               icon={Clock}
@@ -88,7 +88,7 @@ function Detail({
       )}
       <ItemGroup>
         <NavigationRow
-          href={frameLink('292-s22')}
+          href={frameLink('238-a3')}
           title="Strength history"
           description="See which strength each period uses."
           icon={History}
@@ -137,7 +137,7 @@ function ArchivedList({ empty = false }: { empty?: boolean }) {
 function StrengthHistory() {
   return (
     <>
-      <MedicationBackRow href={frameLink('292-a1')}>Magnesium</MedicationBackRow>
+      <MedicationBackRow href={frameLink('238-a3')}>Magnesium</MedicationBackRow>
       <MedicationIdentity medicine={medicine} />
       <Heading description="A dose keeps the strength from when it was taken. Fix a mistake in the period that needs it.">
         Strength history
@@ -146,13 +146,13 @@ function StrengthHistory() {
         <NavigationRow
           title="400 mg · Current"
           description="From Mon 9 Nov at 09:00. Fix a mistake in this period."
-          href={frameLink('292-a2')}
+          href={frameLink('238-a3')}
           icon={Pencil}
         />
         <NavigationRow
           title="200 mg"
           description="Mon 2 Nov to Mon 9 Nov at 09:00. Fix a mistake in this period."
-          href={frameLink('292-s1')}
+          href={frameLink('238-a3')}
           icon={Pencil}
         />
       </ItemGroup>
@@ -200,7 +200,7 @@ export function MedicationRecordScreen({ state }: { state: RecordState }) {
           <NavigationRow
             title="Magnesium"
             description="400 mg · tablet"
-            href={frameLink('292-a1')}
+            href={frameLink('238-a3')}
             icon={Pill}
           />
         </ItemGroup>

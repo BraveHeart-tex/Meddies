@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { SchedulePanel } from '@/features/schedules/schedule-panel'
 import { buttonVariants } from '@/components/ui/button'
 import { MedicineAddDrawer } from './medicine-add-drawer'
+import { Alert, AlertTitle } from '@/components/ui/alert'
 import type { Medicine } from './contract'
 import { MedicationsLink, returnToMedicationPage, showMedicationsView } from './medications-nav'
 import { medicationsHref } from './routes'
@@ -14,12 +15,17 @@ export function MedicinePanel({
   detailMedicineId = '',
   initialNow,
   serverEntry = false,
+  record,
+  periodId,
 }: {
   scheduleMode?: 'add' | 'setup' | 'resume' | 'list' | 'detail'
   scheduleMedicineId?: string
   detailMedicineId?: string
   initialNow: string
   /** This render's server read already refreshed both queries, so views don't read again. */
+  record?: 'fix' | 'strength' | 'history'
+  periodId?: string
+  /** This render's server read already refreshed both queries. */
   serverEntry?: boolean
 }) {
   // Handoff from Add to the saved medicine's page. Panel state carries it across
@@ -29,6 +35,7 @@ export function MedicinePanel({
   const [scheduledMedicine, setScheduledMedicine] = useState<Medicine | null>(null)
   // Done for now hands focus to the saved medicine's list row.
   const [focusMedicineId, setFocusMedicineId] = useState<string | null>(null)
+  const [recordMessage, setRecordMessage] = useState<string | null>(null)
   const mounted = useRef(true)
   const mode = useRef(scheduleMode)
   const setupMedicineId = useRef(scheduleMedicineId)
@@ -47,10 +54,11 @@ export function MedicinePanel({
   const justScheduledHere = scheduleMode === 'detail' && scheduledMedicine?.id === detailMedicineId
   // The panel stays mounted across query-state navigation, so drop the confirmation once she
   // leaves the saved medicine's page (Back must not show it again).
-  const screen = `${scheduleMode}:${detailMedicineId}`
+  const screen = `${scheduleMode}:${detailMedicineId}:${record ?? ''}`
   const [previousScreen, setPreviousScreen] = useState(screen)
   if (previousScreen !== screen) {
     setPreviousScreen(screen)
+    if (recordMessage && (record || scheduleMode !== 'detail')) setRecordMessage(null)
     if (savedMedicine && scheduleMode !== 'add' && !justSavedHere) setSavedMedicine(null)
     if (scheduledMedicine && scheduleMode !== 'setup' && !justScheduledHere)
       setScheduledMedicine(null)
@@ -60,6 +68,10 @@ export function MedicinePanel({
     // After the replace navigation, focus the page heading (#107 a11y).
     detailHeading.current?.focus()
   }, [justSavedHere, justScheduledHere])
+
+  useEffect(() => {
+    if (recordMessage && !record) detailHeading.current?.focus()
+  }, [recordMessage, record])
 
   function scheduled(medicine: Medicine) {
     setScheduledMedicine(medicine)
@@ -77,7 +89,18 @@ export function MedicinePanel({
 
   return (
     <>
+      {recordMessage && !record && (
+        <Alert role="status">
+          <AlertTitle>{recordMessage}</AlertTitle>
+        </Alert>
+      )}
       <SchedulePanel
+        record={record}
+        periodId={periodId}
+        onRecordSaved={(medicine, kind) => {
+          setRecordMessage(kind === 'fix' ? 'Fixed details saved' : 'Strength change saved')
+          returnToMedicationPage(medicine.id)
+        }}
         initialNow={initialNow}
         onScheduleSaved={scheduled}
         // Add opens as a Drawer over the list.

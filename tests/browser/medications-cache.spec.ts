@@ -1,11 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
 import { expect, test } from './fixtures'
+import { pickDate, pickTime } from './pickers'
 
 test.use({
   journey: {
     auth: true,
     storage: true,
+    initialScheduleTime: '2035-06-15T06:00:00.000Z',
     seed: ({ db, ownerId }) =>
       db
         .prepare('INSERT INTO user_medications(owner_id,id,label,strength,unit) VALUES(?,?,?,?,?)')
@@ -88,4 +90,71 @@ test('the Medications list stays cached across Today and refreshes stale data in
     await expect(count(2)).toBeVisible()
     expect(reads).toHaveLength(0)
   })
+})
+
+// Allowed reasons: Back/Forward/reload, navigation during a save, consistency across routes.
+test('detail correction retains its draft and pending save across navigation, then leaves detail with one Back', async ({
+  page,
+  app,
+}) => {
+  await page.goto('/medications')
+  await page.getByRole('link', { name: 'View details for Cached Medicine' }).click()
+  const detail = page.url()
+  await page.getByRole('link', { name: 'Fix a mistake', exact: true }).click()
+  const edit = page.url()
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Fixed Medicine')
+  await page.goBack()
+  await expect(page).toHaveURL(detail)
+  await page.goForward()
+  await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue(
+    'Fixed Medicine',
+  )
+  await page.reload()
+  await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue(
+    'Cached Medicine',
+  )
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Fixed Medicine')
+  let release!: () => void
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route('**/api/medicines', async (route) => {
+    if (route.request().method() !== 'PATCH') return route.fallback()
+    await held
+    await route.fallback()
+  })
+  await page.getByRole('button', { name: 'Save fixed details' }).click()
+  await expect(page.getByRole('button', { name: 'Saving...' })).toBeDisabled()
+  await page.goBack()
+  await expect(page).toHaveURL(detail)
+  await page.goForward()
+  await expect(page).toHaveURL(edit)
+  await expect(page.getByRole('button', { name: 'Saving...' })).toBeDisabled()
+  release()
+  await expect(page).toHaveURL(detail)
+  await expect(page.getByRole('heading', { name: 'Fixed Medicine', exact: true })).toBeVisible()
+  await expect(page.getByText('Fixed details saved', { exact: true })).toBeVisible()
+  await page.goBack()
+  await expect(page).toHaveURL(`${app.origin}/medications`)
+  await expect(page.getByRole('link', { name: 'View details for Fixed Medicine' })).toBeVisible()
+
+  await page.getByRole('link', { name: 'View details for Fixed Medicine' }).click()
+  await expect(page).toHaveURL(detail)
+  await expect(page.getByRole('heading', { name: 'Fixed Medicine', exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Change strength', exact: true }).click()
+  await page.getByRole('textbox', { name: 'New strength' }).fill('600 mg')
+  await pickDate(page, 'Started on', '2035-06-15')
+  await pickTime(page, 'Started at', '08:30')
+  await page.getByRole('button', { name: 'Save strength change' }).click()
+  await expect(page).toHaveURL(detail)
+  await expect(page.getByText('Strength change saved', { exact: true })).toBeVisible()
+  await expect(page.getByText('600 mg · tablet', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Strength history', exact: true }).click()
+  await expect(page.getByText('600 mg · Current')).toBeVisible()
+  await page.getByRole('link', { name: 'Fix a mistake in this period' }).last().click()
+  await expect(page.getByRole('textbox', { name: 'Strength (optional)' })).toHaveValue('10 mg')
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(page).toHaveURL(detail)
+  await page.goBack()
+  await expect(page).toHaveURL(`${app.origin}/medications`)
 })

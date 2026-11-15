@@ -1,6 +1,6 @@
 import { mkdir } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { hydrated, scrollsHorizontally, stylesheetsLoaded } from './actions'
+import { enlargeTextOnly, hydrated, scrollsHorizontally, stylesheetsLoaded } from './actions'
 import { captureCases } from './capture'
 import { expect, test } from './fixtures'
 import { loadingStatus } from './locators'
@@ -75,4 +75,64 @@ test('capture signed-in screens for review', { tag: '@visual' }, async ({ page }
     overflowing.map((capture) => capture.path),
     `Horizontal overflow at 402x874; captures in ${out}`,
   ).toEqual([])
+})
+
+// Opt-in production form evidence. Width/text probes stay outside CI journeys.
+test('capture medication record forms and recovery', { tag: '@visual' }, async ({ page }) => {
+  // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
+  test.skip(!out || process.env.MEDDIES_RECORD_CAPTURE !== '1', 'Set MEDDIES_RECORD_CAPTURE=1')
+  test.setTimeout(120_000)
+  await mkdir(resolve(out!), { recursive: true })
+  const detail = `/medications?medicine=${medicineId}`
+  for (const width of [402, 320]) {
+    await page.setViewportSize({ width, height: 874 })
+    for (const record of ['fix', 'strength', 'history']) {
+      await page.goto(`${detail}&record=${record}`)
+      await expect(
+        page.getByRole('heading', {
+          name:
+            record === 'fix'
+              ? 'Fix a mistake'
+              : record === 'strength'
+                ? 'Change strength'
+                : 'Strength history',
+          exact: true,
+        }),
+      ).toBeVisible()
+      await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
+      expect(await scrollsHorizontally(page)).toBe(false)
+      await page.screenshot({
+        path: resolve(out!, `record-${record}-${width}.png`),
+        fullPage: true,
+      })
+    }
+  }
+  await page.setViewportSize({ width: 320, height: 874 })
+  await page.goto(`${detail}&record=strength`)
+  await page.getByRole('button', { name: 'Save strength change' }).click()
+  await enlargeTextOnly(page, 2)
+  await page.getByRole('textbox', { name: 'New strength' }).press('Tab')
+  await page.keyboard.press('Shift+Tab')
+  await expect(page.getByRole('textbox', { name: 'New strength' })).toBeFocused()
+  expect(await scrollsHorizontally(page)).toBe(false)
+  await page.screenshot({
+    path: resolve(out!, 'record-strength-320-text200-focus.png'),
+  })
+  await page.goto(`${detail}&record=fix`)
+  await page.context().setOffline(true)
+  await expect(page.getByRole('button', { name: 'Connect to save' })).toBeDisabled()
+  await page.screenshot({ path: resolve(out!, 'record-offline.png'), fullPage: true })
+  await page.context().setOffline(false)
+  await page.route('**/api/medicines', async (route) =>
+    route.request().method() === 'PATCH'
+      ? route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          body: '{"error":"conflict"}',
+        })
+      : route.fallback(),
+  )
+  await page.getByRole('button', { name: 'Save fixed details' }).click()
+  await expect(page.getByRole('button', { name: 'Review saved medication' })).toBeVisible()
+  await page.screenshot({ path: resolve(out!, 'record-conflict.png'), fullPage: true })
 })

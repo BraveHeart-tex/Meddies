@@ -24,8 +24,16 @@
     - button "Pause"
     - button "Stop schedule"
   - button "Log a dose"
-  - paragraph
-    - text: Details can't be changed here yet.
+  - region "Medication details"
+    - heading "Medication details" [level=2]
+    - list
+      - link "Fix a mistake"
+        - paragraph
+      - link "Change strength"
+        - paragraph
+    - list
+      - link "Strength history"
+        - paragraph
 - navigation "Primary"
   - list
     - listitem

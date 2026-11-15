@@ -39,12 +39,12 @@ export function AppShell({
           // Display none so a full-screen modal also takes the tabs out of the focus order.
           className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom,0px))] z-10 mx-auto max-w-2xl [body:has([data-covers-tab-bar])_&]:hidden rounded-[2.125rem] border bg-card p-1.5 shadow-nav"
         >
-          <ul className="flex gap-1">
+          <ul className="flex flex-wrap gap-1">
             {destinations.map(({ href, label, icon: Icon }) => {
               const active = pathname === href
               return (
                 // Tabs share the width equally but never shrink below their label, so
-                // "Medications" stays whole at 320px.
+                // "Medications" stays whole at 320px; enlarged text can wrap whole tabs.
                 <li key={href} className="min-w-fit flex-1">
                   <Link
                     href={href}

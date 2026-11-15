@@ -1,5 +1,7 @@
 'use client'
 
+import { Clock, History, Pencil } from 'lucide-react'
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
 import { useState, type ReactNode, type Ref } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,7 +23,7 @@ import {
 } from '@/features/medicines/medications-skeleton'
 import { MedicationsLink } from '@/features/medicines/medications-nav'
 import type { MedicinesRead } from '@/features/medicines/queries'
-import { medicationSetupHref } from '@/features/medicines/routes'
+import { medicationRecordHref, medicationSetupHref } from '@/features/medicines/routes'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { istanbulDate, type DailySchedule } from './contract'
 import { ClockScheduleCard } from './clock-schedule-card'
@@ -247,7 +249,58 @@ export function MedicationDetail({
           {actions}
         </>
       )}
-      <p className="text-label text-muted-foreground">Details can&apos;t be changed here yet.</p>
+      <section className="flex flex-col gap-3" aria-label="Medication details">
+        <h2 className="text-heading">Medication details</h2>
+        <ItemGroup>
+          <Item
+            variant="card"
+            render={
+              <MedicationsLink
+                aria-label="Fix a mistake"
+                href={medicationRecordHref(medicine.id, 'fix', medicine.currentStrengthRevisionId)}
+              />
+            }
+          >
+            <ItemContent>
+              <ItemTitle>Fix a mistake</ItemTitle>
+              <ItemDescription>Fix details that were entered wrongly.</ItemDescription>
+            </ItemContent>
+            <Pencil aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
+          </Item>
+          <Item
+            variant="card"
+            render={
+              <MedicationsLink
+                aria-label="Change strength"
+                href={medicationRecordHref(medicine.id, 'strength')}
+              />
+            }
+          >
+            <ItemContent>
+              <ItemTitle>Change strength</ItemTitle>
+              <ItemDescription>Record a different strength you take now.</ItemDescription>
+            </ItemContent>
+            <Clock aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
+          </Item>
+        </ItemGroup>
+        <ItemGroup>
+          <Item
+            variant="card"
+            render={
+              <MedicationsLink
+                aria-label="Strength history"
+                href={medicationRecordHref(medicine.id, 'history')}
+              />
+            }
+          >
+            <ItemContent>
+              <ItemTitle>Strength history</ItemTitle>
+              <ItemDescription>See which strength each period uses.</ItemDescription>
+            </ItemContent>
+            <History aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
+          </Item>
+        </ItemGroup>
+      </section>
     </div>
   )
 }
