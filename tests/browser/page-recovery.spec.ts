@@ -19,20 +19,14 @@ test.describe('unknown address', () => {
         const response = await page.goto('/unknown-fe677-address')
         expect(response?.status()).toBe(404)
         await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
-        await expect(page.getByRole('main').getByRole('alert')).toContainText(
-          "This page isn't in Meddies.",
-        )
-        await expect(page.getByRole('main').getByRole('alert')).toContainText(
-          "The link may be old or mistyped. Your records haven't changed.",
-        )
+        await expect(page.getByRole('heading')).toHaveCount(1)
+        await expect(page.getByRole('main').getByRole('alert')).toHaveCount(0)
         await expect(selectedNavigation(page)).toHaveCount(0)
         await expect(page.getByRole('navigation', { name: 'Primary' })).toHaveCount(
           session.length ? 1 : 0,
         )
         // Both sessions have exactly the same public content; extra private text fails.
-        await expect(page.getByRole('main')).toHaveText(
-          /^Page not found\s*This page isn't in Meddies\.\s*The link may be old or mistyped\. Your records haven't changed\.\s*Open Today$/,
-        )
+        await expect(page.getByRole('main')).toHaveText(/^Page not found\s*Open Today$/)
         await waitForClientRouter(page)
         await page.getByRole('link', { name: 'Open Today' }).click()
         await expect(page).toHaveURL('/')
