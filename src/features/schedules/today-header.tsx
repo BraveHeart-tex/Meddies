@@ -18,16 +18,21 @@ function useLatestServerNow(initialNow: string) {
  * Today's header (day label and greeting). It needs only the server scheduling time, so it
  * renders in the shell before the doses stream, and re-anchors on each newer snapshot.
  */
-export function TodayHeader({ initialNow }: { initialNow: string }) {
+export function TodayHeader({ initialNow, givenName }: { initialNow: string; givenName?: string }) {
   const serverNow = useLatestServerNow(initialNow)
   return (
     <SchedulingClockProvider serverNow={serverNow}>
-      <TodayHeading serverNow={serverNow} />
+      <TodayHeading serverNow={serverNow} givenName={givenName} />
     </SchedulingClockProvider>
   )
 }
 
-function TodayHeading({ serverNow }: { serverNow: string }) {
+function TodayHeading({ serverNow, givenName }: { serverNow: string; givenName?: string }) {
   const now = useScheduleNow(serverNow)
-  return <AppHeader eyebrow={now ? formatLongDay(now, now) : undefined} title={greeting(now)} />
+  return (
+    <AppHeader
+      eyebrow={now ? formatLongDay(now, now) : undefined}
+      title={greeting(now, givenName)}
+    />
+  )
 }

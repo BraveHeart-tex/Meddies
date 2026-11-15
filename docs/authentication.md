@@ -38,9 +38,15 @@ session version. Remove an approved account, change the version or rotate the
 secret and redeploy to invalidate existing sessions. Sign-out clears this browser's cookie; it does
 not revoke copied cookies on other devices or sign out of Google.
 
-`GET /api/session` exposes only the authenticated ID and absolute expiry, with
-`no-store`; unauthenticated requests return 401. Auth endpoints retain Auth.js CSRF,
-state and PKCE protections. Provider profiles, tokens and error causes are not logged.
+Google sign-in requests `openid email profile`. The encrypted session retains the optional
+Google `given_name` as display data; blank or missing names remain absent. The Auth.js browser
+session exposes that value as `user.givenName` for Today, alongside the stable `user.id` and
+absolute expiry. Existing sessions without the claim keep working and receive the unnamed
+greeting. The name never determines identity or ownership, and client session updates cannot
+change it. The separate `GET /api/session` endpoint exposes only the authenticated ID and
+absolute expiry, with `no-store`; unauthenticated requests return 401. Auth endpoints retain
+Auth.js CSRF, state and PKCE protections. Provider profiles, tokens and error causes are not
+logged.
 
 Session end clears all private browser state; [client state](client-state.md#session-end)
 lists what it covers.

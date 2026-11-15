@@ -41,6 +41,7 @@ function fileName(path: string) {
 test.use({
   journey: {
     auth: true,
+    givenName: 'AlexandriaЖанайым',
     storage: true,
     initialScheduleTime,
     seed: ({ db, ownerId }) =>

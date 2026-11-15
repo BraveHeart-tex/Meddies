@@ -29,7 +29,7 @@ export function authConfigured() {
 export const { handlers, auth } = NextAuth({
   providers: [
     Google({
-      authorization: { params: { scope: 'openid email', prompt: 'select_account' } },
+      authorization: { params: { scope: 'openid email profile', prompt: 'select_account' } },
       checks: ['pkce', 'state'],
     }),
   ],
@@ -61,6 +61,10 @@ export const { handlers, auth } = NextAuth({
         return {
           sub: `google:${profile.sub}`,
           email: profile.email?.toLowerCase(),
+          givenName:
+            typeof profile.given_name === 'string' && profile.given_name.trim()
+              ? profile.given_name.trim()
+              : undefined,
           deadline: Math.floor(Date.now() / 1000) + lifetimeSeconds,
           version: sessionVersion(),
         }
@@ -80,9 +84,14 @@ export const { handlers, auth } = NextAuth({
       return token
     },
     session({ token }) {
-      // Do not expose the email, Google profile or provider tokens to the browser.
+      // Expose only the optional first name needed for Today; identity stays the stable subject.
       return {
-        user: { id: token.sub! },
+        user: {
+          id: token.sub!,
+          ...(typeof token.givenName === 'string' && token.givenName.trim()
+            ? { givenName: token.givenName }
+            : {}),
+        },
         expires: new Date(Number(token.deadline) * 1000).toISOString(),
       }
     },

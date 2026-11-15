@@ -34,6 +34,7 @@ const layoutShiftBudget = 0.01
 test.use({
   journey: {
     auth: true,
+    givenName: 'Ayşe',
     storage: true,
     initialScheduleTime,
     seed: ({ db, ownerId }) =>
@@ -49,7 +50,7 @@ test.use({
   },
 })
 
-const greeting = (page: Page) => page.getByRole('heading', { level: 1, name: 'Good morning' })
+const greeting = (page: Page) => page.getByRole('heading', { level: 1, name: 'Good morning, Ayşe' })
 
 // Today renders hydrated server data, so the browser must not read it again after load.
 function expectNoRepeatedReads(api: ApiRequestCounter) {
@@ -93,6 +94,8 @@ test('direct load streams the shell, fallback and doses in a stable layout', asy
   const [fallbackBoxes, loadedBoxes] = result.snapshots.map((snapshot) => snapshot.boxes)
   expect(loadedBoxes, 'the shell keeps its geometry').toEqual(fallbackBoxes)
   expect(result.cumulativeLayoutShift).toBeLessThanOrEqual(layoutShiftBudget)
+  await page.reload()
+  await expect(greeting(page)).toBeVisible()
 })
 
 test('cold client navigation shows the same fallback before Today', async ({ page, app }) => {

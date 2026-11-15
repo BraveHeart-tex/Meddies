@@ -157,7 +157,11 @@ test('private deep links offer sign-in while retaining the requested destination
 })
 
 test('session reads preserve provider identity and absolute expiry without disclosing email', async () => {
-  const claims = { ...valid(), deadline: Date.parse('2099-11-13T11:02:00Z') / 1000 }
+  const claims = {
+    ...valid(),
+    givenName: 'Ayşe',
+    deadline: Date.parse('2099-11-13T11:02:00Z') / 1000,
+  }
   const headers = { cookie: await cookie(claims) }
   for (const path of ['/api/session', '/api/session?ownerId=google:someone-else']) {
     const response = await request(path, { headers })
@@ -170,7 +174,7 @@ test('session reads preserve provider identity and absolute expiry without discl
   }
   const response = await request('/api/auth/session', { headers })
   const session = await response.json()
-  assert.deepEqual(session.user, { id: 'google:synthetic-subject' })
+  assert.deepEqual(session.user, { id: 'google:synthetic-subject', givenName: 'Ayşe' })
   assert.equal(session.expires, new Date(claims.deadline * 1000).toISOString())
   assert(!JSON.stringify(session).includes('approved@example.test'))
   const page = await request('/', { headers })
@@ -190,6 +194,18 @@ test('session reads preserve provider identity and absolute expiry without discl
   assert(!settingsHtml.includes('approved@example.test'))
   assert(!settingsHtml.includes('Back to Today'))
   assert(!html.includes('approved@example.test'))
+  assert.match(html, /Good (morning|afternoon|evening), Ayşe/)
+})
+
+test('sessions without a usable first name keep the unnamed Today greeting', async () => {
+  for (const givenName of [undefined, '', '   ']) {
+    const claims = { ...valid(), givenName }
+    const headers = { cookie: await cookie(claims) }
+    const session = await (await request('/api/auth/session', { headers })).json()
+    assert.deepEqual(session.user, { id: 'google:synthetic-subject' })
+    const html = await (await request('/', { headers })).text()
+    assert.match(html, /<h1[^>]*>Good (morning|afternoon|evening)<\/h1>/)
+  }
 })
 
 test('wrong identity, revoked, expired and malformed sessions are rejected', async () => {
@@ -269,19 +285,24 @@ test('a second approved account reads its own session', async () => {
   assert.equal((await response.json()).id, 'google:second-subject')
 })
 
-test('client session updates cannot replace the authenticated identity or extend expiry', async () => {
-  const claims = valid()
+test('client session updates cannot replace the authenticated identity, name or expiry', async () => {
+  const claims = { ...valid(), givenName: 'Ayşe' }
   const { csrfToken, cookies } = await csrfSession()
   const response = await request('/api/auth/session', {
     method: 'POST',
     headers: { cookie: `${await cookie(claims)}; ${cookies}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       csrfToken,
-      data: { sub: 'google:attacker', deadline: 9999999999, user: { id: 'google:attacker' } },
+      data: {
+        sub: 'google:attacker',
+        deadline: 9999999999,
+        user: { id: 'google:attacker', givenName: 'Attacker' },
+      },
     }),
   })
   const session = await response.json()
   assert.equal(session.user.id, 'google:synthetic-subject')
+  assert.equal(session.user.givenName, 'Ayşe')
   assert.equal(session.expires, new Date(claims.deadline * 1000).toISOString())
 })
 
@@ -297,6 +318,10 @@ test('Google initiation uses state and PKCE; invalid callbacks do not create ses
   assert.equal(target.origin, 'https://accounts.google.com')
   assert.equal(target.searchParams.get('redirect_uri'), `${base}/api/auth/callback/google`)
   assert.equal(target.searchParams.get('code_challenge_method'), 'S256')
+  assert.deepEqual(
+    new Set(target.searchParams.get('scope')?.split(' ')),
+    new Set(['openid', 'email', 'profile']),
+  )
   assert(target.searchParams.get('state'))
   assert(target.searchParams.get('code_challenge'))
   const invalid = await request('/api/auth/callback/google?code=invalid&state=invalid')

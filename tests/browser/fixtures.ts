@@ -26,6 +26,8 @@ export type Journey = {
   storage: boolean
   /** Freeze the scheduling clock at this instant; move it with `app.setScheduleTime`. */
   initialScheduleTime?: string
+  /** Synthetic Google given_name for Today greeting coverage. */
+  givenName?: string
   /** Seed the fresh database before Next.js starts. Requires `storage`. */
   seed?: (fixture: { db: JourneyDatabase; ownerId: string }) => Promise<unknown>
 }
@@ -61,11 +63,11 @@ export const ownerId = 'google:browser-journey'
 const email = 'approved@example.test'
 const cookieName = 'authjs.session-token'
 
-const sessionToken = (secret: string, deadline: number) =>
+const sessionToken = (secret: string, deadline: number, givenName?: string) =>
   encode({
     secret,
     salt: cookieName,
-    token: { sub: ownerId, email, version: '1', deadline },
+    token: { sub: ownerId, email, version: '1', deadline, ...(givenName && { givenName }) },
     maxAge: 900,
   })
 
@@ -143,7 +145,7 @@ export const test = base.extend<
       const origin = `http://localhost:${port}`
       const expires = Math.floor(Date.now() / 1000) + 900
       const token = journey.auth
-        ? { secret, value: await sessionToken(secret, expires), expires }
+        ? { secret, value: await sessionToken(secret, expires, journey.givenName), expires }
         : undefined
       if (token) secrets.push(token.value)
       const env = Object.fromEntries(

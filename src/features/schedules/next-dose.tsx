@@ -7,10 +7,12 @@ import type { Medicine } from '@/features/medicines/contract'
 import { istanbulDate, type DoseOccurrence } from './contract'
 import type { PendingDose } from './dose-saves'
 
-export function greeting(instant: string) {
+export function greeting(instant: string, givenName?: string) {
   if (!instant) return 'Today'
   const hour = istanbulHour(instant)
-  return hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  const name = givenName?.trim()
+  return name ? `${timeGreeting}, ${name}` : timeGreeting
 }
 
 export function NextDose({

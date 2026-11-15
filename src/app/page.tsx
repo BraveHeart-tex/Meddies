@@ -46,7 +46,7 @@ export default async function HomePage({
       <SessionBoundary ownerId={session.user.id} expires={session.expires}>
         <AppShell>
           <ScreenStack>
-            <TodayHeader initialNow={initialNow} />
+            <TodayHeader initialNow={initialNow} givenName={session.user.givenName} />
             <TodayDosesSection initialNow={initialNow}>
               <Suspense fallback={null}>
                 <TodayDoses />
