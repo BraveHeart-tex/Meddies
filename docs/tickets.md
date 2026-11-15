@@ -78,26 +78,38 @@ unowned and gets skipped.
 
 ## Creating
 
-```sh
-gh issue create --title "..." --body-file "$body_file" \
-  --label enhancement,frontend,needs-triage --milestone "<milestone>" \
-  --project Meddies [--parent <n>] [--blocked-by <n>,<n>]
-```
-
-- Always pass `--project Meddies`, then set Status to Backlog and set Priority on the new
-  item.
+Use the repository command to create and configure one issue. Write the body to a file
+with a quoted heredoc; its text is passed unchanged.
 
 ```sh
-project=PVT_kwHOBMJPk84BrDnq
-item=$(gh project item-list 3 --owner BraveHeart-tex --limit 500 --format json \
-  --jq ".items[] | select(.content.number == $n) | .id")
-# Status: Backlog
-gh project item-edit --project-id "$project" --id "$item" \
-  --field-id PVTSSF_lAHOBMJPk84BrDnqzhpX_s0 --single-select-option-id 3058447d
-# Priority: Urgent f6825608, High 25485ae3, Medium 097090b1, Low 7424e82b
-gh project item-edit --project-id "$project" --id "$item" \
-  --field-id PVTSSF_lAHOBMJPk84BrDnqzhpX_wk --single-select-option-id <option>
+node scripts/create-issue.mjs --title "..." --body-file "$body_file" \
+  --category enhancement --areas frontend --priority High
 ```
+
+- Category: `bug` or `enhancement`. Areas: `backend`, `frontend` or `backend,frontend`.
+- Non-parent tickets require `--priority Urgent|High|Medium|Low`. A parent ticket uses
+  `--parent-ticket` instead, without Priority. This mode is separate from `--parent <n>`,
+  which attaches the new issue as a native sub-issue.
+- Optional `--blocked-by <n>,<n>` sets native blockers.
+- `--triage-state` accepts a state label from [triage labels](triage-labels.md), defaulting
+  to `needs-triage`. `ready-for-agent` requires `--approved-breakdown`, an explicit
+  assertion that the user approved the breakdown.
+- The command resolves Meddies Project metadata, adds the issue, sets Backlog and applicable
+  Priority, then reads back title, exact body, labels, relationships and Project fields.
+  Success prints only compact JSON with the number, URL, Status, applicable Priority,
+  labels and verified relationships.
+- On partial failure, it exits non-zero with the existing issue URL, unfinished steps and
+  diagnostics. Fix the reported cause and rerun the same inputs with `--resume <n>`.
+  Resume configures that issue without creating another; different content or unexpected
+  relationships fail explicitly. If creation itself fails without returning a URL, inspect
+  GitHub for a possibly created issue before retrying; use `--resume <n>` if it exists.
+- Add sibling references once numbers exist with a separate body-file edit, then read back
+  the final text:
+
+  ```sh
+  gh issue edit <n> --body-file "$body_file"
+  gh issue view <n> --json body
+  ```
 
 - Give each ticket one category label, one state label and at least one area label.
   A ticket that spans both areas gets `backend` and `frontend`. Use `ready-for-agent`
@@ -109,7 +121,6 @@ gh project item-edit --project-id "$project" --id "$item" \
   work, so there is no priority hand-off on completion.
 - Work that needs a human gets `ready-for-human` on the issue itself and is assigned to
   the maintainer; it blocks the issues that wait on it.
-- Pick a milestone when the work belongs to one (`gh api repos/{owner}/{repo}/milestones`).
 
 ## Changing scope
 

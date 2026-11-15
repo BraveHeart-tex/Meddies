@@ -9,6 +9,7 @@ import { promisify } from 'node:util'
 export const toolingTests = [
   'tests/architecture-build.test.ts',
   'tests/browser-measure.test.ts',
+  'tests/create-issue.test.ts',
   'tests/dev-server.test.ts',
   'tests/dev-stack.test.ts',
   'tests/journey-build.test.ts',
