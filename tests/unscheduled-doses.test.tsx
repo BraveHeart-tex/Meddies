@@ -213,7 +213,7 @@ test('a Today with only Unscheduled doses lists them instead of its empty state'
   renderToday()
   expect(await screen.findByRole('heading', { name: 'Logged · 2' })).toBeVisible()
   expect((await rows())[0]).toMatch(/^07:15.*2 tablets/)
-  expect(screen.queryByText('No doses to show yet')).not.toBeInTheDocument()
+  expect(screen.queryByText('No scheduled doses')).not.toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'Up next' })).not.toBeInTheDocument()
 })
 
@@ -246,10 +246,10 @@ test('History shows Unscheduled doses in time order and counts scheduled doses o
   expect(shown).toHaveLength(4)
   expect(shown.map((row) => row.slice(0, 5))).toEqual(['08:00', '15:10', '20:00', '23:30'])
   expect(shown[3]).toMatch(/Ibuprofen.*½ tablet · Not on a schedule/)
-  expect(screen.getByText('0 of 2 logged')).toBeVisible()
+  expect(screen.getByText('0 of 2 scheduled doses logged')).toBeVisible()
 })
 
-// Catches '0 of 0 logged' on a day with nothing scheduled (#282).
+// Catches '0 of 0 scheduled doses logged' on a day with nothing scheduled (#282).
 test('a History day with only Unscheduled doses shows no logged count', () => {
   client.setQueryData(unscheduledKeys.day(YESTERDAY), [dose(3, '2026-11-13T20:30:00.000Z')])
   render(
@@ -264,7 +264,7 @@ test('a History day with only Unscheduled doses shows no logged count', () => {
     </QueryClientProvider>,
   )
   expect(screen.getByText(/Not on a schedule/)).toBeVisible()
-  expect(screen.queryByText(/ of \d+ (logged|so far)$/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/ of \d+ scheduled doses logged$/)).not.toBeInTheDocument()
 })
 
 test('Log a dose sits under the schedule with or without one and lists no past doses', async () => {

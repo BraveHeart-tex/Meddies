@@ -1264,7 +1264,7 @@ describe('next actions', () => {
   test('an empty day hides Up next even when a future dose exists', async () => {
     schedulesApi(initialNow, [{ ...scheduleFor('09:00'), startDate: '2026-11-15' }])
     renderToday()
-    expect(await screen.findByRole('heading', { name: 'Nothing to take today' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'No doses scheduled today' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Up next' })).not.toBeInTheDocument()
   })
 })
@@ -1282,66 +1282,55 @@ describe('empty states', () => {
     schedulesApi(initialNow, [])
     serveMedicines([])
     renderToday()
-    expect(await screen.findByRole('heading', { name: 'No medications here yet' })).toBeVisible()
-    expect(screen.getByText('Add your first one and Today will list its doses.')).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'No medications yet' })).toBeVisible()
     expect(screen.getByRole('link', { name: 'Add medication' })).toHaveAttribute(
       'href',
       '/medications?add',
     )
     expect(emptyStateIcon('pill')).toBeInTheDocument()
-    expect(screen.queryByText(/You're all set/)).not.toBeInTheDocument()
   })
 
-  test('one medicine with no schedule is named and links to its setup', async () => {
+  test('one medicine with no schedule points to logging and links to its setup', async () => {
     schedulesApi(initialNow, [])
     serveMedicines([medicine])
     renderToday()
-    expect(await screen.findByRole('heading', { name: 'No doses to show yet' })).toBeVisible()
-    expect(
-      screen.getByText("Today won't list Morning Tablet until it has a schedule."),
-    ).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'No scheduled doses' })).toBeVisible()
+    expect(screen.getByText('You can log a dose from Medications.')).toBeVisible()
     expect(screen.getByRole('link', { name: 'Set schedule' })).toHaveAttribute(
       'href',
       `/medications?schedule=${medicine.id}#schedule-heading`,
     )
     expect(emptyStateIcon('clock')).toBeInTheDocument()
-    expect(screen.queryByText(/You're all set/)).not.toBeInTheDocument()
   })
 
   test('several medicines with no schedule point to Medications', async () => {
     schedulesApi(initialNow, [])
     serveMedicines([medicine, { ...medicine, id: otherMedicineId, label: 'Evening Tablet' }])
     renderToday()
-    expect(await screen.findByRole('heading', { name: 'No doses to show yet' })).toBeVisible()
-    expect(
-      screen.getByText("Today won't list your medications until they have a schedule."),
-    ).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'No scheduled doses' })).toBeVisible()
+    expect(screen.getByText('You can log a dose from Medications.')).toBeVisible()
     expect(screen.getByRole('link', { name: 'Open Medications' })).toHaveAttribute(
       'href',
       '/medications',
     )
     expect(emptyStateIcon('clock')).toBeInTheDocument()
-    expect(screen.queryByText(/You're all set/)).not.toBeInTheDocument()
   })
 
   test('a day with no dose says when the next one is, with no action', async () => {
     schedulesApi(initialNow, [{ ...scheduleFor('09:00'), startDate: '2026-11-15' }])
     serveMedicines([medicine])
     renderToday()
-    expect(await screen.findByRole('heading', { name: 'Nothing to take today' })).toBeVisible()
-    expect(
-      screen.getByText("You're all set. Next is Morning Tablet on Sun 15 Nov at 09:00."),
-    ).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'No doses scheduled today' })).toBeVisible()
+    expect(screen.getByText('Next is Morning Tablet on Sun 15 Nov at 09:00.')).toBeVisible()
     expect(emptyStateIcon('calendar')).toBeInTheDocument()
     expect(document.querySelector('[data-slot="empty-state-action"]')).not.toBeInTheDocument()
   })
 
-  test('a day with no dose and no next dose only says all set', async () => {
+  test('a day with no dose and no next dose shows only the heading', async () => {
     schedulesApi(initialNow, [{ ...scheduleFor('09:00'), confirmedAt: '2027-01-01T00:00:00.000Z' }])
     serveMedicines([medicine])
     renderToday()
-    expect(await screen.findByRole('heading', { name: 'Nothing to take today' })).toBeVisible()
-    expect(screen.getByText("You're all set.")).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'No doses scheduled today' })).toBeVisible()
     expect(screen.queryByText(/Next is/)).not.toBeInTheDocument()
   })
 
@@ -1349,7 +1338,7 @@ describe('empty states', () => {
     schedulesApi(initialNow, [])
     serveMedicines([medicine])
     renderToday()
-    await screen.findByRole('heading', { name: 'No doses to show yet' })
+    await screen.findByRole('heading', { name: 'No scheduled doses' })
     expect(screen.queryByText(/Istanbul time/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Refresh Today' })).toBeVisible()
   })

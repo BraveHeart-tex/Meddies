@@ -136,3 +136,98 @@ test('capture medication record forms and recovery', { tag: '@visual' }, async (
   await expect(page.getByRole('button', { name: 'Review saved medication' })).toBeVisible()
   await page.screenshot({ path: resolve(out!, 'record-conflict.png'), fullPage: true })
 })
+
+// Opt-in copy review for empty, grouped and scheduled states at synthetic 200% text.
+for (const state of ['empty', 'no-schedule', 'future-schedule'] as const) {
+  test.describe(state, () => {
+    test.use({
+      journey: {
+        auth: true,
+        storage: true,
+        initialScheduleTime,
+        seed: async ({ db, ownerId }) => {
+          if (state === 'future-schedule') {
+            await insertScheduledMedicine(db, ownerId, {
+              label: 'Capture Fixture Medicine',
+              startDate: addDays(today, 1),
+              times: [{ time: '08:00', quantity: 1 }],
+            })
+          } else if (state === 'no-schedule') {
+            await db
+              .prepare(
+                'INSERT INTO user_medications(owner_id,id,label,strength,unit) VALUES(?,?,?,?,?)',
+              )
+              .bind(ownerId, medicineId, 'Capture Fixture Medicine', '10 mg', 'tablet')
+              .run()
+          }
+        },
+      },
+    })
+
+    /* eslint-disable playwright/no-conditional-in-test, playwright/no-conditional-expect -- opt-in checks vary by captured state. */
+    test('capture schedule copy at enlarged text', { tag: '@visual' }, async ({ page, app }) => {
+      // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
+      test.skip(!out || process.env.MEDDIES_COPY_CAPTURE !== '1', 'Set MEDDIES_COPY_CAPTURE=1')
+      test.setTimeout(120_000)
+      await mkdir(resolve(out!), { recursive: true })
+      const cases: { path: string; heading: string | RegExp; action?: string }[] = {
+        empty: [
+          { path: '/', heading: 'No medications yet', action: 'Add medication' },
+          { path: '/medications', heading: 'No medications yet', action: 'Add medication' },
+          { path: '/history', heading: 'No dose history yet', action: 'Add medication' },
+        ],
+        'no-schedule': [
+          { path: '/', heading: 'No scheduled doses', action: 'Set schedule' },
+          {
+            path: '/medications',
+            heading: 'No schedule',
+            action: 'View details for Capture Fixture Medicine',
+          },
+          { path: '/history', heading: 'Nothing due yet today' },
+          { path: '/history?date=2035-06-14', heading: /^Nothing was scheduled on/ },
+        ],
+        'future-schedule': [{ path: '/', heading: 'No doses scheduled today' }],
+      }[state]
+      for (const { path, heading, action } of cases) {
+        for (const width of [402, 320]) {
+          await page.setViewportSize({ width, height: 874 })
+          await page.goto(path)
+          await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
+          await expect.poll(() => hydrated(page)).toBe(true)
+          await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
+          await expect(loadingStatus(page)).toHaveCount(0)
+          await enlargeTextOnly(page, 2)
+          expect(await scrollsHorizontally(page)).toBe(false)
+          if (action)
+            await page.getByRole('link', { name: action, exact: true }).click({ trial: true })
+          if (path.startsWith('/history')) {
+            await page.getByRole('button', { name: /Choose a date/ }).click({ trial: true })
+          } else if (path === '/') {
+            await page.getByRole('button', { name: 'Refresh Today' }).click({ trial: true })
+          }
+          const screen = path === '/' ? 'today' : path.slice(1).replace('?date=', '-')
+          await page.screenshot({
+            path: resolve(out!, `copy-${state}-${screen}-${width}-text200.png`),
+            fullPage: true,
+          })
+        }
+      }
+      if (state === 'future-schedule') {
+        await app.setScheduleTime('2035-06-16T09:00:00+03:00')
+        for (const width of [402, 320]) {
+          await page.setViewportSize({ width, height: 874 })
+          await page.goto('/history')
+          await expect(page.getByText('0 of 1 scheduled doses logged')).toBeVisible()
+          await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
+          await enlargeTextOnly(page, 2)
+          expect(await scrollsHorizontally(page)).toBe(false)
+          await page.screenshot({
+            path: resolve(out!, `copy-history-summary-${width}-text200.png`),
+            fullPage: true,
+          })
+        }
+      }
+    })
+    /* eslint-enable playwright/no-conditional-in-test, playwright/no-conditional-expect */
+  })
+}

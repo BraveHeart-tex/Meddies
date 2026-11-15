@@ -78,8 +78,8 @@ Say what happened, what is safe, and what to do next.
 
 - Change words only, never layout, flow or behaviour. A confusing flow becomes its own ticket.
 - Rewrite existing strings. Add a new message only where a state gives no next step. Add no new
-  greetings, encouragement or tips. Warmth belongs in the wording of a message that already exists,
-  as in a short clause like "whenever you're ready".
+  greetings, encouragement or tips.
+- Include an empty-state body only when it adds information beyond the heading and action.
 - Keep strings inline next to their components, except save messages repeated across forms and
   dose saves, which live in `src/lib/save-messages.ts`.
 - Change tests in the same commit as their copy, and keep selecting by visible text and accessible
@@ -91,8 +91,8 @@ The target warmth.
 
 | Instead of                                                       | Write                                                                                              |
 | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| No doses scheduled for today.                                    | Nothing to take today. You're all set.                                                             |
-| No medicines saved yet.                                          | No medications here yet. Add your first one whenever you're ready.                                 |
+| No doses scheduled for today.                                    | No doses scheduled today                                                                           |
+| No medicines saved yet.                                          | No medications yet                                                                                 |
 | Today could not be refreshed. Connect to the internet and retry. | Today didn't update just now. Check your connection and try again.                                 |
 | Confirm skipped dose                                             | Skip this dose                                                                                     |
 | Unsaved details from earlier.                                    | Pick up where you left off. Your details are still here.                                           |

@@ -30,8 +30,6 @@
           - heading "Vitamin D" [level=4]
           - paragraph
             - text: tablet
-          - paragraph
-            - text: No schedule
           - link "View details for Vitamin D"
 - navigation "Primary"
   - list

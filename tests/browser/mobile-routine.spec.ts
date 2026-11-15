@@ -51,7 +51,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     // intentionally uses router navigation.
     await page.goto('/medications')
     await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'No medications here yet' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'No medications yet' })).toBeVisible()
     // A click before hydration would be a document request.
     await waitForClientRouter(page)
     pageRequests = 0

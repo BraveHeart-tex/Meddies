@@ -361,8 +361,7 @@ function TodayEmptyState({
     return (
       <EmptyState
         icon={Pill}
-        title="No medications here yet"
-        body="Add your first one and Today will list its doses."
+        title="No medications yet"
         action={
           <Link href={medicationsHref({ mode: 'add' })} className={buttonVariants({ size: 'lg' })}>
             Add medication
@@ -376,12 +375,8 @@ function TodayEmptyState({
     return (
       <EmptyState
         icon={Clock}
-        title="No doses to show yet"
-        body={
-          single
-            ? `Today won't list ${only.label} until it has a schedule.`
-            : "Today won't list your medications until they have a schedule."
-        }
+        title="No scheduled doses"
+        body="You can log a dose from Medications."
         action={
           <Link
             href={single ? medicationSetupHref(only.id) : medicationsHref({ mode: 'list' })}
@@ -396,11 +391,11 @@ function TodayEmptyState({
   return (
     <EmptyState
       icon={Calendar}
-      title="Nothing to take today"
+      title="No doses scheduled today"
       body={
         next
-          ? `You're all set. Next is ${name(next.medicineId)} on ${formatShortDay(next.dueAt, date)} at ${formatTime(next.dueAt)}.`
-          : "You're all set."
+          ? `Next is ${name(next.medicineId)} on ${formatShortDay(next.dueAt, date)} at ${formatTime(next.dueAt)}.`
+          : undefined
       }
     />
   )

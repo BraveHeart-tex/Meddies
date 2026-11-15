@@ -8,7 +8,7 @@
   - region "Monday, 9 November"
     - heading "Monday, 9 November, 1 dose" [level=2]
     - paragraph
-      - text: 1 of 1 so far
+      - text: 1 of 1 scheduled doses logged
     - list "Doses for Monday, 9 November"
       - listitem
         - heading "08:00 · Magnesium" [level=3]

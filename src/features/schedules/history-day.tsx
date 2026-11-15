@@ -120,8 +120,7 @@ function EmptyDay({
   const content = !hasMedicines
     ? {
         icon: Pill,
-        title: 'No doses here yet',
-        body: 'Doses you log will show here day by day.',
+        title: 'No dose history yet',
         action: (
           <Link href={medicationsHref({ mode: 'add' })} className={buttonVariants({ size: 'lg' })}>
             Add medication
@@ -137,7 +136,6 @@ function EmptyDay({
       : {
           icon: Calendar,
           title: `Nothing was scheduled on ${heading}`,
-          body: 'Use the arrows to see another day.',
         }
   return <EmptyState {...content} titleAs="h2" titleId={dayHeadingId} titleRef={focusTarget} />
 }
@@ -188,7 +186,7 @@ function LoadedDay({
         {/* Counts scheduled doses only, so a day with none shows no count (#282). */}
         {doses.length > 0 && (
           <p className="text-caption font-bold text-muted-foreground">
-            {logged} of {doses.length} {date === today ? 'so far' : 'logged'}
+            {logged} of {doses.length} scheduled doses logged
           </p>
         )}
       </div>

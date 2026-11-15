@@ -72,8 +72,7 @@ export function MedicationsList({
           {medicinesRead.medicines.length === 0 ? (
             <EmptyState
               icon={Pill}
-              title="No medications here yet"
-              body="Add your first one whenever you're ready."
+              title="No medications yet"
               action={
                 <MedicationsLink
                   href={medicationsHref({ mode: 'add' })}

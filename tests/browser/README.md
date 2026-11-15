@@ -170,6 +170,13 @@ Medications (`/medications…`); the run fails on horizontal overflow.
 MEDDIES_VISUAL_OUT=/tmp/meddies-screens MEDDIES_SCREENS='/,/medications,/medications?medicine=00000000-0000-4000-8000-0000000d0001' pnpm test:browser:visual screen-capture
 ```
 
+For Today, Medications and History empty states and the History count, capture at
+402px and 320px with a synthetic 200% text-only probe:
+
+```sh
+MEDDIES_COPY_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-copy pnpm test:browser:visual screen-capture --grep "schedule copy"
+```
+
 `cozy-visual` saves design-review screenshots at the running project's viewport; set
 `MEDDIES_VISUAL_OUT` to keep them outside `.browser-artifacts/`.
 

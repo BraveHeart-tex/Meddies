@@ -4,7 +4,7 @@ import {
   onlineManager,
   type QueryClient,
 } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { RouterContext } from 'next/dist/shared/lib/router-context.shared-runtime'
@@ -297,11 +297,10 @@ describe('with no cache', () => {
   test('an empty list invites the first medication', async () => {
     medicinesApi([])
     renderList()
-    const heading = await screen.findByRole('heading', { name: 'No medications here yet' })
+    const heading = await screen.findByRole('heading', { name: 'No medications yet' })
     expect(heading).toBeVisible()
     const emptyState = heading.closest('[data-slot="empty-state"]')
     expect(emptyState?.querySelector('svg.lucide-pill')).toHaveAttribute('aria-hidden', 'true')
-    expect(screen.getByText("Add your first one whenever you're ready.")).toBeVisible()
     expect(screen.getByRole('link', { name: 'Add medication' })).toHaveAttribute(
       'href',
       '/medications?add',
@@ -315,7 +314,7 @@ describe('with no cache', () => {
   test('the header Add is soft only while the list is known to be empty', async () => {
     medicinesApi([])
     renderList()
-    await screen.findByRole('heading', { name: 'No medications here yet' })
+    await screen.findByRole('heading', { name: 'No medications yet' })
     const add = screen.getByRole('link', { name: 'Add a medication' })
     expect(add).toHaveClass('bg-accent')
     expect(add).not.toHaveClass('bg-primary')
@@ -331,12 +330,12 @@ describe('with no cache', () => {
   })
   /* eslint-enable meddies/no-cosmetic-class-assertions */
 
-  test('a medication with no schedule says so in its plain list row (#275)', async () => {
+  test('a medication with no schedule uses the group heading without repeating it (#275)', async () => {
     medicinesApi(listOf(1))
     renderList()
-    const summary = await screen.findByText('No schedule', { selector: 'p' })
-    expect(summary).toBeVisible()
-    expect(summary.closest('[data-slot="item"]')).toHaveAttribute('data-variant', 'card')
+    const group = await screen.findByRole('region', { name: 'No schedule' })
+    expect(within(group).getByRole('heading', { name: 'No schedule' })).toBeVisible()
+    expect(within(group).getByRole('listitem')).not.toHaveTextContent('No schedule')
     expect(screen.queryByText(/No schedule yet|As needed/)).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'View details for Medicine 1' })).toBeVisible()
     expect(screen.queryByRole('link', { name: /Set schedule/ })).not.toBeInTheDocument()

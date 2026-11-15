@@ -16,11 +16,13 @@ import { PausedBadge } from './clock-schedule-card'
 export function MedicationRow({
   medicine,
   scheduleSummary,
+  noScheduleInGroupHeading = false,
   paused = false,
   linkRef,
 }: {
   medicine: Medicine
   scheduleSummary: string | null
+  noScheduleInGroupHeading?: boolean
   paused?: boolean
   linkRef?: Ref<HTMLAnchorElement>
 }) {
@@ -40,7 +42,9 @@ export function MedicationRow({
         </ItemDescription>
         {/* No schedule is a complete record for occasional use, not unfinished setup (#275). */}
         {paused && <PausedBadge />}
-        <p className="text-label font-bold">{scheduleSummary ?? 'No schedule'}</p>
+        {(scheduleSummary !== null || !noScheduleInGroupHeading) && (
+          <p className="text-label font-bold">{scheduleSummary ?? 'No schedule'}</p>
+        )}
       </ItemContent>
       <ChevronRightIcon aria-hidden="true" className="text-muted-foreground" />
       <MedicationsLink

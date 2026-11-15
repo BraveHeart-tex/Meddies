@@ -108,7 +108,7 @@ test('a populated day lists doses in time order; every row opens the dose drawer
     result: { status: 'loaded', doses: [occurrence('08:00'), late], medicines: [medicine] },
   })
   expect(screen.getByRole('heading', { name: 'Thursday, 5 November, 2 doses' })).toBeVisible()
-  expect(screen.getByText('1 of 2 logged')).toBeVisible()
+  expect(screen.getByText('1 of 2 scheduled doses logged')).toBeVisible()
   const [unlogged, taken] = within(
     screen.getByRole('list', { name: 'Doses for Thursday, 5 November' }),
   ).getAllByRole('listitem')
@@ -154,7 +154,7 @@ test('today so far opens the record drawer from a Not logged row', () => {
       medicines: [medicine],
     },
   })
-  expect(screen.getByText('0 of 1 so far')).toBeVisible()
+  expect(screen.getByText('0 of 1 scheduled doses logged')).toBeVisible()
   expect(
     screen.getByRole('button', { name: 'Record dose for Melatonin scheduled at 08:00' }),
   ).toBeVisible()
@@ -163,12 +163,11 @@ test('today so far opens the record drawer from a Not logged row', () => {
 
 const emptyStateIcon = (name: string) => document.querySelector(`.lucide-${name}`)
 
-test('a past day with no doses points to another day, with no action', () => {
+test('a past day with no doses names the day, with no action', () => {
   renderDay({ date: '2026-11-01' })
   expect(
     screen.getByRole('heading', { level: 2, name: 'Nothing was scheduled on Sunday, 1 November' }),
   ).toBeVisible()
-  expect(screen.getByText('Use the arrows to see another day.')).toBeVisible()
   expect(emptyStateIcon('calendar')).toBeInTheDocument()
   expect(screen.queryByRole('link')).not.toBeInTheDocument()
 })
@@ -218,8 +217,7 @@ test.each(['2026-11-01', '2026-11-06'])(
   'no medicines and no doses on %s offers Add medication',
   (date) => {
     renderDay({ date, result: { status: 'loaded', doses: [], medicines: [] } })
-    expect(screen.getByRole('heading', { level: 2, name: 'No doses here yet' })).toBeVisible()
-    expect(screen.getByText('Doses you log will show here day by day.')).toBeVisible()
+    expect(screen.getByRole('heading', { level: 2, name: 'No dose history yet' })).toBeVisible()
     expect(emptyStateIcon('pill')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Add medication' })).toHaveAttribute(
       'href',

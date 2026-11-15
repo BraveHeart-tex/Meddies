@@ -13,7 +13,7 @@ export function EmptyState({
 }: {
   icon: LucideIcon
   title: ReactNode
-  body: ReactNode
+  body?: ReactNode
   /** The full-width primary action, plus any quieter actions stacked below it. */
   action?: ReactNode
   titleAs?: 'h2' | 'h3'
@@ -39,7 +39,7 @@ export function EmptyState({
         >
           {title}
         </Title>
-        <p className="text-body-lg text-pretty text-muted-foreground">{body}</p>
+        {body && <p className="text-body-lg text-pretty text-muted-foreground">{body}</p>}
       </div>
       {action && (
         <div data-slot="empty-state-action" className="flex w-full flex-col gap-2.5">

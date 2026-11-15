@@ -501,12 +501,12 @@ test.each([
       date: yesterday,
       history: { [yesterday]: [dose(yesterday)] },
     })
-    expect(await screen.findByText('0 of 1 logged')).toBeVisible()
+    expect(await screen.findByText('0 of 1 scheduled doses logged')).toBeVisible()
     await recordFromHistory(app.user, outcome)
     expect(await screen.findByText(toast)).toBeVisible()
     await waitFor(async () => expect(await historyRow(yesterday)).toHaveTextContent(outcome))
     expect(await historyRow(yesterday)).not.toHaveTextContent('Not logged')
-    expect(screen.getByText('1 of 1 logged')).toBeVisible()
+    expect(screen.getByText('1 of 1 scheduled doses logged')).toBeVisible()
     expect(state.writes).toEqual([expect.objectContaining({ dueAt: dueOn(yesterday), outcome })])
   },
 )
@@ -523,7 +523,7 @@ test('an unconfirmed save from a past History row shows Might not have saved, as
   expect(screen.getByRole('button', { name: 'Try saving as taken again' })).toBeVisible()
   await app.user.click(screen.getByRole('button', { name: 'Close dose details' }))
   expect(await historyRow(yesterday)).toHaveTextContent('Might not have saved')
-  expect(screen.getByText('0 of 1 logged')).toBeVisible()
+  expect(screen.getByText('0 of 1 scheduled doses logged')).toBeVisible()
 })
 
 test('a conflict from a past History row applies nothing and offers review, as on Today', async () => {

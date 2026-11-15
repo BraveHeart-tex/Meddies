@@ -55,7 +55,7 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 
 ## Empty states
 
-- Use `EmptyState` only after the read finishes; a failed read stays an Alert. Each answers what's here, why, and what to do next.
+- Use `EmptyState` only after the read finishes; a failed read stays an Alert. State what is empty and include a reason or next step when it adds information.
 - Geometry: a centred column with an 88px, 26px-radius muted tile and a 36px decorative Lucide icon, a `text-title` heavy heading, `text-body-lg` muted body, and an optional full-width `lg` primary action. Gaps are 40px below whatever sits above it (the parent's 20px plus the component's 20px), 20px tile to title, 8px title to body, 20px body to action.
 - Never use a check icon, because a check means Taken.
 - Allow at most one primary action per view: while the list is known to be empty, the header Add uses the soft Button variant.
