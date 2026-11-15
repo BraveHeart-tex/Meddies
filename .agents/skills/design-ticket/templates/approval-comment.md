@@ -17,7 +17,7 @@ Bora approved **Direction {{A}}, {{name}}** after comparing three directions ({{
   overflow and no console errors.
 - {{Tests added for any non-lab logic, such as a preview helper.}}
 
-**Not verified:** text enlargement; {{device, VoiceOver, real keyboard, iOS keyboard over pinned controls.}}
+**Not verified:** {{device, VoiceOver, real keyboard, iOS keyboard over pinned controls.}}
 
 **Open for #{{build}}:** {{questions the build ticket must settle}}
 

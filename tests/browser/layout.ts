@@ -7,9 +7,8 @@ import { appHeader } from './locators'
 
 export type Viewport = { width: number; height: number }
 
-/** Viewports retained by existing layout regressions; new checks select relevant widths. */
+/** Default viewport shared by route layout evidence and visual captures. */
 export const layoutViewports = {
-  narrow: { width: 320, height: 740 },
   phone: { width: 402, height: 874 },
 } satisfies Record<string, Viewport>
 

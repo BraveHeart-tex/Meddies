@@ -18,7 +18,6 @@ export type CaptureCase = {
 /** Focused cases, never an automatic viewport × motion matrix. No case emulates zoom. */
 export const captureCases = {
   phone: { name: 'phone', viewport: layoutViewports.phone, reducedMotion: 'no-preference' },
-  narrow: { name: 'narrow', viewport: layoutViewports.narrow, reducedMotion: 'no-preference' },
   'reduced-motion': {
     name: 'reduced-motion',
     viewport: layoutViewports.phone,

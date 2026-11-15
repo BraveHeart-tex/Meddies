@@ -13,7 +13,6 @@ wrapper:
 pnpm test:browser:build                 # every journey except @visual (CI's job)
 pnpm test:browser:build today-skipped   # one journey, matched by file name
 pnpm test:browser:visual                # only the @visual journeys, on phone
-pnpm exec playwright test --project=narrow --grep @visual cozy-visual
 ```
 
 The wrapper always runs `pnpm worker:build`, runs the shared production build only when the
@@ -48,7 +47,7 @@ git worktree remove ../meddies-base
 
 `phone` is Chromium at the iPhone 17 CSS size (402x874, portrait), not WebKit, iOS or an
 installed PWA, and what `pnpm test:browser` selects; a bare `pnpm exec playwright test` runs
-every project. `narrow` (320x740) is an opt-in stress check. Safari toolbars and safe areas shrink the usable height below 874px,
+the configured project. Safari toolbars and safe areas shrink the usable height below 874px,
 so assert that content scrolls rather than relying on the full height.
 
 ## Fixtures
@@ -154,9 +153,9 @@ MEDDIES_VISUAL_OUT=/tmp/meddies-capture pnpm test:browser:visual loading-capture
 MEDDIES_VISUAL_OUT=/tmp/meddies-capture MEDDIES_CAPTURE_ROUTES=today MEDDIES_CAPTURE_CASES=phone,reduced-motion pnpm test:browser:visual loading-capture
 ```
 
-Cases: `phone` (402x874, the default), `narrow` (320x740) and `reduced-motion` (402x874), or
+Cases: `phone` (402x874, the default) and `reduced-motion` (402x874), or
 a typed `CaptureCase[]` for a specific risk. Omitting `MEDDIES_CAPTURE_ROUTES` selects all
-registered routes; unknown or empty selections fail. A route that loads in the client uses its client loading status as
+registered routes; unknown or empty route and case selections fail. A route that loads in the client uses its client loading status as
 the fallback.
 
 ## Screen captures

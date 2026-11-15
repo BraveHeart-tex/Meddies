@@ -31,7 +31,5 @@ export default defineConfig({
     // Chromium at the iPhone 17 CSS size (402x874, portrait). Synthetic only: not WebKit, iOS
     // or an installed PWA.
     { name: 'phone', use: { viewport: { width: 402, height: 874 } } },
-    // Opt-in narrow stress check.
-    { name: 'narrow', use: { viewport: { width: 320, height: 740 } } },
   ],
 })

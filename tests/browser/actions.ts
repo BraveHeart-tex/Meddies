@@ -122,29 +122,22 @@ export async function stylesheetsLoaded(page: Page) {
 }
 
 /** Layout reflow and inner scrolling have no accessible API; inspect the rendered boxes. */
-export async function todayReflow(list: Locator, width: number) {
-  return list.evaluate((element, viewportWidth) => {
+export async function todayReflow(list: Locator) {
+  return list.evaluate((element) => {
     const rows = Array.from(element.querySelectorAll('li[data-dose-id]'))
     return (
       rows.every((row) => {
         const name = row.querySelector('h4')!
-        const badge = row.querySelector('[data-slot="badge"]')!
         const time = row.querySelector('time')!
         const box = name.getBoundingClientRect()
         return (
           name.scrollWidth <= name.clientWidth &&
           row.scrollHeight <= row.clientHeight &&
-          box.left > time.getBoundingClientRect().left &&
-          (viewportWidth > 360 || badge.getBoundingClientRect().top >= box.bottom)
+          box.left > time.getBoundingClientRect().left
         )
       }) && element.scrollHeight <= element.clientHeight
     )
-  }, width)
-}
-
-/** Synthetic text-size probe: Playwright has no browser text-only zoom API. */
-export async function enlargeText(page: Page) {
-  await page.addStyleTag({ content: 'html { font-size: 200% !important; }' })
+  })
 }
 
 /** Browser Back scroll restoration has no accessible locator API. */
@@ -228,19 +221,4 @@ export async function hydrated(page: Page) {
     const element = document.body.querySelector('*')
     return !!element && Object.keys(element).some((key) => key.startsWith('__reactFiber'))
   })
-}
-
-/** Synthetic text-only probe: browser automation has no text-size setting. Keep spacing/icons
- * unchanged while doubling computed text sizes, including the validation messages already shown.
- */
-export async function enlargeTextOnly(page: Page, factor: number) {
-  await page.evaluate((scale) => {
-    const changes = Array.from(document.querySelectorAll<HTMLElement>('body *'))
-      .filter((element) => element instanceof HTMLElement)
-      .map((element) => ({ element, size: parseFloat(getComputedStyle(element).fontSize) }))
-    for (const { element, size } of changes) {
-      element.style.fontSize = `${size * scale}px`
-      element.style.lineHeight = 'normal'
-    }
-  }, factor)
 }

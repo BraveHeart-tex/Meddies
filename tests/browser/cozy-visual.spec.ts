@@ -6,7 +6,7 @@ import { timePicker } from './pickers'
 
 // Captures Today, Medications and the Record dose drawer with the Cozy Care UI kit sample
 // data (Thursday 14:38) for visual comparison with the design export. Screenshots are review
-// artifacts, not baselines. Run with --project=narrow for the 320px stress check.
+// artifacts, not baselines.
 const initialScheduleTime = '2035-11-08T08:00:00+03:00'
 const day = initialScheduleTime.slice(0, 10)
 const at = (time: string) => new Date(`${day}T${time}:00+03:00`).toISOString()

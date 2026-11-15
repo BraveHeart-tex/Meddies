@@ -40,7 +40,7 @@ test('long Today groups reflow and their last action stays reachable @visual', a
   await expect(page.getByRole('heading', { name: 'To log · 6' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Later today · 5' })).toBeVisible()
   expect(await scrollsHorizontally(page)).toBe(false)
-  expect(await todayReflow(list, page.viewportSize()!.width)).toBe(true)
+  expect(await todayReflow(list)).toBe(true)
   await page.screenshot({ path: testInfo.outputPath('today-402.png'), fullPage: true })
   const lastRow = list.getByRole('listitem').last()
   await expect(instant(lastRow, at('08:00'))).toHaveText('08:00')
