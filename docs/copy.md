@@ -41,6 +41,9 @@ These are banned in UI copy and stay fine in code, docs and tickets, including t
 Say "medication", never "medicine", and call the tab "Medications". The `/medications` URL and code
 names stay.
 
+Use “dose unit” in UI copy for the domain term Quantity unit. Keep Type and dose unit as
+separate facts; domain terminology stays unchanged.
+
 `pnpm lint` fails when outcome, intake, confirmed, unconfirmed or correct appears as a whole word
 in JSX text or in an `aria-label`, `label` or `title` prop in `src`. Review covers the rest:
 "routine", which stays fine in sentences like the sign-in tagline, "medicine", and plain string
@@ -88,6 +91,7 @@ Say what happened, what is safe, and what to do next.
 - Change words only, never layout, flow or behaviour. A confusing flow becomes its own ticket.
 - Rewrite existing strings. Add a new message only where a state gives no next step. Add no new
   greetings, encouragement or tips.
+- Helper text explains consequences rather than repeating labels.
 - Include an empty-state body only when it adds information beyond the heading and action.
 - Keep strings inline next to their components, except save messages repeated across forms and
   dose saves, which live in `src/lib/save-messages.ts`.

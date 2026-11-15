@@ -4,7 +4,7 @@ import { Clock, History, Pencil } from 'lucide-react'
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
 import { useState, type ReactNode, type Ref } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { scheduleToday } from './occurrences'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { LoadingSection } from '@/components/ui/skeleton'
@@ -230,9 +230,6 @@ export function MedicationDetail({
           <Card>
             <CardHeader>
               <CardTitle>No schedule</CardTitle>
-              <CardDescription>
-                Today lists its doses once it has a schedule, or when you log one.
-              </CardDescription>
             </CardHeader>
           </Card>
         )}
@@ -263,7 +260,6 @@ export function MedicationDetail({
           >
             <ItemContent>
               <ItemTitle>Fix a mistake</ItemTitle>
-              <ItemDescription>Fix details that were entered wrongly.</ItemDescription>
             </ItemContent>
             <Pencil aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
           </Item>
@@ -278,7 +274,7 @@ export function MedicationDetail({
           >
             <ItemContent>
               <ItemTitle>Change strength</ItemTitle>
-              <ItemDescription>Record a different strength you take now.</ItemDescription>
+              <ItemDescription>Earlier doses keep their saved strength.</ItemDescription>
             </ItemContent>
             <Clock aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
           </Item>
@@ -295,7 +291,6 @@ export function MedicationDetail({
           >
             <ItemContent>
               <ItemTitle>Strength history</ItemTitle>
-              <ItemDescription>See which strength each period uses.</ItemDescription>
             </ItemContent>
             <History aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
           </Item>

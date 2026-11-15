@@ -102,7 +102,13 @@ test('selected-period correction saves only after confirmation and locks used Ty
   const { user, onSaved } = open('fix', medicine, medicine.strengthRevisions[0].id)
   expect(screen.getByRole('textbox', { name: /Strength/ })).toHaveValue('200 mg')
   expect(screen.queryByRole('combobox', { name: 'Type' })).not.toBeInTheDocument()
-  expect(screen.getByText(/Quantity unit: tablets/)).toBeVisible()
+  expect(screen.getByText(/Dose unit: tablets/)).toBeVisible()
+  expect(
+    screen.getByText('These changes also update doses recorded for this period.'),
+  ).toBeVisible()
+  expect(
+    screen.getByText('Type and dose unit can’t change after adding a schedule or dose.'),
+  ).toBeVisible()
   await user.clear(screen.getByRole('textbox', { name: /Strength/ }))
   await user.type(screen.getByRole('textbox', { name: /Strength/ }), '250 mg')
   await user.click(screen.getByRole('button', { name: 'Save fixed details' }))
@@ -247,7 +253,7 @@ test('never-used Type changes its matching Quantity unit; any past dose locks it
   await user.click(screen.getByRole('combobox', { name: 'Type' }))
   expect(await screen.findAllByRole('option')).toHaveLength(2)
   await user.click(screen.getByRole('option', { name: 'Capsule' }))
-  expect(screen.getByText(/Quantity unit: capsules/)).toBeVisible()
+  expect(screen.getByText(/Dose unit: capsules/)).toBeVisible()
 })
 
 test('strength bounds reject future and before latest Taken without sending a save', async () => {
@@ -527,6 +533,11 @@ test('record read keeps its shell through loading and error, retries, and identi
   expect(screen.getByText('200 mg · Earlier strength')).toBeVisible()
   expect(screen.queryByText(/1901/)).not.toBeInTheDocument()
   expect(screen.getByText(/First strength period/)).toBeVisible()
+  expect(
+    screen.getByText(
+      'Fixing a mistake updates that period’s doses. A strength change keeps earlier doses unchanged.',
+    ),
+  ).toBeVisible()
   expect(screen.getAllByRole('link', { name: 'Fix a mistake in this period' })[1]).toHaveAttribute(
     'href',
     expect.stringContaining(`period=${medicine.strengthRevisions[0].id}`),

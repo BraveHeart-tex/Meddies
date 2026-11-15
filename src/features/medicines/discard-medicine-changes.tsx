@@ -1,11 +1,5 @@
 import { Button } from '@/components/ui/button'
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-} from '@/components/ui/drawer'
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 
 export function DiscardMedicineChanges({
   open,
@@ -21,7 +15,6 @@ export function DiscardMedicineChanges({
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>Discard these changes?</DrawerTitle>
-          <DrawerDescription>The changes you haven’t saved will be lost.</DrawerDescription>
         </DrawerHeader>
         <Button size="drawer" onClick={onDiscard}>
           Discard changes

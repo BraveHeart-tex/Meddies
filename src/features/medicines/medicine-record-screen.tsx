@@ -52,10 +52,6 @@ export function MedicineRecordScreen({
           <MedicationIdentity medicine={saved} />
           <div className="space-y-2">
             <h2 className="text-heading">Strength history</h2>
-            <p className="text-body-sm text-muted-foreground">
-              A dose keeps the strength from when it was taken. Fix a mistake in the period that
-              needs it.
-            </p>
           </div>
           <ItemGroup>
             {[...saved.strengthRevisions].reverse().map((period) => (
@@ -81,8 +77,8 @@ export function MedicineRecordScreen({
             ))}
           </ItemGroup>
           <p className="text-body-sm text-muted-foreground">
-            Fixing a mistake updates doses from that period. Taking a new strength keeps earlier
-            doses as they are.
+            Fixing a mistake updates that period’s doses. A strength change keeps earlier doses
+            unchanged.
           </p>
         </>
       )

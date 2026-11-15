@@ -462,8 +462,8 @@ describe('Done for now', () => {
     expect(await screen.findByRole('heading', { name: saved.label })).toHaveFocus()
     expect(await screen.findByText('No schedule', { exact: true })).toBeVisible()
     expect(
-      screen.getByText('Today lists its doses once it has a schedule, or when you log one.'),
-    ).toBeVisible()
+      screen.queryByText('Today lists its doses once it has a schedule, or when you log one.'),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Set schedule' })).toBeVisible()
     await user.click(screen.getByRole('link', { name: 'Done for now' }))
     expect(window.location.pathname + window.location.search).toBe('/medications')

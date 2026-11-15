@@ -265,8 +265,8 @@ describe('the medication page', () => {
     expect(await screen.findByText('No schedule', { exact: true })).toBeVisible()
     expect(screen.queryByText(/No schedule yet|As needed/)).not.toBeInTheDocument()
     expect(
-      screen.getByText('Today lists its doses once it has a schedule, or when you log one.'),
-    ).toBeVisible()
+      screen.queryByText('Today lists its doses once it has a schedule, or when you log one.'),
+    ).not.toBeInTheDocument()
     const logDose = screen.getByRole('button', { name: 'Log a dose' })
     const set = setSchedule()
     expect(logDose).toHaveClass('bg-primary', 'min-h-13')

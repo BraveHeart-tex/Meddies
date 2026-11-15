@@ -173,7 +173,7 @@ export function MedicineRecordForm({
         <p className="text-body-sm text-muted-foreground">
           {strength
             ? 'Keep earlier doses as they are. Choose when you started the new strength.'
-            : 'Fix details that were entered wrongly. Doses from this strength period will show the fixed details.'}
+            : 'These changes also update doses recorded for this period.'}
         </p>
         {!strength && (
           <p className="text-body-sm text-muted-foreground">
@@ -296,9 +296,9 @@ export function MedicineRecordForm({
                 <p className="font-bold">
                   Type: {medicineTypeOptions.find((option) => option.value === period.unit)?.label}
                 </p>
-                <p>Quantity unit: {unitName(null, period.unit)}</p>
+                <p>Dose unit: {unitName(null, period.unit)}</p>
                 <p className="text-muted-foreground">
-                  Type and Quantity unit can’t change after a schedule or dose has been added.
+                  Type and dose unit can’t change after adding a schedule or dose.
                 </p>
               </div>
             ) : (
@@ -332,8 +332,8 @@ export function MedicineRecordForm({
                       </SelectContent>
                     </Select>
                     <FieldDescription id={`${id}-unit-help`}>
-                      Quantity unit: {unitName(null, field.value || period.unit)}. Type can change
-                      until a schedule or dose is added.
+                      Dose unit: {unitName(null, field.value || period.unit)}. Type can change until
+                      a schedule or dose is added.
                     </FieldDescription>
                   </Field>
                 )}
