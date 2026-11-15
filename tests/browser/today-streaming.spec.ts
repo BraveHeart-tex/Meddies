@@ -157,12 +157,18 @@ test('failed Today reads show recoverable errors in the shell', async ({ page, a
   for (const route of todayReads) app.worker.fail(route, 503)
   await page.goto('/')
   await expect(greeting(page)).toBeVisible()
-  await expect(page.getByText(/Your medications didn't load just now/)).toBeVisible()
-  await expect(
-    page.getByText("Today didn't update just now. Check your connection and try again."),
-  ).toBeVisible()
+  await expect(page.getByText(/Couldn’t load medications/)).toBeVisible()
+  await expect(page.getByText('Couldn’t load Today. Check your connection.')).toBeVisible()
   app.worker.clear()
-  await page.getByRole('button', { name: 'Try loading medications again' }).click()
-  await page.getByRole('button', { name: 'Try again' }).click()
+  await page
+    .getByRole('alert')
+    .filter({ hasText: 'Couldn’t load medications.' })
+    .getByRole('button', { name: 'Try again' })
+    .click()
+  await page
+    .getByRole('alert')
+    .filter({ hasText: 'Couldn’t load Today.' })
+    .getByRole('button', { name: 'Try again' })
+    .click()
   await expect(todaysDoses(page)).toContainText('Streaming Fixture Medicine')
 })

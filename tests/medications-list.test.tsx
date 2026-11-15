@@ -36,7 +36,7 @@ const listOf = (length: number) => Array.from({ length }, (_, i) => medicine(i +
 const count = (n: number) => `${n} ${n === 1 ? 'medication' : 'medications'}`
 // Just past `createQueryClient`'s 30s stale time.
 const stale = 31_000
-const refreshFailed = /Your medications didn't update just now\. Showing what loaded at \d\d:\d\d\./
+const refreshFailed = /Couldn’t update medications\. Showing details loaded at \d\d:\d\d\./
 const unavailable = "Your medications didn't load just now. Check your connection and try again."
 
 /** Serves the medicine list and schedules snapshot, counting medicine reads. */
@@ -194,7 +194,7 @@ describe('with a cached list', () => {
     expect(screen.getByText(count(1))).toBeVisible()
     expect(screen.getByText('Medicine 1')).toBeVisible()
     api.serve(listOf(2))
-    await user.click(screen.getByRole('button', { name: 'Retry' }))
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByText(count(2))).toBeVisible()
     expect(screen.queryByText(refreshFailed)).not.toBeInTheDocument()
     expect(api.reads()).toBe(2)
@@ -207,7 +207,7 @@ describe('with a cached list', () => {
     cache(listOf(1), stale)
     renderList()
     // 10:39:29 UTC is 13:39 in Istanbul, however the machine's zone is set.
-    expect(await screen.findByText(/Showing what loaded at 13:39\./)).toBeVisible()
+    expect(await screen.findByText(/Showing details loaded at 13:39\./)).toBeVisible()
   })
 
   test('a failed schedules refresh is the same single alert, and keeps rows and Add', async () => {
@@ -223,7 +223,7 @@ describe('with a cached list', () => {
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent(refreshFailed)
     expect(screen.getAllByRole('alert')).toHaveLength(1)
-    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Try again' })).toHaveLength(1)
     expect(screen.getByText('Medicine 1')).toBeVisible()
     expect(screen.getByRole('link', { name: 'Add a medication' })).toBeVisible()
   })
@@ -288,7 +288,7 @@ describe('with no cache', () => {
     expect(alert).toHaveTextContent(unavailable)
     expect(screen.queryByText(count(0))).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Add a medication' })).toBeVisible()
-    await user.click(screen.getByRole('button', { name: 'Retry' }))
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByText(count(1))).toBeVisible()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(api.reads()).toBe(2)
@@ -350,7 +350,7 @@ describe('with no cache', () => {
     )
     renderList()
     expect(await screen.findByRole('alert')).toHaveTextContent(unavailable)
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible()
     // Unknown schedules never read as no schedule, and no rows or groups are invented.
     expect(screen.queryByText('No schedule yet.')).not.toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'No schedule' })).not.toBeInTheDocument()
@@ -405,7 +405,7 @@ describe('a medication detail', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       "Medicine 1's schedule couldn't be checked.",
     )
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible()
   })
 })
 

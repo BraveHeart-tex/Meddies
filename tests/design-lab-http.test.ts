@@ -57,7 +57,8 @@ describe('design lab under next start', () => {
       const response = await fetch(`${origin}${path}`)
       expect(response.status, path).toBe(404)
       const html = await response.text()
-      expect(html, path).toContain('This page isn')
+      expect(html, path).toContain('Page not found')
+      expect(html, path).toContain('Open Today')
       expect(html, path).not.toContain('Cold launch')
     }
   }, 60_000)

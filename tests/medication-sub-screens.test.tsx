@@ -305,12 +305,12 @@ describe('the medication page', () => {
     expect(setSchedule()).not.toBeInTheDocument()
     expect(screen.queryByText('No schedule', { exact: true })).not.toBeInTheDocument()
 
-    await user.click(within(alert).getByRole('button', { name: 'Retry' }))
+    await user.click(within(alert).getByRole('button', { name: 'Try again' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(unchecked)
     expect(setSchedule()).not.toBeInTheDocument()
 
     reads.failSchedules = false
-    await user.click(screen.getByRole('button', { name: 'Retry' }))
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByText('No schedule', { exact: true })).toBeVisible()
     expect(setSchedule()).toBeVisible()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -320,9 +320,9 @@ describe('the medication page', () => {
     const reads = api({ schedules: [schedule] })
     reads.failSchedules = true
     const user = renderDetail()
-    await user.click(await screen.findByRole('button', { name: 'Retry' }))
+    await user.click(await screen.findByRole('button', { name: 'Try again' }))
     reads.failSchedules = false
-    await user.click(await screen.findByRole('button', { name: 'Retry' }))
+    await user.click(await screen.findByRole('button', { name: 'Try again' }))
     expect(await screen.findByText(/Started /)).toBeVisible()
     expect(setSchedule()).not.toBeInTheDocument()
   })
@@ -331,13 +331,11 @@ describe('the medication page', () => {
     const reads = api()
     reads.failMedicines = true
     const user = renderDetail()
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      "This medication didn't load just now.",
-    )
+    expect(await screen.findByRole('alert')).toHaveTextContent('Couldn’t load medication.')
     expect(backRow('Medications')).toBeVisible()
     expect(setSchedule()).not.toBeInTheDocument()
     reads.failMedicines = false
-    await user.click(screen.getByRole('button', { name: 'Try loading medication again' }))
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
     await identity('Magnesium')
   })
 })
@@ -406,7 +404,7 @@ describe('schedule setup', () => {
     await identity('Magnesium')
     expect(screen.queryByRole('button', { name: 'Save schedule' })).not.toBeInTheDocument()
     reads.failSchedules = false
-    await user.click(screen.getByRole('button', { name: 'Retry' }))
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByRole('button', { name: 'Save schedule' })).toBeVisible()
   })
 
@@ -448,7 +446,7 @@ describe('refreshes', () => {
     reads.failMedicines = true
     seedCache([magnesium], stale)
     renderDetail()
-    expect(await screen.findByText(/didn't update just now/)).toBeVisible()
+    expect(await screen.findByText(/Couldn’t update/)).toBeVisible()
     expect(screen.getByRole('heading', { level: 1, name: 'Magnesium' })).toBeVisible()
     expect(setSchedule()).toBeVisible()
   })

@@ -69,6 +69,9 @@ Never show or announce an ISO date. A dose due today shows no date.
 
 Say what happened, what is safe, and what to do next.
 
+- For reads with no usable data, say “Couldn’t load” and name the content. For refresh
+  failures, say “Couldn’t update” and identify the previously loaded details still shown.
+  Keep the retry action beside its error and preserve any loaded timestamp or requested date.
 - Never say "failed" when the result is unknown. Say it might not have saved.
 - Name a cause only when known. Otherwise say, for example, "Camera unavailable. Enter the
   medication details instead."
@@ -99,7 +102,7 @@ The target warmth.
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | No doses scheduled for today.                                    | No doses scheduled today                                                                    |
 | No medicines saved yet.                                          | No medications yet                                                                          |
-| Today could not be refreshed. Connect to the internet and retry. | Today didn't update just now. Check your connection and try again.                          |
+| Today could not be refreshed. Connect to the internet and retry. | Couldn’t update Today. Showing previously loaded details.                                   |
 | Confirm skipped dose                                             | Skip this dose                                                                              |
 | Unsaved details from earlier.                                    | Unsaved details restored.                                                                   |
 | That date is not available.                                      | Nothing to show for that day.                                                               |

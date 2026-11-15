@@ -121,7 +121,7 @@ test(
       await expectSectionGaps(
         appHeader(page),
         dateNav(page),
-        historyDay(page, "History for Today, Fri 15 Jun didn't load just now."),
+        historyDay(page, 'Couldn’t load History for Today, Fri 15 Jun.'),
       )
       app.worker.clear()
     })

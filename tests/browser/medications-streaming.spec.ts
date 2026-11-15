@@ -246,7 +246,7 @@ test('failed reads show one alert with Retry and Add, and Retry recovers', async
   await expect(add(page)).toBeVisible()
   await expect(page.getByText('No schedule', { exact: true })).toHaveCount(0)
   app.worker.clear()
-  await page.getByRole('button', { name: 'Retry' }).click()
+  await page.getByRole('button', { name: 'Try again' }).click()
   await expect(row(page, scheduled)).toBeVisible()
   await expect(page.getByRole('alert').filter({ hasText: 'load just now' })).toHaveCount(0)
 })

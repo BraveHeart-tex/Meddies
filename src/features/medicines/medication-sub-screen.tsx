@@ -101,10 +101,10 @@ export function MedicationLoadFailed({ onRetry }: { onRetry: () => void }) {
     <>
       <h1 className="sr-only outline-none">Medication</h1>
       <Alert variant="destructive">
-        <AlertTitle>This medication didn&apos;t load just now.</AlertTitle>
-        <AlertDescription>Check your connection and try again.</AlertDescription>
+        <AlertTitle>Couldn’t load medication.</AlertTitle>
+        <AlertDescription>Check your connection.</AlertDescription>
         <Button variant="outline" className="mt-2 justify-self-start" onClick={onRetry}>
-          Try loading medication again
+          Try again
         </Button>
       </Alert>
     </>
@@ -117,7 +117,7 @@ export function ScheduleUnchecked({ name, onRetry }: { name: string; onRetry: ()
     <Alert variant="destructive">
       <AlertTitle>{name}&apos;s schedule couldn&apos;t be checked.</AlertTitle>
       <Button variant="outline" className="mt-2 justify-self-start" onClick={onRetry}>
-        Retry
+        Try again
       </Button>
     </Alert>
   )
@@ -133,9 +133,9 @@ export function MedicinesRefreshAlert({
   return (
     <Alert role="status">
       <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
-        <p>Your medications didn&apos;t update just now. Showing the last list that loaded.</p>
+        <p>Couldn’t update medications. Showing previously loaded details.</p>
         <Button variant="outline" className="min-h-11" disabled={refreshing} onClick={retry}>
-          {refreshing ? 'Retrying…' : 'Try loading medications again'}
+          {refreshing ? 'Retrying…' : 'Try again'}
         </Button>
       </AlertDescription>
     </Alert>

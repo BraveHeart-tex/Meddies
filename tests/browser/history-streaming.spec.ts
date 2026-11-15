@@ -167,14 +167,12 @@ test('failed History reads show the unavailable state, and Retry recovers', asyn
   for (const route of historyReads) app.worker.fail(route, 503)
   await page.goto('/history')
   await expect(
-    page
-      .getByRole('alert')
-      .filter({ hasText: "History for Today, Fri 15 Jun didn't load just now." }),
+    page.getByRole('alert').filter({ hasText: 'Couldn’t load History for Today, Fri 15 Jun.' }),
   ).toBeVisible()
   await expect(page.getByRole('heading', { level: 1, name: 'History' })).toBeVisible()
   app.worker.clear()
   const api = countApiRequests(page, app.origin)
-  await page.getByRole('button', { name: 'Try this date again' }).click()
+  await page.getByRole('button', { name: 'Try again' }).click()
   await expect(doses(page)).toContainText('Streaming Fixture Medicine')
   // Retry refetched in place; the page did not load again.
   expect(api.count('/api/schedules/history')).toBe(1)

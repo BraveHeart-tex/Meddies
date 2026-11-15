@@ -256,13 +256,13 @@ describe('with a cached snapshot', () => {
     const user = renderToday()
     focus()
     expect(
-      await screen.findByText("Today didn't update just now. Check your connection and try again."),
+      await screen.findByText('Couldn’t update Today. Showing previously loaded details.'),
     ).toBeVisible()
     expect(await doses()).toHaveTextContent('Morning Tablet')
     await user.click(screen.getByRole('button', { name: 'Try again' }))
     await waitFor(() =>
       expect(
-        screen.queryByText("Today didn't update just now. Check your connection and try again."),
+        screen.queryByText('Couldn’t update Today. Showing previously loaded details.'),
       ).not.toBeInTheDocument(),
     )
     expect(await doses()).toHaveTextContent('Morning Tablet')
@@ -971,9 +971,7 @@ describe('with no cache', () => {
     const api = schedulesApi(initialNow)
     api.failNext()
     const user = renderToday()
-    expect(
-      await screen.findByText("Today didn't update just now. Check your connection and try again."),
-    ).toBeVisible()
+    expect(await screen.findByText('Couldn’t load Today. Check your connection.')).toBeVisible()
     expect(screen.queryByRole('list', { name: "Today's doses" })).not.toBeInTheDocument()
     expect(screen.queryByText('Loading today’s doses')).not.toBeInTheDocument()
     expect(screen.getAllByRole('alert')).toHaveLength(1)
@@ -1032,9 +1030,7 @@ describe('wording', () => {
     client.removeQueries({ queryKey: medicineKeys.list() })
     renderToday()
     expect(
-      await screen.findByText(
-        "Your medications didn't load just now, so Today can't show your doses. Check your connection and try again.",
-      ),
+      await screen.findByText('Couldn’t load medications. Check your connection.'),
     ).toBeVisible()
   })
 
@@ -1045,7 +1041,7 @@ describe('wording', () => {
     renderToday()
     expect(
       await screen.findByText(
-        "Medication details didn't update just now. Showing the last list that loaded.",
+        'Couldn’t update medication details. Showing previously loaded details.',
       ),
     ).toBeVisible()
   })

@@ -95,11 +95,11 @@ function focusScenarios(checkRing: (actual: unknown, expected: unknown) => void)
     await expect(page.getByText('Nothing due yet today')).toBeVisible()
     app.worker.fail({ method: 'POST', path: '/schedules', operation: 'listOutcomes' }, 503)
     await page.getByRole('button', { name: 'Previous day' }).press('Enter')
-    const dayTitle = page.getByText(/^History for .* didn't load just now\.$/)
+    const dayTitle = page.getByText(/^Couldn’t load History for .*\.$/)
     await expect(dayTitle).toBeFocused()
     checkRing(await focusRing(dayTitle), noRing)
     await page.keyboard.press('Tab')
-    await expect(page.getByRole('button', { name: 'Try this date again' })).toBeFocused()
+    await expect(page.getByRole('button', { name: 'Try again' })).toBeFocused()
   })
 }
 

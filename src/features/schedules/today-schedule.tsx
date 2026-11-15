@@ -132,11 +132,11 @@ export function TodaySchedule({
           <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
             <p>
               {medicines.length === 0
-                ? "Your medications didn't load just now, so Today can't show your doses. Check your connection and try again."
-                : "Medication details didn't update just now. Showing the last list that loaded."}
+                ? 'Couldn’t load medications. Check your connection.'
+                : 'Couldn’t update medication details. Showing previously loaded details.'}
             </p>
             <Button variant="outline" onClick={retryMedicines}>
-              Try loading medications again
+              Try again
             </Button>
           </AlertDescription>
         </Alert>
@@ -144,7 +144,11 @@ export function TodaySchedule({
       {(loadError || refreshFailed) && (
         <Alert>
           <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
-            <p>Today didn&apos;t update just now. Check your connection and try again.</p>
+            <p>
+              {today
+                ? 'Couldn’t update Today. Showing previously loaded details.'
+                : 'Couldn’t load Today. Check your connection.'}
+            </p>
             <Button variant="outline" disabled={refreshing} onClick={retry}>
               {refreshing ? 'Retrying…' : 'Try again'}
             </Button>

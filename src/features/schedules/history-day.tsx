@@ -70,12 +70,12 @@ export function HistoryDay({
         {result.status === 'unavailable' ? (
           <Alert role="alert" variant="destructive">
             <AlertTitle id={dayHeadingId} ref={focusTarget} tabIndex={-1} className="outline-none">
-              History for {formatTodayRelativeDay(date, today)} didn&apos;t load just now.
+              Couldn’t load History for {formatTodayRelativeDay(date, today)}.
             </AlertTitle>
             <AlertDescription className="flex flex-col items-start gap-2">
-              <p>Check your connection and try again. Your records haven&apos;t changed.</p>
+              <p>Check your connection.</p>
               <Button type="button" variant="outline" onClick={result.retry}>
-                Try this date again
+                Try again
               </Button>
             </AlertDescription>
           </Alert>

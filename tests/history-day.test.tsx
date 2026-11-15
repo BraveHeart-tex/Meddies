@@ -189,7 +189,7 @@ test('a late entry day cannot consume focus requested for the failed selected da
   expect(previous).toHaveFocus()
   entry.unmount()
   renderDay({ date: '2026-11-05', result: { status: 'unavailable', retry: vi.fn() } })
-  expect(screen.getByText(/^History for .* didn't load just now\.$/)).toHaveFocus()
+  expect(screen.getByText(/^Couldn’t load History for .*\.$/)).toHaveFocus()
 })
 
 test('picking an empty day focuses its title, which names the day', async () => {
@@ -230,11 +230,9 @@ test('an unavailable day offers one retry for that date', async () => {
   const retry = vi.fn()
   renderDay({ date: '2026-11-04', result: { status: 'unavailable', retry } })
   const alert = screen.getByRole('alert')
-  expect(alert).toHaveTextContent("History for Wed 4 Nov didn't load just now.")
-  expect(alert).toHaveTextContent(
-    "Check your connection and try again. Your records haven't changed.",
-  )
-  await userEvent.click(within(alert).getByRole('button', { name: 'Try this date again' }))
+  expect(alert).toHaveTextContent('Couldn’t load History for Wed 4 Nov.')
+  expect(alert).toHaveTextContent('Check your connection.')
+  await userEvent.click(within(alert).getByRole('button', { name: 'Try again' }))
   expect(retry).toHaveBeenCalledOnce()
 })
 

@@ -37,10 +37,8 @@ test.each([false, true])(
     const { default: NotFound } = await import('@/app/not-found')
     render(<NotFound />)
     expect(screen.getByRole('heading', { name: 'Page not found' })).toBeVisible()
-    expect(screen.getByRole('alert')).toHaveTextContent("This page isn't in Meddies.")
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      "The link may be old or mistyped. Your records haven't changed.",
-    )
+    expect(screen.getAllByRole('heading')).toHaveLength(1)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     if (signedIn) {
       await screen.findByRole('navigation', { name: 'Primary' })
       for (const link of within(screen.getByRole('navigation', { name: 'Primary' })).getAllByRole(

@@ -48,7 +48,7 @@ export function MedicationsList({
       <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
         <p>{message}</p>
         <Button variant="outline" className="min-h-11" disabled={refreshing} onClick={retry}>
-          {refreshing ? 'Retrying…' : 'Retry'}
+          {refreshing ? 'Retrying…' : 'Try again'}
         </Button>
       </AlertDescription>
     </Alert>
@@ -67,7 +67,7 @@ export function MedicationsList({
         <>
           {refreshFailed &&
             recovery(
-              `Your medications didn't update just now. Showing what loaded at ${formatTime(loadedAt)}.`,
+              `Couldn’t update medications. Showing details loaded at ${formatTime(loadedAt)}.`,
             )}
           {medicinesRead.medicines.length === 0 ? (
             <EmptyState

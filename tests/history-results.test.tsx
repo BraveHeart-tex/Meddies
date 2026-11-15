@@ -161,8 +161,8 @@ test('Retry refetches a failed date without reloading', async () => {
     fail ? HttpResponse.json({}, { status: 503 }) : HttpResponse.json({ doses: [dose(date)] }),
   )
   renderResults(seeded({}))
-  const retry = await screen.findByRole('button', { name: 'Try this date again' })
-  expect(screen.getByRole('alert')).toHaveTextContent("History for Wed 4 Nov didn't load just now.")
+  const retry = await screen.findByRole('button', { name: 'Try again' })
+  expect(screen.getByRole('alert')).toHaveTextContent('Couldn’t load History for Wed 4 Nov.')
   fail = false
   retry.click()
   expect(await doseList('2026-11-04')).toHaveTextContent('Melatonin')
@@ -175,7 +175,7 @@ test('a 401 the session check does not confirm stays a retryable read, not a ses
   server.use(http.get('/api/session', () => HttpResponse.json({ id: 'owner', expires: 'later' })))
   serveHistory(() => HttpResponse.json({ error: 'unauthorized' }, { status: 401 }))
   renderResults(seeded({}))
-  expect(await screen.findByRole('alert')).toHaveTextContent("didn't load just now")
+  expect(await screen.findByRole('alert')).toHaveTextContent('Couldn’t load History')
   expect(screen.queryByText('Your session ended.')).not.toBeInTheDocument()
 })
 

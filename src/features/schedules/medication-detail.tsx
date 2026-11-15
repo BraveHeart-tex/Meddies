@@ -149,9 +149,9 @@ export function MedicationDetail({
       {refreshFailed && (
         <Alert role="status">
           <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
-            <p>Your schedules didn&apos;t update just now. Showing the last list that loaded.</p>
+            <p>Couldn’t update schedules. Showing previously loaded details.</p>
             <Button variant="outline" className="min-h-11" disabled={refreshing} onClick={retry}>
-              {refreshing ? 'Retrying…' : 'Try loading schedules again'}
+              {refreshing ? 'Retrying…' : 'Try again'}
             </Button>
           </AlertDescription>
         </Alert>

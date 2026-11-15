@@ -519,7 +519,7 @@ test('record read keeps its shell through loading and error, retries, and identi
     </QueryClientProvider>,
   )
   expect(screen.getByText('Loading medication')).toBeInTheDocument()
-  const retry = await screen.findByRole('button', { name: 'Try loading medication again' })
+  const retry = await screen.findByRole('button', { name: 'Try again' })
   expect(screen.getByRole('link', { name: 'Medication' })).toBeVisible()
   succeeds = true
   await userEvent.setup().click(retry)

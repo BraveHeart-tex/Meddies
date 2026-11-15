@@ -1,6 +1,12 @@
-import { mkdir } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { hydrated, scrollsHorizontally, stylesheetsLoaded } from './actions'
+import {
+  focusWindow,
+  resizeTextForReview,
+  hydrated,
+  scrollsHorizontally,
+  stylesheetsLoaded,
+} from './actions'
 import { captureCases } from './capture'
 import { expect, test } from './fixtures'
 import { loadingStatus } from './locators'
@@ -305,4 +311,108 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
   expect(await scrollsHorizontally(page)).toBe(false)
   await page.screenshot({ path: resolve(out!, `save-skipped-402.png`) })
   await page.context().setOffline(false)
+})
+
+// Opt-in read-recovery review, using the existing seeded screen-capture infrastructure.
+test('capture read recovery copy', { tag: '@visual' }, async ({ page, app }) => {
+  // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
+  test.skip(!out || process.env.MEDDIES_READ_CAPTURE !== '1', 'Set MEDDIES_READ_CAPTURE=1')
+  test.setTimeout(180_000)
+  await mkdir(resolve(out!), { recursive: true })
+  const reads = [
+    { method: 'POST', path: '/medicines', operation: 'list' },
+    { method: 'POST', path: '/schedules', operation: 'listOutcomes' },
+  ]
+  const results: unknown[] = []
+  async function capture(name: string) {
+    await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
+    const restoreText = await resizeTextForReview(page)
+    for (const width of [402, 320]) {
+      await page.setViewportSize({ width, height: 874 })
+      await expect.poll(() => scrollsHorizontally(page)).toBe(false)
+      for (const action of await page
+        .getByRole('button', { name: 'Try again', exact: true })
+        .all()) {
+        await action.scrollIntoViewIfNeeded()
+        await expect(action).toBeVisible()
+        await action.focus()
+        await expect(action).toBeFocused()
+      }
+      await page.screenshot({
+        path: resolve(out!, `read-${name}-${width}-200.png`),
+        fullPage: true,
+      })
+      results.push({
+        name,
+        width,
+        textPercent: 200,
+        outline: await page.getByRole('main').ariaSnapshot(),
+      })
+    }
+    await restoreText()
+  }
+  for (const read of reads) app.worker.fail(read, 503)
+  await page.goto('/')
+  await expect(page.getByText('Couldn’t load Today. Check your connection.')).toBeVisible()
+  await capture('today-unavailable')
+  app.worker.clear()
+  await page
+    .getByRole('alert')
+    .filter({ hasText: 'Couldn’t load medications.' })
+    .getByRole('button')
+    .press('Enter')
+  await page
+    .getByRole('alert')
+    .filter({ hasText: 'Couldn’t load Today.' })
+    .getByRole('button')
+    .press('Enter')
+  await expect(page.getByText('Capture Fixture Medicine').first()).toBeVisible()
+  for (const read of reads) app.worker.fail(read, 503)
+  await focusWindow(page)
+  await expect(
+    page.getByText('Couldn’t update Today. Showing previously loaded details.'),
+  ).toBeVisible()
+  await capture('today-cached')
+  app.worker.clear()
+  await page.goto('/medications')
+  await expect(page.getByText('Capture Fixture Medicine')).toBeVisible()
+  for (const read of reads) app.worker.fail(read, 503)
+  await page.clock.install()
+  await page.clock.fastForward('00:31')
+  await focusWindow(page)
+  await expect(
+    page.getByText(/Couldn’t update medications. Showing details loaded at/),
+  ).toBeVisible()
+  await capture('medications-cached')
+  await page.getByRole('link', { name: /Capture Fixture Medicine/ }).press('Enter')
+  await expect(page.getByRole('heading', { name: 'Capture Fixture Medicine' })).toBeVisible()
+  await capture('detail-cached')
+  await page.goto(`/medications?medicine=${medicineId}`)
+  await expect(page.getByText('Couldn’t load medication.')).toBeVisible()
+  await capture('detail-unavailable')
+  app.worker.clear()
+  await page.route('**/api/schedules', (route) => route.fulfill({ status: 503, body: '{}' }))
+  // A failed server schedule read is separate from medication absence.
+  app.worker.fail(reads[1], 503)
+  await page.goto(`/medications?medicine=${medicineId}`)
+  await expect(
+    page.getByText("Capture Fixture Medicine's schedule couldn't be checked.", { exact: false }),
+  ).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Set schedule', exact: true })).toHaveCount(0)
+  await capture('schedule-unknown')
+  await page.goto('/history?date=2035-06-14')
+  await expect(page.getByText('Couldn’t load History for Thu 14 Jun.')).toBeVisible()
+  await capture('history-unavailable')
+  app.worker.clear()
+  await page.goto('/missing-copy-review')
+  await expect(page.getByRole('heading', { name: 'Page not found' })).toHaveCount(1)
+  await expect(page.getByRole('heading')).toHaveCount(1)
+  const openToday = page.getByRole('link', { name: 'Open Today' })
+  await capture('404')
+  await openToday.scrollIntoViewIfNeeded()
+  await openToday.focus()
+  await expect(openToday).toBeFocused()
+  await openToday.press('Enter')
+  await expect(page).toHaveURL(app.origin + '/')
+  await writeFile(resolve(out!, 'read-review.json'), JSON.stringify(results, null, 2))
 })
