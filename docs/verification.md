@@ -13,6 +13,23 @@ checks all run and report even when an earlier one fails, except that a failed b
 integration. A warning names dev-stack tests skipped because fixed ports were busy.
 It runs alongside `pnpm dev`.
 
+Each stage prints `START <stage>` immediately before its action, then `PASS` or `FAIL`
+with its elapsed seconds and diagnostic-log path. Static starts may overlap; later stages
+start after the preceding stage completes. The final summary keeps each result and elapsed
+time. Verbose child stdout and stderr go to one log per stage in the reported temporary
+`meddies-verify-logs-*` directory instead of flooding the console. Logs remain after both
+success and failure, including build-reuse messages; remove the directory when diagnostics
+are no longer needed (the operating system may also clean temporary files).
+
+Observable child termination names the signal and stage, keeps available diagnostics and
+fails that stage. Handled runner `SIGINT` and `SIGTERM` name every active interrupted stage,
+forward the signal to active child process groups on POSIX (direct children on Windows),
+stop launching stages and print a failing summary. Their exit codes are 130 and 143;
+ordinary success/failure remains 0/1. A missing test JSON report cannot mask the original
+child failure. Uncatchable signals such as `SIGKILL` cannot produce a final report; only
+output already written to diagnostic logs can survive. These messages report observed
+signals, not why they were sent.
+
 The `tooling` Vitest project (scripts, workflows and the journey harness, listed in
 `scripts/tooling-tests.mjs`) runs only when one of its inputs changed against `origin/main`
 or in the working tree, or when git cannot tell; the summary says when it was skipped. CI

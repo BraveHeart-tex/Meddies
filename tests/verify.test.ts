@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { execFileSync, spawnSync } from 'node:child_process'
+import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -14,6 +14,12 @@ async function fakeRoot(t: TestContext) {
     join(root, 'pnpm'),
     `#!/bin/sh
 printf '%s\\n' "$1" >> "$COMMAND_LOG"
+printf 'verbose stdout for %s\\n' "$1"
+printf 'verbose stderr for %s\\n' "$1" >&2
+case "$HOLD_CHECK:$1" in
+  static:lint|static:format:check|static:typecheck)
+    while [ ! -f release ]; do sleep 0.02; done ;;
+esac
 case "$1" in
   typecheck) touch types-finished ;;
   build)
@@ -23,11 +29,13 @@ case "$1" in
     mkdir -p .next
     echo build > .next/BUILD_ID ;;
   test:unit)
+    if [ "$FAIL_CHECK" = signal-before-report ]; then kill -TERM $$; fi
     case " $* " in *" --project tooling "*) touch tooling-ran ;; esac
     for report; do :; done
     echo '{"testResults":[{"name":"/tests/dev-stack.test.ts","assertionResults":[{"status":"pending"}]}]}' > "$report"
     sleep 0.2
-    touch unit-finished ;;
+    touch unit-finished
+    if [ "$FAIL_CHECK" = signal ]; then kill -TERM $$; fi ;;
 esac
 [ "$1" != "$FAIL_CHECK" ]
 `,
@@ -108,3 +116,101 @@ for (const [path, change, runs] of [
     else assert.match(result.stdout, /SKIP tooling: no script/)
   })
 }
+
+async function heldVerify(t: TestContext, root: string) {
+  const child = spawn(process.execPath, [resolve('scripts/verify.mjs')], {
+    cwd: root,
+    env: {
+      ...process.env,
+      CI: '',
+      PATH: `${root}:${process.env.PATH}`,
+      COMMAND_LOG: join(root, 'commands'),
+      HOLD_CHECK: 'static',
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  t.onTestFinished(async () => {
+    await writeFile(join(root, 'release'), '')
+    child.kill('SIGKILL')
+  })
+  let output = ''
+  child.stdout.on('data', (data) => {
+    output += data.toString()
+  })
+  const finished = new Promise<number | null>((resolve) => child.on('close', resolve))
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error(output || 'no stage progress')), 3000)
+    const inspect = () => {
+      if (
+        ['lint', 'format', 'typecheck'].every((label) => output.includes(`[verify] START ${label}`))
+      ) {
+        clearTimeout(timeout)
+        child.stdout.off('data', inspect)
+        resolve()
+      }
+    }
+    child.stdout.on('data', inspect)
+    inspect()
+  })
+  return { child, output: () => output, finished }
+}
+
+test('held static children expose live starts before completion and keep ordered results', async (t) => {
+  const root = await fakeRoot(t)
+  const held = await heldVerify(t, root)
+  assert.doesNotMatch(held.output(), /\[verify\] PASS|\[verify\] FAIL|Summary/)
+  await writeFile(join(root, 'release'), '')
+  assert.equal(await held.finished, 0, held.output())
+  const output = held.output()
+  assert.match(output, /\[verify\] PASS lint: [\d.]+s/)
+  assert.match(output, /\[verify\] Summary/)
+  assert.ok(output.indexOf('PASS unit, component and tooling:') < output.indexOf('START build'))
+  assert.ok(output.indexOf('PASS build:') < output.indexOf('START integration'))
+})
+
+for (const failure of ['signal', 'signal-before-report']) {
+  test(`${failure} is explicit and retains diagnostics without console flooding`, async (t) => {
+    const root = await fakeRoot(t)
+    const result = verify(root, failure)
+    assert.equal(result.status, 1)
+    assert.match(result.stdout, /unit, component and tooling.*SIGTERM/)
+    assert.doesNotMatch(result.stdout, /verbose stdout|verbose stderr/)
+    const log = result.stdout.match(/START unit, component and tooling \(log: (.+)\)/)?.[1]
+    assert.ok(log, result.stdout)
+    const diagnostics = await readFile(log, 'utf8')
+    assert.match(diagnostics, /verbose stdout for test:unit/)
+    assert.match(diagnostics, /verbose stderr for test:unit/)
+    assert.match(diagnostics, /SIGTERM/)
+    assert.match(diagnostics, /pnpm exited SIGTERM/)
+    assert.doesNotMatch(diagnostics, /ENOENT/)
+    assert.match(result.stdout, failure === 'signal' ? /PASS integration/ : /FAIL build/)
+  })
+}
+
+test('runner SIGTERM names every interrupted static stage and retains their diagnostics', async (t) => {
+  const root = await fakeRoot(t)
+  const held = await heldVerify(t, root)
+  // Each child writes before holding. Wait for those public diagnostic logs to be populated.
+  const logs = [...held.output().matchAll(/START (.+) \(log: (.+)\)/g)]
+  for (const [, , path] of logs) {
+    for (let attempt = 0; ; attempt++) {
+      if ((await readFile(path, 'utf8')).includes('verbose stderr')) break
+      assert.ok(attempt < 100, `child did not write diagnostics: ${path}`)
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+  }
+  held.child.kill('SIGTERM')
+  assert.equal(await held.finished, 143, held.output())
+  const output = held.output()
+  assert.match(output, /runner received SIGTERM/)
+  for (const [, label, path] of logs) {
+    assert.ok(output.includes(`interrupted ${label}`), output)
+    const diagnostics = await readFile(path, 'utf8')
+    assert.match(diagnostics, /verbose stdout/)
+    assert.match(diagnostics, /verbose stderr/)
+    assert.match(diagnostics, /SIGTERM/)
+  }
+  assert.doesNotMatch(output, /START unit|START build|START integration/)
+  assert.match(output, /Summary/)
+  assert.match(output, /\[verify\] FAIL/)
+})
