@@ -4,6 +4,7 @@ import path from 'node:path'
 const neutral = new Set([
   'src/lib/application-error',
   'src/lib/dose-quantity',
+  'src/lib/strength-snapshot',
   'src/lib/json-request',
   'src/lib/calendar-date',
   'src/features/medicines/contract',

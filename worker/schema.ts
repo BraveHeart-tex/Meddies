@@ -19,6 +19,11 @@ export const userMedications = sqliteTable(
     id: text('id').notNull(),
     label: text('label').notNull(),
     strength: text('strength'),
+    revision: integer('revision').notNull().default(0),
+    everHadSchedule: integer('ever_had_schedule', { mode: 'boolean' }).notNull().default(false),
+    everHadDose: integer('ever_had_dose', { mode: 'boolean' }).notNull().default(false),
+    creationRequest: text('creation_request'),
+    creationResult: text('creation_result'),
     unit: text('unit', { enum: ['tablet', 'capsule'] }).notNull(),
   },
   (table) => [primaryKey({ columns: [table.ownerId, table.id] })],
@@ -61,6 +66,11 @@ export const dailySchedules = sqliteTable(
 export const doseRecords = sqliteTable(
   'dose_records',
   {
+    strengthRevisionId: text('strength_revision_id'),
+    strength: text('strength'),
+    originalStrength: text('original_strength'),
+    medicineLabel: text('medicine_label'),
+    unit: text('unit'),
     ownerId: text('owner_id').notNull(),
     scheduleId: text('schedule_id').notNull(),
     dueAt: text('due_at').notNull(),
@@ -82,6 +92,11 @@ export const doseRecords = sqliteTable(
 export const skippedDoseRecords = sqliteTable(
   'skipped_dose_records',
   {
+    strengthRevisionId: text('strength_revision_id'),
+    strength: text('strength'),
+    originalStrength: text('original_strength'),
+    medicineLabel: text('medicine_label'),
+    unit: text('unit'),
     ownerId: text('owner_id').notNull(),
     scheduleId: text('schedule_id').notNull(),
     dueAt: text('due_at').notNull(),
@@ -102,6 +117,11 @@ export const skippedDoseRecords = sqliteTable(
 export const doseCorrections = sqliteTable(
   'dose_corrections',
   {
+    strengthRevisionId: text('strength_revision_id'),
+    strength: text('strength'),
+    originalStrength: text('original_strength'),
+    medicineLabel: text('medicine_label'),
+    unit: text('unit'),
     ownerId: text('owner_id').notNull(),
     scheduleId: text('schedule_id').notNull(),
     dueAt: text('due_at').notNull(),
@@ -136,6 +156,11 @@ export const doseCorrections = sqliteTable(
 export const unscheduledDoses = sqliteTable(
   'unscheduled_doses',
   {
+    strengthRevisionId: text('strength_revision_id'),
+    strength: text('strength'),
+    originalStrength: text('original_strength'),
+    medicineLabel: text('medicine_label'),
+    unit: text('unit'),
     ownerId: text('owner_id').notNull(),
     id: text('id').notNull(),
     revision: integer('revision').notNull(),
@@ -160,5 +185,62 @@ export const unscheduledDoses = sqliteTable(
       sql`${table.quantity} > 0 AND ${table.quantity} * 2 = CAST(${table.quantity} * 2 AS INTEGER)`,
     ),
     check('unscheduled_doses_removed', sql`${table.removed} IN (0, 1)`),
+  ],
+)
+
+export const medicineStrengthRevisions = sqliteTable(
+  'medicine_strength_revisions',
+  {
+    ownerId: text('owner_id').notNull(),
+    medicineId: text('medicine_id').notNull(),
+    id: text('id').notNull(),
+    strength: text('strength'),
+    label: text('label').notNull(),
+    unit: text('unit').notNull(),
+    effectiveAt: text('effective_at').notNull(),
+    sequence: integer('sequence').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.medicineId, table.id] }),
+    unique().on(table.ownerId, table.medicineId, table.sequence),
+    index('medicine_strength_effective').on(
+      table.ownerId,
+      table.medicineId,
+      table.effectiveAt,
+      table.sequence,
+    ),
+    foreignKey({
+      columns: [table.ownerId, table.medicineId],
+      foreignColumns: [userMedications.ownerId, userMedications.id],
+    }),
+  ],
+)
+
+export const medicineEdits = sqliteTable(
+  'medicine_edits',
+  {
+    ownerId: text('owner_id').notNull(),
+    actionId: text('action_id').notNull(),
+    medicineId: text('medicine_id').notNull(),
+    expectedRevision: integer('expected_revision').notNull(),
+    kind: text('kind', { enum: ['correctDetails', 'changeStrength'] }).notNull(),
+    strengthRevisionId: text('strength_revision_id').notNull(),
+    strength: text('strength'),
+    label: text('label').notNull(),
+    unit: text('unit').notNull(),
+    effectiveAt: text('effective_at'),
+    confirmedAt: text('confirmed_at').notNull(),
+    request: text('request').notNull(),
+    previousDetails: text('previous_details'),
+    result: text('result'),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.actionId] }),
+    unique().on(table.ownerId, table.medicineId, table.expectedRevision),
+    foreignKey({
+      columns: [table.ownerId, table.medicineId],
+      foreignColumns: [userMedications.ownerId, userMedications.id],
+    }),
+    check('medicine_edits_kind', sql`${table.kind} IN ('correctDetails','changeStrength')`),
   ],
 )

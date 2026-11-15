@@ -1,7 +1,11 @@
 import type { ChildProcess } from 'node:child_process'
 import type { AddressInfo } from 'node:net'
 import type { JWT } from 'next-auth/jwt'
-import type { Medicine } from '../src/features/medicines/contract'
+import {
+  parseMedicine,
+  parseMedicineRecord,
+  type Medicine,
+} from '../src/features/medicines/contract'
 import type {
   DailyScheduleInput,
   DailySchedule,
@@ -372,6 +376,81 @@ test('sign-out requires CSRF, clears the browser session and prevents subsequent
   assert.equal((await request('/api/session', { headers: { cookie: cleared } })).status, 401)
 })
 
+test('medication edit HTTP boundary preserves strength metadata, scoped retries and dose snapshots', async () => {
+  const alice = { cookie: await cookie({ ...valid(), sub: 'google:strength-http' }) }
+  const bob = { cookie: await cookie({ ...valid(), sub: 'google:strength-http-other' }) }
+  const id = '30000000-0000-4000-8000-000000000001'
+  const medicine = { id, label: 'Example strength', strength: '200 mg', unit: 'tablet' }
+  const post = (path: string, input: unknown, method = 'POST', headers = alice) =>
+    request(path, {
+      method,
+      headers: { ...headers, origin: base, 'content-type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+  const created = await post('/api/medicines', medicine)
+  assert.equal(created.status, 200)
+  const initial = parseMedicineRecord(
+    ((await created.json()) as { medicines: unknown[] }).medicines[0],
+  )
+  const takenAt = new Date(Math.floor(Date.now() / 60_000) * 60_000).toISOString()
+  const dose = {
+    actionId: '30000000-0000-4000-8000-000000000002',
+    medicineId: id,
+    takenAt,
+    quantity: 1,
+  }
+  const recorded = await post('/api/schedules/unscheduled', dose)
+  assert.equal(recorded.status, 200)
+  const change = {
+    actionId: '30000000-0000-4000-8000-000000000003',
+    medicineId: id,
+    expectedRevision: 0,
+    strength: '400 mg',
+    effectiveAt: takenAt,
+    timeZone: 'Europe/Istanbul',
+    ownerId: 'google:strength-http-other',
+  }
+  const command = { operation: 'changeStrength', change }
+  assert.equal((await post('/api/medicines', command, 'PATCH', {} as typeof alice)).status, 401)
+  assert.equal((await post('/api/medicines', command, 'PATCH', bob)).status, 400)
+  const unsafe = await request('/api/medicines', {
+    method: 'PATCH',
+    headers: { ...alice, origin: 'https://other.example', 'content-type': 'application/json' },
+    body: JSON.stringify(command),
+  })
+  assert.equal(unsafe.status, 403)
+  const changed = await post('/api/medicines', command, 'PATCH')
+  assert.equal(changed.status, 200)
+  const receipt = await changed.json()
+  const current = parseMedicineRecord(receipt.medicines[0])
+  assert.equal(current.lastActionId, change.actionId)
+  assert.equal(current.strengthRevisions.length, 2)
+  assert.equal(current.everHadDose, true)
+  const correction = {
+    actionId: '30000000-0000-4000-8000-000000000004',
+    medicineId: id,
+    expectedRevision: 1,
+    strengthRevisionId: initial.currentStrengthRevisionId,
+    label: medicine.label,
+    strength: '250 mg',
+    unit: 'tablet',
+  }
+  assert.equal(
+    (await post('/api/medicines', { operation: 'correctDetails', correction }, 'PATCH')).status,
+    200,
+  )
+  assert.deepEqual(await (await post('/api/medicines', command, 'PATCH')).json(), receipt)
+  const read = await request('/api/medicines', { headers: alice })
+  const latest = parseMedicineRecord(((await read.json()) as { medicines: unknown[] }).medicines[0])
+  assert.equal(latest.revision, 2)
+  assert.equal(latest.strength, '400 mg')
+  assert.equal(latest.strengthRevisions[0].strength, '250 mg')
+  const today = await request('/api/schedules', { headers: alice })
+  const snapshot = await today.json()
+  assert.equal(snapshot.unscheduledDoses[0].strength, '250 mg')
+  assert.equal(snapshot.unscheduledDoses[0].strengthRevisionId, initial.currentStrengthRevisionId)
+})
+
 test('medicine HTTP boundary confirms saves, rejects cross-user access and unsafe requests', async () => {
   const alice = { cookie: await cookie(valid()) }
   const bob = { cookie: await cookie({ ...valid(), sub: 'google:bob' }) }
@@ -398,12 +477,18 @@ test('medicine HTTP boundary confirms saves, rejects cross-user access and unsaf
   assert.equal((await save({ ...medicine, label: ' ' })).status, 400)
   const saved = await save({ ...medicine, ownerId: 'google:bob' })
   assert.equal(saved.status, 200)
-  assert.deepEqual(await saved.json(), { medicines: [medicine] })
+  assert.deepEqual(
+    ((await saved.json()) as { medicines: unknown[] }).medicines.map(parseMedicine),
+    [medicine],
+  )
   assert.equal((await save(medicine)).status, 200)
   assert.equal((await save({ ...medicine, strength: '5 mg' })).status, 409)
   const reload = await request('/api/medicines', { headers: alice })
   assert.match(reload.headers.get('cache-control')!, /no-store/)
-  assert.deepEqual(await reload.json(), { medicines: [medicine] })
+  assert.deepEqual(
+    ((await reload.json()) as { medicines: unknown[] }).medicines.map(parseMedicine),
+    [medicine],
+  )
   assert.deepEqual(await (await request('/api/medicines', { headers: bob })).json(), {
     medicines: [],
   })

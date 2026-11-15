@@ -75,7 +75,25 @@ owner.
 ## Persistence rules
 
 - **Medicines:** save IDs are immutable and unique per owner. An identical retry returns
-  the saved medicine; a changed payload returns conflict.
+  its original receipt, even after edits; a changed payload returns conflict. Production
+  reads include effective-dated strength revisions, the current revision, medication revision,
+  last action ID, latest recorded Taken instant and permanent ever-had-schedule/dose facts.
+  The initial strength period covers all earlier instants. `PATCH /api/medicines` accepts
+  `correctDetails` with a target strength revision or `changeStrength` with a UTC instant
+  explicitly named in `Europe/Istanbul`; both require an action UUID and expected medication
+  revision. A Detail correction amends only its period and linked dose snapshots, retaining
+  previous details for export. A Strength change adds a period without rewriting saved doses,
+  rejects future instants and instants before any recorded Taken time (including changed or
+  removed records), and permits equality. At equal effective instants the later revision wins
+  for new doses. The database validates, applies and stores the exact retry receipt atomically.
+  Type/Quantity unit lock permanently on first schedule or dose use. First-use writes compare
+  the unit validated by the shared quantity policy in their insertion statement.
+- **Dose strength:** scheduled doses resolve by Taken time, or due time for Skipped;
+  Unscheduled doses resolve by Taken time. Database insertion triggers save period identity,
+  strength, label and Quantity unit, including writes from an older Worker during rollout.
+  A time/outcome change resolves again; keeping the same time and outcome preserves the saved
+  period, including explicit Detail corrections and a Strength change at the same instant.
+  Original strength snapshots and the Detail correction ledger retain earlier values for export.
 - **Schedules:** Schedule versions are immutable and owner-scoped, with the same retry and
   conflict behavior. A medicine has one initial version; every edit, Last day change or
   stop, pause or resume appends one successor to the version it names, atomically, at the Worker-derived

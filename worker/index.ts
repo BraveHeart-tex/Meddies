@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/d1'
 import { decodeCommand } from './commands'
 import { authenticateService, commandPath, failure, json, readJsonRequest } from './http'
-import { listMedicines, saveMedicine } from './medicines'
+import { listMedicines, saveMedicine, editMedicine } from './medicines'
 import { listLegacySnapshot, listOutcomeSnapshot, saveSchedule, editSchedule } from './schedules'
 import { correctDoseOutcome, recordSkipped, recordTaken } from './doses/mutations'
 import { writeUnscheduledDose } from './doses/unscheduled'
@@ -20,6 +20,10 @@ export function createWorker(clock: () => Date = () => new Date()) {
         if (decoded.path === '/medicines') {
           const command = decoded.command
           switch (command.operation) {
+            case 'correctDetails':
+              return json(await editMedicine(db, command.ownerId, command.correction, clock()))
+            case 'changeStrength':
+              return json(await editMedicine(db, command.ownerId, command.change, clock()))
             case 'list':
               return json(await listMedicines(db, command.ownerId))
             case 'save':

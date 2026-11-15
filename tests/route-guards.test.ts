@@ -22,6 +22,19 @@ const version = { id, basedOnId }
 // marks a route that never calls it; `reads` counts Worker calls per request (default 1).
 const routes: Record<string, { body?: unknown; query?: string; worker?: false; reads?: number }> = {
   'medicines GET': {},
+  'medicines PATCH': {
+    body: {
+      operation: 'changeStrength',
+      change: {
+        actionId: basedOnId,
+        medicineId: id,
+        expectedRevision: 0,
+        strength: '400 mg',
+        effectiveAt: takenAt,
+        timeZone: 'Europe/Istanbul',
+      },
+    },
+  },
   'medicines POST': { body: { id, label: 'Iron', strength: null, unit: 'tablet' } },
   // Today reads today's and yesterday's records (#275).
   'schedules GET': { reads: 2 },

@@ -1,3 +1,4 @@
+import { parseStrengthSnapshot, type StrengthSnapshot } from '../../lib/strength-snapshot'
 // Runtime-neutral Unscheduled dose inputs and receipts. Clock and unit checks stay
 // in the Worker after the owner-scoped medication lookup.
 import { isInstant, istanbulDate } from '../schedules/contract'
@@ -17,7 +18,7 @@ export type UnscheduledDoseChange = {
   doseId: string
   expectedRevision: number
 } & ({ removed: true } | { removed: false; takenAt: string; quantity: number })
-export type UnscheduledDose = {
+export type UnscheduledDose = StrengthSnapshot & {
   id: string
   actionId: string
   medicineId: string
@@ -92,6 +93,7 @@ export function parseUnscheduledDoseRecord(value: unknown): UnscheduledDose {
     throw new ApplicationError('validation', 400)
   return {
     ...dose,
+    ...parseStrengthSnapshot(input),
     id: input.id.toLowerCase(),
     outcome: 'Taken',
     revision: input.revision as number,

@@ -1,7 +1,7 @@
 import 'server-only'
 import { sendStorage } from '@/lib/medicine-storage'
 import { requireUser } from '@/features/auth/server'
-import { parseMedicine, type MedicineCommand, type MedicineResponse } from './contract'
+import { parseMedicineResponse, type MedicineCommand, type MedicineResponse } from './contract'
 import { ApplicationError } from '../../lib/application-error'
 import { createMedicineOperations } from './operations'
 
@@ -12,7 +12,7 @@ export async function send<C extends MedicineCommand>(
     const data = (await sendStorage('/medicines', command)) as { medicines?: unknown }
     if (!Array.isArray(data.medicines)) throw new Error('contract')
     try {
-      return data.medicines.map(parseMedicine)
+      return data.medicines.map(parseMedicineResponse)
     } catch (error) {
       if (command.operation === 'save') throw new Error('save confirmation contract')
       throw error

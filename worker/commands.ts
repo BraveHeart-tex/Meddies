@@ -2,7 +2,12 @@ import {
   parseUnscheduledDose,
   parseUnscheduledDoseChange,
 } from '../src/features/unscheduled-doses/contract'
-import { parseMedicine, type MedicineCommand } from '../src/features/medicines/contract'
+import {
+  parseMedicine,
+  parseDetailCorrection,
+  parseStrengthChange,
+  type MedicineCommand,
+} from '../src/features/medicines/contract'
 import {
   isScheduleDate,
   parseSchedule,
@@ -35,6 +40,24 @@ export function decodeCommand(path: '/medicines' | '/schedules', value: unknown)
   const ownerId = input.ownerId
   if (path === '/medicines') {
     switch (input.operation) {
+      case 'correctDetails':
+        return {
+          path,
+          command: {
+            operation: 'correctDetails',
+            ownerId,
+            correction: parseDetailCorrection(input.correction),
+          },
+        }
+      case 'changeStrength':
+        return {
+          path,
+          command: {
+            operation: 'changeStrength',
+            ownerId,
+            change: parseStrengthChange(input.change),
+          },
+        }
       case 'list':
         return { path, command: { operation: 'list', ownerId } }
       case 'save':

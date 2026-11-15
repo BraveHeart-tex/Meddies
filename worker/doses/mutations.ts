@@ -100,15 +100,8 @@ export async function correctDoseOutcome(
     if (replay && sameCorrection(replay, correction)) return correctionRecord(replay)
     throw new ApplicationError('conflict', 409)
   }
-  const key = {
-    scheduleId: correction.scheduleId,
-    dueAt: correction.dueAt,
-    revision: correction.expectedRevision + 1,
-    actionId: correction.actionId,
-  }
-  return correction.outcome === 'Taken'
-    ? { ...key, outcome: 'Taken', takenAt: correction.takenAt, quantity: correction.quantity }
-    : { ...key, outcome: 'Skipped', recordedAt: now.toISOString() }
+  const saved = await readCorrection(db, ownerId, correction.actionId)
+  return correctionRecord(saved!)
 }
 
 // The Taken time a correction expects to replace. Keeping it skips the Taken time window, which an
@@ -173,6 +166,10 @@ function correctionRecord(
   row: NonNullable<Awaited<ReturnType<typeof readCorrection>>>,
 ): DoseOutcomeRecord {
   const key = {
+    strengthRevisionId: row.strengthRevisionId!,
+    strength: row.strength,
+    medicineLabel: row.medicineLabel!,
+    unit: row.unit!,
     scheduleId: row.scheduleId,
     dueAt: row.dueAt,
     revision: row.revision,
@@ -236,7 +233,12 @@ export async function recordTaken(
   }
   if (!saved || saved.takenAt !== record.takenAt || saved.quantity !== record.quantity)
     throw new ApplicationError('conflict', 409)
-  return saved
+  return {
+    ...saved,
+    strengthRevisionId: saved.strengthRevisionId!,
+    medicineLabel: saved.medicineLabel!,
+    unit: saved.unit!,
+  }
 }
 
 export async function recordSkipped(
@@ -289,6 +291,10 @@ export async function recordSkipped(
   }
   if (!saved) throw new ApplicationError('conflict', 409)
   return {
+    strengthRevisionId: saved.strengthRevisionId!,
+    strength: saved.strength,
+    medicineLabel: saved.medicineLabel!,
+    unit: saved.unit!,
     scheduleId: saved.scheduleId,
     dueAt: saved.dueAt,
     recordedAt: saved.recordedAt,

@@ -17,6 +17,10 @@ import { scheduledInstant } from '../../src/features/schedules/occurrences'
 type Row = typeof unscheduledDoses.$inferSelect
 function record(row: Row): UnscheduledDose {
   return {
+    strengthRevisionId: row.strengthRevisionId!,
+    strength: row.strength,
+    medicineLabel: row.medicineLabel!,
+    unit: row.unit!,
     id: row.id,
     actionId: row.actionId,
     medicineId: row.medicineId,
@@ -107,7 +111,7 @@ export async function writeUnscheduledDose(
     // SELECT's predicate and unique revision key both run in the insertion statement.
     await db.run(sql`INSERT INTO unscheduled_doses (owner_id,id,revision,action_id,medicine_id,taken_at,quantity,removed,request)
       SELECT ${ownerId},${id},${revision},${input.actionId},${medicineId},${takenAt},${quantity},${removed ? 1 : 0},${request}
-      WHERE ${change ? sql`EXISTS (SELECT 1 FROM unscheduled_doses WHERE owner_id = ${ownerId} AND id = ${id} AND revision = ${change.expectedRevision} AND removed = 0) AND NOT EXISTS (SELECT 1 FROM unscheduled_doses WHERE owner_id = ${ownerId} AND id = ${id} AND revision > ${change.expectedRevision})` : sql`1`}`)
+      WHERE EXISTS (SELECT 1 FROM user_medications WHERE owner_id=${ownerId} AND id=${medicineId} AND unit=${medicine!.unit}) AND ${change ? sql`EXISTS (SELECT 1 FROM unscheduled_doses WHERE owner_id = ${ownerId} AND id = ${id} AND revision = ${change.expectedRevision} AND removed = 0) AND NOT EXISTS (SELECT 1 FROM unscheduled_doses WHERE owner_id = ${ownerId} AND id = ${id} AND revision > ${change.expectedRevision})` : sql`1`}`)
   } catch (error) {
     const saved = await replay()
     if (saved) return saved

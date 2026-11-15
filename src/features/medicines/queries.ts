@@ -1,6 +1,6 @@
 import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query'
 import { PrivateReadError } from '@/lib/session-check'
-import { parseMedicine, type Medicine } from './contract'
+import { parseMedicineResponse, type Medicine } from './contract'
 
 /** Shared medicine query keys. Mutations update and reconcile these exact keys. */
 export const medicineKeys = {
@@ -17,13 +17,33 @@ export async function fetchMedicines(signal?: AbortSignal): Promise<Medicine[]> 
   })
   if (!response.ok) throw new PrivateReadError(response.status)
   const data: { medicines: unknown[] } = await response.json()
-  return data.medicines.map(parseMedicine)
+  return data.medicines.map(parseMedicineResponse)
 }
 
-/** A newer list wins, and medicines it has not seen yet stay. */
+/** Revisions never move backwards; medicines absent from a stale list stay. */
 export function mergeMedicines(current: Medicine[] | undefined, incoming: Medicine[]) {
   return current
-    ? [...incoming, ...current.filter((item) => !incoming.some((value) => value.id === item.id))]
+    ? [
+        ...incoming.map((value) => {
+          const prior = current.find((item) => item.id === value.id)
+          if (!prior) return value
+          const latest = (prior.revision ?? 0) > (value.revision ?? 0) ? prior : value
+          // Usage and recorded Taken instants remain true even when a same-revision
+          // read or creation receipt predates the first dose/schedule.
+          return {
+            ...latest,
+            ...(prior.everHadSchedule || value.everHadSchedule ? { everHadSchedule: true } : {}),
+            ...(prior.everHadDose || value.everHadDose ? { everHadDose: true } : {}),
+            ...(prior.latestTakenAt &&
+            (!value.latestTakenAt || prior.latestTakenAt > value.latestTakenAt)
+              ? { latestTakenAt: prior.latestTakenAt }
+              : value.latestTakenAt
+                ? { latestTakenAt: value.latestTakenAt }
+                : {}),
+          }
+        }),
+        ...current.filter((item) => !incoming.some((value) => value.id === item.id)),
+      ]
     : incoming
 }
 
@@ -31,7 +51,7 @@ export const medicinesQuery = () =>
   queryOptions({
     queryKey: medicineKeys.list(),
     queryFn: ({ signal }) => fetchMedicines(signal),
-    // Medicines are immutable and cannot be deleted yet. A stale list cannot erase a save.
+    // A stale read cannot undo a confirmed revision or erase a newly created Medicine.
     structuralSharing: (old, next) =>
       mergeMedicines(old as Medicine[] | undefined, next as Medicine[]),
   })
@@ -61,7 +81,7 @@ export type MedicinesRead = ReturnType<typeof useMedicines>
 
 /** A confirmed save replaces or appends that medicine in the cached list. */
 export function withSavedMedicine(list: Medicine[] | undefined, medicine: Medicine) {
-  return [...(list ?? []).filter((item) => item.id !== medicine.id), medicine]
+  return mergeMedicines(list, [medicine])
 }
 
 /** Cancel reads begun before confirmation, publish the saved medicine, then reconcile. */

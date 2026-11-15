@@ -3,6 +3,10 @@
 
 export type DoseUnit = 'tablet' | 'capsule'
 
+export function isDoseUnit(value: unknown): value is DoseUnit {
+  return value === 'tablet' || value === 'capsule'
+}
+
 /** Positive half units must remain exact when represented as an integer count of halves. */
 export function isDoseQuantity(value: unknown): value is number {
   return typeof value === 'number' && value > 0 && Number.isSafeInteger(value * 2)

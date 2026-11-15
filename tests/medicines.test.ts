@@ -54,3 +54,46 @@ test('operations derive ownership from the session and never accept a supplied o
     { operation: 'list', ownerId: 'google:alice' },
   ])
 })
+
+test('edit operations derive ownership and reject unsupported units, instants and stale confirmation contracts', async () => {
+  const commands: MedicineCommand[] = []
+  const operations = createMedicineOperations({
+    requireUser: async () => ({ id: 'google:alice' }),
+    send: async (command) => {
+      commands.push(command)
+      return []
+    },
+  })
+  const key = {
+    actionId: '00000000-0000-4000-8000-000000000001',
+    medicineId: '00000000-0000-4000-8000-000000000002',
+    expectedRevision: 0,
+  }
+  const correction = {
+    ...key,
+    strengthRevisionId: key.medicineId,
+    label: 'Example',
+    strength: '200 mg',
+    unit: 'tablet',
+    ownerId: 'google:bob',
+  }
+  await assert.rejects(() => operations.correctDetails({ ...correction, unit: 'ml' }), /validation/)
+  const change = {
+    ...key,
+    strength: '400 mg',
+    effectiveAt: '2026-11-05T06:00:00.000Z',
+    timeZone: 'Europe/Istanbul',
+  }
+  await assert.rejects(
+    () => operations.changeStrength({ ...change, timeZone: 'UTC' }),
+    /validation/,
+  )
+  await assert.rejects(
+    () => operations.changeStrength({ ...change, effectiveAt: '2026-11-05T09:00:00+03:00' }),
+    /validation/,
+  )
+  await assert.rejects(() => operations.changeStrength(change), /unavailable/)
+  await assert.rejects(() => operations.correctDetails(correction), /unavailable/)
+  assert.equal(commands.length, 2)
+  assert.ok(commands.every((command) => command.ownerId === 'google:alice'))
+})

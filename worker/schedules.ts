@@ -116,10 +116,14 @@ export async function saveSchedule(
     (schedule.endDate !== null && schedule.endDate < istanbulDate(now))
   )
     throw new ApplicationError('validation', 400)
-  await db
-    .insert(dailySchedules)
-    .values({ ...schedule, ownerId, confirmedAt: now.toISOString() })
-    .onConflictDoNothing()
+  // A first use races Detail correction: persist only under the unit whose shared
+  // quantity policy we validated. The insert and permanent usage trigger are atomic.
+  await db.run(sql`INSERT INTO daily_schedules
+    (owner_id,id,medicine_id,start_date,times,confirmed_at,weekdays,end_date,interval_hours)
+    SELECT ${ownerId},${schedule.id},${schedule.medicineId},${schedule.startDate},
+      ${JSON.stringify(schedule.times)},${now.toISOString()},${JSON.stringify(schedule.weekdays)},${schedule.endDate},${schedule.intervalHours}
+    WHERE EXISTS(SELECT 1 FROM user_medications WHERE owner_id=${ownerId} AND id=${schedule.medicineId} AND unit=${medicine.unit})
+    ON CONFLICT DO NOTHING`)
   const saved = await db
     .select(scheduleColumns)
     .from(dailySchedules)

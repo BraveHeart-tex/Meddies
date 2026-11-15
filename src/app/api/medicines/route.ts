@@ -22,3 +22,18 @@ export async function POST(request: Request) {
     return failure(error, 'medicine_request_failure')
   }
 }
+
+export async function PATCH(request: Request) {
+  const rejected = mutationGuard(request)
+  if (rejected) return rejected
+  try {
+    const input = (await readJsonRequest(request)) as Record<string, unknown>
+    if (input?.operation === 'correctDetails')
+      return json({ medicines: await medicines.correctDetails(input.correction) })
+    if (input?.operation === 'changeStrength')
+      return json({ medicines: await medicines.changeStrength(input.change) })
+    return json({ error: 'validation' }, 400)
+  } catch (error) {
+    return failure(error, 'medicine_request_failure')
+  }
+}

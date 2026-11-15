@@ -9,7 +9,7 @@ import type {
   SendSchedule,
   DoseOutcomeRecord,
 } from '../src/features/schedules/contract'
-import type { Medicine } from '../src/features/medicines/contract'
+import { parseMedicine, type Medicine } from '../src/features/medicines/contract'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { test } from 'vitest'
@@ -32,11 +32,17 @@ test('real D1 save survives reload; concurrent retries have one effect and remai
   const responses = await Promise.all([call(command), call(command)])
   for (const response of responses) {
     assert.equal(response.status, 200)
-    assert.deepEqual(await response.json(), { medicines: [medicine] })
+    assert.deepEqual(
+      ((await response.json()) as { medicines: unknown[] }).medicines.map(parseMedicine),
+      [medicine],
+    )
   }
   assert.equal((await call(command)).status, 200)
   const reload = await call({ operation: 'list', ownerId: 'google:alice' })
-  assert.deepEqual(await reload.json(), { medicines: [medicine] })
+  assert.deepEqual(
+    ((await reload.json()) as { medicines: unknown[] }).medicines.map(parseMedicine),
+    [medicine],
+  )
   const other = await call({ operation: 'list', ownerId: 'google:bob' })
   assert.deepEqual(await other.json(), { medicines: [] })
   assert.equal(
@@ -447,7 +453,12 @@ test('Skipped D1 records are idempotent across midnight and triggers arbitrate c
     operations.recordSkipped(input),
   ])
   assert.deepEqual(first, retry)
-  assert.deepEqual(first, { ...input, outcome: 'Skipped', recordedAt: now.toISOString() })
+  assert.deepEqual(first, {
+    ...input,
+    ...strengthSnapshot(tablet),
+    outcome: 'Skipped',
+    recordedAt: now.toISOString(),
+  })
   const initialSnapshot = await send({ operation: 'listOutcomes', ownerId, date: '2026-11-05' })
   assert.deepEqual(initialSnapshot.records, [
     {
@@ -680,6 +691,7 @@ test('D1 correction ledger flips outcomes, replays exact actions and rejects sta
   assert.deepEqual(legacyRead.records, [
     {
       ...occurrence,
+      ...strengthSnapshot(tablet),
       takenAt: '2026-11-04T06:10:00.000Z',
       quantity: 1,
       outcome: 'Taken',
@@ -691,6 +703,7 @@ test('D1 correction ledger flips outcomes, replays exact actions and rejects sta
   assert.deepEqual(effective.records, [
     {
       ...occurrence,
+      ...strengthSnapshot(tablet),
       takenAt: winner.takenAt,
       quantity: 1.5,
       outcome: 'Taken',
@@ -1067,3 +1080,12 @@ test('the Taken time window rejects out-of-window saves and time changes but kee
   now = new Date('2026-11-20T09:00:00.000Z')
   assert.deepEqual(await operations.correctOutcome(keep), kept)
 })
+
+function strengthSnapshot(medicine: Medicine) {
+  return {
+    strengthRevisionId: medicine.id,
+    strength: medicine.strength,
+    medicineLabel: medicine.label,
+    unit: medicine.unit,
+  }
+}

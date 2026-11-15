@@ -1,3 +1,4 @@
+import { parseStrengthSnapshot } from '../../lib/strength-snapshot'
 import { parseUnscheduledDoseRecord } from '../unscheduled-doses/contract'
 import 'server-only'
 import { readFileSync } from 'node:fs'
@@ -8,8 +9,8 @@ import {
   isInstant,
   isScheduleDate,
   parseDoseOutcomeRecord,
-  parseSchedule,
   parseTakenDose,
+  parseSchedule,
   type ScheduleCommand,
   type ScheduleResponse,
   type DailySchedule,
@@ -82,9 +83,9 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
         command.operation === 'list' || command.operation === 'recordTaken'
           ? (() => {
               const record = parseTakenDose(value)
-              if ((value as Record<string, unknown>).outcome !== 'Taken')
-                throw new Error('contract')
-              return { ...record, outcome: 'Taken' as const }
+              const input = value as Record<string, unknown>
+              if (input.outcome !== 'Taken') throw new Error('contract')
+              return { ...record, ...parseStrengthSnapshot(input), outcome: 'Taken' as const }
             })()
           : parseDoseOutcomeRecord(value),
       )

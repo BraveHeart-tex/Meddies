@@ -52,6 +52,62 @@ export function startWorkerRuntime() {
     const db = await runtime.getD1Database('DB')
     await applyD1Migrations(db, {
       async afterMigration(file) {
+        if (file === '0012_unscheduled_doses.sql') {
+          await db
+            .prepare(
+              'INSERT INTO user_medications(owner_id,id,label,strength,unit) VALUES(?,?,?,?,?)',
+            )
+            .bind(
+              'google:strength-migration',
+              '10000000-0000-4000-8000-000000000010',
+              'Legacy strength',
+              '125 mg',
+              'capsule',
+            )
+            .run()
+          await db
+            .prepare('INSERT INTO unscheduled_doses VALUES(?,?,?,?,?,?,?,?,?)')
+            .bind(
+              'google:strength-migration',
+              '10000000-0000-4000-8000-000000000011',
+              0,
+              '10000000-0000-4000-8000-000000000011',
+              '10000000-0000-4000-8000-000000000010',
+              legacy.takenAt,
+              1,
+              0,
+              '{}',
+            )
+            .run()
+        }
+        if (file === '0012_unscheduled_doses.sql') {
+          await db
+            .prepare(
+              'INSERT INTO daily_schedules(owner_id,id,medicine_id,start_date,times,confirmed_at) VALUES(?,?,?,?,?,?)',
+            )
+            .bind(
+              'google:strength-migration',
+              '10000000-0000-4000-8000-000000000012',
+              '10000000-0000-4000-8000-000000000010',
+              legacy.date,
+              '[{"time":"09:00","quantity":1}]',
+              '2026-11-04T20:00:00.000Z',
+            )
+            .run()
+          await db
+            .prepare(
+              'INSERT INTO dose_records(owner_id,schedule_id,due_at,taken_at,quantity,outcome) VALUES(?,?,?,?,?,?)',
+            )
+            .bind(
+              'google:strength-migration',
+              '10000000-0000-4000-8000-000000000012',
+              legacy.dueAt,
+              legacy.takenAt,
+              1,
+              'Taken',
+            )
+            .run()
+        }
         if (file === '0007_interval_schedules.sql') {
           await db
             .prepare('INSERT INTO skipped_dose_records VALUES(?,?,?,?,?)')

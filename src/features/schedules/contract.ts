@@ -1,3 +1,4 @@
+import { parseStrengthSnapshot, type StrengthSnapshot } from '../../lib/strength-snapshot'
 import type {
   UnscheduledDose,
   UnscheduledDoseInput,
@@ -72,14 +73,16 @@ export type TakenDoseInput = DoseOccurrenceKey & {
   takenAt: string
   quantity: number
 }
-export type DoseRecord = TakenDoseInput & { outcome: 'Taken'; revision?: number; actionId?: string }
+export type DoseRecord = StrengthSnapshot &
+  TakenDoseInput & { outcome: 'Taken'; revision?: number; actionId?: string }
 export type SkippedDoseInput = DoseOccurrenceKey
-export type SkippedDoseRecord = SkippedDoseInput & {
-  outcome: 'Skipped'
-  recordedAt: string
-  revision?: number
-  actionId?: string
-}
+export type SkippedDoseRecord = StrengthSnapshot &
+  SkippedDoseInput & {
+    outcome: 'Skipped'
+    recordedAt: string
+    revision?: number
+    actionId?: string
+  }
 export type DoseOutcomeRecord = DoseRecord | SkippedDoseRecord
 export type ScheduleResponses = {
   saveUnscheduled: { unscheduledDoses: UnscheduledDose[] }
@@ -373,6 +376,7 @@ export function parseDoseOutcomeRecord(value: unknown): DoseOutcomeRecord {
     const record = parseTakenDose(input)
     return {
       ...record,
+      ...parseStrengthSnapshot(input),
       outcome: 'Taken',
       ...(revision === undefined ? {} : { revision: revision as number }),
       ...(actionId ? { actionId: actionId as string } : {}),
@@ -383,6 +387,7 @@ export function parseDoseOutcomeRecord(value: unknown): DoseOutcomeRecord {
     if (!isInstant(input.recordedAt)) throw new ApplicationError('validation', 400)
     return {
       ...record,
+      ...parseStrengthSnapshot(input),
       recordedAt: input.recordedAt,
       outcome: 'Skipped',
       ...(revision === undefined ? {} : { revision: revision as number }),

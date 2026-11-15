@@ -4,13 +4,13 @@ import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { sessionSaves, requestSave } from '@/lib/session-saves'
 import { discardSessionFormDraft } from '@/lib/session-drafts'
-import { parseMedicine, type Medicine } from './contract'
+import { parseMedicineResponse, type Medicine } from './contract'
 import { medicineAddKey, type MedicineFormOutput } from './medicine-form-schema'
 import { confirmMedicine, medicinesQuery } from './queries'
 import { medicationsHref } from './routes'
 
 function matchingMedicine(value: unknown, attempted: Medicine): Medicine {
-  const saved = parseMedicine(value)
+  const saved = parseMedicineResponse(value)
   if (
     saved.id !== attempted.id ||
     saved.label !== attempted.label ||
@@ -32,7 +32,7 @@ export function useMedicineSave(onSaved: (medicine: Medicine) => void) {
   useEffect(() => {
     if (!store.active || !attempt?.result?.saved || handled.current === attempt) return
     handled.current = attempt
-    onSaved(parseMedicine(attempt.result.saved))
+    onSaved(parseMedicineResponse(attempt.result.saved))
     store.clear(medicineAddKey)
   }, [attempt, onSaved, store])
 
@@ -51,7 +51,7 @@ export function useMedicineSave(onSaved: (medicine: Medicine) => void) {
           href: medicationsHref({ mode: 'add' }),
         },
         async (payload, active) => {
-          const attempted = parseMedicine(payload)
+          const attempted = parseMedicineResponse(payload)
           let result = await requestSave('/api/medicines', payload, (data) => {
             const envelope = data as { medicines?: unknown[] } | null
             return matchingMedicine(envelope?.medicines?.[0], attempted)

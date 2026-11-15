@@ -135,7 +135,7 @@ test('schedules HTTP dispatch retains omitted Taken, strict Skipped and session 
   }
 })
 
-test('Taken-only decoding drops metadata while outcome decoding preserves it', async () => {
+test('Taken-only decoding retains strength snapshots while outcome decoding also preserves revision metadata', async () => {
   const record: DoseRecord = {
     scheduleId: '10000000-0000-4000-8000-000000000001',
     dueAt: '2026-11-06T06:00:00.000Z',
@@ -144,6 +144,10 @@ test('Taken-only decoding drops metadata while outcome decoding preserves it', a
     outcome: 'Taken',
     revision: 2,
     actionId: '10000000-0000-4000-8000-000000000002',
+    strengthRevisionId: '10000000-0000-4000-8000-000000000003',
+    strength: '250 mg',
+    medicineLabel: 'Earlier',
+    unit: 'tablet',
   }
   globalThis.fetch = async () => Response.json({ schedules: [], records: [record] })
   const { revision, actionId, ...legacy } = record
