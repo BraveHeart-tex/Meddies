@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { hydrated, scrollsHorizontally, stylesheetsLoaded } from './actions'
+import { enlargeTextOnly, hydrated, scrollsHorizontally, stylesheetsLoaded } from './actions'
 import { captureCases } from './capture'
 import { expect, test } from './fixtures'
 
@@ -76,4 +76,56 @@ test('capture lab frames by slug prefix', { tag: '@visual' }, async ({ page }) =
     ]),
   )
   expect(problems, `Frames captured to ${out}`).toEqual([])
+})
+
+// Copy-only Scanner review, including its fallback, at synthetic 200% text.
+test('capture Scanner copy with enlarged text', { tag: '@visual' }, async ({ page }) => {
+  const out = process.env.MEDDIES_VISUAL_OUT
+  // eslint-disable-next-line playwright/no-skipped-test -- local design review opt-in
+  test.skip(
+    !out || process.env.MEDDIES_LAB_PREFIX !== '193-b-scanner',
+    'Run pnpm lab:capture 193-b-scanner',
+  )
+  await mkdir(out!, { recursive: true })
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getUserMedia: () =>
+          new URLSearchParams(location.search).get('camera') === 'unavailable'
+            ? Promise.reject(new DOMException('No camera', 'NotFoundError'))
+            : new Promise(() => {}),
+      },
+    })
+  })
+  for (const state of ['framing', 'unavailable']) {
+    for (const width of [402, 320]) {
+      await page.setViewportSize({ width, height: width === 402 ? 874 : 740 })
+      await page.goto(`/lab/193-b-scanner?camera=${state}`)
+      await expect(page.getByRole('heading', { name: 'Scan the pack' })).toBeVisible()
+      await expect.poll(() => hydrated(page)).toBe(true)
+      await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
+      await page.addStyleTag({ content: hideDevOverlay })
+      await expect(
+        page.getByText(
+          state === 'unavailable'
+            ? 'Camera unavailable. Enter the medication details instead.'
+            : 'Hold the barcode inside the frame',
+          { exact: true },
+        ),
+      ).toBeVisible()
+      await enlargeTextOnly(page, 2)
+      const manual = page.getByRole('button', { name: 'Type it in instead' })
+      await manual.scrollIntoViewIfNeeded()
+      await expect(manual).toBeInViewport()
+      expect(await scrollsHorizontally(page)).toBe(false)
+      await page.screenshot({
+        path: resolve(out!, `193-b-scanner-${state}-${width}-text200.png`),
+        animations: 'disabled',
+        fullPage: true,
+      })
+      await manual.click()
+      await expect(page.getByText('Scanner closed')).toBeVisible()
+    }
+  }
 })

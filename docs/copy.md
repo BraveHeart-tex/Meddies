@@ -70,6 +70,8 @@ Never show or announce an ISO date. A dose due today shows no date.
 Say what happened, what is safe, and what to do next.
 
 - Never say "failed" when the result is unknown. Say it might not have saved.
+- Name a cause only when known. Otherwise say, for example, "Camera unavailable. Enter the
+  medication details instead."
 - Only say the details are still here when the form holds details.
 - Sign-out and session end never cancel a save: say Meddies can't show its result until the user
   signs in again, never that it was cancelled.

@@ -182,14 +182,11 @@ export function BarcodeScanner({
                 role="alert"
                 className="shrink-0 px-4 py-1 text-center text-body-lg font-extrabold"
               >
-                Camera is off for Meddies. Turn it on in Settings, or type the details.
+                Camera unavailable. Enter the medication details instead.
               </p>
             ) : (
               <div className="flex shrink-0 flex-col gap-3.5 px-4 py-1 text-center">
                 <p className="text-heading font-extrabold">Hold the barcode inside the frame</p>
-                <p className="text-body-sm text-muted-foreground">
-                  It reads on its own, usually from the back or side of the box.
-                </p>
               </div>
             )}
 

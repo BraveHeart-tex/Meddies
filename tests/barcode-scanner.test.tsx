@@ -95,18 +95,15 @@ test('193·B·Scanner shows its copy and asks only for the camera', async () => 
   renderScanner()
   expect(screen.getByRole('heading', { name: 'Scan the pack' })).toBeInTheDocument()
   expect(screen.getByText('Hold the barcode inside the frame')).toBeInTheDocument()
-  expect(
-    screen.getByText('It reads on its own, usually from the back or side of the box.'),
-  ).toBeInTheDocument()
   await waitFor(() => expect(getUserMedia).toHaveBeenCalledOnce(), cameraReady)
   expect(getUserMedia).toHaveBeenCalledWith(expect.objectContaining({ audio: false }))
 })
 
-test('denied camera access shows the Camera off copy and still offers typing', async () => {
+test('denied camera access shows the camera-unavailable copy and still offers typing', async () => {
   getUserMedia.mockRejectedValue(new DOMException('Denied', 'NotAllowedError'))
   renderScanner()
   expect(await screen.findByRole('alert', {}, cameraReady)).toHaveTextContent(
-    'Camera is off for Meddies. Turn it on in Settings, or type the details.',
+    'Camera unavailable. Enter the medication details instead.',
   )
   expect(screen.queryByText('Hold the barcode inside the frame')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Torch' })).not.toBeInTheDocument()
