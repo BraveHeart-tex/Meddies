@@ -157,7 +157,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
                     errors={[fieldState.error]}
                   />
                   <FieldDescription id="medicine-strength-help" className={rowHelp}>
-                    Strength is printed on the pack, like 200 mg or 1000 IU. Not how much you take.
+                    On the pack, e.g. 200 mg. Not your dose amount.
                   </FieldDescription>
                 </Field>
               )}
@@ -179,13 +179,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
                       onBlur={field.onBlur}
                       icon={ChevronsUpDownIcon}
                       aria-labelledby="medicine-unit-label"
-                      aria-describedby={
-                        fieldState.invalid
-                          ? 'medicine-unit-error'
-                          : field.value
-                            ? 'medicine-unit-help'
-                            : undefined
-                      }
+                      aria-describedby={fieldState.invalid ? 'medicine-unit-error' : undefined}
                       aria-invalid={fieldState.invalid}
                       className='grid min-h-14 grid-cols-[5.75rem_minmax(0,1fr)_1.375rem] gap-0 rounded-none rounded-b-2xl border-0 bg-transparent px-4 text-body-lg focus-visible:-outline-offset-2 aria-invalid:ring-0 [&_svg:not([class*="size-"])]:size-5.5'
                     >
@@ -221,11 +215,6 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
                     className="px-4 pb-3 font-extrabold"
                     errors={[fieldState.error]}
                   />
-                  {field.value && (
-                    <FieldDescription id="medicine-unit-help" className="px-4 pb-3 text-caption">
-                      Schedules use whole or half tablets, or whole capsules.
-                    </FieldDescription>
-                  )}
                 </Field>
               )}
             />

@@ -60,14 +60,11 @@ test('shows the inset rows, help text and one primary action under a centered ti
     'Optional',
   )
   expect(screen.getByRole('combobox', { name: 'Type' })).toHaveTextContent('Choose')
-  expect(
-    screen.getByText(
-      'Strength is printed on the pack, like 200 mg or 1000 IU. Not how much you take.',
-    ),
-  ).toBeVisible()
+  expect(screen.getByText('On the pack, e.g. 200 mg. Not your dose amount.')).toBeVisible()
   expect(
     screen.queryByText('Schedules use whole or half tablets, or whole capsules.'),
   ).not.toBeInTheDocument()
+  expect(screen.getByRole('combobox', { name: 'Type' })).not.toHaveAccessibleDescription()
   expect(screen.getByRole('button', { name: 'Save medication' })).toBeEnabled()
   await waitFor(() => expect(screen.getByRole('heading', { name: 'Add medication' })).toHaveFocus())
 })

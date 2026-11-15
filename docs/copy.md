@@ -92,6 +92,7 @@ Say what happened, what is safe, and what to do next.
 - Rewrite existing strings. Add a new message only where a state gives no next step. Add no new
   greetings, encouragement or tips.
 - Helper text explains consequences rather than repeating labels.
+- Type helpers must not teach a later scheduling task.
 - Include an empty-state body only when it adds information beyond the heading and action.
 - Keep strings inline next to their components, except save messages repeated across forms and
   dose saves, which live in `src/lib/save-messages.ts`.
@@ -111,3 +112,5 @@ The target warmth.
 | Unsaved details from earlier.                                    | Unsaved details restored.                                                                   |
 | That date is not available.                                      | Nothing to show for that day.                                                               |
 | Save could not be confirmed.                                     | That might not have saved. Check your connection, then retry. Retrying won't save it twice. |
+
+For Strength, keep the pack example short: “On the pack, e.g. 200 mg. Not your dose amount.”

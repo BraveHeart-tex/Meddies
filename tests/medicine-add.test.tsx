@@ -53,9 +53,7 @@ test('submit-first validation focuses the first invalid field and clears correct
   expect(type()).toHaveTextContent('Choose')
   expect(name()).toHaveAttribute('placeholder', 'On your pack')
   expect(strength()).toHaveAttribute('placeholder', 'Optional')
-  expect(strength()).toHaveAccessibleDescription(
-    'Strength is printed on the pack, like 200 mg or 1000 IU. Not how much you take.',
-  )
+  expect(strength()).toHaveAccessibleDescription('On the pack, e.g. 200 mg. Not your dose amount.')
   expect(type()).not.toHaveAccessibleDescription()
   expect(
     screen.queryByText('Schedules use whole or half tablets, or whole capsules.'),
@@ -75,7 +73,7 @@ test('submit-first validation focuses the first invalid field and clears correct
   expect(name()).toHaveAttribute('aria-invalid', 'true')
   expect(name()).toHaveAccessibleDescription(/Enter the medication name\./)
   expect(strength()).toHaveAccessibleDescription(
-    'Use 120 characters or fewer. Strength is printed on the pack, like 200 mg or 1000 IU. Not how much you take.',
+    'Use 120 characters or fewer. On the pack, e.g. 200 mg. Not your dose amount.',
   )
   expect(type()).toHaveAccessibleDescription('Choose a type.')
   expect(
@@ -91,9 +89,7 @@ test('submit-first validation focuses the first invalid field and clears correct
   await waitFor(() => expect(type()).toHaveFocus())
   await chooseType(user, 'Capsule')
   expect(type()).toHaveTextContent('Capsule')
-  expect(type()).toHaveAccessibleDescription(
-    'Schedules use whole or half tablets, or whole capsules.',
-  )
+  expect(type()).not.toHaveAccessibleDescription()
   await waitFor(() => expect(screen.queryByText('Choose a type.')).not.toBeInTheDocument())
   expect(posts).toBe(0)
 })
