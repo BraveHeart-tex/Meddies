@@ -159,7 +159,7 @@ test('inline errors focus the first invalid control, keep values and accept half
     expect(screen.queryByText('Use whole or half tablets.')).not.toBeInTheDocument(),
   )
   await user.click(screen.getByRole('button', { name: 'Save as taken' }))
-  expect(await screen.findByText('Morning Tablet 09:00 · taken at 08:05, 1½ tablets')).toBeVisible()
+  expect(await screen.findByText('Morning Tablet 09:00 · Taken at 08:05, 1½ tablets')).toBeVisible()
   expect(state.puts[0]).toMatchObject({ takenAt: '2026-11-14T05:05:00.000Z', quantity: 1.5 })
   expect(await row()).toHaveTextContent('Taken')
   expect(screen.queryByRole('dialog', { name: medicine.label })).not.toBeInTheDocument()
@@ -196,7 +196,7 @@ test.each([false, true])(
     )
     expect(
       await screen.findByText(
-        new RegExp(`Morning Tablet 09:00 · taken at 09:05, ${edited ? '2' : '1½'} tablets`),
+        new RegExp(`Morning Tablet 09:00 · Taken at 09:05, ${edited ? '2' : '1½'} tablets`),
       ),
     ).toBeVisible()
     expect(state.puts).toHaveLength(2)
@@ -220,7 +220,7 @@ test('a stored save with a lost response is found by the check without another s
   const { user } = session()
   await recordTaken(user)
   await user.click(screen.getByRole('button', { name: 'Save as taken' }))
-  expect(await screen.findByText('Morning Tablet 09:00 · taken at 09:05, 1 tablet')).toBeVisible()
+  expect(await screen.findByText('Morning Tablet 09:00 · Taken at 09:05, 1 tablet')).toBeVisible()
   expect(screen.queryByText(/was already recorded/)).not.toBeInTheDocument()
   expect(screen.queryByRole('dialog', { name: medicine.label })).not.toBeInTheDocument()
   expect(await row()).toHaveTextContent('Taken')
@@ -244,7 +244,7 @@ test('a synchronous double submit sends one save', async () => {
   })
   await waitFor(() => expect(state.puts).toHaveLength(1))
   await act(async () => held.release())
-  expect(await screen.findByText('Morning Tablet 09:00 · taken at 09:05, 1 tablet')).toBeVisible()
+  expect(await screen.findByText('Morning Tablet 09:00 · Taken at 09:05, 1 tablet')).toBeVisible()
   expect(state.puts).toHaveLength(1)
 })
 

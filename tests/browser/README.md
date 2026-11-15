@@ -179,8 +179,11 @@ MEDDIES_COPY_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-copy pnpm test:browser:vi
 Record forms include Fix a mistake, Change strength, Strength history, validation with
 keyboard focus, offline and conflict recovery (6 screenshots named `record-…`). Save
 feedback includes offline, conflict, Unconfirmed save, changed details and Skipped
-(5 screenshots named `save-…-402.png`). Both use normal text at 402x874 and retain their
-interaction assertions. Run all three affected capture groups in one invocation:
+(5 screenshots named `save-…-402.png`). These use normal text at 402x874 and retain their
+interaction assertions. The save recovery case also captures scheduled and Unscheduled
+success receipts with 200% text at 402px and 320px, checks the drawer heading, Amount name,
+reachable save action, no horizontal overflow and the receipt's polite live announcement. Run all
+three affected capture groups in one invocation:
 
 ```sh
 MEDDIES_RECORD_CAPTURE=1 MEDDIES_COPY_CAPTURE=1 MEDDIES_SAVE_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-recovery pnpm test:browser:visual screen-capture --grep "record forms|schedule copy|save recovery"

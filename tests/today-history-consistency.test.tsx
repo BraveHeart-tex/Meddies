@@ -231,7 +231,7 @@ test('a save confirmed on Today shows on its cached History date without a reloa
   )
   await app.user.click(await screen.findByRole('button', { name: 'I took it' }))
   await app.user.click(screen.getByRole('button', { name: 'Save as taken' }))
-  expect(await screen.findByText(/Morning Tablet 09:00 · taken at 09:05/)).toBeVisible()
+  expect(await screen.findByText(/Morning Tablet 09:00 · Taken at 09:05/)).toBeVisible()
   // Held so the History view shows its cache, not a fresh read.
   server.use(http.get('/api/schedules/history', () => new Promise<Response>(() => {})))
   app.open('history')
@@ -243,7 +243,7 @@ test('a correction confirmed on History updates Today and its own date without a
   const { dose } = api({ records: [takenRecord(today)] })
   const app = session({ view: 'history', today: true, history: { [today]: [dose(today)] } })
   await correctToSkipped(app.user)
-  expect(await screen.findByText(/Morning Tablet 09:00 · changed to skipped/)).toBeVisible()
+  expect(await screen.findByText(/Morning Tablet 09:00 · Changed to Skipped/)).toBeVisible()
   expect(await historyRow(today)).toHaveTextContent('Skipped')
   // Held so Today shows its cached snapshot, not a fresh read.
   server.use(http.get('/api/schedules', () => new Promise<Response>(() => {})))
@@ -293,7 +293,7 @@ test('a lost History correction response checks that date and confirms without a
   })
   await correctToSkipped(app.user)
   expect(
-    await screen.findByText(/Morning Tablet 09:00 on Thu 5 Nov · changed to skipped/),
+    await screen.findByText(/Morning Tablet 09:00 on Thu 5 Nov · Changed to Skipped/),
   ).toBeVisible()
   expect(await historyRow(yesterday)).toHaveTextContent('Skipped')
   expect(await historyRow(yesterday)).not.toHaveTextContent('Might not have saved')
@@ -490,8 +490,8 @@ const recordFromHistory = async (
 }
 
 test.each([
-  ['Taken', /^Morning Tablet 09:00 on Thu 5 Nov · taken at \d\d:\d\d on Fri 6 Nov, 1 tablet$/],
-  ['Skipped', /^Morning Tablet 09:00 on Thu 5 Nov · saved as skipped$/],
+  ['Taken', /^Morning Tablet 09:00 on Thu 5 Nov · Taken at \d\d:\d\d on Fri 6 Nov, 1 tablet$/],
+  ['Skipped', /^Morning Tablet 09:00 on Thu 5 Nov · Skipped$/],
 ] as const)(
   'saving %s from a past History row updates that date and names its day (#278)',
   async (outcome, toast) => {

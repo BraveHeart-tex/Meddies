@@ -1,7 +1,10 @@
 import type { DoseRecord, SkippedDoseRecord } from '../src/features/schedules/contract'
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { outcomeConfirmation } from '../src/features/schedules/dose-confirmation'
+import {
+  outcomeConfirmation,
+  reconciledConfirmation,
+} from '../src/features/schedules/dose-confirmation'
 
 const key = { scheduleId: '6e0b55ee-2e10-4e00-80f2-a736c2f50f95' }
 // 22:30 Istanbul on Thu 5 Nov 2026 is 19:30Z.
@@ -26,7 +29,7 @@ test('a skip says no intake was recorded', () => {
       previous: 'Upcoming',
       record: skipped,
     }),
-    'Iron bisglycinate 22:30 · saved as skipped',
+    'Iron bisglycinate 22:30 · Skipped',
   )
 })
 
@@ -38,7 +41,7 @@ test('a new intake names its time and amount', () => {
       previous: 'Due now',
       record: taken('2026-11-05T19:35:00.000Z', 1),
     }),
-    'Melatonin 22:30 · taken at 22:35, 1 tablet',
+    'Melatonin 22:30 · Taken at 22:35, 1 tablet',
   )
 })
 
@@ -50,7 +53,7 @@ test('an edited intake after midnight names the actual day (C3, C5)', () => {
       previous: 'Taken',
       record: taken('2026-11-05T20:00:00.000Z', 0.5),
     }),
-    'Melatonin 22:30 · updated to taken at 23:00, ½ tablet',
+    'Melatonin 22:30 · Taken at 23:00, ½ tablet',
   )
   assert.equal(
     confirm({
@@ -59,7 +62,7 @@ test('an edited intake after midnight names the actual day (C3, C5)', () => {
       previous: 'Taken',
       record: taken('2026-11-05T21:15:00.000Z', 2),
     }),
-    'Melatonin 22:30 · updated to taken at 00:15 on Fri 6 Nov, 2 capsules',
+    'Melatonin 22:30 · Taken at 00:15 on Fri 6 Nov, 2 capsules',
   )
 })
 
@@ -83,7 +86,7 @@ test('an amount-only change names the new amount', () => {
       previousTakenAt: '2026-11-05T19:30:00.000Z',
       record: taken('2026-11-05T19:35:00.000Z', 1),
     }),
-    'Melatonin 22:30 · updated to taken at 22:35, 1 tablet',
+    'Melatonin 22:30 · Taken at 22:35, 1 tablet',
   )
 })
 
@@ -95,11 +98,11 @@ test('a corrected outcome says what it changed to', () => {
       previous: 'Skipped',
       record: taken('2026-11-05T19:30:00.000Z', 1.5),
     }),
-    'Melatonin 22:30 · changed to taken at 22:30, 1½ tablets',
+    'Melatonin 22:30 · Changed to Taken at 22:30, 1½ tablets',
   )
   assert.equal(
     confirm({ label: 'Melatonin', unit: 'tablet', previous: 'Taken', record: skipped }),
-    'Melatonin 22:30 · changed to skipped',
+    'Melatonin 22:30 · Changed to Skipped',
   )
 })
 
@@ -120,11 +123,11 @@ test('the year of an intake on another day follows the current Istanbul year', (
   }
   assert.equal(
     confirm({ ...args, today: '2036-01-01' }),
-    'Melatonin 23:00 on Mon 31 Dec 2035 · taken at 00:15 on Tue 1 Jan, 1 tablet',
+    'Melatonin 23:00 on Mon 31 Dec 2035 · Taken at 00:15 on Tue 1 Jan, 1 tablet',
   )
   assert.equal(
     confirm({ ...args, today: '2035-12-31' }),
-    'Melatonin 23:00 · taken at 00:15 on Tue 1 Jan 2036, 1 tablet',
+    'Melatonin 23:00 · Taken at 00:15 on Tue 1 Jan 2036, 1 tablet',
   )
 })
 
@@ -137,7 +140,7 @@ test('a dose due on another day names its due day (#278)', () => {
       record: skipped,
       today: '2026-11-09',
     }),
-    'Melatonin 22:30 on Thu 5 Nov · saved as skipped',
+    'Melatonin 22:30 on Thu 5 Nov · Skipped',
   )
   assert.equal(
     confirm({
@@ -147,6 +150,22 @@ test('a dose due on another day names its due day (#278)', () => {
       record: taken('2026-11-05T21:15:00.000Z', 1),
       today: '2026-11-09',
     }),
-    'Melatonin 22:30 on Thu 5 Nov · taken at 00:15 on Fri 6 Nov, 1 tablet',
+    'Melatonin 22:30 on Thu 5 Nov · Taken at 00:15 on Fri 6 Nov, 1 tablet',
+  )
+})
+
+test('reconciliation keeps its already-saved wording and factual receipt', () => {
+  assert.equal(
+    reconciledConfirmation({
+      label: 'Melatonin',
+      unit: 'tablet',
+      record: taken('2026-11-05T21:15:00.000Z', 0.5),
+      today: '2026-11-07',
+    }),
+    'Melatonin 22:30 on Thu 5 Nov · already saved as taken at 00:15 on Fri 6 Nov, ½ tablet',
+  )
+  assert.equal(
+    reconciledConfirmation({ label: 'Iron', unit: 'tablet', record: skipped, today: '2026-11-05' }),
+    'Iron 22:30 · already saved as skipped',
   )
 })

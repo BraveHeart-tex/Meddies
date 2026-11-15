@@ -310,7 +310,7 @@ test('Log a dose shows field errors, then saves another minute yesterday and nam
   await user.click(screen.getByLabelText('Fewer: Amount'))
   await user.click(screen.getByRole('button', { name: 'Save as taken' }))
   expect(
-    await screen.findByText('Ibuprofen · taken at 23:30 on Fri 13 Nov, ½ tablet'),
+    await screen.findByText('Ibuprofen · Taken at 23:30 on Fri 13 Nov, ½ tablet'),
   ).toBeVisible()
   expect(state.writes[0]).toMatchObject({
     medicineId: ibuprofen.id,
@@ -331,7 +331,7 @@ test('a lost response keeps the details and retries the same attempt, so one dos
   expect(await within(drawer).findByText('That might not have saved.')).toBeVisible()
   expect(drawer).toHaveTextContent('Might not have saved')
   await user.click(within(drawer).getByRole('button', { name: 'Try saving as taken again' }))
-  expect(await screen.findByText('Ibuprofen · taken at 10:00, 1 tablet')).toBeVisible()
+  expect(await screen.findByText('Ibuprofen · Taken at 10:00, 1 tablet')).toBeVisible()
   expect(state.writes).toHaveLength(2)
   expect(state.writes[1]).toEqual(state.writes[0])
   expect(state.doses).toHaveLength(1)
@@ -372,7 +372,7 @@ test('changing an Unscheduled dose from Today saves the new intake and says so',
   )
   await pickTime(user, '09:15')
   await user.click(within(drawer).getByRole('button', { name: 'Save changes' }))
-  expect(await screen.findByText('Ibuprofen · changed to taken at 09:15, 1 tablet')).toBeVisible()
+  expect(await screen.findByText('Ibuprofen · Taken at 09:15, 1 tablet')).toBeVisible()
   expect(state.writes[0]).toMatchObject({
     doseId: morningIbuprofen.id,
     expectedRevision: 0,

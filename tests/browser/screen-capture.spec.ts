@@ -9,7 +9,7 @@ import {
 } from './actions'
 import { captureCases } from './capture'
 import { expect, test } from './fixtures'
-import { loadingStatus } from './locators'
+import { drawer, loadingStatus, toastMessage } from './locators'
 import { addDays, insertScheduledMedicine } from './seed'
 
 // Opt-in screenshots of signed-in Today and Medications screens for visual verification,
@@ -311,6 +311,74 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
   expect(await scrollsHorizontally(page)).toBe(false)
   await page.screenshot({ path: resolve(out!, `save-skipped-402.png`) })
   await page.context().setOffline(false)
+
+  async function captureDoseReceipt({
+    name,
+    path,
+    open,
+    save,
+    receipt,
+  }: {
+    name: string
+    path: string
+    open: () => Promise<void>
+    save: string
+    receipt: string
+  }) {
+    await page.goto(path)
+    await open()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByRole('heading', { name: 'Capture Fixture Medicine' })).toBeVisible()
+    await expect(dialog.getByLabel(/^Amount/)).toBeVisible()
+    const restoreDrawerText = await resizeTextForReview(page)
+    for (const width of [402, 320]) {
+      await page.setViewportSize({ width, height: 874 })
+      await dialog.getByRole('button', { name: save }).scrollIntoViewIfNeeded()
+      await expect(dialog.getByRole('button', { name: save })).toBeVisible()
+      expect(await scrollsHorizontally(page)).toBe(false)
+      await page.screenshot({ path: resolve(out!, `receipt-${name}-form-${width}-200.png`) })
+    }
+    await restoreDrawerText()
+    await dialog.getByRole('button', { name: save }).click()
+    await expect(drawer(page)).toHaveCount(0)
+    await expect(toastMessage(page, receipt)).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Notifications' })).toHaveAttribute(
+      'aria-live',
+      'polite',
+    )
+    const restoreReceiptText = await resizeTextForReview(page)
+    for (const width of [402, 320]) {
+      await page.setViewportSize({ width, height: 874 })
+      await expect(toastMessage(page, receipt)).toBeVisible()
+      await expect(page.getByRole('region', { name: 'Notifications' })).toHaveAttribute(
+        'aria-live',
+        'polite',
+      )
+      expect(await scrollsHorizontally(page)).toBe(false)
+      await page.screenshot({ path: resolve(out!, `receipt-${name}-${width}-200.png`) })
+    }
+    await restoreReceiptText()
+  }
+
+  await captureDoseReceipt({
+    name: 'scheduled',
+    path: '/',
+    open: async () => {
+      await page.getByRole('button', { name: /^Record dose for Capture Fixture Medicine/ }).click()
+      await page.getByRole('button', { name: 'I took it', exact: true }).click()
+    },
+    save: 'Save as taken',
+    receipt: 'Capture Fixture Medicine 08:00 · Taken at 09:00, 1 tablet',
+  })
+  await captureDoseReceipt({
+    name: 'unscheduled',
+    path: `/medications?medicine=${medicineId}`,
+    open: async () => {
+      await page.getByRole('button', { name: 'Log a dose', exact: true }).click()
+    },
+    save: 'Save as taken',
+    receipt: 'Capture Fixture Medicine · Taken at 09:00, 1 tablet',
+  })
 })
 
 // Opt-in read-recovery review, using the existing seeded screen-capture infrastructure.

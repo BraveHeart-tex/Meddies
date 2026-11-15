@@ -24,13 +24,13 @@ const saved: UnscheduledDose = {
 const removed = { ...saved, actionId: 'removal', revision: 1, removed: true }
 
 test('save messages name the day only when the dose was not taken today', () => {
-  expect(savedMessage(ibuprofen, saved, '2026-11-09')).toBe('Ibuprofen · taken at 09:30, 1 tablet')
+  expect(savedMessage(ibuprofen, saved, '2026-11-09')).toBe('Ibuprofen · Taken at 09:30, 1 tablet')
   expect(
     savedMessage(ibuprofen, { takenAt: '2026-11-08T20:30:00.000Z', quantity: 0.5 }, '2026-11-09'),
-  ).toBe('Ibuprofen · taken at 23:30 on Sun 8 Nov, ½ tablet')
+  ).toBe('Ibuprofen · Taken at 23:30 on Sun 8 Nov, ½ tablet')
   const earlier = { ...saved, takenAt: '2026-11-09T06:15:00.000Z' }
   expect(savedMessage(ibuprofen, saved, '2026-11-09', earlier)).toBe(
-    'Ibuprofen · changed to taken at 09:30, 1 tablet',
+    'Ibuprofen · Taken at 09:30, 1 tablet',
   )
   // Catches an amount-only change reading as a change of time (#283).
   expect(savedMessage(ibuprofen, saved, '2026-11-09', { ...saved, quantity: 2 })).toBe(

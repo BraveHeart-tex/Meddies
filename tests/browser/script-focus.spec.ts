@@ -84,7 +84,7 @@ function focusScenarios(checkRing: (actual: unknown, expected: unknown) => void)
     // The outcome moves focus to the heading only when nothing else holds it.
     await clearFocus(page)
     app.worker.release(write)
-    await expect(toastMessage(page, `${label} 09:01 · saved as skipped`)).toBeVisible()
+    await expect(toastMessage(page, `${label} 09:01 · Skipped`)).toBeVisible()
     await expect.poll(() => rowHeadingFocus(page)).toBeTruthy()
     checkRing(await rowHeadingFocus(page), noRing)
   })

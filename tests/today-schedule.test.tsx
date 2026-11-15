@@ -1242,9 +1242,7 @@ describe('next actions', () => {
         screen.getByRole('button', { name: 'I skipped it, Morning Tablet at 23:30' }),
       )
       await user.click(await screen.findByRole('button', { name: 'Save as skipped' }))
-      expect(
-        await screen.findByText('Morning Tablet 23:30 on Fri 13 Nov · saved as skipped'),
-      ).toBeVisible()
+      expect(await screen.findByText('Morning Tablet 23:30 on Fri 13 Nov · Skipped')).toBeVisible()
       await waitFor(() =>
         expect(screen.queryByRole('heading', { name: /^To log/ })).not.toBeInTheDocument(),
       )

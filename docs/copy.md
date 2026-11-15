@@ -69,6 +69,24 @@ timezone. Lint rejects `Intl.DateTimeFormat` and `toLocale*String` anywhere else
 
 Never show or announce an ISO date. A dose due today shows no date.
 
+## Dose save receipts
+
+Show a factual receipt only after the server confirms the save. A scheduled dose keeps its
+scheduled time in the heading and names its actual Taken time and quantity separately:
+
+- Ordinary save: `{head} Taken at {time}{day}, {amount}` or `{head} Skipped`.
+- Changed outcome: `{head} Changed to Taken at {time}{day}, {amount}` or
+  `{head} Changed to Skipped`.
+- Changed Taken time: `{head} Taken at {time}{day}, {amount}`. A quantity-only edit keeps
+  `now {amount}`; reconciliation keeps `already saved as …`.
+- Unscheduled save or changed time: `{label} · Taken at {time}{day}, {amount}`. A
+  quantity-only edit keeps `{label} {time}{day} · now {amount}`; dose removal keeps its
+  existing receipt.
+
+When Taken time falls on a different day, name that day. Use the date formats above, including
+the year when it differs from the current Istanbul year. Keep the existing delivery,
+deduplication, timeout and action behavior.
+
 ## Errors
 
 Say what happened, what is safe, and what to do next.

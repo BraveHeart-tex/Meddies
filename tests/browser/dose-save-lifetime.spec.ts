@@ -90,7 +90,7 @@ test('Back and Forward restore the drawer draft; a pending save confirms after l
   await expect(page).toHaveURL(`${app.origin}/medications`)
   expectSessionDocument('Back during the Pending save')
   await app.worker.release(takenWrite)
-  await expect(toastMessage(page, `${label} 08:00 · taken at 12:00, 2 tablets`)).toBeVisible()
+  await expect(toastMessage(page, `${label} 08:00 · Taken at 12:00, 2 tablets`)).toBeVisible()
   await returnToToday(page)
   await expect(doseStatus(doseRow(page, dueAt))).toHaveAccessibleDescription(/Taken/)
   expectSessionDocument('Return after confirmation')

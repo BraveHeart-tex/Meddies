@@ -111,7 +111,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
 
   await test.step('the confirmed dose moves to Logged and Up next moves on', async () => {
     await app.worker.release(takenWrite)
-    await expect(toastMessage(page, `${omega} 14:00 · taken at 14:00, 2 tablets`)).toBeVisible()
+    await expect(toastMessage(page, `${omega} 14:00 · Taken at 14:00, 2 tablets`)).toBeVisible()
     // Focus after an Up next save is asserted in the W4 test below.
     await expect(dialog).toHaveCount(0)
     await expect(doseStatus(omegaRow)).toHaveAccessibleDescription(/Taken/)
@@ -134,7 +134,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await dialog.getByRole('button', { name: 'I skipped it' }).click()
     await expect(dialog.getByRole('group', { name: `Skip ${iron}` })).toBeVisible()
     await dialog.getByRole('button', { name: 'Save as skipped' }).click()
-    await expect(toastMessage(page, `${iron} 08:00 · saved as skipped`)).toBeVisible()
+    await expect(toastMessage(page, `${iron} 08:00 · Skipped`)).toBeVisible()
     await expectFocusReturned(ironRow)
     await expect(doseStatus(ironRow)).toHaveAccessibleDescription(/Skipped/)
   })
@@ -155,10 +155,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await pickTime(page, 'Taken time in Istanbul', '09:10')
     await dialog.getByRole('button', { name: 'Save changes' }).click()
     await expect(
-      toastMessage(
-        page,
-        new RegExp(`^${magnesium} 09:00 · updated to taken at .*09:10, 1 tablet$`),
-      ),
+      toastMessage(page, new RegExp(`^${magnesium} 09:00 · Taken at .*09:10, 1 tablet$`)),
     ).toBeVisible()
     await expectFocusReturned(magnesiumRow)
   })
@@ -172,7 +169,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await expect(
       toastMessage(
         page,
-        new RegExp(`^${evening} 20:00 on Thu 14 Jun · taken at 14:00 on Fri 15 Jun`),
+        new RegExp(`^${evening} 20:00 on Thu 14 Jun · Taken at 14:00 on Fri 15 Jun`),
       ),
     ).toBeVisible()
     await expect(lateEveningRow).toHaveCount(0)
@@ -225,7 +222,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await expect(dialog.getByRole('group', { name: `Skip ${omega}` })).toBeVisible()
     await dialog.getByRole('button', { name: 'Save as skipped' }).click()
     await expect(
-      toastMessage(page, new RegExp(`^${omega} 14:00 on Thu 14 Jun · changed to skipped`)),
+      toastMessage(page, new RegExp(`^${omega} 14:00 on Thu 14 Jun · Changed to Skipped`)),
     ).toBeVisible()
     await expectFocusReturned(pastOmega)
     await expect(pastOmega.getByText('Skipped', { exact: true })).toBeVisible()
