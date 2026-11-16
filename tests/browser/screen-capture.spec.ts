@@ -12,6 +12,7 @@ import { captureCases } from './capture'
 import { captureSettled } from './settled-capture'
 import { expect, test } from './fixtures'
 import { drawer, loadingStatus, toastMessage } from './locators'
+import { pickTime } from './pickers'
 import { addDays, insertScheduledMedicine } from './seed'
 
 // Opt-in screenshots of signed-in Today and Medications screens for visual verification,
@@ -274,6 +275,40 @@ for (const state of ['empty', 'no-schedule', 'future-schedule'] as const) {
     /* eslint-enable playwright/no-conditional-in-test, playwright/no-conditional-expect */
   })
 }
+
+// Opt-in Amount input review (#265): Clock time rows with singular and plural units, then the
+// Interval Amount sheet, on the seeded tablet's Change schedule.
+test('capture schedule amount inputs', { tag: '@visual' }, async ({ page }) => {
+  // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
+  test.skip(!out || process.env.MEDDIES_AMOUNT_CAPTURE !== '1', 'Set MEDDIES_AMOUNT_CAPTURE=1')
+  test.setTimeout(120_000)
+  await mkdir(resolve(out!), { recursive: true })
+  await page.setViewportSize(captureCases.phone.viewport)
+  await page.emulateMedia({ reducedMotion: captureCases.phone.reducedMotion })
+  await page.goto(`/medications?schedule=${medicineId}`)
+  await expect.poll(() => hydrated(page)).toBe(true)
+  await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
+  await page.getByRole('button', { name: 'Add another time' }).click()
+  await pickTime(page, 'Time 2', '20:00')
+  await page.getByLabel('Amount for time 2').fill('2')
+  const [first, second] = await Promise.all(
+    [1, 2].map((row) => page.getByLabel(`Amount for time ${row}`).boundingBox()),
+  )
+  expect(second?.width, 'singular and plural rows share one input width').toBe(first?.width)
+  expect(await scrollsHorizontally(page)).toBe(false)
+  await page.getByLabel('Amount for time 2').blur()
+  await captureSettled(page, { path: resolve(out!, 'amount-clock-rows-402.png'), fullPage: true })
+
+  await page.getByRole('button', { name: 'Every few hours' }).click()
+  await page.getByRole('button', { name: /^Amount:/ }).click()
+  const sheet = page.getByRole('dialog', { name: 'Amount' })
+  const amount = sheet.getByRole('textbox', { name: 'Amount' })
+  await amount.fill('2')
+  await amount.blur()
+  await expect(sheet).toBeVisible()
+  expect(await scrollsHorizontally(page)).toBe(false)
+  await captureSettled(page, { path: resolve(out!, 'amount-interval-sheet-402.png') })
+})
 
 // Copy-only recovery review, opt-in rather than a new CI browser journey.
 test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {

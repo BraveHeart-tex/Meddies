@@ -76,6 +76,7 @@ export function ScheduleTimeRow({
               id={quantityId}
               label={`${label} amount`}
               unit={unit}
+              grow
               value={field.value}
               onValueChange={field.onChange}
               onBlur={field.onBlur}

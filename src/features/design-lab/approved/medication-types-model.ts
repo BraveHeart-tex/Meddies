@@ -6,15 +6,7 @@ export type LabType = 'tablet' | 'capsule' | 'liquid' | 'inhaler' | 'drops'
 /** Add medication frames still in the lab; B1-B3 are built (#336). */
 export type AddState = 'inhaler' | 'drops'
 export type SharedState =
-  | 'clock-setup'
-  | 'interval-setup'
-  | 'clock-edit'
-  | 'taken'
-  | 'taken-change'
-  | 'unscheduled'
-  | 'unscheduled-change'
-  | 'today'
-  | 'history'
+  'interval-setup' | 'clock-edit' | 'taken-change' | 'unscheduled' | 'today' | 'history'
 
 type Rule = {
   label: string
@@ -85,8 +77,6 @@ export function amountLabel(value: number, type: LabType) {
 
 /** The inline errors the frames show. */
 export const amountErrors = {
-  liquidStep: 'Use steps of 0.1 ml, like 1.2 ml.',
-  liquidMin: 'Use 0.1 ml or more.',
   inhalerWhole: 'Use whole puffs.',
   dropsMin: 'Use 1 drop or more.',
 }

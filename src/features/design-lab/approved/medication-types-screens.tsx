@@ -113,17 +113,6 @@ export function AddMedicationScreen({ state }: { state: AddState }) {
 
 export function SharedScreen({ state }: { state: SharedState }) {
   switch (state) {
-    case 'clock-setup':
-      return (
-        <ClockPage
-          type="liquid"
-          subtitle="Set schedule"
-          rows={[
-            ['08:00', '5'],
-            ['20:00', '1.25', amountErrors.liquidStep],
-          ]}
-        />
-      )
     case 'clock-edit':
       return (
         <ClockPage
@@ -137,19 +126,6 @@ export function SharedScreen({ state }: { state: SharedState }) {
       )
     case 'interval-setup':
       return <IntervalPage />
-    case 'taken':
-      return (
-        <>
-          <TodayScreen />
-          <DoseDrawer
-            type="liquid"
-            title="Amoxicillin"
-            description="Due now · 08:00"
-            amount="5"
-            save="Save as taken"
-          />
-        </>
-      )
     case 'taken-change':
       return (
         <>
@@ -175,20 +151,6 @@ export function SharedScreen({ state }: { state: SharedState }) {
             amount="0"
             error={amountErrors.dropsMin}
             save="Save as taken"
-            unscheduled
-          />
-        </>
-      )
-    case 'unscheduled-change':
-      return (
-        <>
-          <TodayScreen />
-          <DoseDrawer
-            type="liquid"
-            title="Amoxicillin"
-            description="Not on a schedule · Taken at 13:10, 2.5 ml"
-            amount="0.5"
-            save="Save changes"
             unscheduled
           />
         </>

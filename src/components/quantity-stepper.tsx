@@ -11,11 +11,14 @@ import {
   unitName,
   type MedicineType,
 } from '@/lib/quantity-policy'
+import { cn } from '@/lib/utils'
 
 /**
  * Dose quantity in the Medicine's Quantity unit: "−" and "+" step by the quantity policy, and the
  * text stays editable, blank included, so a form schema decides what is valid. The unit and its
- * plural always show beside the number. `ref` focuses the text input.
+ * plural always show beside the number. `ref` focuses the text input. `grow` stretches the input to
+ * fill the row (Clock time rows and the Interval Amount sheet, #265) and reserves the plural's
+ * width for the unit, so singular and plural rows line up; the dose drawers keep the compact input.
  */
 export function QuantityStepper({
   ref,
@@ -26,6 +29,7 @@ export function QuantityStepper({
   onValueChange,
   onBlur,
   disabled,
+  grow = false,
   'aria-describedby': describedBy,
   'aria-invalid': invalid,
 }: {
@@ -38,6 +42,8 @@ export function QuantityStepper({
   onValueChange: (value: string) => void
   onBlur?: () => void
   disabled?: boolean
+  /** Fill the row instead of the compact input. */
+  grow?: boolean
   'aria-describedby'?: string
   'aria-invalid'?: boolean
 }) {
@@ -62,7 +68,7 @@ export function QuantityStepper({
         inputMode="decimal"
         autoComplete="off"
         enterKeyHint="done"
-        className="w-20 shrink-0 text-center font-extrabold"
+        className={cn('text-center font-extrabold', grow ? 'min-w-0 flex-1' : 'w-20 shrink-0')}
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
         onBlur={onBlur}
@@ -81,8 +87,15 @@ export function QuantityStepper({
       >
         <Plus aria-hidden="true" data-icon="inline-start" />
       </Button>
-      <span id={`${id}-unit`} className="font-bold text-muted-foreground">
-        {unitName(Number.isNaN(number) ? null : number, unit)}
+      <span className="grid shrink-0 font-bold text-muted-foreground">
+        <span id={`${id}-unit`} className="col-start-1 row-start-1">
+          {unitName(Number.isNaN(number) ? null : number, unit)}
+        </span>
+        {grow && (
+          <span aria-hidden="true" className="invisible col-start-1 row-start-1">
+            {unitName(null, unit)}
+          </span>
+        )}
       </span>
     </div>
   )

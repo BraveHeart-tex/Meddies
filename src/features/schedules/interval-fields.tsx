@@ -196,6 +196,7 @@ export function IntervalQuantityField({
         id="interval-quantity"
         label="Amount"
         unit={unit}
+        grow
         value={value}
         onValueChange={onChange}
         onBlur={onBlur}

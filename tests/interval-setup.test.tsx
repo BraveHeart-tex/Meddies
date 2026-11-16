@@ -25,6 +25,13 @@ const magnesium: Medicine = {
   strength: '400 mg',
   unit: 'tablet',
 }
+/** Magnesium's record as a Liquid, for the ml rules (#265). */
+const syrup: Medicine = {
+  ...magnesium,
+  label: 'Amoxicillin',
+  strength: '250 mg/5 ml',
+  unit: 'liquid',
+}
 
 let client: QueryClient
 beforeEach(() => {
@@ -38,11 +45,11 @@ afterEach(() => {
 
 type Respond = (payload: object) => Response | undefined
 
-function api(initial: DailySchedule[] = [], respond?: Respond) {
+function api(initial: DailySchedule[] = [], respond?: Respond, medicine: Medicine = magnesium) {
   let schedules = initial
   const posted: Record<string, unknown>[] = []
   server.use(
-    http.get('/api/medicines', () => HttpResponse.json({ medicines: [magnesium] })),
+    http.get('/api/medicines', () => HttpResponse.json({ medicines: [medicine] })),
     http.get('/api/schedules', () =>
       HttpResponse.json({
         schedules,
@@ -296,6 +303,38 @@ describe('saving', () => {
       intervalHours: 8,
       times: [{ time: '08:00', quantity: 1 }],
     })
+  })
+
+  // #265: catches the Amount sheet stepping, validating or saving Liquid off the 0.1 ml grid.
+  test('the Amount sheet steps Liquid by 0.1 ml, shows both ml errors and saves decimals', async () => {
+    const { posted } = api([], undefined, syrup)
+    const { user, onSaved } = await openSetup()
+    await fillIn(user)
+    expect(takeRow()).toHaveAccessibleName(/^Amount: 1\sml/)
+    await user.click(takeRow())
+    const dialog = await sheet('Amount')
+    const amount = within(dialog).getByLabelText('Amount')
+    const done = within(dialog).getByRole('button', { name: 'Done' })
+    expect(amount).toHaveAccessibleDescription(/^ml/)
+    await user.click(within(dialog).getByRole('button', { name: 'More: Amount' }))
+    expect(amount).toHaveValue('1.1')
+    await user.clear(amount)
+    await user.paste('1.25')
+    await user.click(done)
+    expect(await within(dialog).findByText('Use steps of 0.1 ml, like 1.2 ml.')).toBeVisible()
+    await user.clear(amount)
+    await user.paste('0')
+    await user.click(done)
+    expect(await within(dialog).findByText('Use 0.1 ml or more.')).toBeVisible()
+    await user.clear(amount)
+    await user.paste('2.5')
+    await user.click(done)
+    await sheetClosed('Amount')
+    expect(takeRow()).toHaveAccessibleName(/^Amount: 2\.5\sml/)
+
+    await user.click(button('Save schedule'))
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    expect(posted[0]).toMatchObject({ intervalHours: 8, times: [{ time: '08:00', quantity: 2.5 }] })
   })
 
   test('an unconfirmed retry keeps the values and repeats the same attempt', async () => {

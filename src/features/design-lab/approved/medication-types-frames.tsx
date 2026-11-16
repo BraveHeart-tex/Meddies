@@ -16,12 +16,6 @@ export const medicationTypesFrames = [
     render: () => <AddMedicationScreen state="drops" />,
   },
   {
-    slug: '265-s1',
-    citation: '265·S1',
-    title: 'Clock setup - Liquid amounts',
-    render: () => <SharedScreen state="clock-setup" />,
-  },
-  {
     slug: '265-s2',
     citation: '265·S2',
     title: 'Interval setup - Inhaler amount',
@@ -34,12 +28,6 @@ export const medicationTypesFrames = [
     render: () => <SharedScreen state="clock-edit" />,
   },
   {
-    slug: '265-s4',
-    citation: '265·S4',
-    title: 'Scheduled dose - Liquid Taken',
-    render: () => <SharedScreen state="taken" />,
-  },
-  {
     slug: '265-s5',
     citation: '265·S5',
     title: 'Scheduled dose change - Inhaler',
@@ -50,12 +38,6 @@ export const medicationTypesFrames = [
     citation: '265·S6',
     title: 'Unscheduled dose - Drops validation',
     render: () => <SharedScreen state="unscheduled" />,
-  },
-  {
-    slug: '265-s7',
-    citation: '265·S7',
-    title: 'Unscheduled dose change - Liquid',
-    render: () => <SharedScreen state="unscheduled-change" />,
   },
   {
     slug: '265-s8',

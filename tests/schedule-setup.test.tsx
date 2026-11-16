@@ -35,6 +35,12 @@ const tablets: Medicine = {
   strength: null,
   unit: 'tablet',
 }
+const syrup: Medicine = {
+  id: '00000000-0000-4000-8000-000000000003',
+  label: 'Amoxicillin',
+  strength: '250 mg/5 ml',
+  unit: 'liquid',
+}
 
 let client: QueryClient
 beforeEach(() => {
@@ -174,6 +180,44 @@ test('tablets step by half, stop at half and name the unit', async () => {
   await waitFor(() => expect(quantity(1)).toHaveFocus())
   expect(quantity(1)).toHaveAccessibleDescription(/Use ½ tablet or more\./)
   expect(posted).toEqual([])
+})
+
+// #265: catches a Clock row that steps, validates or saves Liquid off the 0.1 ml grid.
+test('Liquid steps by 0.1 ml, shows both ml errors and saves decimal amounts (#265)', async () => {
+  const { posted } = api(syrup)
+  const { user, onSaved } = await openSetup(syrup.id)
+  expect(quantity(1)).toHaveValue('1')
+  expect(quantity(1)).toHaveAccessibleDescription('ml')
+  await user.click(step(1, 'Fewer'))
+  expect(quantity(1)).toHaveValue('0.9')
+  await typeQuantity(user, 1, '0.1')
+  expect(step(1, 'Fewer')).toBeDisabled()
+  await user.click(step(1, 'More'))
+  expect(quantity(1)).toHaveValue('0.2')
+  await pickTime(user, 1, '08:00')
+  await user.click(addTime())
+  await pickTime(user, 2, '20:00')
+
+  await typeQuantity(user, 2, '1.25')
+  await user.click(save())
+  await waitFor(() => expect(quantity(2)).toHaveFocus())
+  expect(quantity(2)).toHaveAccessibleDescription(/Use steps of 0\.1 ml, like 1\.2 ml\./)
+  await typeQuantity(user, 2, '0')
+  await user.click(save())
+  expect(quantity(2)).toHaveAccessibleDescription(/Use 0\.1 ml or more\./)
+  expect(posted).toEqual([])
+
+  await typeQuantity(user, 2, '2.5')
+  await user.click(save())
+  await waitFor(() => expect(onSaved).toHaveBeenCalled())
+  expect(posted).toEqual([
+    expect.objectContaining({
+      times: [
+        { time: '08:00', quantity: 0.2 },
+        { time: '20:00', quantity: 2.5 },
+      ],
+    }),
+  ])
 })
 
 test('time row ids are the same on every render with the same data', () => {

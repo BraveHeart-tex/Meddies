@@ -121,7 +121,7 @@ test('Tablet and Capsule validation keeps its safe halves and errors', () => {
   assert.equal(quantityProblem('4503599627370496', 'capsule'), 'Enter a smaller quantity.')
 })
 
-test('Liquid validation: tenths of ml with the 265·S1 errors', () => {
+test('Liquid validation: tenths of ml with the #265 errors', () => {
   for (const text of ['0.1', '0.3', '0,5', '1.5', '12.7'])
     assert.equal(quantityProblem(text, 'liquid'), null)
   for (const value of [0.1, 0.3, 0.5, 0.7, 1.5, 900719925474099])

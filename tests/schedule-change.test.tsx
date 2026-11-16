@@ -25,6 +25,13 @@ const magnesium: Medicine = {
   strength: '400 mg',
   unit: 'tablet',
 }
+/** Magnesium's record as a Liquid, for the ml rules (#265). */
+const syrup: Medicine = {
+  ...magnesium,
+  label: 'Amoxicillin',
+  strength: '250 mg/5 ml',
+  unit: 'liquid',
+}
 const setupSearch = `?schedule=${magnesium.id}`
 const detailSearch = `?medicine=${magnesium.id}`
 
@@ -64,11 +71,11 @@ type Respond = (
 ) => Response | undefined | Promise<Response | undefined>
 
 /** The Worker's edit rules in miniature: the successor starts at the Edit time. */
-function api(initial: DailySchedule[], respond?: Respond) {
+function api(initial: DailySchedule[], respond?: Respond, medicine: Medicine = magnesium) {
   let schedules = initial
   const edits: Record<string, unknown>[] = []
   server.use(
-    http.get('/api/medicines', () => HttpResponse.json({ medicines: [magnesium] })),
+    http.get('/api/medicines', () => HttpResponse.json({ medicines: [medicine] })),
     http.get('/api/schedules', () =>
       HttpResponse.json({
         schedules: schedules.filter((item) => !item.replacedAt),
@@ -280,6 +287,50 @@ describe('changing a Clock schedule', () => {
         ],
         intervalHours: null,
       },
+    ])
+  })
+
+  // #265: catches Change schedule stepping, validating or saving Liquid off the 0.1 ml grid.
+  test('a Liquid change steps by 0.1 ml, shows both ml errors and saves decimals', async () => {
+    const { edits } = api(
+      [
+        {
+          ...clockVersion,
+          times: [
+            { time: '08:00', quantity: 5 },
+            { time: '20:00', quantity: 2.5 },
+          ],
+        },
+      ],
+      undefined,
+      syrup,
+    )
+    const { user, onSaved } = await openChange()
+    const amount = (row: number) => screen.getByLabelText(`Amount for time ${row}`)
+    expect(amount(1)).toHaveValue('5')
+    expect(amount(2)).toHaveValue('2.5')
+    expect(amount(2)).toHaveAccessibleDescription('ml')
+    await user.click(button('More: Time 2 amount'))
+    expect(amount(2)).toHaveValue('2.6')
+
+    await user.clear(amount(1))
+    await user.paste('1.25')
+    await user.click(saveChanges())
+    await waitFor(() => expect(amount(1)).toHaveFocus())
+    expect(amount(1)).toHaveAccessibleDescription(/Use steps of 0\.1 ml, like 1\.2 ml\./)
+    await user.clear(amount(1))
+    await user.paste('0')
+    await user.click(saveChanges())
+    expect(amount(1)).toHaveAccessibleDescription(/Use 0\.1 ml or more\./)
+    expect(edits).toEqual([])
+
+    await user.clear(amount(1))
+    await user.paste('4.5')
+    await user.click(saveChanges())
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(edits[0].times).toEqual([
+      { time: '08:00', quantity: 4.5 },
+      { time: '20:00', quantity: 2.6 },
     ])
   })
 
