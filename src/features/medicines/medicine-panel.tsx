@@ -1,10 +1,12 @@
 'use client'
 
+import { Info } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { SchedulePanel } from '@/features/schedules/schedule-panel'
 import { buttonVariants } from '@/components/ui/button'
+import { MedicineDeleteDrawer } from './medicine-delete-drawer'
 import { MedicineAddDrawer } from './medicine-add-drawer'
-import { Alert, AlertTitle } from '@/components/ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import type { Medicine } from './contract'
 import { MedicationsLink, returnToMedicationPage, showMedicationsView } from './medications-nav'
 import { medicationsHref } from './routes'
@@ -35,6 +37,8 @@ export function MedicinePanel({
   const [scheduledMedicine, setScheduledMedicine] = useState<Medicine | null>(null)
   // Done for now hands focus to the saved medicine's list row.
   const [focusMedicineId, setFocusMedicineId] = useState<string | null>(null)
+  const [deletion, setDeletion] = useState<{ medicine: Medicine; open: boolean } | null>(null)
+  const [deletedLabel, setDeletedLabel] = useState<string | null>(null)
   const [recordMessage, setRecordMessage] = useState<string | null>(null)
   const mounted = useRef(true)
   const mode = useRef(scheduleMode)
@@ -58,6 +62,7 @@ export function MedicinePanel({
   const [previousScreen, setPreviousScreen] = useState(screen)
   if (previousScreen !== screen) {
     setPreviousScreen(screen)
+    if (deletedLabel && scheduleMode !== 'list') setDeletedLabel(null)
     if (recordMessage && (record || scheduleMode !== 'detail')) setRecordMessage(null)
     if (savedMedicine && scheduleMode !== 'add' && !justSavedHere) setSavedMedicine(null)
     if (scheduledMedicine && scheduleMode !== 'setup' && !justScheduledHere)
@@ -94,7 +99,15 @@ export function MedicinePanel({
           <AlertTitle>{recordMessage}</AlertTitle>
         </Alert>
       )}
+      {deletedLabel && scheduleMode === 'list' && (
+        <Alert role="status">
+          <Info aria-hidden="true" />
+          <AlertTitle>{deletedLabel} deleted</AlertTitle>
+          <AlertDescription>This medication had no schedule or doses.</AlertDescription>
+        </Alert>
+      )}
       <SchedulePanel
+        onDeleteRequested={(medicine) => setDeletion({ medicine, open: true })}
         record={record}
         periodId={periodId}
         onRecordSaved={(medicine, kind) => {
@@ -124,6 +137,24 @@ export function MedicinePanel({
           ) : null
         }
       />
+      {deletion && (
+        <MedicineDeleteDrawer
+          key={deletion.medicine.id}
+          medicine={deletion.medicine}
+          open={
+            deletion.open &&
+            scheduleMode === 'detail' &&
+            !record &&
+            detailMedicineId === deletion.medicine.id
+          }
+          onClose={() => setDeletion({ ...deletion, open: false })}
+          onDeleted={() => {
+            setDeletion({ ...deletion, open: false })
+            setDeletedLabel(deletion.medicine.label)
+            showMedicationsView(medicationsHref({ mode: 'list' }), 'replace')
+          }}
+        />
+      )}
       <MedicineAddDrawer
         open={scheduleMode === 'add'}
         returnFocus={scheduleMode === 'list'}

@@ -31,6 +31,7 @@ export function SchedulePanel({
   record,
   periodId,
   onRecordSaved,
+  onDeleteRequested,
 }: {
   /** The server scheduling time at render, until a newer schedules snapshot replaces it. */
   initialNow: string
@@ -47,6 +48,7 @@ export function SchedulePanel({
   detailActions?: ReactNode
   record?: 'fix' | 'strength' | 'history'
   periodId?: string
+  onDeleteRequested?: (medicine: Medicine) => void
   onRecordSaved?: (medicine: MedicineRecord, kind: 'fix' | 'strength') => void
   detailHeadingRef?: Ref<HTMLHeadingElement>
 }) {
@@ -96,6 +98,7 @@ export function SchedulePanel({
             schedulesRead={schedulesRead}
             now={now}
             actions={detailActions}
+            onDeleteRequested={onDeleteRequested}
             justSaved={justSaved}
             justScheduled={justScheduled}
             resumed={resumed}

@@ -22,6 +22,7 @@ import {
   ScheduleCardSkeleton,
 } from '@/features/medicines/medications-skeleton'
 import { MedicationsLink } from '@/features/medicines/medications-nav'
+import type { Medicine } from '@/features/medicines/contract'
 import type { MedicinesRead } from '@/features/medicines/queries'
 import { medicationRecordHref, medicationSetupHref } from '@/features/medicines/routes'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
@@ -88,6 +89,7 @@ export function MedicationDetail({
   resumed = null,
   onResumed,
   headingRef,
+  onDeleteRequested,
 }: {
   medicineId: string
   medicinesRead: MedicinesRead
@@ -100,6 +102,7 @@ export function MedicationDetail({
   /** The resume this panel confirmed, here or on the Resume schedule screen. */
   resumed?: DailySchedule | null
   onResumed: (resumed: DailySchedule) => void
+  onDeleteRequested?: (medicine: Medicine) => void
   headingRef?: Ref<HTMLHeadingElement>
 }) {
   const { medicines, loading: medicinesLoading, loadError: medicinesError } = medicinesRead
@@ -308,6 +311,18 @@ export function MedicationDetail({
           </Item>
         </ItemGroup>
       </section>
+      {medicine.everHadSchedule === false &&
+        medicine.everHadDose === false &&
+        onDeleteRequested && (
+          <Button
+            id={`delete-medicine-${medicine.id}`}
+            variant="destructive"
+            size="lg"
+            onClick={() => onDeleteRequested(medicine)}
+          >
+            Delete medication
+          </Button>
+        )}
     </div>
   )
 }

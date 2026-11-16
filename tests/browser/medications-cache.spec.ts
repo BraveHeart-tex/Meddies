@@ -157,4 +157,45 @@ test('detail correction retains its draft and pending save across navigation, th
   await expect(page).toHaveURL(detail)
   await page.goBack()
   await expect(page).toHaveURL(`${app.origin}/medications`)
+
+  // Allowed reason: navigation during a save.
+  await test.step('a delete finishes after navigation without restoring the record', async () => {
+    const id = randomUUID()
+    const creation = { id, label: 'Vitamin D', strength: '', unit: 'tablet' }
+    await app.api('POST', '/api/medicines', creation)
+    await page.goto('/medications')
+    await page.getByRole('link', { name: 'View details for Vitamin D' }).click()
+    const detail = page.url()
+    const deletion = { method: 'POST', path: '/medicines', operation: 'delete' }
+    app.worker.hold(deletion)
+    await page.getByRole('button', { name: 'Delete medication' }).click()
+    await page.getByRole('button', { name: 'Delete medication' }).click()
+    await expect(page.getByRole('button', { name: 'Deleting...' })).toBeDisabled()
+    await expect.poll(() => app.worker.held(deletion)).toBeGreaterThan(0)
+    await page.goBack()
+    await page
+      .getByRole('navigation', { name: 'Primary' })
+      .getByRole('link', { name: 'Today' })
+      .click()
+    await expect(page).toHaveURL(`${app.origin}/`)
+    app.worker.release(deletion)
+    await expect(page.getByText('Vitamin D deleted', { exact: true })).toBeVisible()
+    const replay = await page.request.post('/api/medicines', {
+      headers: { origin: app.origin },
+      data: creation,
+    })
+    expect(replay.status()).toBe(409)
+    await page
+      .getByRole('navigation', { name: 'Primary' })
+      .getByRole('link', { name: 'Medications' })
+      .click()
+    await expect(page.getByRole('link', { name: 'View details for Fixed Medicine' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'View details for Vitamin D' })).toHaveCount(0)
+    // Reloading an old detail link must not restore the deleted Medicine.
+    await page.goto(detail)
+    await expect(
+      page.getByRole('heading', { name: "This medication isn't in your list" }),
+    ).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Delete medication' })).toHaveCount(0)
+  })
 })

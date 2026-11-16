@@ -1,7 +1,6 @@
 'use client'
 import Link from 'next/link'
 import { useId, useState } from 'react'
-import { Trash2 } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
@@ -228,12 +227,6 @@ export function EditForm({
           Cancel
         </Link>
       </form>
-      {state === 'unused' && (
-        <Link href={frameLink('292-s10')} className={buttonVariants({ variant: 'destructive' })}>
-          <Trash2 data-icon="inline-start" />
-          Delete medication
-        </Link>
-      )}
     </>
   )
 }

@@ -58,7 +58,7 @@ export function useMedicineSave(onSaved: (medicine: Medicine) => void) {
           })
           if (result.problem === 'unconfirmed' && active()) {
             try {
-              const list = await client.fetchQuery({ ...medicinesQuery(), staleTime: 0 })
+              const list = await client.fetchQuery({ ...medicinesQuery(client), staleTime: 0 })
               const saved = matchingMedicine(
                 list.find((item) => item.id === attempted.id),
                 attempted,

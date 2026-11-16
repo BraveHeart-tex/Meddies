@@ -24,6 +24,9 @@ browser storage is used. Losing it on reload, app closure or browser eviction is
   drawer watching arrives as a Toast. Unscheduled dose saves (log, change, remove) work the
   same way in `unscheduled-saves.ts`; a removal has no read evidence, so only its retry
   confirms it.
+- **Medicine deletion** confirms only from its matching command receipt, never absence from a list.
+  Confirmed deletion IDs stay in memory for the session, beyond list garbage collection; reads,
+  hydration and replayed creation receipts cannot restore them.
 - **Unscheduled doses** have no read of their own: Today's snapshot read and each History
   date read carry their date's Unscheduled doses and seed `['schedules', 'unscheduled', date]`.
   A confirmed change or removal stays cached at its new revision, so a stale read never

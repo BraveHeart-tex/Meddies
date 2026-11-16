@@ -22,8 +22,6 @@ export type RecordState =
   | 'archive'
   | 'restore'
   | 'restored'
-  | 'delete'
-  | 'deleted'
   | 'saving'
   | 'offline'
   | 'failure'

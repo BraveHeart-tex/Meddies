@@ -197,6 +197,14 @@ the Medications entry, the list and the archived detail with keyboard focus (4 s
 MEDDIES_ARCHIVED_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-archived pnpm test:browser:visual screen-capture --grep "archived medications"
 ```
 
+Deletion confirmation and the Medications result (2 screenshots at 402x874) also check keyboard
+focus and swipe dismissal, including refusal while pending:
+
+```sh
+MEDDIES_DELETE_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-delete pnpm test:browser:visual screen-capture --grep "medication deletion"
+
+```
+
 `cozy-visual` saves design-review screenshots at the running project's viewport; set
 `MEDDIES_VISUAL_OUT` to keep them outside `.browser-artifacts/`.
 

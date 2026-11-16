@@ -15,7 +15,7 @@ import { seedUnscheduledDay } from '../unscheduled-doses/queries'
 export async function prefetchToday() {
   const client = requestQueryClient()
   await Promise.all([
-    client.prefetchQuery({ ...medicinesQuery(), queryFn: () => medicines.list() }),
+    client.prefetchQuery({ ...medicinesQuery(client), queryFn: () => medicines.list() }),
     client.prefetchQuery({
       ...scheduleSnapshotQuery(),
       queryFn: async () => {
@@ -48,7 +48,7 @@ export async function prefetchMedications() {
 export async function prefetchHistory(date: string) {
   const client = requestQueryClient()
   await Promise.all([
-    client.prefetchQuery({ ...medicinesQuery(), queryFn: () => medicines.list() }),
+    client.prefetchQuery({ ...medicinesQuery(client), queryFn: () => medicines.list() }),
     client.prefetchQuery({
       ...historyDayQuery(date),
       queryFn: async () => {

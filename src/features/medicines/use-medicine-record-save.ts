@@ -42,7 +42,7 @@ export function useMedicineRecordSave(
     problem: attempt?.result?.problem,
     clear: () => store.clear(key),
     async review() {
-      await client.fetchQuery({ ...medicinesQuery(), staleTime: 0 })
+      await client.fetchQuery({ ...medicinesQuery(client), staleTime: 0 })
       discardSessionFormDraft(client, key)
       store.clear(key)
     },
@@ -91,14 +91,14 @@ export function useMedicineRecordSave(
           )
           if (result.problem === 'rejected' && active()) {
             try {
-              await client.fetchQuery({ ...medicinesQuery(), staleTime: 0 })
+              await client.fetchQuery({ ...medicinesQuery(client), staleTime: 0 })
             } catch {
               /* The entered details remain available even when the bound read fails. */
             }
           }
           if (result.problem === 'unconfirmed' && active()) {
             try {
-              const list = await client.fetchQuery({ ...medicinesQuery(), staleTime: 0 })
+              const list = await client.fetchQuery({ ...medicinesQuery(client), staleTime: 0 })
               result = { saved: match(list.find((item) => item.id === medicine.id)) }
             } catch {
               /* Only the same action confirms an unknown receipt. */

@@ -1,4 +1,5 @@
-import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query'
+import { queryOptions, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { sessionSaves } from '@/lib/session-saves'
 import { PrivateReadError } from '@/lib/session-check'
 import { parseMedicineResponse, type Medicine } from './contract'
 
@@ -6,6 +7,40 @@ import { parseMedicineResponse, type Medicine } from './contract'
 export const medicineKeys = {
   all: ['medicines'] as const,
   list: () => [...medicineKeys.all, 'list'] as const,
+}
+
+/** Confirmed deletion IDs outlive list garbage collection, scoped to this session client.
+ * Every read, hydration and receipt publication filters them; absence never creates one.
+ */
+const deletions = new WeakMap<QueryClient, Set<string>>()
+export function mergeClientMedicines(
+  client: QueryClient,
+  current: Medicine[] | undefined,
+  incoming: Medicine[],
+) {
+  const deleted = deletions.get(client)
+  return mergeMedicines(current, incoming).filter((medicine) => !deleted?.has(medicine.id))
+}
+
+/** Only a matching delete receipt may call this. Cancel older reads before publication. */
+export async function confirmMedicineDeletion(
+  client: QueryClient,
+  medicineId: string,
+  active = () => true,
+) {
+  await client.cancelQueries({ queryKey: medicineKeys.all })
+  if (!active() || !sessionSaves(client).active) return
+  let deleted = deletions.get(client)
+  if (!deleted) {
+    deleted = new Set()
+    deletions.set(client, deleted)
+    sessionSaves(client).onEnd(() => deletions.delete(client))
+  }
+  deleted.add(medicineId)
+  client.setQueryData<Medicine[]>(medicineKeys.list(), (list) =>
+    mergeClientMedicines(client, list, []),
+  )
+  void client.invalidateQueries({ queryKey: medicineKeys.all })
 }
 
 /** Browser read of the owner's medicines through the authenticated API route. */
@@ -47,13 +82,15 @@ export function mergeMedicines(current: Medicine[] | undefined, incoming: Medici
     : incoming
 }
 
-export const medicinesQuery = () =>
+export const medicinesQuery = (client?: QueryClient) =>
   queryOptions({
     queryKey: medicineKeys.list(),
     queryFn: ({ signal }) => fetchMedicines(signal),
     // A stale read cannot undo a confirmed revision or erase a newly created Medicine.
     structuralSharing: (old, next) =>
-      mergeMedicines(old as Medicine[] | undefined, next as Medicine[]),
+      client
+        ? mergeClientMedicines(client, old as Medicine[] | undefined, next as Medicine[])
+        : mergeMedicines(old as Medicine[] | undefined, next as Medicine[]),
   })
 
 /**
@@ -61,7 +98,8 @@ export const medicinesQuery = () =>
  * load error apply only until the session has a list (#119).
  */
 export function useMedicines({ serverEntry = false }: { serverEntry?: boolean } = {}) {
-  const read = useQuery({ ...medicinesQuery(), refetchOnMount: !serverEntry })
+  const client = useQueryClient()
+  const read = useQuery({ ...medicinesQuery(client), refetchOnMount: !serverEntry })
   const hasMedicines = read.data !== undefined
   const loadError = !hasMedicines && read.isError && !read.isFetching
   return {
@@ -91,7 +129,9 @@ export async function confirmMedicine(
   active = () => true,
 ) {
   await client.cancelQueries({ queryKey: medicineKeys.all })
-  if (!active()) return
-  client.setQueryData<Medicine[]>(medicineKeys.list(), (list) => withSavedMedicine(list, medicine))
+  if (!active() || !sessionSaves(client).active) return
+  client.setQueryData<Medicine[]>(medicineKeys.list(), (list) =>
+    mergeClientMedicines(client, list, [medicine]),
+  )
   void client.invalidateQueries({ queryKey: medicineKeys.all })
 }

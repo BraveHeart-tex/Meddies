@@ -1,8 +1,13 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { HydrationBoundary, useQueryClient, type DehydratedState } from '@tanstack/react-query'
-import { medicineKeys, mergeMedicines } from '@/features/medicines/queries'
+import {
+  HydrationBoundary,
+  useQueryClient,
+  type QueryClient,
+  type DehydratedState,
+} from '@tanstack/react-query'
+import { medicineKeys, mergeClientMedicines } from '@/features/medicines/queries'
 import type { Medicine } from '@/features/medicines/contract'
 import {
   scheduleKeys,
@@ -15,10 +20,13 @@ import type { UnscheduledDose } from '@/features/unscheduled-doses/contract'
 import { isUnscheduledKey, mergeUnscheduledDay } from '@/features/unscheduled-doses/queries'
 
 /** Every private query family must choose its merge (or explicit replacement) policy here. */
-function mergePolicy(key: readonly unknown[]): (current: unknown, incoming: unknown) => unknown {
+function mergePolicy(
+  client: QueryClient,
+  key: readonly unknown[],
+): (current: unknown, incoming: unknown) => unknown {
   if (key.length === 2 && key[0] === medicineKeys.all[0] && key[1] === medicineKeys.list()[1])
     return (current, incoming) =>
-      mergeMedicines(current as Medicine[] | undefined, incoming as Medicine[])
+      mergeClientMedicines(client, current as Medicine[] | undefined, incoming as Medicine[])
   if (key.length === 2 && key[0] === scheduleKeys.all[0] && key[1] === scheduleKeys.snapshot()[1])
     return (current, incoming) =>
       mergeSnapshot(current as ScheduleSnapshot | undefined, incoming as ScheduleSnapshot)
@@ -50,7 +58,7 @@ export function PrivateQueryHandoff({
 }) {
   const client = useQueryClient()
   return state.queries.reduceRight<ReactNode>((content, query) => {
-    const merge = mergePolicy(query.queryKey)
+    const merge = mergePolicy(client, query.queryKey)
     return (
       <HydrationBoundary
         key={query.queryHash}

@@ -19,18 +19,16 @@ import { Notice } from './medication-record-parts'
 const example = recordExample
 const frameLink = (slug: string) => `/lab/${slug}`
 
-export function ConfirmDrawer({ state }: { state: 'archive' | 'restore' | 'delete' | 'discard' }) {
+export function ConfirmDrawer({ state }: { state: 'archive' | 'restore' | 'discard' }) {
   const [open, setOpen] = useState(true)
   const titles = {
     archive: 'Archive Magnesium?',
     restore: 'Restore Magnesium?',
-    delete: 'Delete Vitamin D?',
     discard: 'Discard these changes?',
   }
   const descriptions = {
     archive: 'Magnesium leaves your Medications list. You can restore it later.',
     restore: 'Magnesium returns to your Medications list.',
-    delete: 'This medication has never had a schedule or a dose. Deleting it cannot be undone.',
     discard: 'The changes you haven’t saved will be lost.',
   }
   return (
@@ -58,26 +56,18 @@ export function ConfirmDrawer({ state }: { state: 'archive' | 'restore' | 'delet
         )}
         <Link
           href={frameLink(
-            state === 'archive'
-              ? '238-a3'
-              : state === 'restore'
-                ? '292-s9'
-                : state === 'delete'
-                  ? '292-s11'
-                  : '238-a3',
+            state === 'archive' ? '238-a3' : state === 'restore' ? '292-s9' : '238-a3',
           )}
           className={buttonVariants({
             size: 'drawer',
-            variant: state === 'delete' ? 'destructive' : 'default',
+            variant: 'default',
           })}
         >
           {state === 'archive'
             ? 'Archive medication'
             : state === 'restore'
               ? 'Restore medication'
-              : state === 'delete'
-                ? 'Delete medication'
-                : 'Discard changes'}
+              : 'Discard changes'}
         </Link>
         <Button variant="ghost" onClick={() => setOpen(false)}>
           {state === 'discard' ? 'Keep editing' : 'Cancel'}

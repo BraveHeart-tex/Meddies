@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { Archive, Clock, History, Pencil, Pill } from 'lucide-react'
+import { Archive, Clock, History, Pencil } from 'lucide-react'
 import { AppShell } from '@/components/layout/app-shell'
 import { AppHeader } from '@/components/layout/app-header'
 import { ScreenStack } from '@/components/layout/screen-stack'
@@ -156,26 +156,7 @@ export function MedicationRecordScreen({ state }: { state: RecordState }) {
         state={state}
       />
     )
-  else if (state === 'delete') content = <EditForm state="unused" />
   else if (state === 'history') content = <StrengthHistory />
-  else if (state === 'deleted')
-    content = (
-      <>
-        <AppHeader title="Medications" />
-        <Notice title="Vitamin D deleted">This medication had no schedule or doses.</Notice>
-        <ItemGroup>
-          <NavigationRow
-            title="Magnesium"
-            description="400 mg · tablet"
-            href={frameLink('238-a3')}
-            icon={Pill}
-          />
-        </ItemGroup>
-        <Link href={frameLink('238-a2')} className={buttonVariants({ variant: 'ghost' })}>
-          Archived medications
-        </Link>
-      </>
-    )
   else if (state === 'loading')
     content = (
       <>
@@ -210,10 +191,9 @@ export function MedicationRecordScreen({ state }: { state: RecordState }) {
   return (
     <AppShell current="/medications">
       <ScreenStack>{content}</ScreenStack>
-      {(state === 'archive' ||
-        state === 'restore' ||
-        state === 'delete' ||
-        state === 'discard') && <ConfirmDrawer state={state} />}
+      {(state === 'archive' || state === 'restore' || state === 'discard') && (
+        <ConfirmDrawer state={state} />
+      )}
       {state === 'late' && <LateDrawer />}
     </AppShell>
   )

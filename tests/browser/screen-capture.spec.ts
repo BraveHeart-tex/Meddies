@@ -8,6 +8,7 @@ import {
   scrollsHorizontally,
   stylesheetsLoaded,
 } from './actions'
+import { dragHandle } from './drawers'
 import { captureCases } from './capture'
 import { expect, test } from './fixtures'
 import { drawer, loadingStatus, toastMessage } from './locators'
@@ -530,3 +531,56 @@ test('capture read recovery copy', { tag: '@visual' }, async ({ page, app }) => 
   await expect(page).toHaveURL(app.origin + '/')
   await writeFile(resolve(out!, 'read-review.json'), JSON.stringify(results, null, 2))
 })
+
+// Opt-in #329 deletion evidence, including real pointer dismissal and keyboard focus.
+test(
+  'capture medication deletion confirmation and result',
+  { tag: '@visual' },
+  async ({ page, app }) => {
+    // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
+    test.skip(!out || process.env.MEDDIES_DELETE_CAPTURE !== '1', 'Set MEDDIES_DELETE_CAPTURE=1')
+    await mkdir(resolve(out!), { recursive: true })
+    await page.setViewportSize(captureCases.phone.viewport)
+    const id = '00000000-0000-4000-8000-0000000d0329'
+    await app.api('POST', '/api/medicines', {
+      id,
+      label: 'Vitamin D',
+      strength: '',
+      unit: 'tablet',
+    })
+    await page.goto(`/medications?medicine=${id}`)
+    const action = page.getByRole('button', { name: 'Delete medication' })
+    const confirmation = page.getByRole('dialog', { name: 'Delete Vitamin D?' })
+    await action.click()
+    await expect(page.getByRole('heading', { name: 'Delete Vitamin D?' })).toBeFocused()
+    await dragHandle(page, 260)
+    await expect(confirmation).toBeHidden()
+    await expect(action).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(confirmation).toBeVisible()
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('button', { name: 'Close' })).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(action).toBeFocused()
+    await expect.poll(() => scrollsHorizontally(page)).toBe(false)
+    await page.screenshot({
+      path: resolve(out!, 'delete-confirmation-402.png'),
+      fullPage: true,
+      animations: 'disabled',
+    })
+    const deletion = { method: 'POST', path: '/medicines', operation: 'delete' }
+    app.worker.hold(deletion)
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('button', { name: 'Deleting...' })).toBeDisabled()
+    await page.keyboard.press('Escape')
+    await dragHandle(page, 260)
+    await expect(confirmation).toBeVisible()
+    app.worker.release(deletion)
+    await expect(page).toHaveURL(`${app.origin}/medications`)
+    await expect(page.getByRole('status')).toContainText('Vitamin D deleted')
+    await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeFocused()
+    await expect(page.getByRole('link', { name: 'View details for Vitamin D' })).toHaveCount(0)
+    await expect.poll(() => scrollsHorizontally(page)).toBe(false)
+    await page.screenshot({ path: resolve(out!, 'delete-result-402.png'), fullPage: true })
+  },
+)
