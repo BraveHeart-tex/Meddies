@@ -131,6 +131,91 @@ test('capture signed-in screens for review', { tag: '@visual' }, async ({ page }
 })
 
 // Opt-in production form evidence at 402x874 with normal text.
+// The four approved #347 states, using the production form and real record reads.
+test.describe('Edit details groups', () => {
+  const records = [
+    ['00000000-0000-4000-8000-000000350001', 'Vitamin D', '1000 IU', 'tablet', false],
+    ['00000000-0000-4000-8000-000000350002', 'Magnesium', '200 mg', 'tablet', true],
+    ['00000000-0000-4000-8000-000000350003', 'Ibuprofen syrup', '100 mg/5 ml', 'liquid', false],
+    ['00000000-0000-4000-8000-000000350004', 'Amoxicillin', '250 mg/5 ml', 'liquid', true],
+  ] as const
+  test.use({
+    journey: {
+      auth: true,
+      storage: true,
+      initialScheduleTime: '2026-11-09T09:00:00+03:00',
+      seed: async ({ db, ownerId }) => {
+        for (const [id, label, strength, unit, locked] of records) {
+          await db
+            .prepare(
+              'INSERT INTO user_medications(owner_id,id,label,strength,unit,ever_had_schedule) VALUES(?,?,?,?,?,?)',
+            )
+            .bind(ownerId, id, label, strength, unit, Number(locked))
+            .run()
+        }
+        const id = records[3][0]
+        await db
+          .prepare(
+            'UPDATE medicine_strength_revisions SET strength=? WHERE owner_id=? AND medicine_id=?',
+          )
+          .bind('125 mg/5 ml', ownerId, id)
+          .run()
+        await db
+          .prepare(
+            'INSERT INTO medicine_strength_revisions(owner_id,medicine_id,id,strength,label,unit,effective_at,sequence) VALUES(?,?,?,?,?,?,?,?)',
+          )
+          .bind(
+            ownerId,
+            id,
+            '00000000-0000-4000-8000-000000350005',
+            '250 mg/5 ml',
+            'Amoxicillin',
+            'liquid',
+            '2026-11-04T06:00:00.000Z',
+            1,
+          )
+          .run()
+      },
+    },
+  })
+
+  test('capture Edit details groups', { tag: '@visual' }, async ({ page }) => {
+    // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
+    test.skip(!out || process.env.MEDDIES_RECORD_CAPTURE !== '1', 'Set MEDDIES_RECORD_CAPTURE=1')
+    await mkdir(resolve(out!), { recursive: true })
+    for (const [index, [id]] of records.entries()) {
+      await page.goto(`/medications?medicine=${id}&record=fix`)
+      await expect(page.getByRole('heading', { name: 'Edit details', exact: true })).toBeVisible()
+      await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
+      expect(await scrollsHorizontally(page)).toBe(false)
+      await captureSettled(page, {
+        path: resolve(out!, `record-347-c${index + 1}-402.png`),
+        style: 'nextjs-portal { display: none !important; }',
+      })
+    }
+    await page.goto(`/medications?medicine=${records[0][0]}&record=fix`)
+    const name = page.getByRole('textbox', { name: 'Name', exact: true })
+    await name.fill('')
+    await page.getByRole('button', { name: 'Save details' }).click()
+    await expect(name).toBeFocused()
+    await expect(page.getByText('Enter the medication name.')).toBeVisible()
+    await captureSettled(page, {
+      style: 'nextjs-portal { display: none !important; }',
+      path: resolve(out!, 'record-groups-validation-402.png'),
+    })
+    const type = page.getByRole('combobox', { name: 'Type' })
+    await type.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('option', { name: 'Liquid', exact: true })).toBeVisible()
+    await captureSettled(page, {
+      style: 'nextjs-portal { display: none !important; }',
+      path: resolve(out!, 'record-groups-type-menu-402.png'),
+    })
+    await page.keyboard.press('Escape')
+    await expect(type).toBeFocused()
+  })
+})
+
 test('capture medication record forms and recovery', { tag: '@visual' }, async ({ page }) => {
   // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
   test.skip(!out || process.env.MEDDIES_RECORD_CAPTURE !== '1', 'Set MEDDIES_RECORD_CAPTURE=1')
@@ -144,7 +229,7 @@ test('capture medication record forms and recovery', { tag: '@visual' }, async (
       page.getByRole('heading', {
         name:
           record === 'fix'
-            ? 'Fix a mistake'
+            ? 'Edit details'
             : record === 'strength'
               ? 'Change strength'
               : 'Strength history',
@@ -181,7 +266,7 @@ test('capture medication record forms and recovery', { tag: '@visual' }, async (
         })
       : route.fallback(),
   )
-  await page.getByRole('button', { name: 'Save fixed details' }).click()
+  await page.getByRole('button', { name: 'Save details' }).click()
   await expect(page.getByRole('button', { name: 'Review saved medication' })).toBeVisible()
   await page.screenshot({ path: resolve(out!, 'record-conflict.png'), fullPage: true })
 })
@@ -362,7 +447,7 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
   await page.setViewportSize(captureCases.phone.viewport)
   await page.emulateMedia({ reducedMotion: captureCases.phone.reducedMotion })
   await page.goto(`/medications?medicine=${medicineId}&record=fix`)
-  await expect(page.getByRole('heading', { name: 'Fix a mistake' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Edit details' })).toBeVisible()
   await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
   await page.context().setOffline(true)
   await expect(
@@ -378,7 +463,7 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
   })
   await page.context().setOffline(false)
   await page.goto(`/medications?medicine=${medicineId}&record=fix`)
-  await expect(page.getByRole('heading', { name: 'Fix a mistake' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Edit details' })).toBeVisible()
   await page.route('**/api/medicines', async (route) =>
     route.request().method() === 'PATCH'
       ? route.fulfill({
@@ -388,7 +473,7 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
         })
       : route.fallback(),
   )
-  await page.getByRole('button', { name: 'Save fixed details' }).click()
+  await page.getByRole('button', { name: 'Save details' }).click()
   await expect(
     page.getByRole('alert').filter({ hasText: /changed elsewhere|might not have saved/ }),
   ).toContainText('This medication changed elsewhere.')

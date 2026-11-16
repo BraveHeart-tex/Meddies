@@ -11,24 +11,13 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { TimePicker } from '@/components/ui/time-picker'
 import { Input } from '@/components/ui/input'
 import { Field, FieldLabel, FieldDescription, FieldError, FieldGroup } from '@/components/ui/field'
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@/components/ui/select'
 import { DiscardMedicineChanges } from './discard-medicine-changes'
-import {
-  isWritableMedicineType,
-  medicineTypeLabel,
-  medicineTypeOptions,
-  unitName,
-} from '@/lib/quantity-policy'
+import { isWritableMedicineType } from '@/lib/quantity-policy'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import { useSessionFormDraft } from '@/lib/use-session-form-draft'
 import { saveMessages } from '@/lib/save-messages'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
+import { cn } from '@/lib/utils'
 import { isTimeOfDay } from '@/lib/time-of-day'
 import { isScheduleDate } from '../schedules/contract'
 import { useSchedulingClock } from '../schedules/scheduling-clock'
@@ -36,7 +25,8 @@ import { useCurrentMinute } from '../schedules/use-current-minute'
 import { instantOf } from '../schedules/taken-form-schema'
 import { MedicationIdentity } from './medication-sub-screen'
 import type { MedicineRecord } from './contract'
-import { strengthPeriodDescription } from './strength-period'
+import { detailPeriodSentence } from './detail-period'
+import { DetailCorrectionFields } from './detail-correction-fields'
 import { medicineFormSchema } from './medicine-form-schema'
 import { useMedicineRecordSave } from './use-medicine-record-save'
 
@@ -175,17 +165,12 @@ export function MedicineRecordForm({
       </Button>
       <MedicationIdentity medicine={{ ...medicine, ...period, id: medicine.id }} />
       <div className="space-y-2">
-        <h2 className="text-heading">{strength ? 'Change strength' : 'Fix a mistake'}</h2>
+        <h2 className="text-heading">{strength ? 'Change strength' : 'Edit details'}</h2>
         <p className="text-body-sm text-muted-foreground">
           {strength
             ? 'Keep earlier doses as they are. Choose when you started the new strength.'
-            : 'These changes also update doses recorded for this period.'}
+            : `These changes also update doses recorded for this period. ${detailPeriodSentence(medicine, periodId, now.slice(0, 10))}`}
         </p>
-        {!strength && (
-          <p className="text-body-sm text-muted-foreground">
-            {strengthPeriodDescription(medicine.strengthRevisions, periodId, now.slice(0, 10))}
-          </p>
-        )}
       </div>
       <form
         noValidate
@@ -199,51 +184,35 @@ export function MedicineRecordForm({
               {saveMessages.draftRestored}
             </p>
           )}
-          <FieldGroup>
-            {!strength && (
+          {!strength ? (
+            <DetailCorrectionFields
+              control={form.control}
+              period={period}
+              locked={locked}
+              disabled={save.pending || reviewing}
+            />
+          ) : (
+            <FieldGroup>
               <Controller
-                name="label"
+                name="strength"
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={`${id}-name`}>Name</FieldLabel>
+                    <FieldLabel htmlFor={`${id}-strength`}>New strength</FieldLabel>
                     <Input
                       {...field}
-                      id={`${id}-name`}
+                      id={`${id}-strength`}
                       autoComplete="off"
                       aria-invalid={fieldState.invalid}
-                      aria-describedby={fieldState.invalid ? `${id}-name-error` : undefined}
+                      aria-describedby={`${fieldState.invalid ? `${id}-strength-error ` : ''}${id}-strength-help`}
                     />
-                    <FieldError id={`${id}-name-error`} errors={[fieldState.error]} />
+                    <FieldDescription id={`${id}-strength-help`}>
+                      {`Currently ${medicine.strength ?? 'no strength entered'}. Enter the strength on the new pack.`}
+                    </FieldDescription>
+                    <FieldError id={`${id}-strength-error`} errors={[fieldState.error]} />
                   </Field>
                 )}
               />
-            )}
-            <Controller
-              name="strength"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor={`${id}-strength`}>
-                    {strength ? 'New strength' : 'Strength (optional)'}
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id={`${id}-strength`}
-                    autoComplete="off"
-                    aria-invalid={fieldState.invalid}
-                    aria-describedby={`${fieldState.invalid ? `${id}-strength-error ` : ''}${id}-strength-help`}
-                  />
-                  <FieldDescription id={`${id}-strength-help`}>
-                    {strength
-                      ? `Currently ${medicine.strength ?? 'no strength entered'}. Enter the strength on the new pack.`
-                      : 'Enter the strength on the pack. Fixing strength here fixes saved doses from this period too.'}
-                  </FieldDescription>
-                  <FieldError id={`${id}-strength-error`} errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
-            {strength ? (
               <>
                 <Controller
                   name="date"
@@ -297,53 +266,8 @@ export function MedicineRecordForm({
                   )}
                 />
               </>
-            ) : locked ? (
-              <div className="space-y-1 text-body-sm">
-                <p className="font-bold">Type: {medicineTypeLabel(period.unit)}</p>
-                <p>Dose unit: {unitName(null, period.unit)}</p>
-                <p className="text-muted-foreground">
-                  Type and dose unit can’t change after adding a schedule or dose.
-                </p>
-              </div>
-            ) : (
-              <Controller
-                name="unit"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={`${id}-type`}>Type</FieldLabel>
-                    <Select
-                      disabled={save.pending}
-                      items={medicineTypeOptions}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                    >
-                      <SelectTrigger
-                        ref={field.ref}
-                        onBlur={field.onBlur}
-                        id={`${id}-type`}
-                        aria-invalid={fieldState.invalid}
-                        aria-describedby={`${id}-unit-help`}
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {medicineTypeOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FieldDescription id={`${id}-unit-help`}>
-                      Dose unit: {unitName(null, field.value || period.unit)}. Type can change until
-                      a schedule or dose is added.
-                    </FieldDescription>
-                  </Field>
-                )}
-              />
-            )}
-          </FieldGroup>
+            </FieldGroup>
+          )}
           {(offline || problem || reviewError) && (
             <Alert variant={offline ? 'default' : 'destructive'}>
               <AlertTitle>
@@ -366,26 +290,28 @@ export function MedicineRecordForm({
               </AlertDescription>
             </Alert>
           )}
-          {problem === 'conflict' ? (
-            <Button type="button" size="lg" onClick={() => void review()}>
-              Review saved medication
+          <div className={cn('flex flex-col', strength ? 'gap-5' : 'gap-2')}>
+            {problem === 'conflict' ? (
+              <Button type="button" size="lg" onClick={() => void review()}>
+                Review saved medication
+              </Button>
+            ) : (
+              <Button type="submit" size="lg" disabled={offline}>
+                {save.pending
+                  ? 'Saving...'
+                  : offline
+                    ? saveMessages.connectToSave
+                    : problem === 'unconfirmed'
+                      ? 'Retry save'
+                      : strength
+                        ? 'Save strength change'
+                        : 'Save details'}
+              </Button>
+            )}
+            <Button type="button" variant="ghost" onClick={cancel}>
+              Cancel
             </Button>
-          ) : (
-            <Button type="submit" size="lg" disabled={offline}>
-              {save.pending
-                ? 'Saving...'
-                : offline
-                  ? saveMessages.connectToSave
-                  : problem === 'unconfirmed'
-                    ? 'Retry save'
-                    : strength
-                      ? 'Save strength change'
-                      : 'Save fixed details'}
-            </Button>
-          )}
-          <Button type="button" variant="ghost" onClick={cancel}>
-            Cancel
-          </Button>
+          </div>
         </fieldset>
       </form>
       <DiscardMedicineChanges

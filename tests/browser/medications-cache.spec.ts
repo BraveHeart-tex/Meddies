@@ -123,7 +123,7 @@ test('detail correction retains its draft and pending save across navigation, th
     await held
     await route.fallback()
   })
-  await page.getByRole('button', { name: 'Save fixed details' }).click()
+  await page.getByRole('button', { name: 'Save details' }).click()
   await expect(page.getByRole('button', { name: 'Saving...' })).toBeDisabled()
   await page.goBack()
   await expect(page).toHaveURL(detail)

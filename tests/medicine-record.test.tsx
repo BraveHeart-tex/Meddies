@@ -103,21 +103,22 @@ test('selected-period correction saves only after confirmation and locks used Ty
   const { user, onSaved } = open('fix', medicine, medicine.strengthRevisions[0].id)
   expect(screen.getByRole('textbox', { name: /Strength/ })).toHaveValue('200 mg')
   expect(screen.queryByRole('combobox', { name: 'Type' })).not.toBeInTheDocument()
-  expect(screen.getByText(/Dose unit: tablets/)).toBeVisible()
+  expect(screen.getByText('tablet', { exact: true })).toBeVisible()
   expect(
-    screen.getByText('These changes also update doses recorded for this period.'),
+    screen.getByText(/^These changes also update doses recorded for this period\./),
   ).toBeVisible()
   expect(
-    screen.getByText('Type and dose unit can’t change after adding a schedule or dose.'),
+    screen.getByText('Type and dose unit can’t change after a schedule or dose is added.'),
   ).toBeVisible()
   await user.clear(screen.getByRole('textbox', { name: /Strength/ }))
   await user.type(screen.getByRole('textbox', { name: /Strength/ }), '250 mg')
-  await user.click(screen.getByRole('button', { name: 'Save fixed details' }))
+  await user.click(screen.getByRole('button', { name: 'Save details' }))
   await waitFor(() => expect(onSaved).toHaveBeenCalledOnce())
   expect(payload).toMatchObject({
     strengthRevisionId: medicine.strengthRevisions[0].id,
     strength: '250 mg',
     expectedRevision: 1,
+    unit: 'tablet',
   })
 })
 test('strength change starts with explicit blank date/time and focuses its first missing control', async () => {
@@ -145,7 +146,7 @@ test('unknown receipt retries the same action and rejected saves retain details'
   const input = screen.getByRole('textbox', { name: 'Name' })
   await user.clear(input)
   await user.type(input, 'Fixed name')
-  await user.click(screen.getByRole('button', { name: 'Save fixed details' }))
+  await user.click(screen.getByRole('button', { name: 'Save details' }))
   await user.click(await screen.findByRole('button', { name: 'Retry save' }))
   await screen.findByText('Your change wasn’t saved')
   expect(actions).toHaveLength(2)
@@ -161,7 +162,7 @@ test('offline never auto-saves on reconnect; dirty Cancel requires explicit disc
   expect(await screen.findByRole('button', { name: 'Connect to save' })).toBeDisabled()
   vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
   fireEvent(window, new Event('online'))
-  expect(await screen.findByRole('button', { name: 'Save fixed details' })).toBeEnabled()
+  expect(await screen.findByRole('button', { name: 'Save details' })).toBeEnabled()
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
   await user.click(await screen.findByRole('button', { name: 'Keep editing' }))
   expect(onCancel).not.toHaveBeenCalled()
@@ -262,7 +263,7 @@ test('never-used Type changes its matching Quantity unit; any past dose locks it
   await user.click(screen.getByRole('combobox', { name: 'Type' }))
   expect(await screen.findAllByRole('option')).toHaveLength(5)
   await user.click(screen.getByRole('option', { name: 'Capsule' }))
-  expect(screen.getByText(/Dose unit: capsules/)).toBeVisible()
+  expect(screen.getByText('capsule', { exact: true })).toBeVisible()
 })
 
 test('strength bounds reject future and before latest Taken without sending a save', async () => {
@@ -367,7 +368,7 @@ test('pending correction disables controls and survives form unmount with its dr
 
   await first.user.clear(screen.getByRole('textbox', { name: 'Name' }))
   await first.user.type(screen.getByRole('textbox', { name: 'Name' }), 'Fixed name')
-  await first.user.click(screen.getByRole('button', { name: 'Save fixed details' }))
+  await first.user.click(screen.getByRole('button', { name: 'Save details' }))
   expect(await screen.findByRole('button', { name: 'Saving...' })).toBeDisabled()
   expect(screen.getByRole('textbox', { name: 'Name' })).toBeDisabled()
   expect(
@@ -632,8 +633,54 @@ test('a restored correction sends the revision first edited rather than silently
     strength: '400 mg',
     expectedRevision: 0,
   })
-  await user.click(screen.getByRole('button', { name: 'Save fixed details' }))
+  await user.click(screen.getByRole('button', { name: 'Save details' }))
   await screen.findByRole('button', { name: 'Review saved medication' })
   expect(expectedRevision).toBe(0)
   expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Old draft')
+})
+
+test('unused Type updates singular dose unit and Strength help without locking the form', async () => {
+  const record = {
+    ...medicine,
+    everHadSchedule: false,
+    everHadDose: false,
+    strengthRevisions: [
+      { ...medicine.strengthRevisions[0], effectiveAt: '0001-01-01T00:00:00.000Z' },
+    ],
+    currentStrengthRevisionId: medicine.strengthRevisions[0].id,
+  }
+  const { user } = open('fix', record)
+  expect(screen.getByRole('heading', { name: 'Edit details' })).toBeVisible()
+  expect(screen.getByText(/This period started when you added Magnesium\./)).toBeVisible()
+  expect(screen.getByRole('group', { name: 'Name and strength' })).toBeVisible()
+  expect(screen.getByText('tablet', { exact: true })).toBeVisible()
+  expect(screen.getByText('Type can change until a schedule or dose is added.')).toBeVisible()
+  await user.click(screen.getByRole('combobox', { name: 'Type' }))
+  await user.click(await screen.findByRole('option', { name: 'Liquid' }))
+  expect(screen.getByText('ml', { exact: true })).toBeVisible()
+  expect(screen.getByRole('textbox', { name: 'Strength' })).toHaveAccessibleDescription(
+    'On the bottle, e.g. 250 mg/5 ml. Not your dose amount.',
+  )
+})
+
+test('locked Liquid describes its later current period and retains singular ml', () => {
+  const record = {
+    ...medicine,
+    unit: 'liquid' as const,
+    strengthRevisions: medicine.strengthRevisions.map((period, index) => ({
+      ...period,
+      unit: 'liquid' as const,
+      effectiveAt: index ? '2026-11-04T06:00:00.000Z' : '0001-01-01T00:00:00.000Z',
+    })),
+  }
+  open('fix', record)
+  const group = screen.getByRole('group', { name: 'Type and dose unit' })
+  expect(within(group).getByText('Liquid')).toBeVisible()
+  expect(within(group).getByText('ml')).toBeVisible()
+  expect(group).toHaveAccessibleDescription(
+    'Type and dose unit can’t change after a schedule or dose is added.',
+  )
+  expect(within(group).getAllByLabelText('Can’t change')).toHaveLength(2)
+  expect(screen.queryByRole('combobox', { name: 'Type' })).not.toBeInTheDocument()
+  expect(screen.getByText(/This period started Wed 4 Nov at 09:00\./)).toBeVisible()
 })
