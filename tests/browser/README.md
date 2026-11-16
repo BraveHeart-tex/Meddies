@@ -189,6 +189,14 @@ three affected capture groups in one invocation:
 MEDDIES_RECORD_CAPTURE=1 MEDDIES_COPY_CAPTURE=1 MEDDIES_SAVE_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-recovery pnpm test:browser:visual screen-capture --grep "record forms|schedule copy|save recovery"
 ```
 
+Archived medications captures the empty state, then archives the seeded medicine and captures
+the Medications entry, the list and the archived detail with keyboard focus (4 screenshots named
+`archived-…-402.png`):
+
+```sh
+MEDDIES_ARCHIVED_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-archived pnpm test:browser:visual screen-capture --grep "archived medications"
+```
+
 `cozy-visual` saves design-review screenshots at the running project's viewport; set
 `MEDDIES_VISUAL_OUT` to keep them outside `.browser-artifacts/`.
 

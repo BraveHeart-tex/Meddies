@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LoadingSection } from '@/components/ui/skeleton'
-import type { Medicine } from '@/features/medicines/contract'
+import { isArchived, type Medicine } from '@/features/medicines/contract'
 import {
   MedicationBackRow,
   MedicationLoadFailed,
@@ -64,7 +64,7 @@ export function ScheduleResumeScreen({
   if (!opened && !loading && !loadError) setOpened({ current: schedule })
   const current = opened?.current
   const resumable = Boolean(current && current.intervalHours != null && pausedOn(current, today))
-  const medicine = medicines.find((item) => item.id === medicineId)
+  const medicine = medicines.find((item) => item.id === medicineId && !isArchived(item))
   const leaves = Boolean(opened) && !resumable && Boolean(medicine)
   useEffect(() => {
     // A Clock schedule resumes in one tap; a running or Ended one has nothing to resume.

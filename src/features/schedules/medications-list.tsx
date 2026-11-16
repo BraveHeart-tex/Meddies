@@ -1,6 +1,6 @@
 'use client'
 
-import { Pill } from 'lucide-react'
+import { Archive, Pill } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -8,7 +8,8 @@ import { formatTime } from '@/lib/calendar-date'
 import { MedicationsLink } from '@/features/medicines/medications-nav'
 import { MedicationsListSkeleton } from '@/features/medicines/medications-skeleton'
 import type { MedicinesRead } from '@/features/medicines/queries'
-import { medicationsHref } from '@/features/medicines/routes'
+import { isArchived } from '@/features/medicines/contract'
+import { archivedMedicationsHref, medicationsHref } from '@/features/medicines/routes'
 import { MedicationRoutineGroups } from './medication-routine-groups'
 import type { SchedulesRead } from './queries'
 
@@ -38,6 +39,7 @@ export function MedicationsList({
   const refreshing = reads.some((read) => read.refreshing)
   // The list is only as recent as the older of its two reads.
   const loadedAt = Math.min(medicinesRead.updatedAt, schedulesRead.updatedAt)
+  const medicines = medicinesRead.medicines.filter((medicine) => !isArchived(medicine))
 
   function retry() {
     for (const read of reads) if (read.loadError || read.refreshFailed) read.retry()
@@ -69,7 +71,7 @@ export function MedicationsList({
             recovery(
               `Couldn’t update medications. Showing details loaded at ${formatTime(loadedAt)}.`,
             )}
-          {medicinesRead.medicines.length === 0 ? (
+          {medicines.length === 0 ? (
             <EmptyState
               icon={Pill}
               title="No medications yet"
@@ -85,13 +87,20 @@ export function MedicationsList({
             />
           ) : (
             <MedicationRoutineGroups
-              medicines={medicinesRead.medicines}
+              medicines={medicines}
               schedules={schedulesRead.schedules}
               serverNow={now}
               focusMedicineId={focusMedicineId}
               onMedicineFocused={onMedicineFocused}
             />
           )}
+          <MedicationsLink
+            href={archivedMedicationsHref}
+            className={buttonVariants({ variant: 'ghost' })}
+          >
+            <Archive aria-hidden="true" data-icon="inline-start" />
+            Archived medications
+          </MedicationsLink>
         </>
       )}
     </section>

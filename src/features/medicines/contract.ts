@@ -30,6 +30,9 @@ type MedicineMetadata = {
 
 export type MedicineRecord = Medicine & MedicineMetadata
 
+/** An Archived medicine: kept out of Medications and every view that offers it for new doses. */
+export const isArchived = (medicine: Medicine) => Boolean(medicine.archivedAt)
+
 export type MedicineResponses = {
   list: { medicines: Medicine[] }
   save: { medicines: Medicine[] }

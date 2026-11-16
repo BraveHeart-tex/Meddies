@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import {
+  archiveMedicine,
   focusWindow,
   resizeTextForReview,
   hydrated,
@@ -138,6 +139,50 @@ test('capture medication record forms and recovery', { tag: '@visual' }, async (
   await page.getByRole('button', { name: 'Save fixed details' }).click()
   await expect(page.getByRole('button', { name: 'Review saved medication' })).toBeVisible()
   await page.screenshot({ path: resolve(out!, 'record-conflict.png'), fullPage: true })
+})
+
+// Opt-in Archived medications evidence at 402x874: empty state, list, detail and keyboard focus.
+// The seeded medicine is archived through the API until archive confirmation ships (#327).
+test('capture archived medications', { tag: '@visual' }, async ({ page }) => {
+  // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
+  test.skip(!out || process.env.MEDDIES_ARCHIVED_CAPTURE !== '1', 'Set MEDDIES_ARCHIVED_CAPTURE=1')
+  test.setTimeout(120_000)
+  await mkdir(resolve(out!), { recursive: true })
+  await page.setViewportSize(captureCases.phone.viewport)
+  const shot = async (name: string) => {
+    await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
+    await expect(loadingStatus(page)).toHaveCount(0)
+    expect(await scrollsHorizontally(page)).toBe(false)
+    await page.screenshot({ path: resolve(out!, `archived-${name}-402.png`) })
+  }
+  await page.goto('/medications?archived')
+  await expect(page.getByRole('heading', { name: 'No archived medications' })).toBeVisible()
+  await shot('empty')
+
+  const archived = await archiveMedicine(page, medicineId)
+  expect(archived).toMatch(/^200 /)
+  await page.goto('/medications')
+  await expect(page.getByRole('heading', { name: 'No medications yet' })).toBeVisible()
+  await page.getByRole('link', { name: 'Archived medications' }).focus()
+  await shot('entry')
+  await page.keyboard.press('Enter')
+  const row = page.getByRole('link', { name: /^Capture Fixture Medicine/ })
+  await expect(row).toBeVisible()
+  // Keyboard order: Back, then the row.
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('main').getByRole('link', { name: 'Medications' })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(row).toBeFocused()
+  await shot('list')
+  await page.keyboard.press('Enter')
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Capture Fixture Medicine' }),
+  ).toBeVisible()
+  await page.keyboard.press('Tab')
+  await expect(
+    page.getByRole('main').getByRole('link', { name: 'Archived medications' }),
+  ).toBeFocused()
+  await shot('detail')
 })
 
 // Opt-in copy review for empty, grouped and scheduled states at 402x874 with normal text.

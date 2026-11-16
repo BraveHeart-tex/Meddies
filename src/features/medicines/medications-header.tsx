@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react'
 import { AppHeader } from '@/components/layout/app-header'
 import { buttonVariants } from '@/components/ui/button'
 import { useCachedQueryData } from '@/lib/use-cached-query-data'
-import type { Medicine } from './contract'
+import { isArchived, type Medicine } from './contract'
 import { MedicationsLink, useMedicationsView } from './medications-nav'
 import { medicineKeys } from './queries'
 import { medicationsHref } from './routes'
@@ -18,7 +18,9 @@ const reservedCount = ' '
  */
 export function MedicationsHeader() {
   const view = useMedicationsView()
-  const medicines = useCachedQueryData<Medicine[]>(medicineKeys.list())
+  const medicines = useCachedQueryData<Medicine[]>(medicineKeys.list())?.filter(
+    (medicine) => !isArchived(medicine),
+  )
   // The medication page and setup have their own Back row and identity header.
   if (view.mode !== 'list' && view.mode !== 'add') return null
   return (

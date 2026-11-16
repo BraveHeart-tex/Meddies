@@ -59,7 +59,7 @@ export function ConfirmDrawer({ state }: { state: 'archive' | 'restore' | 'delet
         <Link
           href={frameLink(
             state === 'archive'
-              ? '292-s7'
+              ? '238-a3'
               : state === 'restore'
                 ? '292-s9'
                 : state === 'delete'

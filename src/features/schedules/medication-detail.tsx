@@ -35,6 +35,8 @@ import { doseWhen, firstDoseAfterResume } from './resume'
 import type { SchedulesRead } from './queries'
 import { useScheduleNow } from './use-schedule-now'
 import { LogDose } from '../unscheduled-doses/log-dose'
+import { isArchived } from '@/features/medicines/contract'
+import { ArchivedMedicationDetail } from '@/features/medicines/archived-medications'
 
 /** After the server confirms a pause (233·A4). */
 export function PausedScheduleAlert({ label }: { label: string }) {
@@ -126,6 +128,16 @@ export function MedicationDetail({
           <MedicationNotFound />
         )}
       </div>
+    )
+
+  // An Archived medicine opens read-only, never offering a new dose (#330).
+  if (isArchived(medicine))
+    return (
+      <ArchivedMedicationDetail
+        medicine={medicine}
+        medicinesRead={medicinesRead}
+        headingRef={headingRef}
+      />
     )
 
   const schedule = schedules.find((item) => item.medicineId === medicineId)

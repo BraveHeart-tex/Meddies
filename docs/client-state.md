@@ -63,7 +63,7 @@ is keyed by the Schedule version it edits, so a newer version opens without an o
   also drop a failed save.
 - A confirmed save or Clear form discards the draft; Clear form also resets defaults.
   Navigation, refresh and clock rollover keep it.
-- `/medications` query states (`?add`, `?medicine` (including `record` and `period`), `?schedule`, `?resume`) share one mounted
+- `/medications` query states (`?add`, `?archived`, `?medicine` (including `record` and `period`), `?schedule`, `?resume`) share one mounted
   `MedicinePanel`, so reset per-screen state when the screen changes. Changes between them
   use the native History API (`medications-nav.tsx`), with a URL subscription for Back/Forward
   after reload as well as view changes, so they read the Query cache without a

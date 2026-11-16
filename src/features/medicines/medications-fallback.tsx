@@ -29,7 +29,9 @@ export function MedicationsFallback() {
   // Add's Drawer belongs to the mounted panel, so only the list's place is held here.
   if (view.mode === 'add') return <MedicationsListSkeleton />
   const linkedMedicineCached =
-    view.mode === 'list' || medicines?.some((item) => item.id === view.medicineId)
+    view.mode === 'list' ||
+    view.mode === 'archived' ||
+    medicines?.some((item) => item.id === view.medicineId)
   return (
     <PendingRouteContext value={true}>
       {medicines && snapshot && linkedMedicineCached ? (

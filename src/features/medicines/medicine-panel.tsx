@@ -18,7 +18,7 @@ export function MedicinePanel({
   record,
   periodId,
 }: {
-  scheduleMode?: 'add' | 'setup' | 'resume' | 'list' | 'detail'
+  scheduleMode?: 'add' | 'setup' | 'resume' | 'list' | 'detail' | 'archived'
   scheduleMedicineId?: string
   detailMedicineId?: string
   initialNow: string

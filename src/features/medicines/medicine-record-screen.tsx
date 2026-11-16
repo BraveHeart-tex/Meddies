@@ -4,7 +4,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
 import { strengthPeriodDescription } from './strength-period'
 import type { MedicinesRead } from './queries'
-import { parseMedicineRecord, type MedicineRecord } from './contract'
+import { isArchived, parseMedicineRecord, type MedicineRecord } from './contract'
 import {
   MedicationBackRow,
   MedicationIdentity,
@@ -33,7 +33,10 @@ export function MedicineRecordScreen({
   today: string
   onSaved: (medicine: MedicineRecord, kind: 'fix' | 'strength') => void
 }) {
-  const medicine = medicinesRead.medicines.find((item) => item.id === medicineId)
+  // An Archived medicine keeps its read-only Strength history, never its edits.
+  const medicine = medicinesRead.medicines.find(
+    (item) => item.id === medicineId && (record === 'history' || !isArchived(item)),
+  )
   let body
   if (medicinesRead.loading) body = <MedicationDetailSkeleton />
   else if (medicinesRead.loadError) body = <MedicationLoadFailed onRetry={medicinesRead.retry} />

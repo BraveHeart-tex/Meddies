@@ -7,7 +7,7 @@ import { medicationsHref } from '@/features/medicines/routes'
 import { InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { buttonVariants } from '@/components/ui/button'
-import type { Medicine } from '@/features/medicines/contract'
+import { isArchived, type Medicine } from '@/features/medicines/contract'
 import { LoadingSection } from '@/components/ui/skeleton'
 import {
   MedicationBackRow,
@@ -69,7 +69,7 @@ export function ScheduleSetupForm({
   const base = scheduleDraftBase(medicineId, current)
   if (medicinesLoading) return <MedicationSetupSkeleton />
 
-  const medicine = medicines.find((item) => item.id === medicineId)
+  const medicine = medicines.find((item) => item.id === medicineId && !isArchived(item))
   if (!medicine)
     return (
       <div className="flex flex-col gap-5">

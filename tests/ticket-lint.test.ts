@@ -14,7 +14,7 @@ const ticket = ({
     'Show archived medicines.',
     extra,
     '## Ownership',
-    '- Owns: archived list (292·S6)',
+    '- Owns: archive confirmation (292·S5)',
     '- Out of scope: restore (#323)',
     '## Size',
     size,

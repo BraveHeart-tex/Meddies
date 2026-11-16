@@ -252,3 +252,27 @@ export async function resizeTextForReview(page: Page) {
     }, originalStyles)
   }
 }
+
+/**
+ * Archive confirmation has no screen until #327, so the archive command runs in the page, carrying
+ * its origin like the app's own saves. Returns "status body".
+ */
+export async function archiveMedicine(page: Page, medicineId: string) {
+  return page.evaluate(async (id) => {
+    const list = await fetch('/api/medicines').then((response) => response.json())
+    const seeded = list.medicines.find((medicine: { id: string }) => medicine.id === id)
+    const response = await fetch('/api/medicines', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        operation: 'archive',
+        archive: {
+          actionId: '00000000-0000-4000-8000-0000000d0003',
+          medicineId: id,
+          expectedRevision: seeded.revision,
+        },
+      }),
+    })
+    return `${response.status} ${await response.text()}`
+  }, medicineId)
+}

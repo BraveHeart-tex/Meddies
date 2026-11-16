@@ -12,6 +12,7 @@ import { MedicineRecordScreen } from '@/features/medicines/medicine-record-scree
 import type { MedicineRecord } from '@/features/medicines/contract'
 import { MedicationDetail } from './medication-detail'
 import { MedicationsList } from './medications-list'
+import { ArchivedMedications } from '@/features/medicines/archived-medications'
 import { ScheduleResumeScreen } from './schedule-resume-screen'
 import type { DailySchedule } from './contract'
 
@@ -33,7 +34,7 @@ export function SchedulePanel({
 }: {
   /** The server scheduling time at render, until a newer schedules snapshot replaces it. */
   initialNow: string
-  mode?: 'today' | 'setup' | 'resume' | 'list' | 'detail'
+  mode?: 'today' | 'setup' | 'resume' | 'list' | 'detail' | 'archived'
   initialMedicineId?: string
   /** Runs after the server confirms a first schedule. */
   onScheduleSaved?: (medicine: Medicine) => void
@@ -77,6 +78,7 @@ export function SchedulePanel({
             onMedicineFocused={onMedicineFocused}
           />
         )}
+        {mode === 'archived' && <ArchivedMedications medicinesRead={medicinesRead} />}
         {mode === 'detail' && record && (
           <MedicineRecordScreen
             medicinesRead={medicinesRead}

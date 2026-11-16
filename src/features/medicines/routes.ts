@@ -2,6 +2,7 @@
 export type MedicationsView =
   | { mode: 'list' }
   | { mode: 'add' }
+  | { mode: 'archived' }
   | {
       mode: 'detail'
       medicineId: string
@@ -27,8 +28,8 @@ function medicineId(params: SearchParams, name: string) {
 }
 
 /**
- * Reads the view from server `searchParams` or the browser URL: setup, resume, detail, Add, then
- * list.
+ * Reads the view from server `searchParams` or the browser URL: setup, resume, detail, Archived
+ * medications, Add, then list.
  */
 export function parseMedicationsView(params: SearchParams): MedicationsView {
   const setup = medicineId(params, 'schedule')
@@ -46,6 +47,7 @@ export function parseMedicationsView(params: SearchParams): MedicationsView {
       ...(periodId ? { periodId } : {}),
     }
   }
+  if (includes(params, 'archived')) return { mode: 'archived' }
   return includes(params, 'add') ? { mode: 'add' } : { mode: 'list' }
 }
 
@@ -55,6 +57,8 @@ export function medicationsHref(view: MedicationsView) {
       return '/medications'
     case 'add':
       return '/medications?add'
+    case 'archived':
+      return '/medications?archived'
     case 'detail':
       return `/medications?medicine=${encodeURIComponent(view.medicineId)}${view.record ? `&record=${view.record}` : ''}${view.periodId ? `&period=${encodeURIComponent(view.periodId)}` : ''}`
     case 'setup':
@@ -71,6 +75,9 @@ export const medicationSetupHref = (medicineId: string) =>
 /** An Interval schedule's Resume schedule screen (233·A9), opened at its heading. */
 export const medicationResumeHref = (medicineId: string) =>
   `${medicationsHref({ mode: 'resume', medicineId })}#schedule-heading`
+
+/** The Archived medications view. */
+export const archivedMedicationsHref = medicationsHref({ mode: 'archived' })
 
 /** Whether `value` is exactly the href of a Medications view, as sign-in may return to one. */
 export function isMedicationsReturnTo(value: string) {

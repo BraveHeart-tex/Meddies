@@ -474,3 +474,154 @@ describe('Done for now', () => {
     expect(screen.queryByText(`${saved.label} saved.`)).not.toBeInTheDocument()
   })
 })
+
+describe('Archived medications', () => {
+  const router = { prefetch: async () => {} } as unknown as NextRouter
+  afterEach(() => window.history.replaceState(null, '', '/'))
+  // A full record, as the API returns: only a parsed record keeps its archivedAt.
+  const archived = (n: number): Medicine => {
+    const revisionId = `11111111-1111-4111-8111-${String(n).padStart(12, '0')}`
+    const details = { label: `Archived ${n}`, strength: '400 mg', unit: 'tablet' } as const
+    return {
+      ...medicine(n),
+      ...details,
+      revision: 2,
+      lastActionId: null,
+      currentStrengthRevisionId: revisionId,
+      strengthRevisions: [
+        { id: revisionId, effectiveAt: '2026-11-01T00:00:00.000Z', previousValues: [], ...details },
+      ],
+      everHadSchedule: true,
+      everHadDose: true,
+      latestTakenAt: null,
+      archivedAt: '2026-11-13T09:00:00.000Z',
+    }
+  }
+  const mixed = [medicine(1), archived(2)]
+  // A new element each time: the mocked search params only update when the screen re-renders.
+  const medicationsScreen = () => (
+    <RouterContext.Provider value={router}>
+      <QueryClientProvider client={client}>
+        <MedicationsHeader />
+        <MedicationsScreen initialNow="2026-11-14T08:00:00.000Z" />
+      </QueryClientProvider>
+    </RouterContext.Provider>
+  )
+  function renderAt(search: string) {
+    window.history.replaceState(null, '', `/medications${search}`)
+    const view = render(medicationsScreen())
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
+    return { user, rerender: () => view.rerender(medicationsScreen()) }
+  }
+
+  test('Medications and its count leave out Archived medicines', async () => {
+    medicinesApi(mixed)
+    cache(mixed)
+    renderAt('')
+    expect(await screen.findByText('Medicine 1')).toBeVisible()
+    expect(screen.getByText(count(1))).toBeVisible()
+    expect(screen.queryByText('Archived 2')).not.toBeInTheDocument()
+  })
+
+  test('with only Archived medicines, Medications invites the first medication', async () => {
+    medicinesApi([archived(2)])
+    cache([archived(2)])
+    renderAt('')
+    expect(await screen.findByRole('heading', { name: 'No medications yet' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Archived medications' })).toBeVisible()
+  })
+
+  test('the entry opens the list of Archived medicines only', async () => {
+    medicinesApi(mixed)
+    cache(mixed)
+    const { user, rerender } = renderAt('')
+    await user.click(await screen.findByRole('link', { name: 'Archived medications' }))
+    expect(window.location.search).toBe('?archived')
+    rerender()
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Archived medications' }),
+    ).toBeVisible()
+    expect(
+      screen.getByText('Kept out of your daily list. Their doses stay in History.'),
+    ).toBeVisible()
+    expect(screen.getByRole('link', { name: /^Archived 2/ })).toHaveTextContent(
+      '400 mg · tablet · Archived',
+    )
+    expect(screen.queryByText('Medicine 1')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Add a medication' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Medications' })).toHaveAttribute(
+      'href',
+      '/medications',
+    )
+  })
+
+  test('with no Archived medicines, shows the empty state', async () => {
+    medicinesApi([medicine(1)])
+    cache([medicine(1)])
+    renderAt('?archived')
+    expect(await screen.findByRole('heading', { name: 'No archived medications' })).toBeVisible()
+    expect(
+      screen.getByText('Medications you archive will stay here. Their doses stay in History.'),
+    ).toBeVisible()
+  })
+
+  test('an Archived medicine opens read-only, with no Restore, edit, Archive or dose action', async () => {
+    medicinesApi(mixed)
+    cache(mixed)
+    const { user, rerender } = renderAt('?archived')
+    await user.click(await screen.findByRole('link', { name: /^Archived 2/ }))
+    expect(window.location.search).toBe(`?medicine=${archived(2).id}`)
+    rerender()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Archived 2' })).toBeVisible()
+    expect(screen.getByText('Archived', { exact: true })).toBeVisible()
+    expect(screen.getByText('Kept in History')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Archived medications' })).toHaveAttribute(
+      'href',
+      '/medications?archived',
+    )
+    expect(screen.getByRole('link', { name: 'Strength history' })).toBeVisible()
+    for (const name of [/restore/i, /fix a mistake/i, /change strength/i, /archive medication/i])
+      expect(screen.queryByRole('link', { name })).not.toBeInTheDocument()
+    for (const name of [/restore/i, /archive/i, /log a dose/i, /set schedule/i])
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Set schedule' })).not.toBeInTheDocument()
+  })
+
+  test('schedule setup does not offer an Archived medicine', async () => {
+    medicinesApi(mixed)
+    cache(mixed)
+    renderAt(`?schedule=${archived(2).id}`)
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
+      "This medication isn't in your list",
+    )
+  })
+
+  test('a failed refresh keeps the archived list with Retry', async () => {
+    const api = medicinesApi(mixed)
+    api.failNext()
+    cache(mixed, stale)
+    const { user } = renderAt('?archived')
+    const retry = await screen.findByRole('button', { name: 'Try again' })
+    expect(
+      screen.getByText('Couldn’t update medications. Showing previously loaded details.'),
+    ).toBeVisible()
+    expect(screen.getByRole('link', { name: /^Archived 2/ })).toBeVisible()
+    await user.click(retry)
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument(),
+    )
+    expect(api.reads()).toBe(2)
+  })
+
+  test('a failed first read shows a recoverable Alert', async () => {
+    const api = medicinesApi(mixed)
+    api.failNext()
+    const { user } = renderAt('?archived')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "Your archived medications didn't load just now.",
+    )
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByRole('link', { name: /^Archived 2/ })).toBeVisible()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+})

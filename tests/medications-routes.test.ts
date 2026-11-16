@@ -14,6 +14,10 @@ describe('parseMedicationsView', () => {
   test.each([
     ['', { mode: 'list' }],
     ['?add', { mode: 'add' }],
+    ['?archived', { mode: 'archived' }],
+    // Detail wins over Archived medications, which wins over Add.
+    [`?archived&medicine=${a}`, { mode: 'detail', medicineId: a }],
+    ['?add&archived', { mode: 'archived' }],
     [`?medicine=${a}`, { mode: 'detail', medicineId: a }],
     [`?schedule=${a}`, { mode: 'setup', medicineId: a }],
     [`?resume=${a}`, { mode: 'resume', medicineId: a }],
@@ -48,6 +52,7 @@ describe('medicationsHref', () => {
   test.each([
     [{ mode: 'list' } as const, '/medications'],
     [{ mode: 'add' } as const, '/medications?add'],
+    [{ mode: 'archived' } as const, '/medications?archived'],
     [{ mode: 'detail', medicineId: a } as const, `/medications?medicine=${a}`],
     [{ mode: 'setup', medicineId: a } as const, `/medications?schedule=${a}`],
     [{ mode: 'resume', medicineId: a } as const, `/medications?resume=${a}`],
@@ -65,6 +70,7 @@ describe('allowed sign-in return destinations', () => {
   test.each([
     '/medications',
     '/medications?add',
+    '/medications?archived',
     `/medications?medicine=${a}`,
     `/medications?schedule=${a}`,
     `/medications?resume=${a}`,

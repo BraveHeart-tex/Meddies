@@ -7,7 +7,6 @@ import { AppHeader } from '@/components/layout/app-header'
 import { ScreenStack } from '@/components/layout/screen-stack'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { EmptyState } from '@/components/ui/empty-state'
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
 import { Skeleton } from '@/components/ui/skeleton'
 import { MedicationBackRow, MedicationIdentity } from '@/features/medicines/medication-sub-screen'
@@ -29,7 +28,7 @@ function Detail({
 }) {
   return (
     <>
-      <MedicationBackRow href={frameLink(archived ? '292-s6' : '238-a2')}>
+      <MedicationBackRow href={frameLink('238-a2')}>
         {archived ? 'Archived medications' : 'Medications'}
       </MedicationBackRow>
       <MedicationIdentity medicine={saved ? { ...medicine, strength: '600 mg' } : medicine} />
@@ -104,36 +103,6 @@ function Detail({
   )
 }
 
-function ArchivedList({ empty = false }: { empty?: boolean }) {
-  return (
-    <>
-      <MedicationBackRow href={frameLink('238-a2')}>Medications</MedicationBackRow>
-      <AppHeader title="Archived medications" />
-      {empty ? (
-        <EmptyState
-          icon={Archive}
-          title="No archived medications"
-          body="Medications you archive will stay here. Their doses stay in History."
-        />
-      ) : (
-        <>
-          <p className="text-body-sm text-muted-foreground">
-            Kept out of your daily list. Their doses stay in History.
-          </p>
-          <ItemGroup>
-            <NavigationRow
-              href={frameLink('292-s7')}
-              title="Magnesium"
-              description="400 mg · tablet · Archived"
-              icon={Archive}
-            />
-          </ItemGroup>
-        </>
-      )}
-    </>
-  )
-}
-
 function StrengthHistory() {
   return (
     <>
@@ -188,8 +157,6 @@ export function MedicationRecordScreen({ state }: { state: RecordState }) {
       />
     )
   else if (state === 'delete') content = <EditForm state="unused" />
-  else if (state === 'archived-list' || state === 'empty')
-    content = <ArchivedList empty={state === 'empty'} />
   else if (state === 'history') content = <StrengthHistory />
   else if (state === 'deleted')
     content = (
@@ -204,7 +171,7 @@ export function MedicationRecordScreen({ state }: { state: RecordState }) {
             icon={Pill}
           />
         </ItemGroup>
-        <Link href={frameLink('292-s6')} className={buttonVariants({ variant: 'ghost' })}>
+        <Link href={frameLink('238-a2')} className={buttonVariants({ variant: 'ghost' })}>
           Archived medications
         </Link>
       </>
@@ -235,7 +202,7 @@ export function MedicationRecordScreen({ state }: { state: RecordState }) {
   else
     content = (
       <Detail
-        archived={state === 'archived' || state === 'restore'}
+        archived={state === 'restore'}
         saved={state === 'saved'}
         restored={state === 'restored'}
       />
