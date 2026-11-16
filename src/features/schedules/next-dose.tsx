@@ -1,5 +1,5 @@
 import { Check, Clock } from 'lucide-react'
-import { MedicationTile } from '@/features/medicines/medication-tile'
+import { TypeTile } from '@/features/medicines/type-tile'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatShortDay, formatTime, istanbulHour } from '@/lib/calendar-date'
@@ -55,7 +55,7 @@ export function NextDose({
         </p>
       </CardHeader>
       <CardContent className="flex flex-wrap items-center gap-3.5">
-        <MedicationTile medicineId={dose.medicineId} size="lg" onAccent />
+        {medicine && <TypeTile type={medicine.unit} size="lg" onAccent />}
         <div className="flex min-w-[min(100%,8rem)] flex-1 flex-col gap-0.75">
           <p className="text-title font-extrabold">{name}</p>
           <p className="text-body-sm text-secondary-foreground">

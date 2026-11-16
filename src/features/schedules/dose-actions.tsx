@@ -238,7 +238,7 @@ export function DoseActions({
         open={drawerOpen}
         saving={saving}
         triggerId={`dose-actions-${dose.id}`}
-        medicineId={medicine.id}
+        type={medicine.unit}
         title={medicine.label}
         description={[medicine.strength, medicine.unit].filter(Boolean).join(' · ')}
         initialFocus={() => (focusNowOnOpen.current ? nowChoice.current : null)}

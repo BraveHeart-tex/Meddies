@@ -26,7 +26,7 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 - Import every UI icon directly from `lucide-react` and pass the component, never a glyph-name string.
 - Containers own icon sizes; Button icons use `data-icon`. Center icon-and-label groups with symmetric horizontal padding.
 - One global `.lucide` rule sets stroke width to 2.5, and icons inherit `currentColor`.
-- Medication identity tiles keep their brand shapes and stay decorative.
+- Every medication tile is its Type tile (`TypeTile`): the Type icon on that Type's tint, card-colored on the accent card, never derived from the medication's ID. Tiles stay decorative.
 
 ## Forms
 

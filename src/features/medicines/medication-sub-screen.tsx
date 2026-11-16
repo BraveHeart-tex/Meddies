@@ -6,7 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { Medicine } from './contract'
-import { MedicationTile } from './medication-tile'
+import { TypeTile } from './type-tile'
 import { MedicationsLink } from './medications-nav'
 import type { MedicinesRead } from './queries'
 import { medicationsHref } from './routes'
@@ -50,7 +50,7 @@ export function MedicationIdentity({
 }) {
   return (
     <div className="flex flex-wrap items-start gap-3 [overflow-wrap:anywhere]">
-      <MedicationTile medicineId={medicine.id} />
+      <TypeTile type={medicine.unit} size="md" />
       <div className="flex min-w-[min(100%,12rem)] flex-1 flex-col gap-0.5">
         {eyebrow && (
           <p className="text-label font-extrabold tracking-eyebrow text-muted-foreground uppercase">

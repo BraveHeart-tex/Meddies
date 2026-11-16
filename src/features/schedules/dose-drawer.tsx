@@ -11,7 +11,8 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from '@/components/ui/drawer'
-import { MedicationTile } from '@/features/medicines/medication-tile'
+import { TypeTile } from '@/features/medicines/type-tile'
+import type { MedicineType } from '@/lib/quantity-policy'
 
 // Every dismissal path (swipe, Close, backdrop, Escape) discards the draft through onClose and
 // never saves. While a save is pending, all of them are refused; a refused swipe snaps back.
@@ -19,7 +20,7 @@ export function DoseDrawer({
   open,
   saving,
   triggerId,
-  medicineId,
+  type,
   title,
   description,
   initialFocus,
@@ -30,7 +31,7 @@ export function DoseDrawer({
   open: boolean
   saving: boolean
   triggerId: string
-  medicineId: string
+  type: MedicineType
   title: string
   description: string
   /** Replaces the title as the open target when it returns an element. */
@@ -60,7 +61,7 @@ export function DoseDrawer({
         finalFocus={finalFocus}
       >
         <DrawerHeader className="grid grid-cols-[1fr_auto] items-center gap-3.5">
-          <MedicationTile medicineId={medicineId} size="lg" />
+          <TypeTile type={type} size="lg" />
           <div className="order-3 col-span-full flex min-w-0 flex-col gap-0.75 wrap-break-word">
             <DrawerTitle
               ref={titleRef}

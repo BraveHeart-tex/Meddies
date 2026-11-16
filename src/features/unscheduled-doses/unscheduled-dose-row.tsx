@@ -124,7 +124,7 @@ export function UnscheduledDoseRow({
             open={open}
             saving={save.saving}
             triggerId={triggerId}
-            medicineId={medicine.id}
+            type={medicine.unit}
             title={medicine.label}
             description={[medicine.strength, medicine.unit].filter(Boolean).join(' · ')}
             finalFocus={trigger}

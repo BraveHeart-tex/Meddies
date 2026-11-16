@@ -4,7 +4,7 @@ import type { Ref } from 'react'
 import { ChevronRightIcon } from 'lucide-react'
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
 import type { Medicine } from '@/features/medicines/contract'
-import { MedicationTile } from '@/features/medicines/medication-tile'
+import { TypeTile } from '@/features/medicines/type-tile'
 import { MedicationsLink } from '@/features/medicines/medications-nav'
 import { medicationsHref } from '@/features/medicines/routes'
 import { PausedBadge } from './clock-schedule-card'
@@ -32,7 +32,7 @@ export function MedicationRow({
       variant="card"
       className="p-3.5 [&>svg]:size-5 has-[[data-row-link]:active]:scale-[0.98] has-[[data-row-link]:active]:bg-muted motion-reduce:has-[[data-row-link]:active]:scale-100"
     >
-      <MedicationTile medicineId={medicine.id} />
+      <TypeTile type={medicine.unit} size="md" />
       <ItemContent className="gap-0.75">
         <ItemTitle>
           <h4>{medicine.label}</h4>

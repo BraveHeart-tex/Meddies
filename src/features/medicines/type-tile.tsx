@@ -98,7 +98,31 @@ export function GlyphTile({
   )
 }
 
-/** The 30px tile beside a Type option; `md` is the 46px identity tile, `lg` the dose drawer's. */
-export function TypeTile({ type, size = 'sm' }: { type: MedicineType; size?: TypeTileSize }) {
-  return <GlyphTile glyph={typeGlyphs[type]} tint={typeTints[type]} size={size} />
+/** Glyph color only, for a tile on the accent card. */
+const glyphColors: Record<MedicineType, string> = {
+  tablet: 'text-medication-blush-glyph',
+  capsule: 'text-medication-peach-glyph',
+  liquid: 'text-medication-plum-glyph',
+}
+
+/**
+ * Every medication tile: the 30px tile beside a Type option, `md` the 46px identity tile, `lg`
+ * the dose drawer's and Up next's. On the accent card the tile is card-colored.
+ */
+export function TypeTile({
+  type,
+  size = 'sm',
+  onAccent = false,
+}: {
+  type: MedicineType
+  size?: TypeTileSize
+  onAccent?: boolean
+}) {
+  return (
+    <GlyphTile
+      glyph={typeGlyphs[type]}
+      tint={onAccent ? cn('bg-card', glyphColors[type]) : typeTints[type]}
+      size={size}
+    />
+  )
 }
