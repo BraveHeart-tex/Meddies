@@ -339,7 +339,17 @@ async function start() {
     process.removeListener('SIGTERM', onInterrupt)
     if (!outcome.ready) {
       const current = (await loadState()).value || state
-      if (inspectOwned(current)) await stopOwned(current)
+      if (inspectOwned(current)) {
+        try {
+          await stopOwned(current)
+        } catch (error) {
+          // A failed runner can exit between the ownership probe and stopOwned's probe.
+          // Only this exact child's observed exit permits cleanup without a verified signal.
+          if (child.exitCode === null && child.signalCode === null)
+            await Promise.race([new Promise((resolve) => child.once('exit', resolve)), sleep(2000)])
+          if (child.exitCode === null && child.signalCode === null) throw error
+        }
+      }
       const failure = outcome.state || current
       await rm(stateFile, { force: true })
       throw Error(
