@@ -152,7 +152,7 @@ test('detail correction retains its draft and pending save across navigation, th
   await page.getByRole('link', { name: 'Strength history', exact: true }).click()
   await expect(page.getByText('Current', { exact: true })).toBeVisible()
   await page.getByRole('link', { name: 'Edit details for this period' }).last().click()
-  await expect(page.getByRole('textbox', { name: 'Strength (optional)' })).toHaveValue('10 mg')
+  await expect(page.getByRole('textbox', { name: 'Strength', exact: true })).toHaveValue('10 mg')
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(page).toHaveURL(detail)
   await page.goBack()
