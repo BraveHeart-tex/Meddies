@@ -105,3 +105,27 @@ eligibility; all doses remain unconfirmed unless specified.
 | Next dose equality         | Old snooze targets 10:50; next same-medicine dose due 10:50                                         | Suppress old snooze at equality; new occurrence is independent.                                               |
 | Outcome / conflict / pause | Snooze targets 10:50; relevant suppression reaches server 10:49                                     | Cancel pending snooze. Already submitted pushes may still arrive.                                             |
 | Course end                 | End Nov 3; snooze targets Nov 4 00:00                                                               | Cancel at course-end boundary, even with quiet hours disabled.                                                |
+
+## #29 - Approved device registration rules (November 16, 2026)
+
+- A **Device registration** lets backend reminders reach one installed Meddies app on one device.
+  An account can have several; each belongs to exactly one account. Registering an installation
+  that another account registered moves it to the signing-in account.
+- Registrations hold an FCM registration token and are built on FCM ahead of the #6 real-iPhone
+  proof. If #6 falls back to standard Web Push, the subscription replaces the token; Meddies
+  never runs both providers.
+- Turning notifications on asks for system permission only from an explicit tap in Settings, and
+  only where the device can receive pushes; on iPhone that means the Home Screen app. Settings
+  shows notifications as on only after the server confirms the registration.
+- Settings states which case applies to this device: it can't receive notifications, it needs the
+  Home Screen app (with install steps), notifications are off, they are blocked in system
+  settings, or they are on. Blocked explains how to allow them again; Meddies cannot ask twice.
+- Turning notifications off in Meddies removes this device's registration. System permission
+  stays granted, so turning them on again needs no new prompt.
+- A signed-in launch renews an existing registration with the current token. It never recreates
+  a removed one. A launch that finds permission revoked removes the registration. The sender
+  (#30) removes tokens the provider rejects.
+- Deliberate sign-out removes this device's registration and always completes, even if that
+  removal fails. Session expiry keeps the registration, so reminders do not stop when the
+  seven-day session ends. After signing in again, notifications are off until turned on.
+- Registration tokens are credentials: never shown in reads, logs, error responses or export.

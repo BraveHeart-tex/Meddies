@@ -1,7 +1,7 @@
 # Meddies
 
-A personal medication reminder and tracker. These terms name medicines, schedules, doses, saves,
-drafts, the signed-in session and loading from the user's side.
+A personal medication reminder and tracker. These terms name medicines, schedules, doses, reminders,
+saves, drafts, the signed-in session and loading from the user's side.
 
 ## Medicines
 
@@ -126,6 +126,14 @@ _Avoid_: extra dose, PRN dose, unscheduled intake in new text; write dose in UI 
 The day a dose was due, in Istanbul time; for an Unscheduled dose, the day it was taken. A
 scheduled dose shows on its History date even when it was taken on another day.
 _Avoid_: taken date, record date
+
+## Reminders
+
+**Device registration**:
+The server's record that lets backend reminders reach one installed Meddies app on one device,
+for one account. Saving it is what makes notifications on for that device; system permission
+alone does not.
+_Avoid_: subscription, push token, in UI copy and tickets
 
 ## Saves and drafts
 
