@@ -6,10 +6,18 @@
     - button "Choose a date, Today, Mon 9 Nov"
     - button "Next day" [disabled]
   - region "Monday, 9 November"
-    - heading "Monday, 9 November, 2 doses" [level=2]
+    - heading "Monday, 9 November, 4 doses" [level=2]
     - paragraph
-      - text: 2 of 2 scheduled doses logged
+      - text: 4 of 4 scheduled doses logged
     - list "Doses for Monday, 9 November"
+      - listitem
+        - heading "07:00 · Eye drops" [level=3]
+        - paragraph
+          - text: 0.5% · 1 drop · took 2 drops
+        - text: Taken
+        - time
+          - text: 07:05
+        - button "Review dose for Eye drops scheduled at 07:00"
       - listitem
         - heading "08:00 · Magnesium" [level=3]
         - paragraph
@@ -26,6 +34,14 @@
         - time
           - text: 08:10
         - button "Review dose for Amoxicillin scheduled at 08:00"
+      - listitem
+        - heading "09:00 · Salbutamol" [level=3]
+        - paragraph
+          - text: 100 mcg per puff · 1 puff
+        - text: Taken
+        - time
+          - text: 09:02
+        - button "Review dose for Salbutamol scheduled at 09:00"
 - navigation "Primary"
   - list
     - listitem

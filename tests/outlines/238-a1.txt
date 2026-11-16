@@ -10,16 +10,22 @@
     - paragraph
       - text: Scheduled ·
       - time
-        - text: 20:00
+        - text: 14:00
     - paragraph
-      - text: Magnesium
+      - text: Salbutamol
     - paragraph
-      - text: 400 mg · 1 tablet
-    - button "I took it, Magnesium at 20:00"
-    - button "I skipped it, Magnesium at 20:00"
+      - text: 100 mcg per puff · 2 puffs
+    - button "I took it, Salbutamol at 14:00"
+    - button "I skipped it, Salbutamol at 14:00"
     - region "Today’s doses"
       - list "Today's doses"
-        - heading "Later today · 3" [level=3]
+        - heading "Later today · 4" [level=3]
+        - listitem
+          - heading "14:00 · Salbutamol" [level=4]
+          - paragraph
+            - text: 100 mcg per puff · 2 puffs
+          - text: Scheduled
+          - button "Record dose for Salbutamol scheduled at 14:00"
         - listitem
           - heading "20:00 · Magnesium" [level=4]
           - paragraph
@@ -38,7 +44,15 @@
             - text: 400 mg · 1 tablet
           - text: Scheduled
           - button "Record dose for Iron scheduled at 22:00"
-        - heading "Logged · 2" [level=3]
+        - heading "Logged · 4" [level=3]
+        - listitem
+          - heading "07:00 · Eye drops" [level=4]
+          - paragraph
+            - text: 0.5% · 1 drop · took 2 drops
+          - text: Taken
+          - time
+            - text: 07:05
+          - button "Review dose for Eye drops scheduled at 07:00"
         - listitem
           - heading "08:00 · Magnesium" [level=4]
           - paragraph
@@ -55,6 +69,14 @@
           - time
             - text: 08:10
           - button "Review dose for Amoxicillin scheduled at 08:00"
+        - listitem
+          - heading "09:00 · Salbutamol" [level=4]
+          - paragraph
+            - text: 100 mcg per puff · 1 puff
+          - text: Taken
+          - time
+            - text: 09:02
+          - button "Review dose for Salbutamol scheduled at 09:00"
     - button "Refresh Today"
 - navigation "Primary"
   - list

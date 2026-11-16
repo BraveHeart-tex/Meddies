@@ -2,7 +2,7 @@
   - banner
     - heading "Medications" [level=1]
     - paragraph
-      - text: 4 medications
+      - text: 6 medications
     - link "Add a medication"
   - region "Your medications"
     - heading "Your medications" [level=2]
@@ -30,6 +30,20 @@
           - paragraph
             - text: Every day · 08:00, 20:00
           - link "View details for Amoxicillin"
+        - listitem
+          - heading "Salbutamol" [level=4]
+          - paragraph
+            - text: 100 mcg per puff · inhaler
+          - paragraph
+            - text: Every day · 09:00, 14:00
+          - link "View details for Salbutamol"
+        - listitem
+          - heading "Eye drops" [level=4]
+          - paragraph
+            - text: 0.5% · drops
+          - paragraph
+            - text: Every day · 07:00
+          - link "View details for Eye drops"
     - region "No schedule"
       - heading "No schedule" [level=3]
       - list

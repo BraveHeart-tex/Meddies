@@ -84,6 +84,65 @@ export const amoxicillinTaken: DoseRecord = {
   revision: 1,
 }
 
+/** An Inhaler: 100 mcg per puff, amounts in puffs. */
+export const salbutamol: Medicine = {
+  id: '66666666-6666-4666-8666-666666666666',
+  label: 'Salbutamol',
+  strength: '100 mcg per puff',
+  unit: 'inhaler',
+  revision: 1,
+}
+
+/** Salbutamol every day at 09:00 (1 puff) and 14:00 (2 puffs) since Mon 2 Nov, with no Last day. */
+export const salbutamolSchedule: DailySchedule = {
+  ...magnesiumSchedule,
+  id: '66666666-6666-4666-8666-6666666666b1',
+  medicineId: salbutamol.id,
+  times: [
+    { time: '09:00', quantity: 1 },
+    { time: '14:00', quantity: 2 },
+  ],
+  endDate: null,
+}
+
+/** Drops: 0.5%, amounts in drops. */
+export const eyeDrops: Medicine = {
+  id: '77777777-7777-4777-8777-777777777777',
+  label: 'Eye drops',
+  strength: '0.5%',
+  unit: 'drops',
+  revision: 1,
+}
+
+/** Eye drops every day at 07:00 (1 drop) since Mon 2 Nov, with no Last day. */
+export const eyeDropsSchedule: DailySchedule = {
+  ...magnesiumSchedule,
+  id: '77777777-7777-4777-8777-7777777777b1',
+  medicineId: eyeDrops.id,
+  times: [{ time: '07:00', quantity: 1 }],
+  endDate: null,
+}
+
+/** Today's 07:00 Eye drops, taken at 07:05 as 2 drops of the scheduled 1 drop. */
+export const eyeDropsTaken: DoseRecord = {
+  outcome: 'Taken',
+  scheduleId: eyeDropsSchedule.id,
+  dueAt: '2026-11-09T04:00:00.000Z',
+  takenAt: '2026-11-09T04:05:00.000Z',
+  quantity: 2,
+  revision: 1,
+}
+
+/** Today's 09:00 Salbutamol, taken at 09:02. */
+export const salbutamolTaken: DoseRecord = {
+  outcome: 'Taken',
+  scheduleId: salbutamolSchedule.id,
+  dueAt: '2026-11-09T06:00:00.000Z',
+  takenAt: '2026-11-09T06:02:00.000Z',
+  quantity: 1,
+  revision: 1,
+}
+
 /** Today's 08:00 Magnesium, taken at 08:05. */
 export const morningTaken: DoseRecord = {
   outcome: 'Taken',
@@ -95,10 +154,18 @@ export const morningTaken: DoseRecord = {
 }
 
 /**
- * Yesterday's 20:00 Magnesium and Amoxicillin and 22:00 Iron, all taken, so To log has no dose
- * from Sun 8 Nov.
+ * Yesterday's 14:00 Salbutamol, 20:00 Magnesium and Amoxicillin and 22:00 Iron, all taken, so
+ * To log has no dose from Sun 8 Nov.
  */
 const yesterdayTaken: DoseRecord[] = [
+  {
+    outcome: 'Taken',
+    scheduleId: salbutamolSchedule.id,
+    dueAt: '2026-11-08T11:00:00.000Z',
+    takenAt: '2026-11-08T11:02:00.000Z',
+    quantity: 2,
+    revision: 1,
+  },
   {
     outcome: 'Taken',
     scheduleId: magnesiumSchedule.id,
@@ -125,26 +192,31 @@ const yesterdayTaken: DoseRecord[] = [
   },
 ]
 
+const schedules = [
+  magnesiumSchedule,
+  ironSchedule,
+  amoxicillinSchedule,
+  salbutamolSchedule,
+  eyeDropsSchedule,
+]
+const todayTaken = [eyeDropsTaken, morningTaken, amoxicillinTaken, salbutamolTaken]
+
 /**
- * The routine the built frames show at 10:00 today: Magnesium, Iron and the Liquid Amoxicillin
- * on a schedule, Vitamin D without one, and the 08:00 Magnesium and Amoxicillin taken.
+ * The routine the built frames show at 10:00 today: Magnesium, Iron, the Liquid Amoxicillin, the
+ * Inhaler Salbutamol and the Drops on a schedule, Vitamin D without one, and the 07:00 Eye drops,
+ * 08:00 Magnesium and Amoxicillin and 09:00 Salbutamol taken.
  */
 export const routine = {
   now: NOW,
-  medicines: [magnesium, iron, amoxicillin, vitaminD],
+  medicines: [magnesium, iron, amoxicillin, salbutamol, eyeDrops, vitaminD],
   snapshot: {
-    schedules: [magnesiumSchedule, ironSchedule, amoxicillinSchedule],
-    records: [...yesterdayTaken, morningTaken, amoxicillinTaken],
+    schedules,
+    records: [...yesterdayTaken, ...todayTaken],
     now: NOW,
     date: TODAY,
   },
   history: {
-    [TODAY]: scheduleHistoryDay(
-      [magnesiumSchedule, ironSchedule, amoxicillinSchedule],
-      TODAY,
-      new Date(NOW),
-      [morningTaken, amoxicillinTaken],
-    ),
+    [TODAY]: scheduleHistoryDay(schedules, TODAY, new Date(NOW), todayTaken),
   },
 } satisfies QueryFixtures
 
