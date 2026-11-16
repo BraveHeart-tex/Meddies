@@ -6,9 +6,9 @@
     - button "Choose a date, Today, Mon 9 Nov"
     - button "Next day" [disabled]
   - region "Monday, 9 November"
-    - heading "Monday, 9 November, 1 dose" [level=2]
+    - heading "Monday, 9 November, 2 doses" [level=2]
     - paragraph
-      - text: 1 of 1 scheduled doses logged
+      - text: 2 of 2 scheduled doses logged
     - list "Doses for Monday, 9 November"
       - listitem
         - heading "08:00 · Magnesium" [level=3]
@@ -18,6 +18,14 @@
         - time
           - text: 08:05
         - button "Review dose for Magnesium scheduled at 08:00"
+      - listitem
+        - heading "08:00 · Amoxicillin" [level=3]
+        - paragraph
+          - text: 250 mg/5 ml · 5 ml · took 4.5 ml
+        - text: Taken
+        - time
+          - text: 08:10
+        - button "Review dose for Amoxicillin scheduled at 08:00"
 - navigation "Primary"
   - list
     - listitem

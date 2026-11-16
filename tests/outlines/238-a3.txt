@@ -1,9 +1,9 @@
 - main
   - banner
     - link "Medications"
-  - heading "Magnesium" [level=1]
+  - heading "Amoxicillin" [level=1]
   - paragraph
-    - text: 400 mg · tablet
+    - text: 250 mg/5 ml · liquid
   - region "Schedule"
     - heading "Schedule" [level=2]
     - group "Schedule"
@@ -12,14 +12,12 @@
       - list
         - listitem
           - text: 08:00
-          - text: 1 tablet
+          - text: 5 ml
         - listitem
           - text: 20:00
-          - text: 1 tablet
+          - text: 2.5 ml
       - paragraph
         - text: Started Mon 2 Nov
-      - paragraph
-        - text: Last day Tue 10 Nov
     - link "Change schedule"
     - button "Pause"
     - button "Stop schedule"

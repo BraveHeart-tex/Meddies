@@ -2,7 +2,7 @@
   - banner
     - heading "Medications" [level=1]
     - paragraph
-      - text: 3 medications
+      - text: 4 medications
     - link "Add a medication"
   - region "Your medications"
     - heading "Your medications" [level=2]
@@ -23,6 +23,13 @@
           - paragraph
             - text: Every day · 22:00
           - link "View details for Iron"
+        - listitem
+          - heading "Amoxicillin" [level=4]
+          - paragraph
+            - text: 250 mg/5 ml · liquid
+          - paragraph
+            - text: Every day · 08:00, 20:00
+          - link "View details for Amoxicillin"
     - region "No schedule"
       - heading "No schedule" [level=3]
       - list

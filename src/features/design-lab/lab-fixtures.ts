@@ -53,6 +53,37 @@ export const ironSchedule: DailySchedule = {
   endDate: null,
 }
 
+/** A Liquid: 250 mg/5 ml, amounts in ml. */
+export const amoxicillin: Medicine = {
+  id: '55555555-5555-4555-8555-555555555555',
+  label: 'Amoxicillin',
+  strength: '250 mg/5 ml',
+  unit: 'liquid',
+  revision: 1,
+}
+
+/** Amoxicillin every day at 08:00 (5 ml) and 20:00 (2.5 ml) since Mon 2 Nov, with no Last day. */
+export const amoxicillinSchedule: DailySchedule = {
+  ...magnesiumSchedule,
+  id: '55555555-5555-4555-8555-5555555555b1',
+  medicineId: amoxicillin.id,
+  times: [
+    { time: '08:00', quantity: 5 },
+    { time: '20:00', quantity: 2.5 },
+  ],
+  endDate: null,
+}
+
+/** Today's 08:00 Amoxicillin, taken at 08:10 as 4.5 ml of the scheduled 5 ml. */
+export const amoxicillinTaken: DoseRecord = {
+  outcome: 'Taken',
+  scheduleId: amoxicillinSchedule.id,
+  dueAt: '2026-11-09T05:00:00.000Z',
+  takenAt: '2026-11-09T05:10:00.000Z',
+  quantity: 4.5,
+  revision: 1,
+}
+
 /** Today's 08:00 Magnesium, taken at 08:05. */
 export const morningTaken: DoseRecord = {
   outcome: 'Taken',
@@ -63,7 +94,10 @@ export const morningTaken: DoseRecord = {
   revision: 1,
 }
 
-/** Yesterday's 20:00 Magnesium and 22:00 Iron, both taken, so To log has no dose from Sun 8 Nov. */
+/**
+ * Yesterday's 20:00 Magnesium and Amoxicillin and 22:00 Iron, all taken, so To log has no dose
+ * from Sun 8 Nov.
+ */
 const yesterdayTaken: DoseRecord[] = [
   {
     outcome: 'Taken',
@@ -71,6 +105,14 @@ const yesterdayTaken: DoseRecord[] = [
     dueAt: '2026-11-08T17:00:00.000Z',
     takenAt: '2026-11-08T17:05:00.000Z',
     quantity: 1,
+    revision: 1,
+  },
+  {
+    outcome: 'Taken',
+    scheduleId: amoxicillinSchedule.id,
+    dueAt: '2026-11-08T17:00:00.000Z',
+    takenAt: '2026-11-08T17:05:00.000Z',
+    quantity: 2.5,
     revision: 1,
   },
   {
@@ -84,22 +126,25 @@ const yesterdayTaken: DoseRecord[] = [
 ]
 
 /**
- * The routine the built frames show at 10:00 today: Magnesium and Iron on a schedule, Vitamin D
- * without one, and the 08:00 Magnesium taken.
+ * The routine the built frames show at 10:00 today: Magnesium, Iron and the Liquid Amoxicillin
+ * on a schedule, Vitamin D without one, and the 08:00 Magnesium and Amoxicillin taken.
  */
 export const routine = {
   now: NOW,
-  medicines: [magnesium, iron, vitaminD],
+  medicines: [magnesium, iron, amoxicillin, vitaminD],
   snapshot: {
-    schedules: [magnesiumSchedule, ironSchedule],
-    records: [...yesterdayTaken, morningTaken],
+    schedules: [magnesiumSchedule, ironSchedule, amoxicillinSchedule],
+    records: [...yesterdayTaken, morningTaken, amoxicillinTaken],
     now: NOW,
     date: TODAY,
   },
   history: {
-    [TODAY]: scheduleHistoryDay([magnesiumSchedule, ironSchedule], TODAY, new Date(NOW), [
-      morningTaken,
-    ]),
+    [TODAY]: scheduleHistoryDay(
+      [magnesiumSchedule, ironSchedule, amoxicillinSchedule],
+      TODAY,
+      new Date(NOW),
+      [morningTaken, amoxicillinTaken],
+    ),
   },
 } satisfies QueryFixtures
 

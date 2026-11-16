@@ -36,7 +36,7 @@ import {
   type LabType,
   type SharedState,
 } from './medication-types-model'
-import { AmountField, DetailScreen, HistoryScreen, TodayScreen } from './medication-types-parts'
+import { AmountField, HistoryScreen, TodayScreen } from './medication-types-parts'
 import { DoseDrawer, TypeRow } from './medication-types-drawers'
 
 const noop = () => {}
@@ -198,8 +198,6 @@ export function SharedScreen({ state }: { state: SharedState }) {
       return <TodayScreen />
     case 'history':
       return <HistoryScreen />
-    case 'detail':
-      return <DetailScreen />
   }
 }
 

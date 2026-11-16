@@ -6,7 +6,6 @@ import { AppHeader } from '@/components/layout/app-header'
 import { AppShell } from '@/components/layout/app-shell'
 import { ScreenStack } from '@/components/layout/screen-stack'
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
-import { MedicationBackRow } from '@/features/medicines/medication-sub-screen'
 import { DoseStatusBadge } from '@/features/schedules/dose-status-badge'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
@@ -20,7 +19,6 @@ import {
   unitWord,
   type LabType,
 } from './medication-types-model'
-import { TypeTile } from './medication-types-tile-parts'
 
 /**
  * QuantityStepper with the #265 rule per type: Liquid steps by 0.1 ml with decimal wording,
@@ -285,42 +283,6 @@ export function HistoryScreen() {
             <DoseStatusBadge status="Taken" time="13:10" />
           </Item>
         </section>
-      </ScreenStack>
-    </AppShell>
-  )
-}
-
-export function DetailScreen() {
-  const medicine = examples.liquid
-  return (
-    <AppShell current="/medications">
-      <ScreenStack>
-        <MedicationBackRow href="/lab/238-a2">Medications</MedicationBackRow>
-        <div className="flex flex-wrap items-start gap-3">
-          <TypeTile type="liquid" size="md" />
-          <div className="flex flex-1 flex-col gap-0.5">
-            <h1 className="text-title font-extrabold">{medicine.label}</h1>
-            <p className="text-body-sm font-bold text-muted-foreground">
-              {medicine.strength} · liquid
-            </p>
-          </div>
-        </div>
-        <Item variant="card" className="flex-col items-stretch">
-          <ItemContent>
-            <ItemTitle>Every day</ItemTitle>
-            <ul className="flex flex-col gap-1.5 pt-1">
-              {[
-                ['08:00', 5],
-                ['20:00', 2.5],
-              ].map(([time, amount]) => (
-                <li key={time} className="flex justify-between gap-3">
-                  <span className="font-extrabold">{time}</span>
-                  <span className="text-body-sm">{amountLabel(Number(amount), 'liquid')}</span>
-                </li>
-              ))}
-            </ul>
-          </ItemContent>
-        </Item>
       </ScreenStack>
     </AppShell>
   )

@@ -13,7 +13,7 @@ import { SchedulingClockProvider } from '@/features/schedules/scheduling-clock'
 import { TodayHeader } from '@/features/schedules/today-header'
 import { FixtureQuery } from '../fixture-query'
 import type { BuiltFrame } from '../frames'
-import { magnesium, NOW, routine, SESSION_EXPIRES, TODAY } from '../lab-fixtures'
+import { amoxicillin, NOW, routine, SESSION_EXPIRES, TODAY } from '../lab-fixtures'
 
 /**
  * Design-critical screens rendered from production code, one frame each
@@ -66,7 +66,7 @@ export const builtFrames = [
           <ScreenStack>
             <MedicinePanel
               scheduleMode="detail"
-              detailMedicineId={magnesium.id}
+              detailMedicineId={amoxicillin.id}
               initialNow={NOW}
               serverEntry
             />

@@ -87,10 +87,4 @@ export const medicationTypesFrames = [
     title: 'History wording',
     render: () => <SharedScreen state="history" />,
   },
-  {
-    slug: '265-s10',
-    citation: '265·S10',
-    title: 'Medication detail wording',
-    render: () => <SharedScreen state="detail" />,
-  },
 ] satisfies readonly LabFrame[]

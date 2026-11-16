@@ -14,7 +14,6 @@ export type SharedState =
   | 'unscheduled-change'
   | 'today'
   | 'history'
-  | 'detail'
 
 type Rule = {
   label: string
