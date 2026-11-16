@@ -10,8 +10,9 @@ Approved rules, by frame ([#{{n}}]({{link}}) "Approved design" table):
 - **{{n}}·A2, A4:** {{...}}
 - **{{n}}·S1:** {{...}}
 - {{Rules from "Decided by Bora after approval", each on its own line.}}
-- The lab composes these screens from lab-local parts ({{files}}); build them as production
-  components and point the lab frames at them.
+- Build the lab-local parts ({{files}}) as production components. Move the frames for
+  design-critical screens to `built/`, rendering production code with updated outlines, and
+  delete the rest (`docs/design/README.md#built-frames`).
 - Tests prove this slice; no browser journey unless an allowed reason in
   `docs/verification.md` applies.
 
