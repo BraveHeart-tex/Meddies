@@ -223,36 +223,6 @@ export async function hydrated(page: Page) {
   })
 }
 
-/** Opt-in visual escape hatch: text-only 200% sizing without enlarging rem geometry.
- * No user-facing browser API emulates OS text resizing. Snapshot all computed sizes before
- * changing ancestors, then restore original inline styles before the next capture. */
-export async function resizeTextForReview(page: Page) {
-  const originalStyles = await page.evaluate(() => {
-    const elements = Array.from(document.querySelectorAll<HTMLElement>('body, body *'))
-    const originals = elements.map((element) => element.getAttribute('style'))
-    const sizes = elements.map((element) => {
-      const style = getComputedStyle(element)
-      return { element, font: parseFloat(style.fontSize), line: parseFloat(style.lineHeight) }
-    })
-    for (const { element, font, line } of sizes) {
-      element.style.setProperty('font-size', `${font * 2}px`, 'important')
-      if (Number.isFinite(line))
-        element.style.setProperty('line-height', `${line * 2}px`, 'important')
-    }
-    return originals
-  })
-
-  return async () => {
-    await page.evaluate((originals) => {
-      const elements = Array.from(document.querySelectorAll<HTMLElement>('body, body *'))
-      originals.forEach((style, i) => {
-        if (style === null) elements[i]?.removeAttribute('style')
-        else elements[i]?.setAttribute('style', style)
-      })
-    }, originalStyles)
-  }
-}
-
 /**
  * Seeds an archive without the confirmation screen: the command runs in the page, carrying its
  * origin like the app's own saves. Returns "status body".

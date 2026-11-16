@@ -162,8 +162,9 @@ the fallback.
 
 `screen-capture.spec.ts` signs in, seeds one medicine (`…0d0001`) with a daily 08:00
 schedule (`…0d0002`) at 09:00 on 15 June 2035, and screenshots each path in
-`MEDDIES_SCREENS` at 402x874 once loading fallbacks are gone. Paths must be Today (`/`) or
-Medications (`/medications…`); the run fails on horizontal overflow.
+`MEDDIES_SCREENS` once loading fallbacks are gone. All captures use 402x874 with normal text.
+Paths must be Today (`/`) or Medications (`/medications…`); the run fails on horizontal
+overflow.
 
 ```sh
 MEDDIES_VISUAL_OUT=/tmp/meddies-screens MEDDIES_SCREENS='/,/medications,/medications?medicine=00000000-0000-4000-8000-0000000d0001' pnpm test:browser:visual screen-capture
@@ -180,8 +181,9 @@ Record forms include Fix a mistake, Change strength, Strength history, validatio
 keyboard focus, offline and conflict recovery (6 screenshots named `record-…`). Save
 feedback includes offline, conflict, Unconfirmed save, changed details and Skipped
 (5 screenshots named `save-…-402.png`). These use normal text at 402x874 and retain their
-interaction assertions. The save recovery case also captures scheduled and Unscheduled
-success receipts with 200% text at 402px and 320px, checks the drawer heading, Amount name,
+interaction assertions. The save recovery case also captures each scheduled and Unscheduled
+success receipt once at 402x874 with normal text (4 screenshots named
+`receipt-…-form-402.png` and `receipt-…-402.png`), checks the drawer heading, Amount name,
 reachable save action, no horizontal overflow and the receipt's polite live announcement. It
 asserts the drawer's real opening and short swipe-return, then screenshots only through
 `captureSettled` (`settled-capture.ts`), which finishes finite animations and waits for a
@@ -190,6 +192,15 @@ all three affected capture groups in one invocation:
 
 ```sh
 MEDDIES_RECORD_CAPTURE=1 MEDDIES_COPY_CAPTURE=1 MEDDIES_SAVE_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-recovery pnpm test:browser:visual screen-capture --grep "record forms|schedule copy|save recovery"
+```
+
+Read recovery captures unavailable and cached Today, Medications and detail states, an
+unknown schedule, unavailable History and the not-found page once at 402x874 with normal text
+(8 screenshots named `read-…-402.png`). `read-review.json` records each state's viewport and
+accessible outline without a text-size override:
+
+```sh
+MEDDIES_READ_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-read pnpm test:browser:visual screen-capture --grep "read recovery"
 ```
 
 Archived medications captures the empty state, then archives the seeded medicine and captures

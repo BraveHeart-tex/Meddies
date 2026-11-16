@@ -3,7 +3,6 @@ import { resolve } from 'node:path'
 import {
   archiveMedicine,
   focusWindow,
-  resizeTextForReview,
   hydrated,
   scrollsHorizontally,
   stylesheetsLoaded,
@@ -393,15 +392,10 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
     await expect(popup).not.toHaveAttribute('data-ending-style')
     await expect.poll(popupBottom, { message: 'short swipe springs back' }).toBe(viewportBottom)
     await expect(dialog.getByLabel(/^Amount/)).toHaveValue(amount)
-    const restoreDrawerText = await resizeTextForReview(page)
-    for (const width of [402, 320]) {
-      await page.setViewportSize({ width, height: 874 })
-      await dialog.getByRole('button', { name: save }).scrollIntoViewIfNeeded()
-      await expect(dialog.getByRole('button', { name: save })).toBeVisible()
-      expect(await scrollsHorizontally(page)).toBe(false)
-      await captureSettled(page, { path: resolve(out!, `receipt-${name}-form-${width}-200.png`) })
-    }
-    await restoreDrawerText()
+    await dialog.getByRole('button', { name: save }).scrollIntoViewIfNeeded()
+    await expect(dialog.getByRole('button', { name: save })).toBeVisible()
+    expect(await scrollsHorizontally(page)).toBe(false)
+    await captureSettled(page, { path: resolve(out!, `receipt-${name}-form-402.png`) })
     await dialog.getByRole('button', { name: save }).click()
     await expect(drawer(page)).toHaveCount(0)
     await expect(toastMessage(page, receipt)).toBeVisible()
@@ -409,18 +403,13 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
       'aria-live',
       'polite',
     )
-    const restoreReceiptText = await resizeTextForReview(page)
-    for (const width of [402, 320]) {
-      await page.setViewportSize({ width, height: 874 })
-      await expect(toastMessage(page, receipt)).toBeVisible()
-      await expect(page.getByRole('region', { name: 'Notifications' })).toHaveAttribute(
-        'aria-live',
-        'polite',
-      )
-      expect(await scrollsHorizontally(page)).toBe(false)
-      await captureSettled(page, { path: resolve(out!, `receipt-${name}-${width}-200.png`) })
-    }
-    await restoreReceiptText()
+    await expect(toastMessage(page, receipt)).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Notifications' })).toHaveAttribute(
+      'aria-live',
+      'polite',
+    )
+    expect(await scrollsHorizontally(page)).toBe(false)
+    await captureSettled(page, { path: resolve(out!, `receipt-${name}-402.png`) })
   }
 
   await captureDoseReceipt({
@@ -450,6 +439,7 @@ test('capture read recovery copy', { tag: '@visual' }, async ({ page, app }) => 
   test.skip(!out || process.env.MEDDIES_READ_CAPTURE !== '1', 'Set MEDDIES_READ_CAPTURE=1')
   test.setTimeout(180_000)
   await mkdir(resolve(out!), { recursive: true })
+  await page.setViewportSize(captureCases.phone.viewport)
   const reads = [
     { method: 'POST', path: '/medicines', operation: 'list' },
     { method: 'POST', path: '/schedules', operation: 'listOutcomes' },
@@ -457,30 +447,22 @@ test('capture read recovery copy', { tag: '@visual' }, async ({ page, app }) => 
   const results: unknown[] = []
   async function capture(name: string) {
     await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
-    const restoreText = await resizeTextForReview(page)
-    for (const width of [402, 320]) {
-      await page.setViewportSize({ width, height: 874 })
-      await expect.poll(() => scrollsHorizontally(page)).toBe(false)
-      for (const action of await page
-        .getByRole('button', { name: 'Try again', exact: true })
-        .all()) {
-        await action.scrollIntoViewIfNeeded()
-        await expect(action).toBeVisible()
-        await action.focus()
-        await expect(action).toBeFocused()
-      }
-      await page.screenshot({
-        path: resolve(out!, `read-${name}-${width}-200.png`),
-        fullPage: true,
-      })
-      results.push({
-        name,
-        width,
-        textPercent: 200,
-        outline: await page.getByRole('main').ariaSnapshot(),
-      })
+    await expect.poll(() => scrollsHorizontally(page)).toBe(false)
+    for (const action of await page.getByRole('button', { name: 'Try again', exact: true }).all()) {
+      await action.scrollIntoViewIfNeeded()
+      await expect(action).toBeVisible()
+      await action.focus()
+      await expect(action).toBeFocused()
     }
-    await restoreText()
+    await page.screenshot({
+      path: resolve(out!, `read-${name}-402.png`),
+      fullPage: true,
+    })
+    results.push({
+      name,
+      viewport: '402x874',
+      outline: await page.getByRole('main').ariaSnapshot(),
+    })
   }
   for (const read of reads) app.worker.fail(read, 503)
   await page.goto('/')

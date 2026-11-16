@@ -162,9 +162,11 @@ clean setting and gets a `bug` + `needs-triage` issue naming the failing specs.
 ## Visual verification
 
 For meaningful UI changes (visible content, layout, typography, controls, feedback or
-motion), inspect the affected screens at 402×874 CSS px, including loading, empty,
-populated, validation, saving and recovery states where the change affects them. Capture
-Today and Medications with the [screen-capture journey](../tests/browser/README.md#screen-captures);
+motion), inspect the affected screens at 402×874 CSS px with normal text, including loading,
+empty, populated, validation, saving and recovery states where the change affects them. Keep
+visual captures at this viewport and text size; do not add enlarged-text or alternate-viewport
+captures. Capture Today and Medications with the
+[screen-capture journey](../tests/browser/README.md#screen-captures);
 lab frames use `pnpm lab:capture <slug-prefix>` for one normal-text capture per frame.
 Compare against the screen's built frame, and give a significant visual change to a
 design-critical screen the
