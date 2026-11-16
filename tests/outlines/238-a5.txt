@@ -1,6 +1,14 @@
 - main
   - banner
     - heading "Settings" [level=1]
+  - heading "Notifications" [level=2]
+  - list
+    - listitem
+      - text: This device
+      - text: Off
+      - switch "Notifications on this device"
+      - paragraph
+        - text: Asks permission first.
   - heading "Account" [level=2]
   - list
     - listitem

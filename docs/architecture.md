@@ -142,7 +142,9 @@ owner.
   and saves (`PUT`), renews (`PATCH`) and removes (`DELETE`) with a JSON body. The Firebase
   installation ID is the row key: save upserts it and moves it to the caller, renew updates
   only the caller's row, remove is idempotent. Every response is `{ registered }`; the
-  token is stored for the sender and never returned or logged.
+  token is stored for the sender and never returned or logged. The browser gets both from
+  Firebase in `device-registrations/notification-device.ts`, loaded on first use, and
+  `public/sw.js` displays incoming messages.
 - **Schema changes:** write each migration by hand as the next numbered
   `worker/migrations/NNNN_<name>.sql` and mirror it in the Drizzle tables in
   `worker/schema.ts`. The local stack, tests and Release apply migrations in order. Keep

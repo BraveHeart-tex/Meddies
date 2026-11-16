@@ -1,5 +1,6 @@
 import { Hourglass, UserRound } from 'lucide-react'
 import { LoadingSection, Skeleton } from '@/components/ui/skeleton'
+import { NotificationsGroup } from '@/features/device-registrations/notifications-group'
 import { SettingsFrame } from './settings-frame'
 import { SettingsRow } from './settings-list'
 
@@ -20,6 +21,7 @@ function Bar({ width }: { width: string }) {
 export default function Loading() {
   return (
     <SettingsFrame
+      notifications={<NotificationsGroup state="checking" />}
       account={
         <>
           <SettingsRow icon={UserRound} label={<Bar width="w-29.5" />}>

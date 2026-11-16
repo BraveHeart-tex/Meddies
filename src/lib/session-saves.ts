@@ -24,7 +24,7 @@ export async function requestSave<T>(
   url: string,
   payload: Record<string, unknown>,
   decode: (data: unknown) => T,
-  method: 'POST' | 'PATCH' = 'POST',
+  method: 'POST' | 'PATCH' | 'PUT' = 'POST',
 ): Promise<SaveResult<T>> {
   try {
     const response = await fetch(url, {

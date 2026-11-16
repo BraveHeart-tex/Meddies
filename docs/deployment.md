@@ -12,6 +12,15 @@ Cloudflare management credentials stay in the protected release environment or o
 maintainer machine. Keep synthetic feasibility databases separate from production.
 Manual Wrangler commands are for [coordinated recovery](#failure-and-recovery) only.
 
+## Push notifications
+
+Notifications use the Firebase project's public web config, set as Vercel Preview and
+Production variables and in local `.env.local`: `NEXT_PUBLIC_FIREBASE_API_KEY`,
+`NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`,
+`NEXT_PUBLIC_FIREBASE_APP_ID` and `NEXT_PUBLIC_FIREBASE_VAPID_KEY`. They are inlined at build
+time, so redeploy after changing them. Without all five, Settings shows notifications as not
+available. `public/sw.js` is the service worker that displays incoming messages.
+
 ## Verify workflow
 
 `.github/workflows/verify.yml` runs on pull requests and is called by Release before

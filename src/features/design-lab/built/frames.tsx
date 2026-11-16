@@ -14,6 +14,7 @@ import { TodayHeader } from '@/features/schedules/today-header'
 import { FixtureQuery } from '../fixture-query'
 import type { BuiltFrame } from '../frames'
 import { amoxicillin, NOW, routine, SESSION_EXPIRES, TODAY } from '../lab-fixtures'
+import { LabNotificationsOff } from '../lab-notifications'
 
 /**
  * Design-critical screens rendered from production code, one frame each
@@ -101,7 +102,9 @@ export const builtFrames = [
     route: '/settings',
     render: () => (
       <FixtureQuery now={NOW}>
-        <SettingsScreen expires={SESSION_EXPIRES} now={NOW} />
+        <LabNotificationsOff>
+          <SettingsScreen expires={SESSION_EXPIRES} now={NOW} />
+        </LabNotificationsOff>
       </FixtureQuery>
     ),
   },
