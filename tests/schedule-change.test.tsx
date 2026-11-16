@@ -32,6 +32,13 @@ const syrup: Medicine = {
   strength: '250 mg/5 ml',
   unit: 'liquid',
 }
+/** Magnesium's record as Drops, for whole drops (#265). */
+const drops: Medicine = {
+  ...magnesium,
+  label: 'Eye drops',
+  strength: '0.5%',
+  unit: 'drops',
+}
 const setupSearch = `?schedule=${magnesium.id}`
 const detailSearch = `?medicine=${magnesium.id}`
 
@@ -331,6 +338,51 @@ describe('changing a Clock schedule', () => {
     expect(edits[0].times).toEqual([
       { time: '08:00', quantity: 4.5 },
       { time: '20:00', quantity: 2.6 },
+    ])
+  })
+
+  // #265: catches a Drops change accepting fractions or misaligning singular and plural rows.
+  test('a Drops change shows 1 drop and 2 drops and rejects fractions (#265)', async () => {
+    const { edits } = api(
+      [
+        {
+          ...clockVersion,
+          times: [
+            { time: '08:00', quantity: 1 },
+            { time: '20:00', quantity: 2 },
+          ],
+        },
+      ],
+      undefined,
+      drops,
+    )
+    const { user, onSaved } = await openChange()
+    const amount = (row: number) => screen.getByLabelText(`Amount for time ${row}`)
+    const unit = (row: number) => document.getElementById(`${amount(row).id}-unit`)!
+    expect(amount(1)).toHaveValue('1')
+    expect(amount(1)).toHaveAccessibleDescription('drop')
+    expect(amount(2)).toHaveValue('2')
+    expect(amount(2)).toHaveAccessibleDescription('drops')
+    // Lined up: each unit slot holds a hidden plural sizer, so both inputs get the same width.
+    for (const row of [1, 2]) {
+      expect(unit(row).nextElementSibling).toHaveAttribute('aria-hidden', 'true')
+      expect(unit(row).nextElementSibling).toHaveTextContent(/^drops$/)
+    }
+
+    await user.clear(amount(1))
+    await user.paste('1.5')
+    await user.click(saveChanges())
+    await waitFor(() => expect(amount(1)).toHaveFocus())
+    expect(amount(1)).toHaveAccessibleDescription(/Use whole drops\./)
+    expect(edits).toEqual([])
+
+    await user.clear(amount(1))
+    await user.paste('3')
+    await user.click(saveChanges())
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(edits[0].times).toEqual([
+      { time: '08:00', quantity: 3 },
+      { time: '20:00', quantity: 2 },
     ])
   })
 

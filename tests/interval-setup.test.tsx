@@ -32,6 +32,13 @@ const syrup: Medicine = {
   strength: '250 mg/5 ml',
   unit: 'liquid',
 }
+/** Magnesium's record as an Inhaler, for whole puffs (#265). */
+const inhaler: Medicine = {
+  ...magnesium,
+  label: 'Salbutamol',
+  strength: '100 mcg per puff',
+  unit: 'inhaler',
+}
 
 let client: QueryClient
 beforeEach(() => {
@@ -335,6 +342,35 @@ describe('saving', () => {
     await user.click(button('Save schedule'))
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
     expect(posted[0]).toMatchObject({ intervalHours: 8, times: [{ time: '08:00', quantity: 2.5 }] })
+  })
+
+  // #265: catches the Amount sheet accepting fractional puffs or wording them off the policy.
+  test('the Amount sheet reads "2 puffs" for an Inhaler and rejects 1.5 puffs (#265)', async () => {
+    const { posted } = api([], undefined, inhaler)
+    const { user, onSaved } = await openSetup()
+    await fillIn(user)
+    expect(takeRow()).toHaveAccessibleName(/^Amount: 1\spuff\b/)
+    await user.click(takeRow())
+    const dialog = await sheet('Amount')
+    const amount = within(dialog).getByLabelText('Amount')
+    const done = within(dialog).getByRole('button', { name: 'Done' })
+    expect(amount).toHaveAccessibleDescription(/^puff\b/)
+    await user.click(within(dialog).getByRole('button', { name: 'More: Amount' }))
+    expect(amount).toHaveValue('2')
+    expect(amount).toHaveAccessibleDescription(/^puffs/)
+    await user.clear(amount)
+    await user.paste('1.5')
+    await user.click(done)
+    expect(await within(dialog).findByText('Use whole puffs.')).toBeVisible()
+    await user.clear(amount)
+    await user.paste('2')
+    await user.click(done)
+    await sheetClosed('Amount')
+    expect(takeRow()).toHaveAccessibleName(/^Amount: 2\spuffs/)
+
+    await user.click(button('Save schedule'))
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    expect(posted[0]).toMatchObject({ intervalHours: 8, times: [{ time: '08:00', quantity: 2 }] })
   })
 
   test('an unconfirmed retry keeps the values and repeats the same attempt', async () => {

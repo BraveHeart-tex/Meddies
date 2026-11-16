@@ -1,32 +1,8 @@
 import type { LabFrame } from '../frames'
 import { SharedScreen } from './medication-types-screens'
 
-/** #265: approved Direction B, Type first; B1-B5 are built (#336, #341), shared frames cover amounts, schedules and wording. */
+/** #265: approved Direction B, Type first; B1-B5 and S1-S7 are built (#336, #337, #341, #342); S8-S9 cover wording. */
 export const medicationTypesFrames = [
-  {
-    slug: '265-s2',
-    citation: '265·S2',
-    title: 'Interval setup - Inhaler amount',
-    render: () => <SharedScreen state="interval-setup" />,
-  },
-  {
-    slug: '265-s3',
-    citation: '265·S3',
-    title: 'Clock edit - Drops amounts',
-    render: () => <SharedScreen state="clock-edit" />,
-  },
-  {
-    slug: '265-s5',
-    citation: '265·S5',
-    title: 'Scheduled dose change - Inhaler',
-    render: () => <SharedScreen state="taken-change" />,
-  },
-  {
-    slug: '265-s6',
-    citation: '265·S6',
-    title: 'Unscheduled dose - Drops validation',
-    render: () => <SharedScreen state="unscheduled" />,
-  },
   {
     slug: '265-s8',
     citation: '265·S8',

@@ -197,7 +197,7 @@ test.each([
   },
 )
 
-test('the approved puff and drop errors (265·S2, S3, S6)', () => {
+test('the approved puff and drop errors (#265)', () => {
   assert.equal(quantityProblem('1.5', 'inhaler'), 'Use whole puffs.')
   assert.equal(quantityProblem('0', 'inhaler'), 'Use 1 puff or more.')
   assert.equal(quantityProblem('1.5', 'drops'), 'Use whole drops.')
