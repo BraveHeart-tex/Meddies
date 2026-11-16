@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronsUpDownIcon, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Drawer,
@@ -11,58 +11,13 @@ import {
   DrawerTitle,
 } from '@/components/ui/drawer'
 import { Field, FieldGroup, FieldTitle } from '@/components/ui/field'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { OutcomeChoice } from '@/features/schedules/outcome-choice'
-import { labTypes, typeRules, type LabType } from './medication-types-model'
+import type { LabType } from './medication-types-model'
 import { AmountCard } from './medication-types-parts'
 import { TypeTile } from './medication-types-tile-parts'
 
 const noop = () => {}
-
-/** Add medication's Type row; the menu opens above it, over Name. */
-export function TypeRow({ type, open }: { type: LabType | null; open: boolean }) {
-  const items = labTypes.map((value) => ({ value, label: typeRules[value].label }))
-  return (
-    <Field className="not-first:border-t">
-      <Select items={items} defaultValue={type} defaultOpen={open}>
-        <SelectTrigger
-          icon={ChevronsUpDownIcon}
-          aria-labelledby="lab-type-label"
-          className='grid min-h-14 grid-cols-[5.75rem_minmax(0,1fr)_1.375rem] gap-0 rounded-none border-0 bg-transparent px-4 text-body-lg focus-visible:-outline-offset-2 [&_svg:not([class*="size-"])]:size-5.5'
-        >
-          <span id="lab-type-label" className="text-base font-extrabold text-foreground">
-            Type
-          </span>
-          <SelectValue
-            placeholder="Choose"
-            className="font-bold in-data-placeholder:font-semibold"
-          />
-        </SelectTrigger>
-        <SelectContent side="top" align="end" className="w-61 rounded-lg p-0.5">
-          {items.map((item) => (
-            <SelectItem
-              key={item.value}
-              value={item.value}
-              className="min-h-12 pl-1.5 font-extrabold data-[selected]:bg-transparent data-[selected]:text-foreground data-[selected]:data-highlighted:bg-secondary"
-            >
-              <span className="flex items-center gap-2.5">
-                <TypeTile type={item.value} />
-                {item.label}
-              </span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </Field>
-  )
-}
 
 /** Shared states: schedule setup and edit, dose logging and changes, and routine wording. */
 

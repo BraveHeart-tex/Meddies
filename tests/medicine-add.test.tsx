@@ -330,6 +330,42 @@ test('Type sits between Name and Strength, opens above, and Liquid saves', async
   expect(posted[0]).toMatchObject({ label: 'Amoxicillin', strength: '250 mg/5 ml', unit: 'liquid' })
 })
 
+// Catches Inhaler or Drops losing its Strength help or saving as another Type.
+test.each([
+  {
+    label: 'Inhaler',
+    unit: 'inhaler',
+    medicine: 'Salbutamol',
+    value: '100 mcg per puff',
+    help: 'On the inhaler, e.g. 100 mcg per puff. Not your dose amount.',
+  },
+  {
+    label: 'Drops',
+    unit: 'drops',
+    medicine: 'Eye drops',
+    value: '0.5%',
+    help: 'On the bottle, e.g. 0.5%. Not your dose amount.',
+  },
+])('$label shows its Strength help and saves', async ({ label, unit, medicine, value, help }) => {
+  const posted: Medicine[] = []
+  server.use(
+    http.post('/api/medicines', async ({ request }) => {
+      const payload = (await request.json()) as Medicine
+      posted.push(payload)
+      return HttpResponse.json({ medicines: [payload] })
+    }),
+  )
+  const { user, onSaved } = openAdd()
+  await user.type(name(), medicine)
+  await chooseType(user, label)
+  expect(type()).toHaveTextContent(label)
+  expect(strength()).toHaveAccessibleDescription(help)
+  await user.type(strength(), value)
+  await user.click(button('Save medication'))
+  await waitFor(() => expect(onSaved).toHaveBeenCalledOnce())
+  expect(posted[0]).toMatchObject({ label: medicine, strength: value, unit })
+})
+
 test.each(['id', 'label', 'strength', 'unit', 'missing', 'malformed'])(
   'a %s confirmation cannot confirm a different attempt',
   async (field) => {

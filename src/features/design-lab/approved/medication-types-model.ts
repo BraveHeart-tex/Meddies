@@ -3,61 +3,43 @@
 // #266 owns the production policy; nothing here is imported outside `approved/`.
 
 export type LabType = 'tablet' | 'capsule' | 'liquid' | 'inhaler' | 'drops'
-/** Add medication frames still in the lab; B1-B3 are built (#336). */
-export type AddState = 'inhaler' | 'drops'
 export type SharedState =
   'interval-setup' | 'clock-edit' | 'taken-change' | 'unscheduled' | 'today' | 'history'
 
 type Rule = {
-  label: string
   /** The Quantity unit, singular. */
   unit: string
   plural: string
   step: number
-  /** Strength help once this Type is chosen. */
-  help: string
 }
 
-/** Menu order is fixed: Tablet, Capsule, Liquid, Inhaler, Drops. */
 export const typeRules: Record<LabType, Rule> = {
   tablet: {
-    label: 'Tablet',
     unit: 'tablet',
     plural: 'tablets',
     step: 0.5,
-    help: 'On the pack, e.g. 200 mg. Not your dose amount.',
   },
   capsule: {
-    label: 'Capsule',
     unit: 'capsule',
     plural: 'capsules',
     step: 1,
-    help: 'On the pack, e.g. 200 mg. Not your dose amount.',
   },
   liquid: {
-    label: 'Liquid',
     unit: 'ml',
     plural: 'ml',
     step: 0.1,
-    help: 'On the bottle, e.g. 250 mg/5 ml. Not your dose amount.',
   },
   inhaler: {
-    label: 'Inhaler',
     unit: 'puff',
     plural: 'puffs',
     step: 1,
-    help: 'On the inhaler, e.g. 100 mcg per puff. Not your dose amount.',
   },
   drops: {
-    label: 'Drops',
     unit: 'drop',
     plural: 'drops',
     step: 1,
-    help: 'On the bottle, e.g. 0.5%. Not your dose amount.',
   },
 }
-
-export const labTypes = Object.keys(typeRules) as LabType[]
 
 /** '1½' for tablets; '1.5' for Liquid; whole numbers otherwise. */
 export function formatAmount(value: number, type: LabType) {

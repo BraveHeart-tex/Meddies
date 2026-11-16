@@ -1,115 +1,29 @@
 'use client'
 
-import { Plus, X } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { AppShell } from '@/components/layout/app-shell'
-import { ScreenStack } from '@/components/layout/screen-stack'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from '@/components/ui/drawer'
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
+import { Field, FieldLabel } from '@/components/ui/field'
 import { TimePicker } from '@/components/ui/time-picker'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { MedicationsHeader } from '@/features/medicines/medications-header'
-import { MedicationsScreen } from '@/features/medicines/medications-screen'
 import {
   IntervalRow,
   IntervalSheet,
   ScheduleSetupHeader,
 } from '@/features/schedules/interval-setup-parts'
-import { FixtureQuery } from '../fixture-query'
-import { NOW, routine } from '../lab-fixtures'
+import { NOW } from '../lab-fixtures'
 import {
   amountErrors,
   amountLabel,
   examples,
-  typeRules,
-  type AddState,
   type LabType,
   type SharedState,
 } from './medication-types-model'
 import { AmountField, HistoryScreen, TodayScreen } from './medication-types-parts'
-import { DoseDrawer, TypeRow } from './medication-types-drawers'
+import { DoseDrawer } from './medication-types-drawers'
 
 const noop = () => {}
 const clockNow = () => new Date(NOW)
-
-// Inset rows from Add medication (medicine-form.tsx).
-const textRow =
-  'grid min-h-14 grid-cols-[5.75rem_minmax(0,1fr)] items-center gap-0 px-4 not-first:border-t has-[input:focus-visible]:outline-2 has-[input:focus-visible]:-outline-offset-2 has-[input:focus-visible]:outline-ring'
-const rowInput =
-  'h-auto min-h-14 rounded-none border-0 bg-transparent px-0 text-body-lg font-bold placeholder:font-semibold focus-visible:outline-none'
-const rowHelp = 'col-span-full pb-3 text-caption'
-
-/** Add medication over Medications: Name, Type, then Strength with the Type's help. */
-export function AddMedicationScreen({ state }: { state: AddState }) {
-  const type = state
-  const name = examples[type].label
-  const help = typeRules[type].help
-  const nameRow = (
-    <Field className={textRow}>
-      <FieldLabel htmlFor="lab-name">Name</FieldLabel>
-      <Input id="lab-name" defaultValue={name} placeholder="On your pack" className={rowInput} />
-    </Field>
-  )
-  const strengthRow = (
-    <Field className={textRow}>
-      <FieldLabel htmlFor="lab-strength">Strength</FieldLabel>
-      <Input
-        id="lab-strength"
-        placeholder="Optional"
-        aria-describedby="lab-strength-help"
-        className={rowInput}
-      />
-      <FieldDescription id="lab-strength-help" className={rowHelp}>
-        {help}
-      </FieldDescription>
-    </Field>
-  )
-  const typeRow = <TypeRow type={type} open={false} />
-  return (
-    <FixtureQuery {...routine}>
-      <AppShell current="/medications">
-        <ScreenStack>
-          <MedicationsHeader />
-          <MedicationsScreen initialNow={NOW} serverEntry />
-        </ScreenStack>
-      </AppShell>
-      <Drawer open>
-        <DrawerContent>
-          <div className="-mt-2 flex flex-col gap-3.5">
-            <DrawerHeader className="-mx-2 -my-1 grid min-h-12 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-0 text-center">
-              <DrawerClose
-                render={<Button variant="ghost" size="icon" className="rounded-full" />}
-                aria-label="Close"
-              >
-                <X aria-hidden="true" data-icon="inline-start" />
-              </DrawerClose>
-              <DrawerTitle className="text-heading">Add medication</DrawerTitle>
-            </DrawerHeader>
-            <Card className="gap-0 py-0">
-              <FieldGroup className="gap-0">
-                {nameRow}
-                {typeRow}
-                {strengthRow}
-              </FieldGroup>
-            </Card>
-            <Button size="drawer" className="w-full">
-              Save medication
-            </Button>
-          </div>
-        </DrawerContent>
-      </Drawer>
-    </FixtureQuery>
-  )
-}
 
 export function SharedScreen({ state }: { state: SharedState }) {
   switch (state) {
