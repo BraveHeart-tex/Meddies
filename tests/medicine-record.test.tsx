@@ -260,7 +260,7 @@ test('Unscheduled disclosure updates from an earlier period to Now before saving
 test('never-used Type changes its matching Quantity unit; any past dose locks it', async () => {
   const { user } = open('fix', { ...medicine, everHadSchedule: false, everHadDose: false })
   await user.click(screen.getByRole('combobox', { name: 'Type' }))
-  expect(await screen.findAllByRole('option')).toHaveLength(3)
+  expect(await screen.findAllByRole('option')).toHaveLength(5)
   await user.click(screen.getByRole('option', { name: 'Capsule' }))
   expect(screen.getByText(/Dose unit: capsules/)).toBeVisible()
 })

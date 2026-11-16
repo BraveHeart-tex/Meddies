@@ -95,6 +95,16 @@ const medicineTypes = {
     strengthHelp: 'On the bottle, e.g. 250 mg/5 ml. Not your dose amount.',
     writable: true,
   },
+  inhaler: {
+    ...countedEntry('Inhaler', 'puff', 'puffs'),
+    strengthHelp: 'On the inhaler, e.g. 100 mcg per puff. Not your dose amount.',
+    writable: true,
+  },
+  drops: {
+    ...countedEntry('Drops', 'drop', 'drops'),
+    strengthHelp: 'On the bottle, e.g. 0.5%. Not your dose amount.',
+    writable: true,
+  },
 } as const satisfies Record<string, QuantityEntry & { strengthHelp: string; writable: boolean }>
 
 type Entries = typeof medicineTypes
@@ -184,7 +194,7 @@ export function parseQuantity(text: string): number | null {
   return Number(normalized)
 }
 
-/** '1½' for tablets, '1.5' for ml, '2' for counted units. */
+/** '1½' for tablets, '1.5' for ml, '2' for counted units such as capsules, puffs and drops. */
 export function formatQuantity(value: number, quantity: Quantity): string {
   return entry(quantity).format(value)
 }

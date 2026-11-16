@@ -5,10 +5,10 @@ import type { MedicineType } from '@/lib/quantity-policy'
 // Medicine type icons (#265): two-tone filled glyphs on the medication tile tints. The solid
 // tone is the tile's glyph color, the soft tone the same color at 45%, highlights the card
 // color. Drawn on a 24px grid with rounded joins so they sit beside the Two capsules mark.
-// Decorative only. Adding a Type adds its glyph and tint here (#267: Inhaler, Drops).
+// Decorative only. Adding a Type adds its glyph and tint here.
 const soft = { opacity: 0.45 }
 
-/** Glyph per Medicine type; the design lab extends it with unbuilt Types. */
+/** Glyph per Medicine type. */
 export const typeGlyphs: Record<MedicineType, ReactNode> = {
   // Two round tablets, the front one scored.
   tablet: (
@@ -51,6 +51,36 @@ export const typeGlyphs: Record<MedicineType, ReactNode> = {
       />
     </>
   ),
+  // A pressurised inhaler: canister above an L-shaped actuator with its mouthpiece.
+  inhaler: (
+    <>
+      <rect x="11" y="2" width="5.5" height="9" rx="1.6" style={soft} />
+      <path d="M10 8.5h7.5a1.5 1.5 0 0 1 1.5 1.5v9.5a2.5 2.5 0 0 1-2.5 2.5H5.5A2.5 2.5 0 0 1 3 19.5v-2A2.5 2.5 0 0 1 5.5 15H8.5v-5A1.5 1.5 0 0 1 10 8.5z" />
+      <rect
+        x="4.6"
+        y="17.3"
+        width="3.6"
+        height="1.9"
+        rx="0.95"
+        className="fill-card"
+        opacity="0.85"
+      />
+    </>
+  ),
+  // A falling drop with a smaller one behind it.
+  drops: (
+    <>
+      <path d="M18 2.5s-2.6 3-2.6 4.8a2.6 2.6 0 0 0 5.2 0c0-1.8-2.6-4.8-2.6-4.8z" style={soft} />
+      <path d="M10.5 4S4.5 10.6 4.5 15a6 6 0 0 0 12 0C16.5 10.6 10.5 4 10.5 4z" />
+      <path
+        d="M7.7 15.2a2.9 2.9 0 0 0 2.2 2.9"
+        className="stroke-card"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        opacity="0.85"
+      />
+    </>
+  ),
 }
 
 /** Tile tint and glyph color per Medicine type. */
@@ -58,6 +88,8 @@ export const typeTints: Record<MedicineType, string> = {
   tablet: 'bg-medication-blush text-medication-blush-glyph',
   capsule: 'bg-medication-peach text-medication-peach-glyph',
   liquid: 'bg-medication-plum text-medication-plum-glyph',
+  inhaler: 'bg-medication-mist text-medication-mist-glyph',
+  drops: 'bg-medication-butter text-medication-butter-glyph',
 }
 
 export type TypeTileSize = 'sm' | 'md' | 'lg'
@@ -103,6 +135,8 @@ const glyphColors: Record<MedicineType, string> = {
   tablet: 'text-medication-blush-glyph',
   capsule: 'text-medication-peach-glyph',
   liquid: 'text-medication-plum-glyph',
+  inhaler: 'text-medication-mist-glyph',
+  drops: 'text-medication-butter-glyph',
 }
 
 /**

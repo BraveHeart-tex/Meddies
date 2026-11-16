@@ -8,11 +8,14 @@ import type { DoseOccurrence } from '../src/features/schedules/contract'
 import { DoseDrawer } from '../src/features/schedules/dose-drawer'
 import { MedicationRow } from '../src/features/schedules/medication-row'
 import { NextDose } from '../src/features/schedules/next-dose'
+import { medicineTypeOptions } from '../src/lib/quantity-policy'
 
 test.each([
   ['tablet', 'bg-medication-blush', 'text-medication-blush-glyph'],
   ['capsule', 'bg-medication-peach', 'text-medication-peach-glyph'],
   ['liquid', 'bg-medication-plum', 'text-medication-plum-glyph'],
+  ['inhaler', 'bg-medication-mist', 'text-medication-mist-glyph'],
+  ['drops', 'bg-medication-butter', 'text-medication-butter-glyph'],
 ] as const)('the %s Type tile draws its icon on its own tint', (type, tint, glyph) => {
   const { container } = render(<TypeTile type={type} />)
   const tile = container.firstElementChild
@@ -24,10 +27,10 @@ test.each([
 })
 
 test('each Type draws a different icon', () => {
-  const drawings = (['tablet', 'capsule', 'liquid'] as const).map(
-    (type) => render(<TypeTile type={type} />).container.querySelector('svg')?.innerHTML,
+  const drawings = medicineTypeOptions.map(
+    ({ value }) => render(<TypeTile type={value} />).container.querySelector('svg')?.innerHTML,
   )
-  expect(new Set(drawings).size).toBe(3)
+  expect(new Set(drawings).size).toBe(5)
 })
 
 // Ids ending 1, 2 and 3 each picked a different tint and shape when tiles came from the id.

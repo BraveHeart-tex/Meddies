@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import {
-  countedEntry,
   formatQuantity,
   isDoseQuantity,
   isMedicineType,
@@ -21,24 +20,36 @@ import {
 } from '../src/lib/quantity-policy'
 
 const nbsp = '\u00a0'
-// 265·S2, S5: a counted unit #267 builds on, never registered as a production Type.
-const puff = countedEntry('Inhaler', 'puff', 'puffs')
 
 test('Types: the menu lists every writable Type in order, with Strength help per Type', () => {
   assert.deepEqual(medicineTypeOptions, [
     { value: 'tablet', label: 'Tablet' },
     { value: 'capsule', label: 'Capsule' },
     { value: 'liquid', label: 'Liquid' },
+    { value: 'inhaler', label: 'Inhaler' },
+    { value: 'drops', label: 'Drops' },
   ])
   const pack = 'On the pack, e.g. 200 mg. Not your dose amount.'
   for (const type of [null, 'tablet', 'capsule'] as const) assert.equal(strengthHelp(type), pack)
   assert.equal(strengthHelp('liquid'), 'On the bottle, e.g. 250 mg/5 ml. Not your dose amount.')
-  assert.deepEqual(writableMedicineTypes, ['tablet', 'capsule', 'liquid'])
-  for (const type of ['tablet', 'capsule', 'liquid']) assert.equal(isMedicineType(type), true)
-  for (const type of ['ml', 'puff', 'inhaler', 'drops', 'injection', '', null])
+  assert.equal(
+    strengthHelp('inhaler'),
+    'On the inhaler, e.g. 100 mcg per puff. Not your dose amount.',
+  )
+  assert.equal(strengthHelp('drops'), 'On the bottle, e.g. 0.5%. Not your dose amount.')
+  const types = ['tablet', 'capsule', 'liquid', 'inhaler', 'drops']
+  assert.deepEqual(writableMedicineTypes, types)
+  for (const type of types) {
+    assert.equal(isMedicineType(type), true)
+    assert.equal(isWritableMedicineType(type), true)
+  }
+  for (const type of ['ml', 'puff', 'drop', 'injection', 'unknown', '', null]) {
     assert.equal(isMedicineType(type), false)
-  assert.equal(isWritableMedicineType('liquid'), true)
+    assert.equal(isWritableMedicineType(type), false)
+  }
   assert.equal(medicineTypeLabel('liquid'), 'Liquid')
+  assert.equal(medicineTypeLabel('inhaler'), 'Inhaler')
+  assert.equal(medicineTypeLabel('drops'), 'Drops')
 })
 
 test('quantity text parses decimals, commas and halves, and keeps blank apart from zero', () => {
@@ -81,6 +92,8 @@ test('rules: steps, minimums and new dose amounts per Type', () => {
   assert.deepEqual(quantityRule('tablet'), { step: 0.5, min: 0.5, initial: '1' })
   assert.deepEqual(quantityRule('capsule'), { step: 1, min: 1, initial: '1' })
   assert.deepEqual(quantityRule('liquid'), { step: 0.1, min: 0.1, initial: '1' })
+  assert.deepEqual(quantityRule('inhaler'), { step: 1, min: 1, initial: '1' })
+  assert.deepEqual(quantityRule('drops'), { step: 1, min: 1, initial: '1' })
 })
 
 test('stepping snaps to the grid, never below the minimum, and starts there from blank', () => {
@@ -135,10 +148,14 @@ test('Liquid validation: tenths of ml with the #265 errors', () => {
   assert.equal(quantityProblem('900719925474100', 'liquid'), 'Enter a smaller quantity.')
 })
 
-test('writes accept Liquid amounts and keep unsupported Types rejected', () => {
+test('writes accept Liquid, Inhaler and Drops amounts and keep unsupported Types rejected', () => {
   assert.equal(isWritableQuantity(1, 'tablet'), true)
   assert.equal(isWritableQuantity(1.5, 'liquid'), true)
-  for (const type of ['inhaler', 'drops', 'injection', 'puff', 'unknown'])
+  assert.equal(isWritableQuantity(2, 'inhaler'), true)
+  assert.equal(isWritableQuantity(3, 'drops'), true)
+  for (const type of ['inhaler', 'drops'])
+    for (const value of [0.5, 1.5, 0, -1]) assert.equal(isWritableQuantity(value, type), false)
+  for (const type of ['injection', 'puff', 'drop', 'unknown'])
     assert.equal(isWritableQuantity(1, type), false)
   assert.equal(isWritableQuantity(1, undefined), false)
   assert.equal(isDoseQuantity(0.3), true)
@@ -146,16 +163,43 @@ test('writes accept Liquid amounts and keep unsupported Types rejected', () => {
   assert.equal(isDoseQuantity(1.25, 'read'), false)
 })
 
-test('a counted entry: whole puffs from 1, singular and plural wording (265·S2, S5)', () => {
-  assert.deepEqual(quantityRule(puff), { step: 1, min: 1, initial: '1' })
-  assert.equal(quantityLabel(1, puff), `1${nbsp}puff`)
-  assert.equal(quantityLabel(2, puff), `2${nbsp}puffs`)
-  assert.equal(stepQuantity('1', puff, -1), '1')
-  assert.equal(stepQuantity('1', puff, 1), '2')
-  assert.equal(quantityProblem('2', puff), null)
-  assert.equal(quantityProblem('1.5', puff), 'Use whole puffs.')
-  assert.equal(quantityProblem('0', puff), 'Use 1 puff or more.')
-  assert.equal(isMedicineType('puff'), false)
-  assert.equal(isMedicineType('inhaler'), false)
-  assert.ok(medicineTypeOptions.every((option) => option.label !== 'Inhaler'))
+test.each([
+  ['inhaler', 'puff', 'puffs'],
+  ['drops', 'drop', 'drops'],
+] as const)(
+  '%s: whole %s amounts from 1 with the #265 wording and errors',
+  (type, unit, plural) => {
+    assert.equal(quantityLabel(1, type), `1${nbsp}${unit}`)
+    assert.equal(quantityLabel(2, type), `2${nbsp}${plural}`)
+    assert.equal(quantityLabel(12, type), `12${nbsp}${plural}`)
+    assert.equal(unitName(null, type), plural)
+    assert.equal(formatQuantity(3, type), '3')
+    assert.equal(stepQuantity('1', type, -1), '1')
+    assert.equal(stepQuantity('1', type, 1), '2')
+    assert.equal(stepQuantity('1.5', type, 1), '2')
+    assert.equal(stepQuantity('1.5', type, -1), '1')
+    assert.equal(stepQuantity('', type, 1), '1')
+    for (const text of ['1', '2', '12']) assert.equal(quantityProblem(text, type), null)
+    for (const value of [1, 2, 12, Number.MAX_SAFE_INTEGER / 2 - 0.5])
+      assert.equal(isQuantityFor(value, type), true)
+    for (const value of [0, -1, 0.5, 1.5, 2.25, Number.MAX_SAFE_INTEGER, Number.NaN, '1'])
+      assert.equal(isQuantityFor(value, type), false)
+    assert.equal(quantityProblem('', type), 'Enter a quantity.')
+    assert.equal(quantityProblem('0', type), `Use 1 ${unit} or more.`)
+    assert.equal(quantityProblem('-1', type), `Use 1 ${unit} or more.`)
+    assert.equal(quantityProblem('1.5', type), `Use whole ${plural}.`)
+    assert.equal(quantityProblem('0.5', type), `Use whole ${plural}.`)
+    assert.equal(quantityProblem('2,5', type), `Use whole ${plural}.`)
+    assert.equal(
+      quantityProblem(String(Number.MAX_SAFE_INTEGER), type),
+      'Enter a smaller quantity.',
+    )
+  },
+)
+
+test('the approved puff and drop errors (265·S2, S3, S6)', () => {
+  assert.equal(quantityProblem('1.5', 'inhaler'), 'Use whole puffs.')
+  assert.equal(quantityProblem('0', 'inhaler'), 'Use 1 puff or more.')
+  assert.equal(quantityProblem('1.5', 'drops'), 'Use whole drops.')
+  assert.equal(quantityProblem('0', 'drops'), 'Use 1 drop or more.')
 })

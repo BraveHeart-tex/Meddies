@@ -302,7 +302,13 @@ test('Type sits between Name and Strength, opens above, and Liquid saves', async
   await user.type(name(), 'Amoxicillin')
   await user.click(type())
   const options = await screen.findAllByRole('option')
-  expect(options.map((option) => option.textContent)).toEqual(['Tablet', 'Capsule', 'Liquid'])
+  expect(options.map((option) => option.textContent)).toEqual([
+    'Tablet',
+    'Capsule',
+    'Liquid',
+    'Inhaler',
+    'Drops',
+  ])
   for (const option of options) {
     expect(option).toHaveAttribute('aria-selected', 'false')
     expect(option.querySelector('[aria-hidden="true"] svg')).toBeInTheDocument()

@@ -10,8 +10,8 @@ test('medicine operations reject invalid labels and units before persistence', a
   })
   for (const patch of [
     { label: ' ' },
-    { unit: 'inhaler' },
-    { unit: 'drops' },
+    { unit: 'injection' },
+    { unit: 'puff' },
     { unit: 'unknown' },
     { strength: 'x'.repeat(121) },
   ]) {
@@ -83,7 +83,8 @@ test('edit operations derive ownership and reject unsupported units, instants an
     unit: 'tablet',
     ownerId: 'google:bob',
   }
-  await assert.rejects(() => operations.correctDetails({ ...correction, unit: 'ml' }), /validation/)
+  for (const unit of ['ml', 'injection', 'unknown'])
+    await assert.rejects(() => operations.correctDetails({ ...correction, unit }), /validation/)
   const change = {
     ...key,
     strength: '400 mg',

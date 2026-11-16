@@ -18,7 +18,7 @@ import {
   parseUnscheduledDoseRecord,
 } from '../src/features/unscheduled-doses/contract'
 
-// Liquid reads ship before writes (#266, #335); unsupported Types stay rejected.
+// Liquid, Inhaler and Drops are writable (#335, #267); Injection and unknown Types stay rejected.
 const id = '00000000-0000-4000-8000-000000000001'
 const actionId = '00000000-0000-4000-8000-000000000002'
 const liquid = { id, label: 'Amoxicillin', strength: '250 mg/5 ml', unit: 'liquid' }
@@ -63,10 +63,20 @@ test('read contracts accept a Liquid Medicine and decimal ml amounts', () => {
     )
 })
 
-test('write contracts accept Liquid but reject Inhaler, Drops, unknown Types and the test-only unit', () => {
-  assert.equal(parseMedicine({ ...liquid, unit: 'capsule' }).unit, 'capsule')
-  assert.equal(parseMedicine(liquid).unit, 'liquid')
-  for (const unit of ['ml', 'inhaler', 'puff', 'drops', 'injection', undefined]) {
+test('write contracts accept Liquid, Inhaler and Drops but reject Injection and unknown Types', () => {
+  const correction = {
+    actionId,
+    medicineId: id,
+    expectedRevision: 1,
+    strengthRevisionId: id,
+    label: 'Amoxicillin',
+    strength: null,
+  }
+  for (const unit of ['tablet', 'capsule', 'liquid', 'inhaler', 'drops']) {
+    assert.equal(parseMedicine({ ...liquid, unit }).unit, unit)
+    assert.equal(parseDetailCorrection({ ...correction, unit }).unit, unit)
+  }
+  for (const unit of ['ml', 'puff', 'drop', 'injection', 'unknown', undefined]) {
     assert.throws(() => parseMedicine({ ...liquid, unit }), /validation/)
     assert.throws(
       () =>
