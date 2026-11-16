@@ -1,5 +1,6 @@
 import type { LabFrame } from '../frames'
 import { editDetailsFrames } from './edit-details-frames'
+import { editDetailsFormFrames } from './edit-details-form-frames'
 import { ScannerFrame } from './scanner-frame'
 
 /** Approved designs waiting for their build ticket. */
@@ -11,4 +12,5 @@ export const approvedFrames = [
     render: () => <ScannerFrame />,
   },
   ...editDetailsFrames,
+  ...editDetailsFormFrames,
 ] satisfies readonly LabFrame[]
