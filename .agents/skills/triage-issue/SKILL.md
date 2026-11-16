@@ -54,20 +54,18 @@ reparent an issue, or commit/push docs, without approval of the exact write plan
    _Done when_ the remaining open decisions are listed and resolved or clearly
    recorded as blockers. Do not invent decisions to finish triage.
 
-4. **Size before declaring ready (both routes).** Identify distinct contracts,
-   data migrations, UI surfaces, external integrations and required proof.
-   **Propose a split when the issue contains independently implementable and
-   verifiable outcomes** that would otherwise force one agent to change many
-   interconnected systems in one run. Prefer small dependency-ordered vertical
-   slices. Do **not** split solely because there are more than five acceptance
-   criteria or a long description; keep changes together when splitting would
-   break an atomic invariant, compatibility requirement or useful end-to-end proof.
-   For a split, make the parent `tracking-only` and assign each criterion, owner,
-   dependency and test to exactly one slice; preserve cross-slice invariants.
-   Use [tickets shape](../../../docs/tickets.md#shape). Precedent: parent #218,
-   slices #227, #230, #231.
-   _Done when_ the issue is either judged a coherent slice or a concrete split
-   is proposed with no orphaned criteria.
+4. **Size before declaring ready (both routes).** Fill the issue's Size line and check it
+   against the [size limits](../../../docs/tickets.md#size); verify each Current state gap
+   in the code. **Split when a count passes its limit or the issue contains independently
+   implementable and verifiable outcomes.** Split by layer before feature: backend command,
+   migration and real-D1 tests first, then screens, cache and journeys, then visual polish.
+   An atomic invariant (one transaction, no partial state) stays whole inside the backend
+   slice; it is never a reason to bundle screens with it. For a split, make the parent
+   `tracking-only` and assign each criterion, owner, dependency and test to exactly one
+   slice; preserve cross-slice invariants. Use [tickets template](../../../docs/tickets.md#template).
+   Precedent: parent #218, slices #227, #230, #231; #322 split into #322 and #327.
+   _Done when_ every slice passes `node scripts/ticket-lint.mjs <body-file>` with no
+   orphaned criteria.
 
 5. **Prepare the smallest write plan.** If the issue is already ready and needs
    no changes, report **ready as-is** and stop without GitHub writes. Otherwise

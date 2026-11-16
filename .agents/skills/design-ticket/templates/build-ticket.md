@@ -1,10 +1,8 @@
-## Parent
-
-{{Parent ticket link}}
-
 ## What to build
 
-{{The behaviour from the user's side, one paragraph.}}
+{{The behaviour from the user's side, at most 150 words.}}
+
+## Rules
 
 Approved rules, by frame ([#{{n}}]({{link}}) "Approved design" table):
 
@@ -12,16 +10,22 @@ Approved rules, by frame ([#{{n}}]({{link}}) "Approved design" table):
 - **{{n}}·A2, A4:** {{...}}
 - **{{n}}·S1:** {{...}}
 - {{Rules from "Decided by Bora after approval", each on its own line.}}
+- The lab composes these screens from lab-local parts ({{files}}); build them as production
+  components and point the lab frames at them.
+- Tests prove this slice; no browser journey unless an allowed reason in
+  `docs/verification.md` applies.
 
-The lab composes these screens from lab-local parts ({{files}}); build them as production
-components and point the lab frames at them.
+## Ownership
 
-Tests prove this slice; no browser journey unless an allowed reason in
-`docs/verification.md` applies.
+- Owns: {{frames this ticket builds, such as {{n}}·A1, A2}}
+- Uses: {{existing items it builds on, with their owner issue}}
+- Out of scope: {{each nearby item and the issue that owns it}}
 
-Out of scope: {{each nearby item and the ticket that owns it}}.
+## Size
+
+Migrations 0 · New screens {{n}} · Owned frames {{n}} · Journeys 0 · Proofs {{n}}
 
 ## Acceptance criteria
 
-- [ ] {{One checkable outcome}} ({{n}}·A1)
-- [ ] {{...}} ({{n}}·A3, A5)
+- [ ] {{One checkable outcome}} ({{n}}·A1) - Evidence: {{one proof}}
+- [ ] {{...}} ({{n}}·A3, A5) - Evidence: {{...}}

@@ -42,11 +42,18 @@ Work **lean** throughout:
    (`design: true`) leaves this skill here and runs the `design-ticket` skill instead; its
    approval comment is the evidence.
 
-2. **Read the docs.** Pick the rows of the AGENTS.md docs table the work touches, plus every
+2. **Check the size.** Before reading docs or code, count the issue against the
+   [size limits](../../../docs/tickets.md#size), from its Size line or from its body. Over a
+   limit, or a scope that will not fit the stated budget: stop, propose a split by layer,
+   and ask. On approval, rewrite the issue to the slice you will build and create the
+   follow-up ticket per [changing scope](../../../docs/tickets.md#changing-scope).
+   _Done when_ the issue is within every limit, or the user approved building it as it is.
+
+3. **Read the docs.** Pick the rows of the AGENTS.md docs table the work touches, plus every
    spec section and design frame the issue cites.
    _Done when_ each acceptance criterion maps to the rule or frame that governs it.
 
-3. **Name the evidence.** Each acceptance criterion names its evidence: an existing test, a
+4. **Name the evidence.** Each acceptance criterion names its evidence: an existing test, a
    new test where [one is required](../../../docs/verification.md#when-a-test-is-required),
    or a visual or manual check. A required test goes at the
    [cheapest level](../../../docs/verification.md#cheapest-proof) and names the regression it
@@ -54,7 +61,7 @@ Work **lean** throughout:
    that matches the cited spec and name it in the evidence.
    _Done when_ every criterion names its evidence.
 
-4. **Build.** Test-first only for the new tests step 3 requires (use the `tdd` skill).
+5. **Build.** Test-first only for the new tests step 4 requires (use the `tdd` skill).
    While iterating, run `pnpm test:related <changed files>`, `pnpm typecheck` and
    `pnpm exec eslint <changed JS/TS files>` as relevant; check changed-file lint before
    broad verification. Work that touches a design-critical screen follows
@@ -70,12 +77,12 @@ Work **lean** throughout:
    _Done when_ relevant tests and changed-file lint pass, and every changed outline and
    capture is reviewed.
 
-5. **Review.** Read `git diff $base` against two axes: the standards in AGENTS.md and the
-   docs from step 2, and each acceptance criterion. Fix what you accept.
+6. **Review.** Read `git diff $base` against two axes: the standards in AGENTS.md and the
+   docs from step 3, and each acceptance criterion. Fix what you accept.
    _Done when_ every criterion points to code plus its named evidence, and every finding
    is fixed or rejected with a one-line reason.
 
-6. **Verify.** Start broad verification only after implementation, tests, captures,
+7. **Verify.** Start broad verification only after implementation, tests, captures,
    outlines, review fixes and targeted checks are complete, with no changes ongoing.
    For code changes, run `pnpm verify:local >"$log" 2>&1` once, then read the
    summary. On failure, fix the cause, rerun only the failed cases until they pass, then
@@ -84,7 +91,7 @@ Work **lean** throughout:
    verification cannot complete.
    _Done when_ the required final verification exits 0 on the final code or docs.
 
-7. **Ship.** Commit per [commits](../../../docs/commits.md) and push to main. Tick each
+8. **Ship.** Commit per [commits](../../../docs/commits.md) and push to main. Tick each
    criterion box in the issue body (`gh issue edit <n> --body-file`), post the
    [evidence](../../../docs/verification.md#evidence) comment, read both back, then close
    per [tickets](../../../docs/tickets.md#closing). Attach reviewed screenshots with

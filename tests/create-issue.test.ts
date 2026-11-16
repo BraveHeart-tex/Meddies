@@ -53,12 +53,25 @@ fs.writeFileSync(path,JSON.stringify(s))
 if (failure) { process.stderr.write('injected denial'); process.exit(1) }
 process.stdout.write(typeof out === 'string' ? out + '\\n' : JSON.stringify(out))
 `
+const validTicket = [
+  '## What to build',
+  'Log a dose.',
+  '## Ownership',
+  '- Owns: the log command',
+  '- Out of scope: export (#55)',
+  '## Size',
+  'Migrations 0 · New screens 0 · Owned frames 0 · Journeys 0 · Proofs 1',
+  '## Acceptance criteria',
+  '- [ ] A log saves - Evidence: real-D1 test',
+  '',
+].join('\n')
+
 function harness() {
   const dir = mkdtempSync(join(tmpdir(), 'create-issue-'))
   dirs.push(dir)
   const statePath = join(dir, 'state.json')
   const bodyPath = join(dir, 'body.md')
-  const body = '  Exact body\r\n\nUnicode: İ 💊\n'
+  const body = `  Exact body\r\n\nUnicode: İ 💊\n${validTicket}`
   writeFileSync(bodyPath, body)
   writeFileSync(join(dir, 'gh'), fake)
   chmodSync(join(dir, 'gh'), 0o755)
@@ -286,5 +299,28 @@ test('non-parent tickets require Priority before any GitHub call', () => {
     false,
   )
   expect(result.status).toBe(1)
+  expect(h.state().calls).toEqual([])
+})
+
+test('non-parent ticket bodies fail the ticket rules before any GitHub call', () => {
+  const h = harness()
+  writeFileSync(h.bodyPath, 'No sections\n')
+  const result = h.invoke(
+    [
+      '--title',
+      'Ticket',
+      '--body-file',
+      h.bodyPath,
+      '--category',
+      'bug',
+      '--areas',
+      'backend',
+      '--priority',
+      'High',
+    ],
+    false,
+  )
+  expect(result.status).toBe(1)
+  expect(result.stderr).toContain('Missing section: ## Size')
   expect(h.state().calls).toEqual([])
 })

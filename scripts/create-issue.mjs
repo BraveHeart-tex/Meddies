@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import { lintTicket } from './ticket-lint.mjs'
 
 // Creates or resumes one issue under docs/tickets.md. All local inputs and Project
 // metadata are validated before writes. Resume reconciles the same expected specification;
@@ -90,6 +91,11 @@ try {
   if (resume && (parent === resume || blockers.includes(resume)))
     throw new Error('An issue cannot be its own relationship')
   const body = readFileSync(options['body-file'], 'utf8')
+  // docs/tickets.md: parents and design tickets have their own shape.
+  if (!options['parent-ticket'] && !options.title.startsWith('Design:')) {
+    const problems = lintTicket(body)
+    if (problems.length) throw new Error(`Ticket body:\n- ${problems.join('\n- ')}`)
+  }
   const labels = [options.category, ...areas, state]
   if (resume) issue = { number: resume, url: `https://github.com/${repo}/issues/${resume}` }
   unfinished.shift()

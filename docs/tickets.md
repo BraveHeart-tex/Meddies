@@ -34,31 +34,67 @@ review baseline commit `base`, and `design` (title starts `Design:`). Both scrip
 
 ## Shape
 
-Each ticket is a **tracer bullet**: one narrow, complete path through every layer
-it touches, proven on a real screen or test. A shared primitive ships together
-with the first screen that uses it. Size each ticket for one fresh context window.
+Each ticket is a **tracer bullet**: one narrow, complete path through the layers it
+touches, proven on a real screen or test. A backend slice proven by real-D1 tests is a
+complete tracer bullet; its screens follow in their own ticket. A shared primitive ships
+with the first screen that uses it. Each ticket fits one fresh context window: the
+[size limits](#size) decide, not the length of the description.
+
+## Template
 
 ```markdown
 ## What to build
 
-The end-to-end behaviour from the user's side, linking the docs/product section it
-implements by its heading anchor (`medication-domain.md#scheduling---approved-contract`),
-and an "Out of scope:" line naming the issue that owns each nearby item.
+The behaviour from the user's side in at most 150 words, linking the docs/product section
+it implements by its heading anchor (`medication-domain.md#scheduling---approved-contract`).
+
+## Rules
+
+- [Shared save rules](client-state.md#saves) - only what this ticket narrows
+
+## Ownership
+
+- Owns: the commands, screens and frames (`241·A3`) this ticket delivers
+- Uses: each existing item it builds on, with its owner (#300)
+- Out of scope: each nearby item, with the issue that owns it (#323)
+
+## Current state
+
+- What the ticket depends on that does not exist yet
+
+## Size
+
+Migrations 0 · New screens 1 · Owned frames 2 · Journeys 0 · Proofs 3
 
 ## Acceptance criteria
 
-- [ ] One checkable outcome per line, citing design frames as `241·A3`
+- [ ] One outcome - Evidence: one proof
 ```
 
-- The parent is a native sub-issue link, not a body section.
-- A design hands off through the
+- **What to build** describes behaviour, not file paths. Name the entry point by its
+  GLOSSARY or screen term ("Medication detail").
+- **Rules** link product and shared docs and add only the narrowing. They never restate a
+  linked rule. Omit the section when nothing narrows.
+- **Ownership** follows [Ownership](#ownership). Out of scope names an issue for each item.
+- **Current state** lists missing infrastructure the triage agent verified in the code,
+  such as "No reminder storage or sender exists". Omit it when nothing relevant is missing.
+- The parent is a native sub-issue link and blockers are native blocked-by relationships,
+  not body sections. Add a "Blocked by" section only when a blocker cannot be linked.
+
+## Criteria
+
+- One outcome per line, with its one proof after `- Evidence:`. An outcome joined to
+  another with a semicolon or listing several proofs is two criteria.
+- Criteria state product or technical outcomes. `pnpm verify:local`, pushing, evidence and
+  closing are the [done definition](../AGENTS.md), never criteria.
+- There is no fixed criterion count; more than eight means the ticket holds two slices.
+- A design build ticket cites frame IDs with key copy in quotes, never "the approved
+  frames". Designs hand off through the
   [design-ticket skill](../.agents/skills/design-ticket/SKILL.md): approved lab frames, the
-  approval comment and an "Approved design" frame table. The build ticket's rules and
-  criteria cite those frame IDs with key copy in quotes, never "the approved frames".
-- Set blockers as native blocked-by relationships. Add a "Blocked by" section only when a
-  blocker cannot be linked.
-- Describe behaviour, not file paths. Link stable docs and design artifacts.
-- Five acceptance criteria at most. More means the ticket holds two slices: split it.
+  approval comment and an "Approved design" frame table.
+
+## Evidence
+
 - Each criterion names its evidence: an existing test, a new test where
   [one is required](verification.md#when-a-test-is-required), or a visual or manual check.
   Never a test per criterion by default.
@@ -67,8 +103,30 @@ and an "Out of scope:" line naming the issue that owns each nearby item.
 - A ticket may ask for a browser journey only by naming an
   [allowed reason](verification.md#when-a-journey-is-allowed). Otherwise it names a cheaper
   proof: "Tests prove…", or a visual or manual check.
-- A ticket with sub-issues is a parent. It lists the ownership list and the shared rules,
-  and its only criterion is that the sub-issues are closed.
+
+## Size
+
+The Size line counts what the ticket adds. Split it when a count passes its limit:
+
+| Count        | Counts                                      | Limit                     |
+| ------------ | ------------------------------------------- | ------------------------- |
+| Migrations   | New migration files                         | 1                         |
+| New screens  | New routes, views and drawers               | 3, and 0 with a migration |
+| Owned frames | Design frames the ticket builds             | 4                         |
+| Journeys     | Browser journeys added or extended          | 1                         |
+| Proofs       | Tests added or extended, plus visual checks | 6                         |
+
+Split by layer before feature: the backend command, migration and real-D1 tests first;
+screens, cache publication and journeys next; visual polish last. An atomic invariant
+(one transaction, no partial state) belongs whole to the backend slice; it is not a reason
+to bundle the screens. A UI ticket that waits on a later action leaves that control out
+rather than merging with that action's ticket.
+
+## Parents
+
+A ticket with sub-issues is a parent. It holds the ownership list, the shared rules and a
+breakdown of features by layer, and its only criterion is that the sub-issues are closed.
+It has no Size line.
 
 ## Ownership
 
@@ -94,6 +152,10 @@ node scripts/create-issue.mjs --title "..." --body-file "$body_file" \
 - `--triage-state` accepts a state label from [triage labels](triage-labels.md), defaulting
   to `needs-triage`. `ready-for-agent` requires `--approved-breakdown`, an explicit
   assertion that the user approved the breakdown.
+- Before any GitHub write, the command checks a non-parent body against the
+  [template](#template), [criteria](#criteria) and [size](#size) rules, naming each
+  problem. Check a body for `gh issue edit` with `node scripts/ticket-lint.mjs <file>`.
+  Design tickets (title starts `Design:`) follow the design-ticket skill instead.
 - The command resolves Meddies Project metadata, adds the issue, sets Backlog and applicable
   Priority, then reads back title, exact body, labels, relationships and Project fields.
   Success prints only compact JSON with the number, URL, Status, applicable Priority,
