@@ -155,7 +155,7 @@ test('the daily routine runs from Today through History to sign out', async ({ p
     await pickTime(page, 'Taken time in Istanbul', '09:10')
     await dialog.getByRole('button', { name: 'Save changes' }).click()
     await expect(
-      toastMessage(page, new RegExp(`^${magnesium} 09:00 · Taken at .*09:10, 1 tablet$`)),
+      toastMessage(page, new RegExp(`^${magnesium} 09:00 · Taken at .*09:10, 1\\u00a0tablet$`)),
     ).toBeVisible()
     await expectFocusReturned(magnesiumRow)
   })

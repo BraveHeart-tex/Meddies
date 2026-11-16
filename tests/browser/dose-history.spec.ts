@@ -122,7 +122,7 @@ test('review, edit and correct past doses in History', async ({
     await expect(
       toastMessage(
         page,
-        /^History Fixture Medicine \d\d:\d\d on \w{3} \d+ \w{3} · now 1½ tablets$/,
+        /^History Fixture Medicine \d\d:\d\d on \w{3} \d+ \w{3} · now 1½\u00a0tablets$/,
       ),
     ).toBeVisible()
     await expect(intakeTime(first)).toHaveAttribute('datetime', originalTakenAt!)
