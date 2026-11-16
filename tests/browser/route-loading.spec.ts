@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures'
-import { waitForClientRouter } from './actions'
+import { freshNotificationPermission, waitForClientRouter } from './actions'
 import {
   historyDateNav,
   historyFallback,
@@ -121,6 +121,8 @@ async function expectStableLayout(
   const name = '402px'
 
   test(`Settings keeps its shell and cards in place at ${name}`, async ({ page, app }) => {
+    // The fallback holds Off's Notifications row; other device cases change its height by design.
+    await freshNotificationPermission(page)
     const layout = await trackLayout(page, viewport)
     const elements = () => ({
       ...shellElements(page),

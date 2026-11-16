@@ -83,6 +83,13 @@ jobs:
       - name: Production build
         env:
           CI_SKIP_BUILD_TYPECHECK: '1'
+          # Placeholders so Settings has a device that can receive notifications. Firebase
+          # loads only once permission is granted, which no journey does.
+          NEXT_PUBLIC_FIREBASE_API_KEY: journey-placeholder
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: journey-placeholder
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: journey-placeholder
+          NEXT_PUBLIC_FIREBASE_APP_ID: journey-placeholder
+          NEXT_PUBLIC_FIREBASE_VAPID_KEY: journey-placeholder
         run: pnpm build
       # Only main saves, so pull requests cannot poison or evict its cache.
       - name: Save Next.js build cache

@@ -260,3 +260,14 @@ export async function finishFiniteAnimations(page: Page) {
         animation.finish()
   })
 }
+
+/**
+ * Headless Chromium reports notification permission as `denied`, which Settings shows as
+ * Blocked. Report `default`, as a fresh browser does, so Settings shows Off. No browser API
+ * resets the permission to `default`.
+ */
+export async function freshNotificationPermission(page: Page) {
+  await page.addInitScript(() => {
+    Object.defineProperty(Notification, 'permission', { get: () => 'default' })
+  })
+}
