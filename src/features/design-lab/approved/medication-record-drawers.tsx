@@ -19,15 +19,13 @@ import { Notice } from './medication-record-parts'
 const example = recordExample
 const frameLink = (slug: string) => `/lab/${slug}`
 
-export function ConfirmDrawer({ state }: { state: 'archive' | 'restore' | 'discard' }) {
+export function ConfirmDrawer({ state }: { state: 'restore' | 'discard' }) {
   const [open, setOpen] = useState(true)
   const titles = {
-    archive: 'Archive Magnesium?',
     restore: 'Restore Magnesium?',
     discard: 'Discard these changes?',
   }
   const descriptions = {
-    archive: 'Magnesium leaves your Medications list. You can restore it later.',
     restore: 'Magnesium returns to your Medications list.',
     discard: 'The changes you haven’t saved will be lost.',
   }
@@ -43,31 +41,19 @@ export function ConfirmDrawer({ state }: { state: 'archive' | 'restore' | 'disca
           </div>
           <DrawerDescription>{descriptions[state]}</DrawerDescription>
         </DrawerHeader>
-        {state === 'archive' && (
-          <Notice>
-            The schedule stops when the archive saves. Unsent dose, food and refill reminders are
-            cancelled. History stays. Stock is unchanged.
-          </Notice>
-        )}
         {state === 'restore' && (
           <Notice>
             No schedule or reminders restart. Set a schedule separately when you’re ready.
           </Notice>
         )}
         <Link
-          href={frameLink(
-            state === 'archive' ? '238-a3' : state === 'restore' ? '292-s9' : '238-a3',
-          )}
+          href={frameLink(state === 'restore' ? '292-s9' : '238-a3')}
           className={buttonVariants({
             size: 'drawer',
             variant: 'default',
           })}
         >
-          {state === 'archive'
-            ? 'Archive medication'
-            : state === 'restore'
-              ? 'Restore medication'
-              : 'Discard changes'}
+          {state === 'restore' ? 'Restore medication' : 'Discard changes'}
         </Link>
         <Button variant="ghost" onClick={() => setOpen(false)}>
           {state === 'discard' ? 'Keep editing' : 'Cancel'}

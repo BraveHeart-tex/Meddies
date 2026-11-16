@@ -94,7 +94,7 @@ function Detail({
         />
       </ItemGroup>
       {!archived && (
-        <Link href={frameLink('292-s5')} className={buttonVariants({ variant: 'ghost' })}>
+        <Link href={frameLink('238-a3')} className={buttonVariants({ variant: 'ghost' })}>
           <Archive data-icon="inline-start" />
           Archive medication
         </Link>
@@ -191,9 +191,7 @@ export function MedicationRecordScreen({ state }: { state: RecordState }) {
   return (
     <AppShell current="/medications">
       <ScreenStack>{content}</ScreenStack>
-      {(state === 'archive' || state === 'restore' || state === 'discard') && (
-        <ConfirmDrawer state={state} />
-      )}
+      {(state === 'restore' || state === 'discard') && <ConfirmDrawer state={state} />}
       {state === 'late' && <LateDrawer />}
     </AppShell>
   )

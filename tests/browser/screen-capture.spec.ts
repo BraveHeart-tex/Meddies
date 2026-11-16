@@ -584,3 +584,63 @@ test(
     await page.screenshot({ path: resolve(out!, 'delete-result-402.png'), fullPage: true })
   },
 )
+
+// Opt-in #327 archive evidence, including real pointer dismissal and keyboard focus.
+test(
+  'capture medication archive confirmation and result',
+  { tag: '@visual' },
+  async ({ page, app }) => {
+    // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
+    test.skip(!out || process.env.MEDDIES_ARCHIVE_CAPTURE !== '1', 'Set MEDDIES_ARCHIVE_CAPTURE=1')
+    await mkdir(resolve(out!), { recursive: true })
+    await page.setViewportSize(captureCases.phone.viewport)
+    const id = '00000000-0000-4000-8000-0000000a0327'
+    await app.api('POST', '/api/medicines', {
+      id,
+      label: 'Magnesium',
+      strength: '400 mg',
+      unit: 'tablet',
+    })
+    await app.api('POST', '/api/schedules', {
+      id: '00000000-0000-4000-8000-0000000b0327',
+      medicineId: id,
+      startDate: today,
+      times: [{ time: '20:00', quantity: 1 }],
+    })
+    await page.goto(`/medications?medicine=${id}`)
+    const action = page.getByRole('button', { name: 'Archive medication' })
+    const confirmation = page.getByRole('dialog', { name: 'Archive Magnesium?' })
+    await action.click()
+    await expect(page.getByRole('heading', { name: 'Archive Magnesium?' })).toBeFocused()
+    await dragHandle(page, 260)
+    await expect(confirmation).toBeHidden()
+    await expect(action).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(confirmation).toBeVisible()
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('button', { name: 'Close' })).toBeFocused()
+    await page.keyboard.press('Tab')
+    const submit = confirmation.getByRole('button', { name: 'Archive medication' })
+    await expect(submit).toBeFocused()
+    await expect.poll(() => scrollsHorizontally(page)).toBe(false)
+    await page.screenshot({
+      path: resolve(out!, 'archive-confirmation-402.png'),
+      fullPage: true,
+      animations: 'disabled',
+    })
+    const archive = { method: 'POST', path: '/medicines', operation: 'archive' }
+    app.worker.hold(archive)
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('button', { name: 'Archiving...' })).toBeDisabled()
+    await page.keyboard.press('Escape')
+    await dragHandle(page, 260)
+    await expect(confirmation).toBeVisible()
+    app.worker.release(archive)
+    await expect(confirmation).toBeHidden()
+    await expect(page).toHaveURL(`${app.origin}/medications?medicine=${id}`)
+    await expect(page.getByText('Kept in History')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Magnesium', exact: true })).toBeFocused()
+    await expect.poll(() => scrollsHorizontally(page)).toBe(false)
+    await page.screenshot({ path: resolve(out!, 'archive-result-402.png'), fullPage: true })
+  },
+)

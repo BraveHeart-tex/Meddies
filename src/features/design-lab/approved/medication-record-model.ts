@@ -19,7 +19,6 @@ export type RecordState =
   | 'unused'
   | 'invalid'
   | 'late'
-  | 'archive'
   | 'restore'
   | 'restored'
   | 'saving'

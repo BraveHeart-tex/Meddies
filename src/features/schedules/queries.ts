@@ -143,7 +143,11 @@ export function useScheduleSnapshot({ serverEntry = false }: { serverEntry?: boo
 
 export type SchedulesRead = ReturnType<typeof useScheduleSnapshot>
 
-/** Immutable outcomes never disappear, and a revision can only advance within a dated snapshot. */
+/**
+ * Immutable outcomes never disappear, and a revision can only advance within a dated snapshot.
+ * Schedule versions only advance too: a confirmed successor an older read lacks (an archive's
+ * stop, #327) stays, and the version it replaced keeps its end.
+ */
 export function mergeSnapshot(
   current: ScheduleSnapshot | undefined,
   incoming: ScheduleSnapshot,
@@ -151,6 +155,21 @@ export function mergeSnapshot(
   if (!current) return incoming
   if (incoming.date < current.date) return current
   if (incoming.date !== current.date) return incoming
+  const schedules = [...incoming.schedules]
+  for (let added = true; added;) {
+    added = false
+    for (const previous of current.schedules) {
+      if (schedules.some((item) => item.id === previous.id)) continue
+      const index = schedules.findIndex(
+        (item) =>
+          item.id === previous.basedOnId && !schedules.some((next) => next.basedOnId === item.id),
+      )
+      if (index < 0) continue
+      schedules[index] = { ...schedules[index], replacedAt: previous.confirmedAt }
+      schedules.push(previous)
+      added = true
+    }
+  }
   const records = [...incoming.records]
   for (const previous of current.records) {
     const index = records.findIndex(
@@ -159,7 +178,7 @@ export function mergeSnapshot(
     if (index < 0) records.push(previous)
     else if ((records[index].revision ?? 0) <= (previous.revision ?? 0)) records[index] = previous
   }
-  return replaceEqualDeep(current, { ...incoming, records })
+  return replaceEqualDeep(current, { ...incoming, schedules, records })
 }
 
 /** Current confirmed outcome, used to distinguish an old receipt from the latest outcome. */

@@ -198,4 +198,49 @@ test('detail correction retains its draft and pending save across navigation, th
     ).toBeVisible()
     await expect(page.getByRole('button', { name: 'Delete medication' })).toHaveCount(0)
   })
+
+  // Allowed reason: navigation during a save.
+  await test.step('an archive finishes after navigation and shows in Archived medications', async () => {
+    const id = randomUUID()
+    await app.api('POST', '/api/medicines', {
+      id,
+      label: 'Magnesium',
+      strength: '',
+      unit: 'tablet',
+    })
+    await app.api('POST', '/api/schedules', {
+      id: randomUUID(),
+      medicineId: id,
+      startDate: '2035-06-15',
+      times: [{ time: '20:00', quantity: 1 }],
+    })
+    const nav = page.getByRole('navigation', { name: 'Primary' })
+    await page.goto('/')
+    await expect(page.getByRole('main').getByText('Magnesium').first()).toBeVisible()
+    await page.goto('/medications')
+    await page.getByRole('link', { name: 'View details for Magnesium' }).click()
+    const archive = { method: 'POST', path: '/medicines', operation: 'archive' }
+    app.worker.hold(archive)
+    await page.getByRole('button', { name: 'Archive medication' }).click()
+    await page
+      .getByRole('dialog', { name: 'Archive Magnesium?' })
+      .getByRole('button', { name: 'Archive medication' })
+      .click()
+    await expect(page.getByRole('button', { name: 'Archiving...' })).toBeDisabled()
+    await expect.poll(() => app.worker.held(archive)).toBeGreaterThan(0)
+    await page.goBack()
+    await nav.getByRole('link', { name: 'Today' }).click()
+    await expect(page).toHaveURL(`${app.origin}/`)
+    app.worker.release(archive)
+    await expect(page.getByText('Magnesium archived', { exact: true })).toBeVisible()
+    // Today drops its future doses once the archive confirms.
+    await expect(page.getByRole('main').getByText('Magnesium')).toHaveCount(0)
+    await nav.getByRole('link', { name: 'Medications' }).click()
+    await expect(page.getByRole('link', { name: 'View details for Fixed Medicine' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'View details for Magnesium' })).toHaveCount(0)
+    await page.getByRole('link', { name: 'Archived medications' }).click()
+    await page.getByRole('link', { name: /^Magnesium/ }).click()
+    await expect(page.getByText('Kept in History')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Archive medication' })).toHaveCount(0)
+  })
 })

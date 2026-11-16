@@ -27,6 +27,10 @@ browser storage is used. Losing it on reload, app closure or browser eviction is
 - **Medicine deletion** confirms only from its matching command receipt, never absence from a list.
   Confirmed deletion IDs stay in memory for the session, beyond list garbage collection; reads,
   hydration and replayed creation receipts cannot restore them.
+- **Medicine archive** confirms only from a record bearing its action ID, revision + 1 and
+  `archivedAt`. After cancelling older reads it publishes that record and the head Schedule
+  version's stop successor (the server's, keyed by the action ID). Schedule versions only advance
+  in snapshot merges, so late reads and hydration cannot return the Medicine to future doses.
 - **Unscheduled doses** have no read of their own: Today's snapshot read and each History
   date read carry their date's Unscheduled doses and seed `['schedules', 'unscheduled', date]`.
   A confirmed change or removal stays cached at its new revision, so a stale read never

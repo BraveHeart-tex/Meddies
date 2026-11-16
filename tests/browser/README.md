@@ -205,6 +205,13 @@ MEDDIES_DELETE_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-delete pnpm test:browse
 
 ```
 
+Archive confirmation and the archived detail it lands on (2 screenshots at 402x874) also check
+keyboard focus and swipe dismissal, including refusal while pending:
+
+```sh
+MEDDIES_ARCHIVE_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-archive pnpm test:browser:visual screen-capture --grep "medication archive"
+```
+
 `cozy-visual` saves design-review screenshots at the running project's viewport; set
 `MEDDIES_VISUAL_OUT` to keep them outside `.browser-artifacts/`.
 

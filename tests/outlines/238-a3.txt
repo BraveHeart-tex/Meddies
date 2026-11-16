@@ -32,6 +32,7 @@
         - paragraph
     - list
       - link "Strength history"
+  - button "Archive medication"
 - navigation "Primary"
   - list
     - listitem

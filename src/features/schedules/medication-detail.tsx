@@ -1,6 +1,6 @@
 'use client'
 
-import { Clock, History, Pencil } from 'lucide-react'
+import { Archive, Clock, History, Pencil } from 'lucide-react'
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
 import { useState, type ReactNode, type Ref } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -89,6 +89,7 @@ export function MedicationDetail({
   resumed = null,
   onResumed,
   headingRef,
+  onArchiveRequested,
   onDeleteRequested,
 }: {
   medicineId: string
@@ -102,6 +103,7 @@ export function MedicationDetail({
   /** The resume this panel confirmed, here or on the Resume schedule screen. */
   resumed?: DailySchedule | null
   onResumed: (resumed: DailySchedule) => void
+  onArchiveRequested?: (medicine: Medicine) => void
   onDeleteRequested?: (medicine: Medicine) => void
   headingRef?: Ref<HTMLHeadingElement>
 }) {
@@ -311,6 +313,17 @@ export function MedicationDetail({
           </Item>
         </ItemGroup>
       </section>
+      {typeof medicine.revision === 'number' && onArchiveRequested && (
+        <Button
+          id={`archive-medicine-${medicine.id}`}
+          variant="ghost"
+          size="lg"
+          onClick={() => onArchiveRequested(medicine)}
+        >
+          <Archive data-icon="inline-start" />
+          Archive medication
+        </Button>
+      )}
       {medicine.everHadSchedule === false &&
         medicine.everHadDose === false &&
         onDeleteRequested && (

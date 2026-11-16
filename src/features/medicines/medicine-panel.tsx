@@ -4,6 +4,7 @@ import { Info } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { SchedulePanel } from '@/features/schedules/schedule-panel'
 import { buttonVariants } from '@/components/ui/button'
+import { MedicineArchiveDrawer } from './medicine-archive-drawer'
 import { MedicineDeleteDrawer } from './medicine-delete-drawer'
 import { MedicineAddDrawer } from './medicine-add-drawer'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -37,6 +38,7 @@ export function MedicinePanel({
   const [scheduledMedicine, setScheduledMedicine] = useState<Medicine | null>(null)
   // Done for now hands focus to the saved medicine's list row.
   const [focusMedicineId, setFocusMedicineId] = useState<string | null>(null)
+  const [archive, setArchive] = useState<{ medicine: Medicine; open: boolean } | null>(null)
   const [deletion, setDeletion] = useState<{ medicine: Medicine; open: boolean } | null>(null)
   const [deletedLabel, setDeletedLabel] = useState<string | null>(null)
   const [recordMessage, setRecordMessage] = useState<string | null>(null)
@@ -107,6 +109,7 @@ export function MedicinePanel({
         </Alert>
       )}
       <SchedulePanel
+        onArchiveRequested={(medicine) => setArchive({ medicine, open: true })}
         onDeleteRequested={(medicine) => setDeletion({ medicine, open: true })}
         record={record}
         periodId={periodId}
@@ -137,6 +140,22 @@ export function MedicinePanel({
           ) : null
         }
       />
+      {archive && (
+        <MedicineArchiveDrawer
+          key={archive.medicine.id}
+          medicine={archive.medicine}
+          open={
+            archive.open &&
+            scheduleMode === 'detail' &&
+            !record &&
+            detailMedicineId === archive.medicine.id
+          }
+          onClose={() => setArchive({ ...archive, open: false })}
+          // The confirmed record is cached, so this same page now shows the archived detail.
+          onArchived={() => setArchive({ ...archive, open: false })}
+          heading={detailHeading}
+        />
+      )}
       {deletion && (
         <MedicineDeleteDrawer
           key={deletion.medicine.id}

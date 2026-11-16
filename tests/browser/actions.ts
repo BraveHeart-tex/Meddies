@@ -254,8 +254,8 @@ export async function resizeTextForReview(page: Page) {
 }
 
 /**
- * Archive confirmation has no screen until #327, so the archive command runs in the page, carrying
- * its origin like the app's own saves. Returns "status body".
+ * Seeds an archive without the confirmation screen: the command runs in the page, carrying its
+ * origin like the app's own saves. Returns "status body".
  */
 export async function archiveMedicine(page: Page, medicineId: string) {
   return page.evaluate(async (id) => {

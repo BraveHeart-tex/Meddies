@@ -12,6 +12,7 @@ export const magnesium: Medicine = {
   label: 'Magnesium',
   strength: '400 mg',
   unit: 'tablet',
+  revision: 1,
 }
 
 /** Magnesium every day at 08:00 and 20:00 since Mon 2 Nov, Last day Tue 10 Nov. */
