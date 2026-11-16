@@ -20,6 +20,7 @@ export const userMedications = sqliteTable(
     label: text('label').notNull(),
     strength: text('strength'),
     revision: integer('revision').notNull().default(0),
+    archivedAt: text('archived_at'),
     everHadSchedule: integer('ever_had_schedule', { mode: 'boolean' }).notNull().default(false),
     everHadDose: integer('ever_had_dose', { mode: 'boolean' }).notNull().default(false),
     creationRequest: text('creation_request'),
@@ -242,5 +243,26 @@ export const medicineEdits = sqliteTable(
       foreignColumns: [userMedications.ownerId, userMedications.id],
     }),
     check('medicine_edits_kind', sql`${table.kind} IN ('correctDetails','changeStrength')`),
+  ],
+)
+
+export const medicineRestores = sqliteTable(
+  'medicine_restores',
+  {
+    ownerId: text('owner_id').notNull(),
+    actionId: text('action_id').notNull(),
+    medicineId: text('medicine_id').notNull(),
+    expectedRevision: integer('expected_revision').notNull(),
+    confirmedAt: text('confirmed_at').notNull(),
+    request: text('request').notNull(),
+    result: text('result'),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.actionId] }),
+    unique().on(table.ownerId, table.medicineId, table.expectedRevision),
+    foreignKey({
+      columns: [table.ownerId, table.medicineId],
+      foreignColumns: [userMedications.ownerId, userMedications.id],
+    }),
   ],
 )

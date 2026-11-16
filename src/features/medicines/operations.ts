@@ -4,6 +4,7 @@ import {
   parseDetailCorrection,
   parseStrengthChange,
   parseMedicineArchive,
+  parseMedicineRestore,
   parseMedicineRecord,
   type Medicine,
   type MedicineCommand,
@@ -41,6 +42,14 @@ export function createMedicineOperations(dependencies: {
       const rows = await dependencies.send({ operation: 'archive', ownerId: user.id, archive })
       const records = confirmedEdit(rows, archive)
       if (!records[0].archivedAt) throw new ApplicationError('unavailable', 503)
+      return records
+    },
+    async restore(input: unknown) {
+      const user = await dependencies.requireUser()
+      const restore = parseMedicineRestore(input)
+      const rows = await dependencies.send({ operation: 'restore', ownerId: user.id, restore })
+      const records = confirmedEdit(rows, restore)
+      if (rows[0].archivedAt !== null) throw new ApplicationError('unavailable', 503)
       return records
     },
     async list() {

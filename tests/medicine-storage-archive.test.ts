@@ -7,9 +7,9 @@ import { createScheduleOperations } from '../src/features/schedules/operations'
 import type { Medicine } from '../src/features/medicines/contract'
 import { startWorkerRuntime, runtime, secret, legacy } from './helpers/medicine-storage-runtime'
 
-// Archive (#322) on real D1: one insert stops the schedule at the Edit time, archives the
-// Medicine and stores the receipt. No reminder sender exists yet (#30, #38, #53), so these
-// tests prove the persisted facts senders must honor and the existing occurrence boundary.
+// Archive and restore (#322, #323) on real D1. Archive stops the schedule at the Edit
+// time; restore keeps it stopped. Both store atomic receipts. No reminder sender exists
+// yet (#30, #38, #53); these tests prove the persisted facts and occurrence boundary.
 startWorkerRuntime()
 
 async function fixture() {
@@ -267,4 +267,159 @@ test('migrated medicines stay active', async () => {
   const list = await f.operationsFor(legacy.ownerId).medicines.list()
   assert.equal((list[0] as { archivedAt?: unknown }).archivedAt, null)
   assert.equal((await f.record()).archivedAt, null)
+})
+
+test('restore preserves recorded facts and stopped schedules until an explicit change', async () => {
+  const f = await fixture()
+  await f.saveDaily()
+  f.setNow('2026-11-03T09:00:00.000Z')
+  await f.schedules.recordTaken({
+    scheduleId: f.scheduleId,
+    dueAt: '2026-11-03T05:00:00.000Z',
+    takenAt: '2026-11-03T05:05:00.000Z',
+    quantity: 1,
+  })
+  const current = await f.record()
+  await f.medicines.correctDetails({
+    actionId: randomUUID(),
+    medicineId: f.medicineId,
+    expectedRevision: current.revision,
+    strengthRevisionId: current.currentStrengthRevisionId,
+    label: 'Corrected example',
+    strength: '250 mg',
+    unit: 'tablet',
+  })
+  await f.archive()
+  f.setNow('2026-11-04T09:00:00.000Z')
+  // Compare persisted versions, original snapshots and correction/export ledgers too.
+  const retained = async () =>
+    Promise.all(
+      [
+        'daily_schedules',
+        'dose_records',
+        'skipped_dose_records',
+        'dose_corrections',
+        'unscheduled_doses',
+        'medicine_strength_revisions',
+        'medicine_edits',
+        'medicine_archives',
+      ].map(
+        async (table) =>
+          (await f.db.prepare(`SELECT * FROM ${table} WHERE owner_id=?`).bind(f.ownerId).all())
+            .results,
+      ),
+    )
+  const facts = await retained()
+  const before = await f.record()
+  const snapshot = await f.schedules.snapshot()
+  const history = await f.schedules.history('2026-11-03')
+  const actionId = randomUUID()
+  const [restored] = await f.medicines.restore({
+    actionId,
+    medicineId: f.medicineId,
+    expectedRevision: before.revision,
+  })
+  assert.deepEqual(restored, {
+    ...before,
+    archivedAt: null,
+    revision: before.revision + 1,
+    lastActionId: actionId,
+  })
+  assert.deepEqual(await f.record(), restored)
+  assert.deepEqual(await retained(), facts)
+  assert.deepEqual(await f.schedules.snapshot(), snapshot)
+  assert.deepEqual(await f.schedules.history('2026-11-03'), history)
+  assert.deepEqual(doses(snapshot), [])
+  assert.equal(snapshot.today.next, null)
+
+  // Restart is explicit and only doses strictly after its Edit time are expected.
+  const stopped = snapshot.schedules.find((s) => s.stoppedAt)
+  assert.ok(stopped)
+  await f.schedules.edit({
+    id: randomUUID(),
+    basedOnId: stopped.id,
+    endDate: null,
+    times: [
+      { time: '12:00', quantity: 1 },
+      { time: '20:00', quantity: 1 },
+    ],
+  })
+  f.setNow('2026-11-04T18:00:00.000Z')
+  assert.deepEqual(doses(await f.schedules.snapshot()), [
+    ['2026-11-04T17:00:00.000Z', 'Not logged'],
+  ])
+})
+
+test('restore receipts replay exactly while changed requests and stale or foreign state write nothing', async () => {
+  const f = await fixture()
+  await f.archive()
+  const input = { actionId: randomUUID(), medicineId: f.medicineId, expectedRevision: 1 }
+  const first = await f.medicines.restore(input)
+  // Replaying after a later archive still returns the original active receipt.
+  await f.archive()
+  assert.deepEqual(await f.medicines.restore(input), first)
+  const before = await f.record()
+  for (const request of [
+    { ...input, expectedRevision: 3 },
+    { ...input, medicineId: randomUUID() },
+    { ...input, actionId: randomUUID() },
+  ])
+    await assert.rejects(() => f.medicines.restore(request), /conflict/)
+  const other = f.operationsFor(`google:${randomUUID()}`)
+  await assert.rejects(() => other.medicines.restore(input), /conflict/)
+  assert.deepEqual(await f.record(), before)
+  assert.equal(
+    (await f.row('SELECT count(*) AS n FROM medicine_restores WHERE owner_id=?', f.ownerId))?.n,
+    1,
+  )
+
+  const active = await fixture()
+  await assert.rejects(
+    () =>
+      active.medicines.restore({
+        actionId: randomUUID(),
+        medicineId: active.medicineId,
+        expectedRevision: 0,
+      }),
+    /conflict/,
+  )
+  assert.equal((await active.record()).revision, 0)
+  assert.equal(
+    (
+      await active.row(
+        'SELECT count(*) AS n FROM medicine_restores WHERE owner_id=?',
+        active.ownerId,
+      )
+    )?.n,
+    0,
+  )
+})
+
+test('a failed restore receipt rolls back the Medicine and permits the same request to retry', async () => {
+  const f = await fixture()
+  await f.archive()
+  const before = await f.record()
+  const input = {
+    actionId: randomUUID(),
+    medicineId: f.medicineId,
+    expectedRevision: before.revision,
+  }
+  // Fail after the apply trigger has cleared archived_at, while storing the receipt.
+  await f.db
+    .prepare(
+      `CREATE TRIGGER restore_receipt_failure BEFORE UPDATE OF result ON medicine_restores
+    WHEN NEW.owner_id='${f.ownerId}' BEGIN SELECT RAISE(ABORT,'receipt_failure'); END`,
+    )
+    .run()
+  try {
+    await assert.rejects(() => f.medicines.restore(input), /unavailable/)
+    assert.deepEqual(await f.record(), before)
+    assert.equal(
+      (await f.row('SELECT count(*) AS n FROM medicine_restores WHERE owner_id=?', f.ownerId))?.n,
+      0,
+    )
+  } finally {
+    await f.db.prepare('DROP TRIGGER restore_receipt_failure').run()
+  }
+  assert.equal((await f.medicines.restore(input))[0].archivedAt, null)
 })

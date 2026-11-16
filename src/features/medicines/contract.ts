@@ -36,6 +36,7 @@ export type MedicineResponses = {
   correctDetails: { medicines: MedicineRecord[] }
   changeStrength: { medicines: MedicineRecord[] }
   archive: { medicines: MedicineRecord[] }
+  restore: { medicines: MedicineRecord[] }
 }
 export type MedicineCommand =
   | { operation: 'list'; ownerId: string }
@@ -43,6 +44,7 @@ export type MedicineCommand =
   | { operation: 'correctDetails'; ownerId: string; correction: DetailCorrection }
   | { operation: 'changeStrength'; ownerId: string; change: StrengthChange }
   | { operation: 'archive'; ownerId: string; archive: MedicineArchive }
+  | { operation: 'restore'; ownerId: string; restore: MedicineRestore }
 
 export type MedicineResponse<C extends MedicineCommand = MedicineCommand> =
   MedicineResponses[C['operation']]
@@ -201,5 +203,11 @@ export function parseStrengthChange(value: unknown): StrengthChange {
 /** Archive at the server-confirmed Edit time; the revision guards stale state. */
 export type MedicineArchive = { actionId: string; medicineId: string; expectedRevision: number }
 export function parseMedicineArchive(value: unknown): MedicineArchive {
+  return parseEditKey(value)
+}
+
+/** Restore the record only; schedules stay stopped until an explicit schedule change. */
+export type MedicineRestore = { actionId: string; medicineId: string; expectedRevision: number }
+export function parseMedicineRestore(value: unknown): MedicineRestore {
   return parseEditKey(value)
 }

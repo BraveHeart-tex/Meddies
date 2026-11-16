@@ -12,6 +12,12 @@ export async function send<C extends MedicineCommand>(
     const data = (await sendStorage('/medicines', command)) as { medicines?: unknown }
     if (!Array.isArray(data.medicines)) throw new Error('contract')
     try {
+      // Legacy reads may omit archivedAt, but a restore must explicitly confirm it.
+      if (
+        command.operation === 'restore' &&
+        data.medicines.some((row) => !row || row.archivedAt !== null)
+      )
+        throw new Error('restore confirmation contract')
       return data.medicines.map(parseMedicineResponse)
     } catch (error) {
       if (command.operation === 'save') throw new Error('save confirmation contract')

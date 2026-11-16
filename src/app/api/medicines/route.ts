@@ -32,6 +32,8 @@ export async function PATCH(request: Request) {
       return json({ medicines: await medicines.correctDetails(input.correction) })
     if (input?.operation === 'changeStrength')
       return json({ medicines: await medicines.changeStrength(input.change) })
+    if (input?.operation === 'restore')
+      return json({ medicines: await medicines.restore(input.restore) })
     if (input?.operation === 'archive')
       return json({ medicines: await medicines.archive(input.archive) })
     return json({ error: 'validation' }, 400)

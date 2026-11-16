@@ -88,6 +88,11 @@ owner.
   for new doses. The database validates, applies and stores the exact retry receipt atomically.
   Type/Quantity unit lock permanently on first schedule or dose use. First-use writes compare
   the unit validated by the shared quantity policy in their insertion statement.
+  `PATCH /api/medicines` also accepts `archive` and `restore`, each with an action UUID
+  and expected medication revision. Archive appends a stop version when needed and sets
+  `archivedAt`; restore clears `archivedAt` without changing any Schedule version or replaying
+  reminders. Each stores its exact retry receipt with revision + 1 and `lastActionId` in the
+  same atomic write. Only an explicit schedule change can expect doses after restore.
 - **Dose strength:** scheduled doses resolve by Taken time, or due time for Skipped;
   Unscheduled doses resolve by Taken time. Database insertion triggers save period identity,
   strength, label and Quantity unit, including writes from an older Worker during rollout.

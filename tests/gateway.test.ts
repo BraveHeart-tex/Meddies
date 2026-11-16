@@ -5,6 +5,7 @@ import { test, vi } from 'vitest'
 import { send as medicineSend } from '../src/features/medicines/server'
 import { send as scheduleSend } from '../src/features/schedules/server'
 import { PUT } from '../src/app/api/schedules/route'
+import { PATCH as medicinePatch } from '../src/app/api/medicines/route'
 import { POST as editPost } from '../src/app/api/schedules/edit/route'
 import { POST as stopPost } from '../src/app/api/schedules/stop/route'
 import { POST as pausePost } from '../src/app/api/schedules/pause/route'
@@ -399,4 +400,75 @@ test('Unscheduled dose HTTP boundary sends the session owner, decodes receipts a
     await scheduleSend({ operation: 'listOutcomes', ownerId: 'google:test', date: '2026-11-03' }),
     { schedules: [], records: [], unscheduledDoses: [] },
   )
+})
+
+test('restore HTTP operation parses its request and requires an explicit confirmed active receipt', async () => {
+  setAuthenticated(true)
+  const restore = {
+    actionId: '10000000-0000-4000-8000-000000000001',
+    medicineId: '10000000-0000-4000-8000-000000000002',
+    expectedRevision: 1,
+  }
+  const record = {
+    id: restore.medicineId,
+    label: 'Example',
+    strength: '200 mg',
+    unit: 'tablet',
+    revision: 2,
+    lastActionId: restore.actionId,
+    archivedAt: null,
+    currentStrengthRevisionId: restore.medicineId,
+    strengthRevisions: [
+      {
+        id: restore.medicineId,
+        label: 'Example',
+        strength: '200 mg',
+        unit: 'tablet',
+        effectiveAt: '0001-01-01T00:00:00.000Z',
+        previousValues: [],
+      },
+    ],
+    everHadSchedule: true,
+    everHadDose: false,
+    latestTakenAt: null,
+  }
+  const patch = (input: unknown) =>
+    medicinePatch(
+      new Request('https://meddies.test/api/medicines', {
+        method: 'PATCH',
+        headers: { origin: 'https://meddies.test', 'content-type': 'application/json' },
+        body: JSON.stringify({ operation: 'restore', restore: input }),
+      }),
+    )
+  globalThis.fetch = async (_, options) => {
+    assert.deepEqual(JSON.parse(options!.body as string), {
+      operation: 'restore',
+      ownerId: 'google:test',
+      restore,
+    })
+    return Response.json({ medicines: [record] })
+  }
+  const saved = await patch({ ...restore, ownerId: 'google:other' })
+  assert.equal(saved.status, 200)
+  assert.deepEqual(await saved.json(), { medicines: [record] })
+  for (const invalid of [
+    null,
+    { ...restore, actionId: 'bad' },
+    { ...restore, expectedRevision: -1 },
+  ]) {
+    globalThis.fetch = async () => assert.fail('invalid restore reached storage')
+    assert.equal((await patch(invalid)).status, 400)
+  }
+  for (const rows of [
+    [],
+    [record, record],
+    [{ ...record, revision: 1 }],
+    [{ ...record, lastActionId: restore.medicineId }],
+    [{ ...record, id: restore.actionId }],
+    [{ ...record, archivedAt: '2026-11-03T09:00:00.000Z' }],
+    [{ ...record, archivedAt: undefined }],
+  ]) {
+    globalThis.fetch = async () => Response.json({ medicines: rows })
+    assert.equal((await patch(restore)).status, 503)
+  }
 })

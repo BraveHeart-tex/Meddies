@@ -11,6 +11,7 @@ import {
   type DetailCorrection,
   type StrengthChange,
   type MedicineArchive,
+  type MedicineRestore,
 } from '../src/features/medicines/contract'
 import { ApplicationError } from '../src/lib/application-error'
 import { medicineEdits, userMedications } from './schema'
@@ -141,6 +142,41 @@ export async function archiveMedicine(
     .get()
   if (!owned) throw new ApplicationError('validation', 400)
   await db.run(sql`INSERT INTO medicine_archives
+    (owner_id,action_id,medicine_id,expected_revision,confirmed_at,request)
+    VALUES(${ownerId},${input.actionId},${input.medicineId},${input.expectedRevision},${now.toISOString()},${request})
+    ON CONFLICT DO NOTHING`)
+  const saved = await replay()
+  if (!saved) throw new ApplicationError('conflict', 409)
+  return saved
+}
+
+// Restore (#323) uses one receipt insert (0015): archived_at, revision and receipt
+// change atomically. No schedule or reminder is created or replayed. Replay precedes
+// state validation, retaining the exact receipt even after another archive or edit.
+export async function restoreMedicine(
+  db: DrizzleD1Database,
+  ownerId: string,
+  input: MedicineRestore,
+  now: Date,
+) {
+  const request = JSON.stringify(input)
+  const replay = async () => {
+    const row = await db.get<{ request: string; result: string | null }>(
+      sql`SELECT request,result FROM medicine_restores WHERE owner_id=${ownerId} AND action_id=${input.actionId}`,
+    )
+    if (!row) return null
+    if (row.request !== request) throw new ApplicationError('conflict', 409)
+    return { medicines: [parseMedicineRecord(JSON.parse(row.result!))] }
+  }
+  const prior = await replay()
+  if (prior) return prior
+  const owned = await db
+    .select({ id: userMedications.id })
+    .from(userMedications)
+    .where(and(eq(userMedications.ownerId, ownerId), eq(userMedications.id, input.medicineId)))
+    .get()
+  if (!owned) throw new ApplicationError('conflict', 409)
+  await db.run(sql`INSERT INTO medicine_restores
     (owner_id,action_id,medicine_id,expected_revision,confirmed_at,request)
     VALUES(${ownerId},${input.actionId},${input.medicineId},${input.expectedRevision},${now.toISOString()},${request})
     ON CONFLICT DO NOTHING`)
