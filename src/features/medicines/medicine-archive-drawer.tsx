@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, type RefObject } from 'react'
-import { Info, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
@@ -19,18 +19,15 @@ import { useMedicineArchive, type MedicineArchiveAction } from './use-medicine-a
 
 const copy = {
   archive: {
-    description: (label: string) =>
-      `${label} leaves your Medications list. You can restore it later.`,
-    notice:
-      'The schedule stops when the archive saves. Unsent dose, food and refill reminders are cancelled. History stays. Stock is unchanged.',
+    description:
+      'Moves to Archived medications and stops the schedule. Unsent reminders are cancelled. History and stock stay unchanged. You can restore it later.',
     rejected: 'Medication wasn’t archived.',
     pending: 'Archiving...',
     retry: 'Retry archive',
     submit: 'Archive medication',
   },
   restore: {
-    description: (label: string) => `${label} returns to your Medications list.`,
-    notice: 'No schedule or reminders restart. Set a schedule separately when you’re ready.',
+    description: 'Returns to Medications. Its schedule and reminders won’t restart.',
     rejected: 'Medication wasn’t restored.',
     pending: 'Restoring...',
     retry: 'Retry restore',
@@ -115,12 +112,8 @@ export function MedicineArchiveDrawer({
               <X aria-hidden="true" />
             </DrawerClose>
           </div>
-          <DrawerDescription>{text.description(medicine.label)}</DrawerDescription>
+          <DrawerDescription>{text.description}</DrawerDescription>
         </DrawerHeader>
-        <Alert>
-          <Info aria-hidden="true" />
-          <AlertDescription>{text.notice}</AlertDescription>
-        </Alert>
         {(offline || problem || reviewError) && (
           <Alert variant={offline ? 'default' : 'destructive'}>
             <AlertTitle>

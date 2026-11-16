@@ -136,10 +136,9 @@ test('Restore medication opens the 292·S8 confirmation; Close, Escape, backdrop
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Restore Magnesium?' })).toHaveFocus(),
     )
-    expect(within(drawer()).getByText('Magnesium returns to your Medications list.')).toBeVisible()
     expect(
       within(drawer()).getByText(
-        'No schedule or reminders restart. Set a schedule separately when you’re ready.',
+        'Returns to Medications. Its schedule and reminders won’t restart.',
       ),
     ).toBeVisible()
     await dismiss()

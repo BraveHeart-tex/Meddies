@@ -139,6 +139,14 @@ disclosure names the strength based on the Taken time.
 
 For Strength, keep the pack example short: “On the pack, e.g. 200 mg. Not your dose amount.”
 
+- **Archive:** “Moves to Archived medications and stops the schedule. Unsent reminders are
+  cancelled. History and stock stay unchanged. You can restore it later.”
+- **Restore:** “Returns to Medications. Its schedule and reminders won’t restart.”
+- Keep “unsent” so the copy does not promise recall of submitted pushes. An empty Archived
+  medications list needs only its heading; a populated list needs no introductory filler.
+- Delete remains available only for a medication that has never had a schedule or dose, and its
+  confirmation says deletion cannot be undone.
+
 ## Scheduling examples
 
 - Clock times use Istanbul time. Only doses after saving are added.

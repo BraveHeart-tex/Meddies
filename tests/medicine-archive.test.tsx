@@ -103,12 +103,7 @@ test('Archive medication opens the confirmation; Close, Escape, backdrop and Can
     )
     expect(
       within(drawer()).getByText(
-        'Magnesium leaves your Medications list. You can restore it later.',
-      ),
-    ).toBeVisible()
-    expect(
-      within(drawer()).getByText(
-        'The schedule stops when the archive saves. Unsent dose, food and refill reminders are cancelled. History stays. Stock is unchanged.',
+        'Moves to Archived medications and stops the schedule. Unsent reminders are cancelled. History and stock stay unchanged. You can restore it later.',
       ),
     ).toBeVisible()
     await dismiss()

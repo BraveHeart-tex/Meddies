@@ -53,16 +53,9 @@ export function ArchivedMedications({ medicinesRead }: { medicinesRead: Medicine
         <>
           <MedicinesRefreshAlert medicinesRead={medicinesRead} />
           {archived.length === 0 ? (
-            <EmptyState
-              icon={Archive}
-              title="No archived medications"
-              body="Medications you archive will stay here. Their doses stay in History."
-            />
+            <EmptyState icon={Archive} title="No archived medications" />
           ) : (
             <>
-              <p className="text-body-sm text-muted-foreground">
-                Kept out of your daily list. Their doses stay in History.
-              </p>
               <ItemGroup>
                 {archived.map((medicine) => (
                   <Item

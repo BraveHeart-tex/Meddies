@@ -542,8 +542,8 @@ describe('Archived medications', () => {
       await screen.findByRole('heading', { level: 1, name: 'Archived medications' }),
     ).toBeVisible()
     expect(
-      screen.getByText('Kept out of your daily list. Their doses stay in History.'),
-    ).toBeVisible()
+      screen.queryByText('Kept out of your daily list. Their doses stay in History.'),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /^Archived 2/ })).toHaveTextContent(
       '400 mg · tablet · Archived',
     )
@@ -561,8 +561,8 @@ describe('Archived medications', () => {
     renderAt('?archived')
     expect(await screen.findByRole('heading', { name: 'No archived medications' })).toBeVisible()
     expect(
-      screen.getByText('Medications you archive will stay here. Their doses stay in History.'),
-    ).toBeVisible()
+      screen.queryByText('Medications you archive will stay here. Their doses stay in History.'),
+    ).not.toBeInTheDocument()
   })
 
   test('an Archived medicine opens read-only: Restore is its only action, with no edit, Archive or dose action', async () => {
