@@ -212,6 +212,13 @@ keyboard focus and swipe dismissal, including refusal while pending:
 MEDDIES_ARCHIVE_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-archive pnpm test:browser:visual screen-capture --grep "medication archive"
 ```
 
+Restore confirmation and the restored detail (2 screenshots at 402x874) check the same keyboard
+focus and swipe dismissal, plus Log a dose before Set schedule:
+
+```sh
+MEDDIES_RESTORE_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-restore pnpm test:browser:visual screen-capture --grep "medication restore"
+```
+
 `cozy-visual` saves design-review screenshots at the running project's viewport; set
 `MEDDIES_VISUAL_OUT` to keep them outside `.browser-artifacts/`.
 

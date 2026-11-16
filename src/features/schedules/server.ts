@@ -60,6 +60,8 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
         if (replacedAt != null && !isInstant(replacedAt)) throw new Error('contract')
         const basedOnId = (value as Record<string, unknown>).basedOnId
         if (basedOnId != null && typeof basedOnId !== 'string') throw new Error('contract')
+        const archiveStop = (value as Record<string, unknown>).archiveStop
+        if (archiveStop !== undefined && archiveStop !== true) throw new Error('contract')
         return {
           ...schedule,
           confirmedAt,
@@ -68,6 +70,7 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
           ...(stoppedAt === undefined ? {} : { stoppedAt: stoppedAt as string | null }),
           ...(basedOnId === undefined ? {} : { basedOnId: basedOnId as string | null }),
           ...(replacedAt === undefined ? {} : { replacedAt: replacedAt as string | null }),
+          ...(archiveStop ? { archiveStop } : {}),
         }
       })
     }

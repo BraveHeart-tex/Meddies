@@ -644,3 +644,71 @@ test(
     await page.screenshot({ path: resolve(out!, 'archive-result-402.png'), fullPage: true })
   },
 )
+
+// Opt-in #328 restore evidence (292·S8, 292·S9), including real pointer dismissal and keyboard focus.
+test(
+  'capture medication restore confirmation and result',
+  { tag: '@visual' },
+  async ({ page, app }) => {
+    // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
+    test.skip(!out || process.env.MEDDIES_RESTORE_CAPTURE !== '1', 'Set MEDDIES_RESTORE_CAPTURE=1')
+    await mkdir(resolve(out!), { recursive: true })
+    await page.setViewportSize(captureCases.phone.viewport)
+    const id = '00000000-0000-4000-8000-0000000a0328'
+    await app.api('POST', '/api/medicines', {
+      id,
+      label: 'Magnesium',
+      strength: '400 mg',
+      unit: 'tablet',
+    })
+    await app.api('POST', '/api/schedules', {
+      id: '00000000-0000-4000-8000-0000000b0328',
+      medicineId: id,
+      startDate: today,
+      times: [{ time: '20:00', quantity: 1 }],
+    })
+    await page.goto('/medications')
+    expect(await archiveMedicine(page, id)).toMatch(/^200 /)
+    await page.goto(`/medications?medicine=${id}`)
+    const action = page.getByRole('button', { name: 'Restore medication' })
+    const confirmation = page.getByRole('dialog', { name: 'Restore Magnesium?' })
+    await action.click()
+    await expect(page.getByRole('heading', { name: 'Restore Magnesium?' })).toBeFocused()
+    await dragHandle(page, 260)
+    await expect(confirmation).toBeHidden()
+    await expect(action).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(confirmation).toBeVisible()
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('button', { name: 'Close' })).toBeFocused()
+    await page.keyboard.press('Tab')
+    const submit = confirmation.getByRole('button', { name: 'Restore medication' })
+    await expect(submit).toBeFocused()
+    await expect.poll(() => scrollsHorizontally(page)).toBe(false)
+    await page.screenshot({
+      path: resolve(out!, 'restore-confirmation-402.png'),
+      fullPage: true,
+      animations: 'disabled',
+    })
+    const restore = { method: 'POST', path: '/medicines', operation: 'restore' }
+    app.worker.hold(restore)
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('button', { name: 'Restoring...' })).toBeDisabled()
+    await page.keyboard.press('Escape')
+    await dragHandle(page, 260)
+    await expect(confirmation).toBeVisible()
+    app.worker.release(restore)
+    await expect(confirmation).toBeHidden()
+    await expect(page).toHaveURL(`${app.origin}/medications?medicine=${id}`)
+    await expect(page.getByText('Magnesium restored', { exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Magnesium', exact: true })).toBeFocused()
+    // Keyboard order on the restored detail: Log a dose leads, Set schedule follows.
+    const logDose = page.getByRole('button', { name: 'Log a dose' })
+    await logDose.focus()
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('link', { name: 'Set schedule' })).toBeFocused()
+    await page.getByRole('heading', { name: 'Magnesium', exact: true }).focus()
+    await expect.poll(() => scrollsHorizontally(page)).toBe(false)
+    await page.screenshot({ path: resolve(out!, 'restore-result-402.png'), fullPage: true })
+  },
+)

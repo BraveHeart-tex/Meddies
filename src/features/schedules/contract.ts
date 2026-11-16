@@ -32,7 +32,19 @@ export type DailySchedule = DailyScheduleInput & {
   /** Pause Edit time; no occurrences while this version is paused. */
   pausedAt?: string | null
   replacedAt?: string | null
+  /** The stop version an archive appended (#322); a restored Medicine reads "No schedule". */
+  archiveStop?: boolean
 }
+
+/**
+ * The Medicine's current Schedule version as screens read it: a restored Medicine whose head is
+ * still its archive's stop version has no schedule (#275 record rules, #328).
+ */
+export function currentSchedule(schedules: DailySchedule[], medicineId: string) {
+  const head = schedules.find((item) => item.medicineId === medicineId)
+  return head?.archiveStop ? undefined : head
+}
+
 export type ScheduleResumeInput = {
   id: string
   basedOnId: string

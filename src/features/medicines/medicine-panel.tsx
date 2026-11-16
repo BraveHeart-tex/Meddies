@@ -39,6 +39,9 @@ export function MedicinePanel({
   // Done for now hands focus to the saved medicine's list row.
   const [focusMedicineId, setFocusMedicineId] = useState<string | null>(null)
   const [archive, setArchive] = useState<{ medicine: Medicine; open: boolean } | null>(null)
+  const [restore, setRestore] = useState<{ medicine: Medicine; open: boolean } | null>(null)
+  // The restore this panel confirmed (292·S9), until the user leaves that medicine's page.
+  const [restoredId, setRestoredId] = useState<string | null>(null)
   const [deletion, setDeletion] = useState<{ medicine: Medicine; open: boolean } | null>(null)
   const [deletedLabel, setDeletedLabel] = useState<string | null>(null)
   const [recordMessage, setRecordMessage] = useState<string | null>(null)
@@ -66,6 +69,8 @@ export function MedicinePanel({
     setPreviousScreen(screen)
     if (deletedLabel && scheduleMode !== 'list') setDeletedLabel(null)
     if (recordMessage && (record || scheduleMode !== 'detail')) setRecordMessage(null)
+    if (restoredId && (record || scheduleMode !== 'detail' || detailMedicineId !== restoredId))
+      setRestoredId(null)
     if (savedMedicine && scheduleMode !== 'add' && !justSavedHere) setSavedMedicine(null)
     if (scheduledMedicine && scheduleMode !== 'setup' && !justScheduledHere)
       setScheduledMedicine(null)
@@ -109,7 +114,12 @@ export function MedicinePanel({
         </Alert>
       )}
       <SchedulePanel
-        onArchiveRequested={(medicine) => setArchive({ medicine, open: true })}
+        onArchiveRequested={(medicine) => {
+          setRestoredId(null)
+          setArchive({ medicine, open: true })
+        }}
+        onRestoreRequested={(medicine) => setRestore({ medicine, open: true })}
+        justRestored={scheduleMode === 'detail' && !record && restoredId === detailMedicineId}
         onDeleteRequested={(medicine) => setDeletion({ medicine, open: true })}
         record={record}
         periodId={periodId}
@@ -152,7 +162,27 @@ export function MedicinePanel({
           }
           onClose={() => setArchive({ ...archive, open: false })}
           // The confirmed record is cached, so this same page now shows the archived detail.
-          onArchived={() => setArchive({ ...archive, open: false })}
+          onSaved={() => setArchive({ ...archive, open: false })}
+          heading={detailHeading}
+        />
+      )}
+      {restore && (
+        <MedicineArchiveDrawer
+          key={`restore-${restore.medicine.id}`}
+          action="restore"
+          medicine={restore.medicine}
+          open={
+            restore.open &&
+            scheduleMode === 'detail' &&
+            !record &&
+            detailMedicineId === restore.medicine.id
+          }
+          onClose={() => setRestore({ ...restore, open: false })}
+          // The confirmed record is cached, so this same page now shows the restored detail.
+          onSaved={() => {
+            setRestore({ ...restore, open: false })
+            setRestoredId(restore.medicine.id)
+          }}
           heading={detailHeading}
         />
       )}

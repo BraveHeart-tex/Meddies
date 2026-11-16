@@ -93,6 +93,8 @@ owner.
   `archivedAt`; restore clears `archivedAt` without changing any Schedule version or replaying
   reminders. Each stores its exact retry receipt with revision + 1 and `lastActionId` in the
   same atomic write. Only an explicit schedule change can expect doses after restore.
+  Schedule reads mark an archive's stop version `archiveStop: true`; while it is a restored
+  Medicine's current version, screens read "No schedule" and Set schedule changes from it.
   `PATCH /api/medicines` accepts `delete` with an action UUID and expected medication
   revision only while both permanent usage facts are false. One receipt insert deletes
   the Medicine, strength revisions and record edit/archive/restore data atomically.

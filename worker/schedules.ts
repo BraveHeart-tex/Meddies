@@ -13,6 +13,8 @@
 //   A restart is a normal edit and never restores doses from the stopped period.
 // - Pause appends the same routine, start and Last day with `pausedAt` at the Edit time.
 //   Paused versions expect no doses; they reject changes and pauses but allow Stop.
+// - Reads mark an archive's stop version (0014, edit_request operation `archive`) with
+//   `archiveStop: true`, so a restored Medicine reads "No schedule" (#328).
 // - Resume requires a paused, non-Ended version and keeps its routine and Last day.
 //   Resume keeps its start date; Interval requires a new Anchor date/time, today or later.
 import { listUnscheduledDoses } from './doses/unscheduled'
@@ -52,11 +54,17 @@ const scheduleColumns = {
 }
 
 async function listSchedules(db: DrizzleD1Database, ownerId: string): Promise<DailySchedule[]> {
-  return db
-    .select(scheduleColumns)
+  const rows = await db
+    .select({
+      ...scheduleColumns,
+      archiveStop: sql<
+        number | null
+      >`json_extract(${dailySchedules.editRequest}, '$.operation') = 'archive'`,
+    })
     .from(dailySchedules)
     .where(eq(dailySchedules.ownerId, ownerId))
     .orderBy(asc(dailySchedules.id))
+  return rows.map(({ archiveStop, ...row }) => (archiveStop ? { ...row, archiveStop: true } : row))
 }
 
 // Legacy reads deliberately return immutable Taken originals, including corrected ones.

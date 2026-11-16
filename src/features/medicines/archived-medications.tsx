@@ -92,15 +92,20 @@ export function ArchivedMedications({ medicinesRead }: { medicinesRead: Medicine
   )
 }
 
-/** An Archived medicine's read-only detail (#330): no edit, Archive or new-dose action. */
+/**
+ * An Archived medicine's read-only detail (#330): no edit, Archive or new-dose action. Restore
+ * medication opens its confirmation (#328, 292·S8).
+ */
 export function ArchivedMedicationDetail({
   medicine,
   medicinesRead,
   headingRef,
+  onRestoreRequested,
 }: {
   medicine: Medicine
   medicinesRead: MedicinesRead
   headingRef?: Ref<HTMLHeadingElement>
+  onRestoreRequested?: (medicine: Medicine) => void
 }) {
   return (
     <div className="flex flex-col gap-5 [overflow-wrap:anywhere]">
@@ -118,6 +123,15 @@ export function ArchivedMedicationDetail({
           The schedule has stopped. Reminders are cancelled. Stock is unchanged.
         </AlertDescription>
       </Alert>
+      {typeof medicine.revision === 'number' && onRestoreRequested && (
+        <Button
+          id={`restore-medicine-${medicine.id}`}
+          size="lg"
+          onClick={() => onRestoreRequested(medicine)}
+        >
+          Restore medication
+        </Button>
+      )}
       <ItemGroup>
         <Item
           variant="card"

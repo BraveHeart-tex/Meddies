@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import type { Medicine } from '@/features/medicines/contract'
 import { formatShortDay } from '@/lib/calendar-date'
-import { istanbulDate, type DailySchedule } from './contract'
+import { currentSchedule, istanbulDate, type DailySchedule } from './contract'
 import { intervalRowSummary } from './interval-dose-list'
 import { intervalAnchor, intervalLabel, nextIntervalDoses } from './interval-preview'
 import { pausedSinceLine } from './clock-schedule-card'
@@ -56,7 +56,7 @@ export function MedicationRoutineGroups({
   }, [focusMedicineId, onMedicineFocused])
   const routines = medicines.map((medicine) => ({
     medicine,
-    schedule: schedules.find((item) => item.medicineId === medicine.id),
+    schedule: currentSchedule(schedules, medicine.id),
   }))
   const today = istanbulDate(new Date(now))
   const isEnded = (schedule: DailySchedule) => Boolean(endedOn(schedule, today))

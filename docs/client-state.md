@@ -31,6 +31,11 @@ browser storage is used. Losing it on reload, app closure or browser eviction is
   `archivedAt`. After cancelling older reads it publishes that record and the head Schedule
   version's stop successor (the server's, keyed by the action ID). Schedule versions only advance
   in snapshot merges, so late reads and hydration cannot return the Medicine to future doses.
+  The published stop carries `archiveStop` like the server's.
+- **Medicine restore** confirms only from a record bearing its action ID, revision + 1 and no
+  `archivedAt`. After cancelling older reads it publishes that record and invalidates medicine
+  and schedule reads; it changes no Schedule version. Revision merges keep a delayed archived
+  read or hydration from returning it to Archived medications.
 - **Unscheduled doses** have no read of their own: Today's snapshot read and each History
   date read carry their date's Unscheduled doses and seed `['schedules', 'unscheduled', date]`.
   A confirmed change or removal stays cached at its new revision, so a stale read never

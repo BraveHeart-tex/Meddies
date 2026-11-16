@@ -15,26 +15,51 @@ import {
 import { saveMessages } from '@/lib/save-messages'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import type { Medicine } from './contract'
-import { useMedicineArchive } from './use-medicine-archive'
+import { useMedicineArchive, type MedicineArchiveAction } from './use-medicine-archive'
 
-/** #327: explicit archive confirmation. Dismissal discards; navigation keeps the attempt.
- * A confirmed archive leaves the user on the same page, now the archived detail.
+const copy = {
+  archive: {
+    description: (label: string) =>
+      `${label} leaves your Medications list. You can restore it later.`,
+    notice:
+      'The schedule stops when the archive saves. Unsent dose, food and refill reminders are cancelled. History stays. Stock is unchanged.',
+    rejected: 'Medication wasn’t archived.',
+    pending: 'Archiving...',
+    retry: 'Retry archive',
+    submit: 'Archive medication',
+  },
+  restore: {
+    description: (label: string) => `${label} returns to your Medications list.`,
+    notice: 'No schedule or reminders restart. Set a schedule separately when you’re ready.',
+    rejected: 'Medication wasn’t restored.',
+    pending: 'Restoring...',
+    retry: 'Retry restore',
+    submit: 'Restore medication',
+  },
+} satisfies Record<MedicineArchiveAction, unknown>
+
+/** #327 archive (292·S5) and #328 restore (292·S8) confirmation. Dismissal discards; navigation
+ * keeps the attempt. A confirmed save leaves the user on the same page, now the archived or the
+ * restored detail.
  */
 export function MedicineArchiveDrawer({
   medicine,
   open,
   onClose,
-  onArchived,
+  onSaved,
   heading,
+  action = 'archive',
 }: {
   medicine: Medicine
   open: boolean
   onClose: () => void
-  onArchived: () => void
-  /** The page heading: the archived detail has no trigger to return focus to. */
+  onSaved: () => void
+  /** The page heading: after a confirmed save the trigger is gone. */
   heading: RefObject<HTMLHeadingElement | null>
+  action?: MedicineArchiveAction
 }) {
-  const save = useMedicineArchive(medicine, open, onArchived)
+  const save = useMedicineArchive(medicine, open, onSaved, action)
+  const text = copy[action]
   const offline = useKnownOffline()
   const title = useRef<HTMLHeadingElement>(null)
   const [reviewing, setReviewing] = useState(false)
@@ -64,8 +89,9 @@ export function MedicineArchiveDrawer({
       open={open}
       onOpenChangeComplete={(next) => {
         if (next) return
-        // Wait until the closing scrim releases focus. The archived detail has no trigger.
-        const target = document.getElementById(`archive-medicine-${medicine.id}`) ?? heading.current
+        // Wait until the closing scrim releases focus. After a save the trigger is gone.
+        const target =
+          document.getElementById(`${action}-medicine-${medicine.id}`) ?? heading.current
         target?.focus({ preventScroll: true })
       }}
       disablePointerDismissal={busy}
@@ -79,7 +105,7 @@ export function MedicineArchiveDrawer({
         <DrawerHeader>
           <div className="flex items-start justify-between gap-3">
             <DrawerTitle ref={title} tabIndex={-1} className="outline-none">
-              Archive {medicine.label}?
+              {action === 'archive' ? 'Archive' : 'Restore'} {medicine.label}?
             </DrawerTitle>
             <DrawerClose
               disabled={busy}
@@ -89,16 +115,11 @@ export function MedicineArchiveDrawer({
               <X aria-hidden="true" />
             </DrawerClose>
           </div>
-          <DrawerDescription>
-            {medicine.label} leaves your Medications list. You can restore it later.
-          </DrawerDescription>
+          <DrawerDescription>{text.description(medicine.label)}</DrawerDescription>
         </DrawerHeader>
         <Alert>
           <Info aria-hidden="true" />
-          <AlertDescription>
-            The schedule stops when the archive saves. Unsent dose, food and refill reminders are
-            cancelled. History stays. Stock is unchanged.
-          </AlertDescription>
+          <AlertDescription>{text.notice}</AlertDescription>
         </Alert>
         {(offline || problem || reviewError) && (
           <Alert variant={offline ? 'default' : 'destructive'}>
@@ -111,7 +132,7 @@ export function MedicineArchiveDrawer({
                     ? saveMessages.mightNotHaveSaved
                     : problem === 'conflict'
                       ? 'This medication changed elsewhere.'
-                      : 'Medication wasn’t archived.'}
+                      : text.rejected}
             </AlertTitle>
             <AlertDescription>
               {offline
@@ -131,12 +152,12 @@ export function MedicineArchiveDrawer({
         ) : (
           <Button size="drawer" disabled={busy || offline} onClick={() => void save.submit()}>
             {save.pending
-              ? 'Archiving...'
+              ? text.pending
               : offline
                 ? saveMessages.connectToSave
                 : problem === 'unconfirmed'
-                  ? 'Retry archive'
-                  : 'Archive medication'}
+                  ? text.retry
+                  : text.submit}
           </Button>
         )}
         <Button variant="ghost" disabled={busy} onClick={dismiss}>

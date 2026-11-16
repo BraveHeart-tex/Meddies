@@ -4,18 +4,25 @@ import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { requestSave, sessionSaves } from '@/lib/session-saves'
 import { parseMedicineRecord, type Medicine } from './contract'
-import { confirmMedicineArchive } from './confirm-medicine-archive'
+import { confirmMedicineArchive, confirmMedicineRestore } from './confirm-medicine-archive'
 import { medicinesQuery } from './queries'
 import { medicationRecordHref } from './routes'
 
-/** Session-owned archive (#327): only a record bearing this action, revision + 1 and `archivedAt`
- * confirms it. Navigation hides the observer; the shared feedback host takes over without
- * cancelling the save.
+export type MedicineArchiveAction = 'archive' | 'restore'
+
+/** Session-owned archive (#327) or restore (#328): only a record bearing this action, revision + 1
+ * and `archivedAt` set (archive) or cleared (restore) confirms it. Navigation hides the observer;
+ * the shared feedback host takes over without cancelling the save.
  */
-export function useMedicineArchive(medicine: Medicine, open: boolean, onArchived: () => void) {
+export function useMedicineArchive(
+  medicine: Medicine,
+  open: boolean,
+  onSaved: () => void,
+  action: MedicineArchiveAction = 'archive',
+) {
   const client = useQueryClient()
   const store = sessionSaves(client)
-  const key = `medicine:${medicine.id}:archive`
+  const key = `medicine:${medicine.id}:${action}`
   useSyncExternalStore(store.subscribe, store.snapshot, store.snapshot)
   const attempt = store.entries.get(key)
   const handled = useRef<unknown>(undefined)
@@ -25,9 +32,9 @@ export function useMedicineArchive(medicine: Medicine, open: boolean, onArchived
   useEffect(() => {
     if (!open || !store.active || !attempt?.result?.saved || handled.current === attempt) return
     handled.current = attempt
-    onArchived()
+    onSaved()
     store.clear(key)
-  }, [attempt, key, onArchived, open, store])
+  }, [attempt, key, onSaved, open, store])
   return {
     pending: attempt?.status === 'pending',
     problem: attempt?.result?.problem,
@@ -52,10 +59,10 @@ export function useMedicineArchive(medicine: Medicine, open: boolean, onArchived
           kind: 'medicine',
           href: medicationRecordHref(medicine.id),
           openHref: medicationRecordHref(medicine.id),
-          savedTitle: `${medicine.label} archived`,
+          savedTitle: `${medicine.label} ${action === 'archive' ? 'archived' : 'restored'}`,
         },
         async (payload, active) => {
-          const archive = {
+          const edit = {
             actionId: payload.id,
             medicineId: payload.medicineId,
             expectedRevision: payload.expectedRevision,
@@ -63,21 +70,21 @@ export function useMedicineArchive(medicine: Medicine, open: boolean, onArchived
           function match(value: unknown) {
             const saved = parseMedicineRecord(value)
             if (
-              saved.id !== archive.medicineId ||
-              saved.lastActionId !== archive.actionId ||
-              saved.revision !== (archive.expectedRevision as number) + 1 ||
-              !saved.archivedAt
+              saved.id !== edit.medicineId ||
+              saved.lastActionId !== edit.actionId ||
+              saved.revision !== (edit.expectedRevision as number) + 1 ||
+              Boolean(saved.archivedAt) !== (action === 'archive')
             )
-              throw new Error('Medicine archive receipt does not match attempt')
+              throw new Error(`Medicine ${action} receipt does not match attempt`)
             return saved
           }
           let result = await requestSave(
             '/api/medicines',
-            { operation: 'archive', archive },
+            { operation: action, [action]: edit },
             (data) =>
               match(
                 (data as { medicines?: unknown[] }).medicines?.find(
-                  (value) => (value as { id?: string }).id === archive.medicineId,
+                  (value) => (value as { id?: string }).id === edit.medicineId,
                 ),
               ),
             'PATCH',
@@ -85,12 +92,17 @@ export function useMedicineArchive(medicine: Medicine, open: boolean, onArchived
           if (result.problem === 'unconfirmed' && active()) {
             try {
               const list = await client.fetchQuery({ ...medicinesQuery(client), staleTime: 0 })
-              result = { saved: match(list.find((item) => item.id === archive.medicineId)) }
+              result = { saved: match(list.find((item) => item.id === edit.medicineId)) }
             } catch {
               /* Only the same action confirms an unknown receipt. */
             }
           }
-          if (result.saved && active()) await confirmMedicineArchive(client, result.saved, active)
+          if (result.saved && active())
+            await (action === 'archive' ? confirmMedicineArchive : confirmMedicineRestore)(
+              client,
+              result.saved,
+              active,
+            )
           return result
         },
       ),

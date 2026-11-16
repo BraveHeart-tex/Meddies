@@ -32,6 +32,8 @@ export function SchedulePanel({
   periodId,
   onRecordSaved,
   onArchiveRequested,
+  onRestoreRequested,
+  justRestored,
   onDeleteRequested,
 }: {
   /** The server scheduling time at render, until a newer schedules snapshot replaces it. */
@@ -50,6 +52,9 @@ export function SchedulePanel({
   record?: 'fix' | 'strength' | 'history'
   periodId?: string
   onArchiveRequested?: (medicine: Medicine) => void
+  onRestoreRequested?: (medicine: Medicine) => void
+  /** This panel confirmed the detail medicine's restore (292·S9). */
+  justRestored?: boolean
   onDeleteRequested?: (medicine: Medicine) => void
   onRecordSaved?: (medicine: MedicineRecord, kind: 'fix' | 'strength') => void
   detailHeadingRef?: Ref<HTMLHeadingElement>
@@ -101,6 +106,8 @@ export function SchedulePanel({
             now={now}
             actions={detailActions}
             onArchiveRequested={onArchiveRequested}
+            onRestoreRequested={onRestoreRequested}
+            justRestored={justRestored}
             onDeleteRequested={onDeleteRequested}
             justSaved={justSaved}
             justScheduled={justScheduled}

@@ -178,7 +178,7 @@ export function ScheduleSetupForm({
       >
         <ScheduleSetupHeader
           label={medicine.label}
-          subtitle={current ? 'Change schedule' : 'Set schedule'}
+          subtitle={current && !current.archiveStop ? 'Change schedule' : 'Set schedule'}
           onCancel={cancel}
         />
         <MedicinesRefreshAlert medicinesRead={medicinesRead} />

@@ -565,7 +565,7 @@ describe('Archived medications', () => {
     ).toBeVisible()
   })
 
-  test('an Archived medicine opens read-only, with no Restore, edit, Archive or dose action', async () => {
+  test('an Archived medicine opens read-only: Restore is its only action, with no edit, Archive or dose action', async () => {
     medicinesApi(mixed)
     cache(mixed)
     const { user, rerender } = renderAt('?archived')
@@ -582,7 +582,8 @@ describe('Archived medications', () => {
     expect(screen.getByRole('link', { name: 'Strength history' })).toBeVisible()
     for (const name of [/restore/i, /fix a mistake/i, /change strength/i, /archive medication/i])
       expect(screen.queryByRole('link', { name })).not.toBeInTheDocument()
-    for (const name of [/restore/i, /archive/i, /log a dose/i, /set schedule/i])
+    expect(screen.getByRole('button', { name: 'Restore medication' })).toBeVisible()
+    for (const name of [/archive/i, /log a dose/i, /set schedule/i])
       expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Set schedule' })).not.toBeInTheDocument()
   })

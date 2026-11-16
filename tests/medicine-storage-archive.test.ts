@@ -110,6 +110,9 @@ test('archive stops the schedule at the Edit time and keeps due and recorded dos
   const snapshot = await f.schedules.snapshot()
   const head = snapshot.schedules.find((s) => s.basedOnId === f.scheduleId)
   assert.equal(head?.stoppedAt, '2026-11-03T11:00:00.000Z')
+  // #328: reads mark only the archive's stop version, so a restored Medicine reads No schedule.
+  assert.equal(head?.archiveStop, true)
+  assert.equal(snapshot.schedules.find((s) => s.id === f.scheduleId)?.archiveStop, undefined)
   // Due by the Edit time and the already recorded later dose stay; nothing after is expected.
   assert.deepEqual(doses(snapshot), [
     ['2026-11-02T17:00:00.000Z', 'Not logged'],
@@ -335,8 +338,10 @@ test('restore preserves recorded facts and stopped schedules until an explicit c
   // Restart is explicit and only doses strictly after its Edit time are expected.
   const stopped = snapshot.schedules.find((s) => s.stoppedAt)
   assert.ok(stopped)
+  assert.equal(stopped.archiveStop, true)
+  const restartId = randomUUID()
   await f.schedules.edit({
-    id: randomUUID(),
+    id: restartId,
     basedOnId: stopped.id,
     endDate: null,
     times: [
@@ -345,9 +350,9 @@ test('restore preserves recorded facts and stopped schedules until an explicit c
     ],
   })
   f.setNow('2026-11-04T18:00:00.000Z')
-  assert.deepEqual(doses(await f.schedules.snapshot()), [
-    ['2026-11-04T17:00:00.000Z', 'Not logged'],
-  ])
+  const restarted = await f.schedules.snapshot()
+  assert.deepEqual(doses(restarted), [['2026-11-04T17:00:00.000Z', 'Not logged']])
+  assert.equal(restarted.schedules.find((s) => s.id === restartId)?.archiveStop, undefined)
 })
 
 test('restore receipts replay exactly while changed requests and stale or foreign state write nothing', async () => {

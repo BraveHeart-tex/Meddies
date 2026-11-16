@@ -243,4 +243,28 @@ test('detail correction retains its draft and pending save across navigation, th
     await expect(page.getByText('Kept in History')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Archive medication' })).toHaveCount(0)
   })
+
+  // Allowed reason: data consistency across routes.
+  await test.step('a restore returns the archived medication to Medications with No schedule', async () => {
+    const nav = page.getByRole('navigation', { name: 'Primary' })
+    await page.getByRole('button', { name: 'Restore medication' }).click()
+    await page
+      .getByRole('dialog', { name: 'Restore Magnesium?' })
+      .getByRole('button', { name: 'Restore medication' })
+      .click()
+    await expect(page.getByText('Magnesium restored', { exact: true })).toBeVisible()
+    await expect(page.getByText('No schedule', { exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Set schedule' })).toBeVisible()
+    await nav.getByRole('link', { name: 'Medications' }).click()
+    await expect(page.getByRole('link', { name: 'View details for Magnesium' })).toBeVisible()
+    await page.getByRole('link', { name: 'Archived medications' }).click()
+    await expect(page.getByText('No archived medications', { exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: /^Magnesium/ })).toHaveCount(0)
+    // A fresh load reads the same from the server.
+    await page.reload()
+    await expect(page.getByRole('link', { name: /^Magnesium/ })).toHaveCount(0)
+    await page.goto('/medications')
+    await page.getByRole('link', { name: 'View details for Magnesium' }).click()
+    await expect(page.getByText('No schedule', { exact: true })).toBeVisible()
+  })
 })

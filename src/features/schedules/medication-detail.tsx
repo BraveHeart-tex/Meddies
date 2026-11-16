@@ -1,10 +1,9 @@
 'use client'
 
-import { Archive, Clock, History, Pencil } from 'lucide-react'
+import { Archive, Clock, History, Info, Pencil } from 'lucide-react'
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
 import { useState, type ReactNode, type Ref } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { scheduleToday } from './occurrences'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { LoadingSection } from '@/components/ui/skeleton'
@@ -26,7 +25,7 @@ import type { Medicine } from '@/features/medicines/contract'
 import type { MedicinesRead } from '@/features/medicines/queries'
 import { medicationRecordHref, medicationSetupHref } from '@/features/medicines/routes'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
-import { istanbulDate, type DailySchedule } from './contract'
+import { currentSchedule, istanbulDate, type DailySchedule } from './contract'
 import { ClockScheduleCard } from './clock-schedule-card'
 import { intervalAnchor } from './interval-preview'
 import { IntervalScheduleCard } from './interval-schedule-card'
@@ -90,6 +89,8 @@ export function MedicationDetail({
   onResumed,
   headingRef,
   onArchiveRequested,
+  onRestoreRequested,
+  justRestored = false,
   onDeleteRequested,
 }: {
   medicineId: string
@@ -104,6 +105,9 @@ export function MedicationDetail({
   resumed?: DailySchedule | null
   onResumed: (resumed: DailySchedule) => void
   onArchiveRequested?: (medicine: Medicine) => void
+  onRestoreRequested?: (medicine: Medicine) => void
+  /** This screen confirmed the restore (292·S9). */
+  justRestored?: boolean
   onDeleteRequested?: (medicine: Medicine) => void
   headingRef?: Ref<HTMLHeadingElement>
 }) {
@@ -142,10 +146,11 @@ export function MedicationDetail({
         medicine={medicine}
         medicinesRead={medicinesRead}
         headingRef={headingRef}
+        onRestoreRequested={onRestoreRequested}
       />
     )
 
-  const schedule = schedules.find((item) => item.medicineId === medicineId)
+  const schedule = currentSchedule(schedules, medicineId)
   const today = istanbulDate(new Date(now))
   // A Last day passes at midnight on the live clock.
   const liveToday = istanbulDate(new Date(liveNow))
@@ -187,6 +192,13 @@ export function MedicationDetail({
               at {formatTime(first.dueAt)}.
             </AlertDescription>
           )}
+        </Alert>
+      )}
+      {justRestored && (
+        <Alert role="status" aria-label="Restored medication">
+          <Info aria-hidden="true" />
+          <AlertTitle>{medicine.label} restored</AlertTitle>
+          <AlertDescription>No schedule has restarted. Set one when you’re ready.</AlertDescription>
         </Alert>
       )}
       {stopped?.stoppedAt && schedule?.id === stopped.id && (
@@ -244,11 +256,12 @@ export function MedicationDetail({
           </>
         ) : (
           // A complete record for occasional use, not unfinished setup (#275 record rules).
-          <Card>
-            <CardHeader>
-              <CardTitle>No schedule</CardTitle>
-            </CardHeader>
-          </Card>
+          <Item variant="card">
+            <ItemContent>
+              <ItemTitle>No schedule</ItemTitle>
+              <ItemDescription>Log a dose whenever you take one.</ItemDescription>
+            </ItemContent>
+          </Item>
         )}
       </section>
       <LogDose medicine={medicine} primary={unscheduled} />

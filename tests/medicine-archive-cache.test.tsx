@@ -91,7 +91,12 @@ test('a confirmed archive stays what Medications, Archived medications, Today an
   const stop = client
     .getQueryData<ScheduleSnapshot>(scheduleKeys.snapshot())!
     .schedules.find((item) => item.id === actionId)
-  expect(stop).toMatchObject({ basedOnId: schedule.id, stoppedAt: now, confirmedAt: now })
+  expect(stop).toMatchObject({
+    basedOnId: schedule.id,
+    stoppedAt: now,
+    confirmedAt: now,
+    archiveStop: true,
+  })
 
   // A full stale read completes after the archive.
   await client.fetchQuery({ ...medicinesQuery(client), staleTime: 0 })
