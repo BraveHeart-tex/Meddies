@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { expect } from './fixtures'
-import { drawerHandle } from './locators'
+import { drawer, drawerHandle } from './locators'
 
 /**
  * Drag the drawer handle down by `distance` CSS px with a mouse pointer. Waits for the drawer
@@ -34,21 +34,43 @@ export async function touchSwipeFrom(page: Page, start: Locator, distance: numbe
 
 /** The middle of `target` once the drawer has come to rest. */
 async function restingCenter(page: Page, target: Locator) {
-  let lastY: number | undefined
-  await expect
-    .poll(
-      async () => {
-        const y = (await drawerHandle(page).boundingBox())?.y
-        const settled = y !== undefined && y === lastY
-        lastY = y
-        return settled
-      },
-      { message: 'drawer must come to rest before a drag', intervals: [100] },
-    )
-    .toBe(true)
+  await drawerAtRest(page)
   const box = await target.boundingBox()
   if (!box) throw new Error('drag start is not rendered')
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+}
+
+/**
+ * Wait until the open drawer holds still: no opening, closing or swipe state, and the same box
+ * on two polls 100ms apart.
+ */
+export async function drawerAtRest(page: Page) {
+  const popup = drawer(page)
+  let last: string | undefined
+  await expect
+    .poll(
+      async () => {
+        const states = await Promise.all(
+          ['data-starting-style', 'data-ending-style', 'data-swiping'].map((name) =>
+            popup.getAttribute(name),
+          ),
+        )
+        const moving = states.some((state) => state !== null)
+        const box = await popup.boundingBox()
+        const current = moving || !box ? undefined : JSON.stringify(box)
+        const settled = current !== undefined && current === last
+        last = current
+        return settled
+      },
+      { message: 'drawer must come to rest', intervals: [100] },
+    )
+    .toBe(true)
+}
+
+/** The open drawer's bottom edge in CSS px, rounded, or null while it is not rendered. */
+export async function drawerBottom(page: Page) {
+  const box = await drawer(page).boundingBox()
+  return box && Math.round(box.y + box.height)
 }
 
 /** Press the backdrop above the content-sized drawer. */

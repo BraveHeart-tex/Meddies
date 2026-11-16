@@ -182,8 +182,11 @@ feedback includes offline, conflict, Unconfirmed save, changed details and Skipp
 (5 screenshots named `save-…-402.png`). These use normal text at 402x874 and retain their
 interaction assertions. The save recovery case also captures scheduled and Unscheduled
 success receipts with 200% text at 402px and 320px, checks the drawer heading, Amount name,
-reachable save action, no horizontal overflow and the receipt's polite live announcement. Run all
-three affected capture groups in one invocation:
+reachable save action, no horizontal overflow and the receipt's polite live announcement. It
+asserts the drawer's real opening and short swipe-return, then screenshots only through
+`captureSettled` (`settled-capture.ts`), which finishes finite animations and waits for a
+visible Drawer to rest; `meddies/settled-captures` fails a direct screenshot in that case. Run
+all three affected capture groups in one invocation:
 
 ```sh
 MEDDIES_RECORD_CAPTURE=1 MEDDIES_COPY_CAPTURE=1 MEDDIES_SAVE_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-recovery pnpm test:browser:visual screen-capture --grep "record forms|schedule copy|save recovery"

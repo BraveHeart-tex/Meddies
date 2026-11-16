@@ -8,8 +8,11 @@ import labClientImports from './eslint-rules/lab-client-imports.mjs'
 import noCosmeticClassAssertions from './eslint-rules/no-cosmetic-class-assertions.mjs'
 import noRawDateFormat from './eslint-rules/no-raw-date-format.mjs'
 import noWidthLoopTests from './eslint-rules/no-width-loop-tests.mjs'
+import settledCaptures from './eslint-rules/settled-captures.mjs'
 
 const browserJourneys = 'tests/browser/**'
+/** Capture cases whose screenshots must go through captureSettled. */
+export const settledCaptureTests = ['capture save recovery copy']
 const meddies = {
   rules: {
     architecture,
@@ -18,6 +21,7 @@ const meddies = {
     'no-cosmetic-class-assertions': noCosmeticClassAssertions,
     'no-raw-date-format': noRawDateFormat,
     'no-width-loop-tests': noWidthLoopTests,
+    'settled-captures': settledCaptures,
   },
 }
 const browserRestrictedImports = [
@@ -196,6 +200,8 @@ const eslintConfig = defineConfig([
       ...playwright.configs['flat/recommended'].rules,
       // Width variants never earn a journey; exceptions need an inline disable with a reason.
       'meddies/no-width-loop-tests': 'error',
+      // Owned capture cases screenshot through captureSettled (tests/browser/settled-capture.ts).
+      'meddies/settled-captures': ['error', { tests: settledCaptureTests }],
       // Playwright fixtures call `use`, which is not a React hook.
       'react-hooks/rules-of-hooks': 'off',
       'playwright/no-wait-for-timeout': 'error',

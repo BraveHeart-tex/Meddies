@@ -276,3 +276,17 @@ export async function archiveMedicine(page: Page, medicineId: string) {
     return `${response.status} ${await response.text()}`
   }, medicineId)
 }
+
+/**
+ * Jump finite CSS transitions and animations to their end state, so a screenshot never shows
+ * a frame mid-motion. Playwright's `animations: 'disabled'` does the same for the capture
+ * itself; finishing first lets the page settle on the final layout before it is checked.
+ * Infinite animations (spinners) keep running. The Web Animations API has no locator.
+ */
+export async function finishFiniteAnimations(page: Page) {
+  await page.evaluate(() => {
+    for (const animation of document.getAnimations())
+      if (Number.isFinite(animation.effect?.getComputedTiming().endTime ?? Infinity))
+        animation.finish()
+  })
+}

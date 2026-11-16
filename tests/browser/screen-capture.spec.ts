@@ -8,8 +8,9 @@ import {
   scrollsHorizontally,
   stylesheetsLoaded,
 } from './actions'
-import { dragHandle } from './drawers'
+import { dragHandle, drawerBottom } from './drawers'
 import { captureCases } from './capture'
+import { captureSettled } from './settled-capture'
 import { expect, test } from './fixtures'
 import { drawer, loadingStatus, toastMessage } from './locators'
 import { addDays, insertScheduledMedicine } from './seed'
@@ -282,6 +283,7 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
   test.setTimeout(120_000)
   await mkdir(resolve(out!), { recursive: true })
   await page.setViewportSize(captureCases.phone.viewport)
+  await page.emulateMedia({ reducedMotion: captureCases.phone.reducedMotion })
   await page.goto(`/medications?medicine=${medicineId}&record=fix`)
   await expect(page.getByRole('heading', { name: 'Fix a mistake' })).toBeVisible()
   await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
@@ -294,7 +296,7 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
     .filter({ hasText: /Reconnect to save/ })
     .scrollIntoViewIfNeeded()
   expect(await scrollsHorizontally(page)).toBe(false)
-  await page.screenshot({
+  await captureSettled(page, {
     path: resolve(out!, `save-offline-402.png`),
   })
   await page.context().setOffline(false)
@@ -315,7 +317,7 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
   ).toContainText('This medication changed elsewhere.')
   await page.getByRole('button', { name: 'Review saved medication' }).click({ trial: true })
   expect(await scrollsHorizontally(page)).toBe(false)
-  await page.screenshot({
+  await captureSettled(page, {
     path: resolve(out!, `save-conflict-402.png`),
   })
   await page.unroute('**/api/medicines')
@@ -334,7 +336,7 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
   ).toContainText("Check your connection, then retry. Retrying won't save it twice.")
   await page.getByRole('button', { name: 'Try saving as taken again' }).click({ trial: true })
   expect(await scrollsHorizontally(page)).toBe(false)
-  await page.screenshot({
+  await captureSettled(page, {
     path: resolve(out!, `save-uncertain-402.png`),
   })
   await page.getByLabel(/^Amount/).fill('2')
@@ -342,7 +344,7 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
     page.getByRole('alert').filter({ hasText: /changed elsewhere|might not have saved/ }),
   ).toContainText('Changing details starts a new save.')
   await page.getByRole('button', { name: 'Save as taken', exact: true }).click({ trial: true })
-  await page.screenshot({
+  await captureSettled(page, {
     path: resolve(out!, `save-changed-402.png`),
   })
   await page.unroute('**/api/schedules')
@@ -356,7 +358,7 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
     .filter({ hasText: /Reconnect to save/ })
     .scrollIntoViewIfNeeded()
   expect(await scrollsHorizontally(page)).toBe(false)
-  await page.screenshot({ path: resolve(out!, `save-skipped-402.png`) })
+  await captureSettled(page, { path: resolve(out!, `save-skipped-402.png`) })
   await page.context().setOffline(false)
 
   async function captureDoseReceipt({
@@ -377,13 +379,27 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByRole('heading', { name: 'Capture Fixture Medicine' })).toBeVisible()
     await expect(dialog.getByLabel(/^Amount/)).toBeVisible()
+    // Real motion, asserted before captureSettled finishes anything: the drawer opens to the
+    // viewport bottom, and a short swipe springs back there keeping the draft.
+    const popup = drawer(page)
+    const viewportBottom = page.viewportSize()!.height
+    const popupBottom = () => drawerBottom(page)
+    await expect(popup).not.toHaveAttribute('data-starting-style')
+    await expect.poll(popupBottom, { message: 'drawer opens fully' }).toBe(viewportBottom)
+    const amount = await dialog.getByLabel(/^Amount/).inputValue()
+    await dragHandle(page, 24)
+    await expect(popup).toBeVisible()
+    await expect(popup).not.toHaveAttribute('data-swiping')
+    await expect(popup).not.toHaveAttribute('data-ending-style')
+    await expect.poll(popupBottom, { message: 'short swipe springs back' }).toBe(viewportBottom)
+    await expect(dialog.getByLabel(/^Amount/)).toHaveValue(amount)
     const restoreDrawerText = await resizeTextForReview(page)
     for (const width of [402, 320]) {
       await page.setViewportSize({ width, height: 874 })
       await dialog.getByRole('button', { name: save }).scrollIntoViewIfNeeded()
       await expect(dialog.getByRole('button', { name: save })).toBeVisible()
       expect(await scrollsHorizontally(page)).toBe(false)
-      await page.screenshot({ path: resolve(out!, `receipt-${name}-form-${width}-200.png`) })
+      await captureSettled(page, { path: resolve(out!, `receipt-${name}-form-${width}-200.png`) })
     }
     await restoreDrawerText()
     await dialog.getByRole('button', { name: save }).click()
@@ -402,7 +418,7 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
         'polite',
       )
       expect(await scrollsHorizontally(page)).toBe(false)
-      await page.screenshot({ path: resolve(out!, `receipt-${name}-${width}-200.png`) })
+      await captureSettled(page, { path: resolve(out!, `receipt-${name}-${width}-200.png`) })
     }
     await restoreReceiptText()
   }
