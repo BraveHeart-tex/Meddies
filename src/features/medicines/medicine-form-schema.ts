@@ -1,7 +1,9 @@
 import { z } from 'zod'
+import { writableMedicineTypes } from '@/lib/quantity-policy'
 
 // Client-side mirror of parseMedicine in contract.ts for inline feedback. The server parser
-// stays authoritative; keep trimming, the 120-character limits and units in step with it.
+// stays authoritative; keep trimming and the 120-character limits in step with it. Types come
+// from the quantity policy.
 const tooLong = 'Use 120 characters or fewer.'
 
 /** Names Add medicine's session draft and session save. */
@@ -16,8 +18,8 @@ export const medicineFormSchema = z.object({
     .transform((value) => value || null),
   // Editing starts with an empty unit; only a chosen unit passes.
   unit: z
-    .enum(['', 'tablet', 'capsule'])
-    .pipe(z.enum(['tablet', 'capsule'], { error: 'Choose a type.' })),
+    .enum(['', ...writableMedicineTypes])
+    .pipe(z.enum(writableMedicineTypes, { error: 'Choose a type.' })),
 })
 
 /** Editing values: unit is empty until chosen. */

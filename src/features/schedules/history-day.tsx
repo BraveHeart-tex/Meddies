@@ -13,7 +13,7 @@ import {
   formatTime,
   formatTodayRelativeDay,
 } from '@/lib/calendar-date'
-import { quantityLabel } from '@/lib/dose-quantity'
+import { quantityLabel } from '@/lib/quantity-policy'
 import { cn } from '@/lib/utils'
 import { medicineForDose } from '@/features/medicines/dose-strength'
 import type { Medicine } from '@/features/medicines/contract'

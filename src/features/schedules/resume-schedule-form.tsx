@@ -8,7 +8,7 @@ import { StickyActions } from '@/components/layout/sticky-actions'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { formatShortDay } from '@/lib/calendar-date'
-import { quantityLabel, type DoseUnit } from '@/lib/dose-quantity'
+import { quantityLabel, type MedicineType } from '@/lib/quantity-policy'
 import { saveMessages } from '@/lib/save-messages'
 import type { SaveProblem } from '@/lib/session-saves'
 import { isTimeOfDay } from '@/lib/time-of-day'
@@ -48,7 +48,7 @@ export function ResumeScheduleForm({
   onReview,
 }: {
   label: string
-  unit: DoseUnit
+  unit: MedicineType
   schedule: Pick<DailySchedule, 'intervalHours' | 'times' | 'endDate'>
   /** Istanbul today on the scheduling clock. */
   today: string

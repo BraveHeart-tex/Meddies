@@ -6,7 +6,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { toast } from '@/components/ui/toast'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
-import type { DoseUnit } from '@/lib/dose-quantity'
+import type { MedicineType } from '@/lib/quantity-policy'
 import { saveMessages } from '@/lib/save-messages'
 import { confirmSessionEnd } from '@/lib/session-check'
 import { discardSessionFormDraft } from '@/lib/session-drafts'
@@ -32,7 +32,7 @@ type Attempt = Readonly<{
 export type UnscheduledSave = {
   attempt: Attempt | null
   form?: AttemptForm
-  medicine: Readonly<{ label: string; unit: DoseUnit }>
+  medicine: Readonly<{ label: string; unit: MedicineType }>
   /** Istanbul today, read when needed. */
   today: () => string
   pending: boolean

@@ -10,7 +10,7 @@
 //   a correction that keeps the expected saved time is accepted outside it.
 import { and, eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
-import { isQuantityForUnit } from '../../src/lib/dose-quantity'
+import { isWritableQuantity } from '../../src/lib/quantity-policy'
 import { ApplicationError } from '../../src/lib/application-error'
 import { isTakenTimeAllowed } from '../../src/features/schedules/contract'
 import type {
@@ -42,7 +42,7 @@ export async function correctDoseOutcome(
     !schedule ||
     !validOccurrence(schedule, correction, now) ||
     (correction.outcome === 'Taken' &&
-      (!isQuantityForUnit(correction.quantity, schedule.unit) ||
+      (!isWritableQuantity(correction.quantity, schedule.unit) ||
         (!isTakenTimeAllowed(correction.takenAt, correction.dueAt, now) &&
           correction.takenAt !== (await expectedTakenAt(db, ownerId, correction)))))
   )
@@ -217,7 +217,7 @@ export async function recordTaken(
       !schedule ||
       !validOccurrence(schedule, record, now) ||
       !isTakenTimeAllowed(record.takenAt, record.dueAt, now) ||
-      !isQuantityForUnit(record.quantity, schedule.unit)
+      !isWritableQuantity(record.quantity, schedule.unit)
     )
       throw new ApplicationError('validation', 400)
 

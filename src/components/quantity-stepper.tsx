@@ -9,11 +9,11 @@ import {
   quantityRule,
   stepQuantity,
   unitName,
-  type DoseUnit,
-} from '@/lib/dose-quantity'
+  type MedicineType,
+} from '@/lib/quantity-policy'
 
 /**
- * Dose quantity in tablets or capsules: "−" and "+" step by the unit's rule, and the
+ * Dose quantity in the Medicine's Quantity unit: "−" and "+" step by the quantity policy, and the
  * text stays editable, blank included, so a form schema decides what is valid. The unit and its
  * plural always show beside the number. `ref` focuses the text input.
  */
@@ -33,7 +33,7 @@ export function QuantityStepper({
   id: string
   /** Accessible name of the input; the buttons announce "Fewer"/"More" with it. */
   label: string
-  unit: DoseUnit
+  unit: MedicineType
   value: string
   onValueChange: (value: string) => void
   onBlur?: () => void

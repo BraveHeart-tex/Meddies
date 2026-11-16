@@ -47,7 +47,7 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
     ) {
       if (!Array.isArray(data.schedules)) throw new Error('contract')
       result.schedules = data.schedules.map((value: unknown) => {
-        const schedule = parseSchedule(value)
+        const schedule = parseSchedule(value, 'read')
         const confirmedAt = (value as Record<string, unknown>).confirmedAt
         if (!isInstant(confirmedAt)) throw new Error('contract')
         const anchorDate = (value as Record<string, unknown>).anchorDate
@@ -85,7 +85,7 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
       result.records = data.records.map((value: unknown) =>
         command.operation === 'list' || command.operation === 'recordTaken'
           ? (() => {
-              const record = parseTakenDose(value)
+              const record = parseTakenDose(value, 'read')
               const input = value as Record<string, unknown>
               if (input.outcome !== 'Taken') throw new Error('contract')
               return { ...record, ...parseStrengthSnapshot(input), outcome: 'Taken' as const }

@@ -197,7 +197,7 @@ test('Today lists an Unscheduled dose in Logged by its taken time, marked and ne
   const shown = await rows()
   expect(shown[0]).toMatch(/^20:00.*Magnesium/)
   expect(shown[1]).toMatch(/^08:00.*Magnesium/)
-  expect(shown[2]).toMatch(/^09:30.*Ibuprofen.*200 mg · 1 tablet · Not on a schedule.*Taken/)
+  expect(shown[2]).toMatch(/^09:30.*Ibuprofen.*200 mg · 1\u00a0tablet · Not on a schedule.*Taken/)
   expect(screen.getByRole('heading', { name: 'Logged · 2' })).toBeVisible()
   expect(
     screen.getByRole('heading', { name: 'Up next' }).closest('[data-slot=card]'),
@@ -212,7 +212,7 @@ test('a Today with only Unscheduled doses lists them instead of its empty state'
   })
   renderToday()
   expect(await screen.findByRole('heading', { name: 'Logged · 2' })).toBeVisible()
-  expect((await rows())[0]).toMatch(/^07:15.*2 tablets/)
+  expect((await rows())[0]).toMatch(/^07:15.*2\u00a0tablets/)
   expect(screen.queryByText('No scheduled doses')).not.toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'Up next' })).not.toBeInTheDocument()
 })
@@ -245,7 +245,7 @@ test('History shows Unscheduled doses in time order and counts scheduled doses o
     .map((row) => row.textContent ?? '')
   expect(shown).toHaveLength(4)
   expect(shown.map((row) => row.slice(0, 5))).toEqual(['08:00', '15:10', '20:00', '23:30'])
-  expect(shown[3]).toMatch(/Ibuprofen.*½ tablet · Not on a schedule/)
+  expect(shown[3]).toMatch(/Ibuprofen.*½\u00a0tablet · Not on a schedule/)
   expect(screen.getByText('0 of 2 scheduled doses logged')).toBeVisible()
 })
 

@@ -76,7 +76,7 @@ export function LogDose({ medicine, primary = false }: { medicine: Medicine; pri
         />
         <UnscheduledDoseForm
           medicine={medicine}
-          defaults={takenFormDefaults(1)}
+          defaults={takenFormDefaults(medicine.unit)}
           saving={save.saving}
           problem={save.problem}
           conflict={save.conflict}

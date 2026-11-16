@@ -1,6 +1,6 @@
 import type { Medicine } from '@/features/medicines/contract'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
-import { quantityLabel } from '@/lib/dose-quantity'
+import { quantityLabel } from '@/lib/quantity-policy'
 import { takenDate, type UnscheduledDose } from './contract'
 
 type Named = Pick<Medicine, 'label' | 'unit'>

@@ -5,8 +5,8 @@ import {
   parseQuantity,
   quantityProblem,
   quantityRule,
-  type DoseUnit,
-} from '@/lib/dose-quantity'
+  type MedicineType,
+} from '@/lib/quantity-policy'
 import type { DailySchedule } from './contract'
 import { lastDayProblem } from './last-day'
 import { lastDaySchema, startDateSchema, type ScheduleFormOptions } from './schedule-form-schema'
@@ -59,8 +59,8 @@ export function intervalFormSchema({ unit, today, retryStartDate, current }: Sch
 export type IntervalFormValues = z.input<ReturnType<typeof intervalFormSchema>>
 export type IntervalFormOutput = z.output<ReturnType<typeof intervalFormSchema>>
 
-/** New setup: today and one tablet or capsule are preselected (#212 Rules). */
-export function intervalFormDefaults(unit: DoseUnit, today: string): IntervalFormValues {
+/** New setup: today and the new dose amount are preselected (#212 Rules). */
+export function intervalFormDefaults(unit: MedicineType, today: string): IntervalFormValues {
   return { hours: '', date: today, time: '', quantity: quantityRule(unit).initial, lastDay: null }
 }
 
@@ -68,8 +68,12 @@ export function intervalFormDefaults(unit: DoseUnit, today: string): IntervalFor
  * A change opens on the current Interval schedule version and its Anchor, or, switching from set
  * times, asks for Every and Starts again with the quantity carried over (215·A4, A6).
  */
-export function intervalChangeDefaults(current: DailySchedule, today: string): IntervalFormValues {
-  const quantity = formatQuantity(current.times[0].quantity)
+export function intervalChangeDefaults(
+  current: DailySchedule,
+  unit: MedicineType,
+  today: string,
+): IntervalFormValues {
+  const quantity = formatQuantity(current.times[0].quantity, unit)
   const lastDay = current.endDate ?? null
   return current.intervalHours == null
     ? { hours: '', date: today, time: '', quantity, lastDay }

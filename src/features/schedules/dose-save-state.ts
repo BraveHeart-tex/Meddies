@@ -1,4 +1,4 @@
-import type { DoseUnit } from '@/lib/dose-quantity'
+import type { MedicineType } from '@/lib/quantity-policy'
 import type { DoseOccurrence, DoseOutcomeRecord } from './contract'
 import type { DoseAttempt } from './dose-receipt'
 
@@ -19,7 +19,7 @@ export type DoseSave = {
   attempt: Readonly<DoseAttempt> | null
   correction: PinnedCorrection | null
   form?: AttemptForm
-  medicine: Readonly<{ label: string; unit: DoseUnit }>
+  medicine: Readonly<{ label: string; unit: MedicineType }>
   /** Istanbul today, read when needed, to name where the dose lives after a day rolls over. */
   today: () => string
   pending: boolean

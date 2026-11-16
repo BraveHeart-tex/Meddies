@@ -1,4 +1,10 @@
-import { isDoseUnit, type DoseUnit } from '../../lib/dose-quantity'
+import {
+  isMedicineType,
+  isWritableMedicineType,
+  type Access,
+  type MedicineType,
+  type WritableMedicineType,
+} from '../../lib/quantity-policy'
 import { isInstant } from '../schedules/contract'
 import { ApplicationError } from '../../lib/application-error'
 
@@ -6,15 +12,15 @@ export type Medicine = Partial<MedicineMetadata> & {
   id: string
   label: string
   strength: string | null
-  unit: DoseUnit
+  unit: MedicineType
 }
 export type StrengthRevision = {
   id: string
   strength: string | null
   effectiveAt: string
   label: string
-  unit: DoseUnit
-  previousValues: { strength: string | null; label: string; unit: DoseUnit }[]
+  unit: MedicineType
+  previousValues: { strength: string | null; label: string; unit: MedicineType }[]
 }
 type MedicineMetadata = {
   revision: number
@@ -29,6 +35,8 @@ type MedicineMetadata = {
 }
 
 export type MedicineRecord = Medicine & MedicineMetadata
+/** A Medicine as saves send it: only writable Types. */
+export type MedicineInput = Medicine & { unit: WritableMedicineType }
 
 /** An Archived medicine: kept out of Medications and every view that offers it for new doses. */
 export const isArchived = (medicine: Medicine) => Boolean(medicine.archivedAt)
@@ -44,7 +52,7 @@ export type MedicineResponses = {
 }
 export type MedicineCommand =
   | { operation: 'list'; ownerId: string }
-  | { operation: 'save'; ownerId: string; medicine: Medicine }
+  | { operation: 'save'; ownerId: string; medicine: MedicineInput }
   | { operation: 'correctDetails'; ownerId: string; correction: DetailCorrection }
   | { operation: 'changeStrength'; ownerId: string; change: StrengthChange }
   | { operation: 'archive'; ownerId: string; archive: MedicineArchive }
@@ -54,7 +62,12 @@ export type MedicineCommand =
 export type MedicineResponse<C extends MedicineCommand = MedicineCommand> =
   MedicineResponses[C['operation']]
 
-export function parseMedicine(value: unknown): Medicine {
+/** A save's Medicine: only writable Types (quantity policy). */
+export function parseMedicine(value: unknown): MedicineInput {
+  return parseMedicineDetails(value, 'write') as MedicineInput
+}
+
+function parseMedicineDetails(value: unknown, access: Access): Medicine {
   if (!value || typeof value !== 'object') throw new ApplicationError('validation', 400)
   const input = value as Record<string, unknown>
   if (
@@ -65,7 +78,7 @@ export function parseMedicine(value: unknown): Medicine {
     input.label.trim().length > 120 ||
     (input.strength != null &&
       (typeof input.strength !== 'string' || input.strength.trim().length > 120)) ||
-    !isDoseUnit(input.unit)
+    !(access === 'write' ? isWritableMedicineType : isMedicineType)(input.unit)
   )
     throw new ApplicationError('validation', 400)
   return {
@@ -78,8 +91,9 @@ export function parseMedicine(value: unknown): Medicine {
 
 // Input parsing ignores read metadata. Response parsing retains and validates it when present,
 // allowing the old Worker during release overlap.
+// Reads accept every readable Type, so a deployed app can show a Medicine a newer Worker saved.
 export function parseMedicineRecord(value: unknown): MedicineRecord {
-  const medicine = parseMedicine(value)
+  const medicine = parseMedicineDetails(value, 'read')
   const input = value as Record<string, unknown>
   if (
     !Number.isSafeInteger(input.revision) ||
@@ -99,10 +113,10 @@ export function parseMedicineRecord(value: unknown): MedicineRecord {
     const row = value as Record<string, unknown>
     if (!row || typeof row.id !== 'string' || !uuid.test(row.id) || !isInstant(row.effectiveAt))
       throw new ApplicationError('validation', 400)
-    const details = parseMedicine({ ...row, id: row.id })
+    const details = parseMedicineDetails({ ...row, id: row.id }, 'read')
     if (!Array.isArray(row.previousValues)) throw new ApplicationError('validation', 400)
     const previousValues = row.previousValues.map((value) => {
-      const prior = parseMedicine({ ...(value as object), id: row.id })
+      const prior = parseMedicineDetails({ ...(value as object), id: row.id }, 'read')
       return { strength: prior.strength, label: prior.label, unit: prior.unit }
     })
     return {
@@ -132,7 +146,7 @@ export function parseMedicineRecord(value: unknown): MedicineRecord {
 export function parseMedicineResponse(value: unknown): Medicine | MedicineRecord {
   return value && typeof value === 'object' && 'revision' in value
     ? parseMedicineRecord(value)
-    : parseMedicine(value)
+    : parseMedicineDetails(value, 'read')
 }
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -149,7 +163,7 @@ export type DetailCorrection = {
   strengthRevisionId: string
   label: string
   strength: string | null
-  unit: DoseUnit
+  unit: WritableMedicineType
 }
 export type StrengthChange = {
   actionId: string

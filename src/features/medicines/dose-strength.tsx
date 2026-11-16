@@ -1,5 +1,5 @@
 import type { StrengthSnapshot } from '@/lib/strength-snapshot'
-import { isDoseUnit } from '@/lib/dose-quantity'
+import { isMedicineType } from '@/lib/quantity-policy'
 import { instantOf, localMinute } from '../schedules/taken-form-schema'
 import type { Medicine } from './contract'
 
@@ -10,7 +10,7 @@ export function medicineForDose(medicine: Medicine, snapshot: StrengthSnapshot):
     ...medicine,
     label: snapshot.medicineLabel ?? medicine.label,
     strength: snapshot.strength ?? null,
-    unit: isDoseUnit(snapshot.unit) ? snapshot.unit : medicine.unit,
+    unit: isMedicineType(snapshot.unit) ? snapshot.unit : medicine.unit,
   }
 }
 

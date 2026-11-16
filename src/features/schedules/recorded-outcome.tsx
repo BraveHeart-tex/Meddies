@@ -1,7 +1,7 @@
 import { InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
-import { quantityLabel, type DoseUnit } from '@/lib/dose-quantity'
+import { quantityLabel, type MedicineType } from '@/lib/quantity-policy'
 import { istanbulDate, type DoseOccurrence } from './contract'
 
 type Recorded = Extract<DoseOccurrence, { status: 'Taken' | 'Skipped' }>
@@ -13,7 +13,7 @@ export function RecordedOutcome({
   today,
 }: {
   dose: Recorded
-  unit: DoseUnit
+  unit: MedicineType
   today: string
 }) {
   if (dose.status === 'Skipped') return <p className="font-extrabold">Skipped.</p>

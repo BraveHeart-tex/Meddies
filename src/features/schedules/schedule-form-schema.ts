@@ -5,8 +5,8 @@ import {
   parseQuantity,
   quantityProblem,
   quantityRule,
-  type DoseUnit,
-} from '@/lib/dose-quantity'
+  type MedicineType,
+} from '@/lib/quantity-policy'
 import { isScheduleDate, type DailySchedule } from './contract'
 import { lastDayProblem } from './last-day'
 import { ALL_WEEKDAYS } from './weekdays'
@@ -16,7 +16,7 @@ import { ALL_WEEKDAYS } from './weekdays'
 
 export type ScheduleFormOptions = {
   /** The medicine's unit; setup always belongs to one medicine. */
-  unit: DoseUnit
+  unit: MedicineType
   /** Istanbul today, from the scheduling clock. */
   today: string
   /** Start date of an unconfirmed save; its retry stays valid after midnight. */
@@ -89,8 +89,8 @@ export type ScheduleFormValues = z.input<ReturnType<typeof scheduleFormSchema>>
 /** Validated values, shaped like the schedule request without its ids. */
 export type ScheduleFormOutput = z.output<ReturnType<typeof scheduleFormSchema>>
 
-/** New setup: every day from today, one empty time taking one tablet or capsule. */
-export function scheduleFormDefaults(unit: DoseUnit, today: string): ScheduleFormValues {
+/** New setup: every day from today, one empty time taking the new dose amount. */
+export function scheduleFormDefaults(unit: MedicineType, today: string): ScheduleFormValues {
   return {
     startDate: today,
     weekdays: [...ALL_WEEKDAYS],
@@ -103,21 +103,25 @@ export function scheduleFormDefaults(unit: DoseUnit, today: string): ScheduleFor
  * A change opens on the current Clock schedule version, or, switching from an Interval schedule,
  * every day with one empty time and its quantity carried over (215·A2, A9).
  */
-export function scheduleChangeDefaults(current: DailySchedule, today: string): ScheduleFormValues {
+export function scheduleChangeDefaults(
+  current: DailySchedule,
+  unit: MedicineType,
+  today: string,
+): ScheduleFormValues {
   return current.intervalHours == null
     ? {
         startDate: today,
         weekdays: [...current.weekdays],
         times: current.times.map((slot) => ({
           time: slot.time,
-          quantity: formatQuantity(slot.quantity),
+          quantity: formatQuantity(slot.quantity, unit),
         })),
         lastDay: current.endDate ?? null,
       }
     : {
         startDate: today,
         weekdays: [...ALL_WEEKDAYS],
-        times: [{ time: '', quantity: formatQuantity(current.times[0].quantity) }],
+        times: [{ time: '', quantity: formatQuantity(current.times[0].quantity, unit) }],
         lastDay: current.endDate ?? null,
       }
 }
@@ -135,6 +139,6 @@ export function clockValuesDiffer(values: ScheduleFormValues, before: ScheduleFo
   return comparable(values) !== comparable(before)
 }
 
-export function newTimeRow(unit: DoseUnit) {
+export function newTimeRow(unit: MedicineType) {
   return { time: '', quantity: quantityRule(unit).initial }
 }

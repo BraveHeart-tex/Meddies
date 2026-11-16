@@ -4,7 +4,7 @@ import type {
   UnscheduledDoseInput,
   UnscheduledDoseChange,
 } from '../unscheduled-doses/contract'
-import { isDoseQuantity } from '../../lib/dose-quantity'
+import { isDoseQuantity, type Access } from '../../lib/quantity-policy'
 import { ApplicationError } from '../../lib/application-error'
 import { istanbulDate, shiftDate } from '../../lib/calendar-date'
 import { ALL_WEEKDAYS } from './weekdays'
@@ -136,8 +136,10 @@ export type Today = {
   next: DoseOccurrence | null
 }
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+/** Writes accept amounts of writable Types; reads accept amounts of every readable Type. */
 export function parseSchedule(
   value: unknown,
+  access: Access = 'write',
 ): DailyScheduleInput & { weekdays: number[]; endDate: string | null } {
   if (!value || typeof value !== 'object') throw new ApplicationError('validation', 400)
   const input = value as Record<string, unknown>
@@ -181,7 +183,7 @@ export function parseSchedule(
       if (
         typeof time !== 'string' ||
         !/^([01]\d|2[0-3]):[0-5]\d$/.test(time) ||
-        !isDoseQuantity(quantity)
+        !isDoseQuantity(quantity, access)
       )
         throw new ApplicationError('validation', 400)
       return { time, quantity }
@@ -321,10 +323,10 @@ export function isTakenDateAllowed(takenDate: string, dueAt: string): boolean {
   return takenDate >= shiftDate(dueDate, -1) && takenDate <= shiftDate(dueDate, 1)
 }
 
-export function parseTakenDose(value: unknown): TakenDoseInput {
+export function parseTakenDose(value: unknown, access: Access = 'write'): TakenDoseInput {
   const occurrence = parseOccurrenceKey(value)
   const { takenAt, quantity } = value as Record<string, unknown>
-  if (!isInstant(takenAt) || !isDoseQuantity(quantity))
+  if (!isInstant(takenAt) || !isDoseQuantity(quantity, access))
     throw new ApplicationError('validation', 400)
   return { ...occurrence, takenAt, quantity }
 }
@@ -385,7 +387,7 @@ export function parseDoseOutcomeRecord(value: unknown): DoseOutcomeRecord {
   if (actionId !== undefined && (typeof actionId !== 'string' || !uuid.test(actionId)))
     throw new ApplicationError('validation', 400)
   if (input.outcome === 'Taken') {
-    const record = parseTakenDose(input)
+    const record = parseTakenDose(input, 'read')
     return {
       ...record,
       ...parseStrengthSnapshot(input),

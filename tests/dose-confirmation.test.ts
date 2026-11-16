@@ -41,7 +41,7 @@ test('a new intake names its time and amount', () => {
       previous: 'Due now',
       record: taken('2026-11-05T19:35:00.000Z', 1),
     }),
-    'Melatonin 22:30 · Taken at 22:35, 1 tablet',
+    'Melatonin 22:30 · Taken at 22:35, 1\u00a0tablet',
   )
 })
 
@@ -53,7 +53,7 @@ test('an edited intake after midnight names the actual day (C3, C5)', () => {
       previous: 'Taken',
       record: taken('2026-11-05T20:00:00.000Z', 0.5),
     }),
-    'Melatonin 22:30 · Taken at 23:00, ½ tablet',
+    'Melatonin 22:30 · Taken at 23:00, ½\u00a0tablet',
   )
   assert.equal(
     confirm({
@@ -62,7 +62,7 @@ test('an edited intake after midnight names the actual day (C3, C5)', () => {
       previous: 'Taken',
       record: taken('2026-11-05T21:15:00.000Z', 2),
     }),
-    'Melatonin 22:30 · Taken at 00:15 on Fri 6 Nov, 2 capsules',
+    'Melatonin 22:30 · Taken at 00:15 on Fri 6 Nov, 2\u00a0capsules',
   )
 })
 
@@ -76,7 +76,7 @@ test('an amount-only change names the new amount', () => {
       previousTakenAt: '2026-11-05T19:35:00.000Z',
       record: taken('2026-11-05T19:35:00.000Z', 1),
     }),
-    'Melatonin 22:30 · now 1 tablet',
+    'Melatonin 22:30 · now 1\u00a0tablet',
   )
   assert.equal(
     confirm({
@@ -86,7 +86,7 @@ test('an amount-only change names the new amount', () => {
       previousTakenAt: '2026-11-05T19:30:00.000Z',
       record: taken('2026-11-05T19:35:00.000Z', 1),
     }),
-    'Melatonin 22:30 · Taken at 22:35, 1 tablet',
+    'Melatonin 22:30 · Taken at 22:35, 1\u00a0tablet',
   )
 })
 
@@ -98,7 +98,7 @@ test('a corrected outcome says what it changed to', () => {
       previous: 'Skipped',
       record: taken('2026-11-05T19:30:00.000Z', 1.5),
     }),
-    'Melatonin 22:30 · Changed to Taken at 22:30, 1½ tablets',
+    'Melatonin 22:30 · Changed to Taken at 22:30, 1½\u00a0tablets',
   )
   assert.equal(
     confirm({ label: 'Melatonin', unit: 'tablet', previous: 'Taken', record: skipped }),
@@ -123,11 +123,11 @@ test('the year of an intake on another day follows the current Istanbul year', (
   }
   assert.equal(
     confirm({ ...args, today: '2036-01-01' }),
-    'Melatonin 23:00 on Mon 31 Dec 2035 · Taken at 00:15 on Tue 1 Jan, 1 tablet',
+    'Melatonin 23:00 on Mon 31 Dec 2035 · Taken at 00:15 on Tue 1 Jan, 1\u00a0tablet',
   )
   assert.equal(
     confirm({ ...args, today: '2035-12-31' }),
-    'Melatonin 23:00 · Taken at 00:15 on Tue 1 Jan 2036, 1 tablet',
+    'Melatonin 23:00 · Taken at 00:15 on Tue 1 Jan 2036, 1\u00a0tablet',
   )
 })
 
@@ -150,7 +150,7 @@ test('a dose due on another day names its due day (#278)', () => {
       record: taken('2026-11-05T21:15:00.000Z', 1),
       today: '2026-11-09',
     }),
-    'Melatonin 22:30 on Thu 5 Nov · Taken at 00:15 on Fri 6 Nov, 1 tablet',
+    'Melatonin 22:30 on Thu 5 Nov · Taken at 00:15 on Fri 6 Nov, 1\u00a0tablet',
   )
 })
 
@@ -162,7 +162,7 @@ test('reconciliation keeps its already-saved wording and factual receipt', () =>
       record: taken('2026-11-05T21:15:00.000Z', 0.5),
       today: '2026-11-07',
     }),
-    'Melatonin 22:30 on Thu 5 Nov · already saved as taken at 00:15 on Fri 6 Nov, ½ tablet',
+    'Melatonin 22:30 on Thu 5 Nov · already saved as taken at 00:15 on Fri 6 Nov, ½\u00a0tablet',
   )
   assert.equal(
     reconciledConfirmation({ label: 'Iron', unit: 'tablet', record: skipped, today: '2026-11-05' }),

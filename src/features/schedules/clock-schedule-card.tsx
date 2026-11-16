@@ -2,7 +2,7 @@ import { PauseIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatShortDay } from '@/lib/calendar-date'
-import { quantityLabel, type DoseUnit } from '@/lib/dose-quantity'
+import { quantityLabel, type MedicineType } from '@/lib/quantity-policy'
 import { istanbulDate, type DailySchedule } from './contract'
 import { endedOn, pausedOn } from './last-day'
 import { weekdaySummary } from './weekdays'
@@ -80,7 +80,7 @@ export function ClockScheduleCard({
 }: {
   schedule: Pick<DailySchedule, 'weekdays' | 'times' | 'startDate'> &
     Partial<Pick<DailySchedule, 'basedOnId' | 'confirmedAt' | 'endDate' | 'stoppedAt' | 'pausedAt'>>
-  unit: DoseUnit
+  unit: MedicineType
   today: string
 }) {
   const paused = pausedOn({ endDate: null, stoppedAt: null, pausedAt: null, ...schedule }, today)

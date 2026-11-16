@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
-import { quantityLabel, type DoseUnit } from '@/lib/dose-quantity'
+import { quantityLabel, type MedicineType } from '@/lib/quantity-policy'
 import {
   pausedSinceLine,
   scheduleCardName,
@@ -29,7 +29,7 @@ export function IntervalScheduleCard({
   hours: number
   anchor: string
   quantity: number
-  unit: DoseUnit
+  unit: MedicineType
   now: string
   lastDay?: string | null
   /** The day an Ended schedule ended. */

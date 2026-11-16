@@ -33,7 +33,7 @@ function matchingSave(
   value: unknown,
   payload: Record<string, unknown>,
 ): DailySchedule {
-  const saved = parseSchedule(value)
+  const saved = parseSchedule(value, 'read')
   const raw = value as Record<string, unknown>
   const { confirmedAt } = raw
   const fail = () => {

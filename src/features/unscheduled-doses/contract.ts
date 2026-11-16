@@ -2,7 +2,7 @@ import { parseStrengthSnapshot, type StrengthSnapshot } from '../../lib/strength
 // Runtime-neutral Unscheduled dose inputs and receipts. Clock and unit checks stay
 // in the Worker after the owner-scoped medication lookup.
 import { isInstant, istanbulDate } from '../schedules/contract'
-import { isDoseQuantity } from '../../lib/dose-quantity'
+import { isDoseQuantity, type Access } from '../../lib/quantity-policy'
 import { ApplicationError } from '../../lib/application-error'
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -32,7 +32,10 @@ export type UnscheduledDose = StrengthSnapshot & {
 export const takenDate = (dose: Pick<UnscheduledDose, 'takenAt'>) =>
   istanbulDate(new Date(dose.takenAt))
 
-export function parseUnscheduledDose(value: unknown): UnscheduledDoseInput {
+export function parseUnscheduledDose(
+  value: unknown,
+  access: Access = 'write',
+): UnscheduledDoseInput {
   if (!value || typeof value !== 'object') throw new ApplicationError('validation', 400)
   const input = value as Record<string, unknown>
   if (
@@ -41,7 +44,7 @@ export function parseUnscheduledDose(value: unknown): UnscheduledDoseInput {
     typeof input.medicineId !== 'string' ||
     !uuid.test(input.medicineId) ||
     !isInstant(input.takenAt) ||
-    !isDoseQuantity(input.quantity)
+    !isDoseQuantity(input.quantity, access)
   )
     throw new ApplicationError('validation', 400)
   return {
@@ -81,7 +84,7 @@ export function parseUnscheduledDoseChange(value: unknown): UnscheduledDoseChang
 
 export function parseUnscheduledDoseRecord(value: unknown): UnscheduledDose {
   const input = value as Record<string, unknown>
-  const dose = parseUnscheduledDose(value)
+  const dose = parseUnscheduledDose(value, 'read')
   if (
     typeof input.id !== 'string' ||
     !uuid.test(input.id) ||

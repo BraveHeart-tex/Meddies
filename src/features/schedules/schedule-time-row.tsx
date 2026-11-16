@@ -6,7 +6,7 @@ import { QuantityStepper } from '@/components/quantity-stepper'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { TimePicker } from '@/components/ui/time-picker'
-import type { DoseUnit } from '@/lib/dose-quantity'
+import type { MedicineType } from '@/lib/quantity-policy'
 import type { ScheduleFormOutput, ScheduleFormValues } from './schedule-form-schema'
 import { useSchedulingClock } from './scheduling-clock'
 
@@ -25,7 +25,7 @@ export function ScheduleTimeRow({
 }: {
   control: Control<ScheduleFormValues, unknown, ScheduleFormOutput>
   index: number
-  unit: DoseUnit
+  unit: MedicineType
   disabled: boolean
   onTimeChange: () => void
   /** Present from two rows on. */

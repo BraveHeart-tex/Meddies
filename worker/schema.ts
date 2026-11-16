@@ -10,6 +10,7 @@ import {
   check,
   integer,
 } from 'drizzle-orm/sqlite-core'
+import { writableMedicineTypes } from '../src/lib/quantity-policy'
 import { sql } from 'drizzle-orm'
 
 export const userMedications = sqliteTable(
@@ -25,7 +26,7 @@ export const userMedications = sqliteTable(
     everHadDose: integer('ever_had_dose', { mode: 'boolean' }).notNull().default(false),
     creationRequest: text('creation_request'),
     creationResult: text('creation_result'),
-    unit: text('unit', { enum: ['tablet', 'capsule'] }).notNull(),
+    unit: text('unit', { enum: writableMedicineTypes }).notNull(),
   },
   (table) => [primaryKey({ columns: [table.ownerId, table.id] })],
 )

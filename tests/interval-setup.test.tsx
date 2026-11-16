@@ -149,7 +149,7 @@ describe('choosing a kind of schedule', () => {
     await chooseEveryFewHours(user)
     expect(everyRow()).toHaveAccessibleName('Every: Choose')
     expect(startsRow()).toHaveAccessibleName('Starts: Choose')
-    expect(takeRow()).toHaveAccessibleName('Amount: 1 tablet')
+    expect(takeRow()).toHaveAccessibleName('Amount: 1\u00a0tablet')
     expect(screen.queryByRole('group', { name: 'Days' })).not.toBeInTheDocument()
     expect(screen.queryByText(/^Times are Istanbul time/)).not.toBeInTheDocument()
     expect(

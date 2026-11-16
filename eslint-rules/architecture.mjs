@@ -3,7 +3,7 @@ import path from 'node:path'
 // Closed neutral surface: adding a helper does not silently grant Worker/contract access.
 const neutral = new Set([
   'src/lib/application-error',
-  'src/lib/dose-quantity',
+  'src/lib/quantity-policy',
   'src/lib/strength-snapshot',
   'src/lib/json-request',
   'src/lib/calendar-date',

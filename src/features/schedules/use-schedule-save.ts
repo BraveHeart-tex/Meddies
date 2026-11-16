@@ -16,7 +16,7 @@ import {
 } from './schedule-setup-drafts'
 
 function matchingSchedule(value: unknown, payload: Record<string, unknown>): DailySchedule {
-  const saved = parseSchedule(value)
+  const saved = parseSchedule(value, 'read')
   const attempted = parseSchedule(payload)
   const confirmedAt = (value as Record<string, unknown>).confirmedAt
   if (!isInstant(confirmedAt) || JSON.stringify(saved) !== JSON.stringify(attempted))
@@ -26,7 +26,7 @@ function matchingSchedule(value: unknown, payload: Record<string, unknown>): Dai
 
 /** A confirmed change must be the attempted Schedule version, whatever dates the server set. */
 function matchingChange(value: unknown, payload: Record<string, unknown>): DailySchedule {
-  const saved = parseSchedule(value)
+  const saved = parseSchedule(value, 'read')
   const attempted = parseScheduleEdit(payload)
   const confirmedAt = (value as Record<string, unknown>).confirmedAt
   const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right)

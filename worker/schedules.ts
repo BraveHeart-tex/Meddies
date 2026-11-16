@@ -18,7 +18,7 @@
 // - Resume requires a paused, non-Ended version and keeps its routine and Last day.
 //   Resume keeps its start date; Interval requires a new Anchor date/time, today or later.
 import { listUnscheduledDoses } from './doses/unscheduled'
-import { isQuantityForUnit } from '../src/lib/dose-quantity'
+import { isWritableQuantity } from '../src/lib/quantity-policy'
 import { and, asc, eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import {
@@ -116,7 +116,7 @@ export async function saveSchedule(
     .from(userMedications)
     .where(and(eq(userMedications.ownerId, ownerId), eq(userMedications.id, schedule.medicineId)))
     .get()
-  if (!medicine || schedule.times.some((slot) => !isQuantityForUnit(slot.quantity, medicine.unit)))
+  if (!medicine || schedule.times.some((slot) => !isWritableQuantity(slot.quantity, medicine.unit)))
     throw new ApplicationError('validation', 400)
   const now = clock()
   if (
@@ -215,7 +215,7 @@ export async function editSchedule(
         }
   const interval = change.intervalHours != null
   if (
-    change.times.some((slot) => !isQuantityForUnit(slot.quantity, parent.unit)) ||
+    change.times.some((slot) => !isWritableQuantity(slot.quantity, parent.unit)) ||
     (change.anchorDate !== undefined && change.anchorDate < today) ||
     (interval && parent.intervalHours == null && !change.anchorDate) ||
     (interval &&

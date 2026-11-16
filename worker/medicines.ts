@@ -8,7 +8,7 @@ import {
   parseMedicineRecord,
   parseMedicineDeleteReceipt,
   type MedicineDelete,
-  type Medicine,
+  type MedicineInput,
   type MedicineRecord,
   type DetailCorrection,
   type StrengthChange,
@@ -28,7 +28,11 @@ export async function listMedicines(
   return { medicines: rows.map((row) => parseMedicineRecord(JSON.parse(row.record))) }
 }
 
-export async function saveMedicine(db: DrizzleD1Database, ownerId: string, medicine: Medicine) {
+export async function saveMedicine(
+  db: DrizzleD1Database,
+  ownerId: string,
+  medicine: MedicineInput,
+) {
   await db
     .insert(userMedications)
     .values({ ...medicine, ownerId })
@@ -38,7 +42,7 @@ export async function saveMedicine(db: DrizzleD1Database, ownerId: string, medic
     .from(userMedications)
     .where(and(eq(userMedications.ownerId, ownerId), eq(userMedications.id, medicine.id)))
     .get()
-  const original = row?.request ? (JSON.parse(row.request) as Medicine) : null
+  const original = row?.request ? (JSON.parse(row.request) as MedicineInput) : null
   if (
     !original ||
     original.label !== medicine.label ||

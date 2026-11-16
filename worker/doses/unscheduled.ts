@@ -9,7 +9,7 @@ import type {
   UnscheduledDoseChange,
 } from '../../src/features/unscheduled-doses/contract'
 import { istanbulDate, shiftDate } from '../../src/lib/calendar-date'
-import { isQuantityForUnit } from '../../src/lib/dose-quantity'
+import { isWritableQuantity } from '../../src/lib/quantity-policy'
 import { ApplicationError } from '../../src/lib/application-error'
 import { unscheduledDoses, userMedications } from '../schema'
 import { scheduledInstant } from '../../src/features/schedules/occurrences'
@@ -102,7 +102,7 @@ export async function writeUnscheduledDose(
       (Date.parse(takenAt) > now.getTime() ||
         date < shiftDate(today, -1) ||
         date > today ||
-        !isQuantityForUnit(quantity, medicine.unit)))
+        !isWritableQuantity(quantity, medicine.unit)))
   )
     throw new ApplicationError('validation', 400)
   const id = change ? change.doseId : input.actionId

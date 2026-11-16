@@ -163,8 +163,8 @@ test('output passes the server Taken parser', () => {
 })
 
 test('defaults: Now for a first recording, the recorded minute for an edit', () => {
-  assert.deepEqual(takenFormDefaults(1), { when: 'now', date: '', time: '', quantity: '1' })
-  assert.deepEqual(takenFormDefaults(0.5, { local: '2035-06-14T23:10' }), {
+  assert.deepEqual(takenFormDefaults('tablet'), { when: 'now', date: '', time: '', quantity: '1' })
+  assert.deepEqual(takenFormDefaults('tablet', 0.5, { local: '2035-06-14T23:10' }), {
     when: 'other',
     date: '2035-06-14',
     time: '23:10',

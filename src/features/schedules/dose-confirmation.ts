@@ -1,5 +1,5 @@
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
-import { quantityLabel, type DoseUnit } from '@/lib/dose-quantity'
+import { quantityLabel, type MedicineType } from '@/lib/quantity-policy'
 import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord } from './contract'
 
 /** 'Melatonin 22:30 ·', or 'Melatonin 22:30 on Thu 5 Nov ·' for a dose due on another day. */
@@ -25,7 +25,7 @@ export function outcomeConfirmation({
   today,
 }: {
   label: string
-  unit: DoseUnit
+  unit: MedicineType
   /** The dose's status before this save. */
   previous: DoseOccurrence['status']
   /** The taken time before this save, when the dose was already Taken. */
@@ -57,7 +57,7 @@ export function reconciledConfirmation({
   today,
 }: {
   label: string
-  unit: DoseUnit
+  unit: MedicineType
   record: DoseOutcomeRecord
   /** Istanbul today, for the year rule. */
   today: string

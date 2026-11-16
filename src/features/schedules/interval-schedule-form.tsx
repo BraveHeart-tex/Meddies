@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
-import { quantityLabel, parseQuantity, quantityProblem, quantityRule } from '@/lib/dose-quantity'
+import { quantityLabel, parseQuantity, quantityProblem, quantityRule } from '@/lib/quantity-policy'
 import { saveMessages } from '@/lib/save-messages'
 import { isTimeOfDay } from '@/lib/time-of-day'
 import { useKnownOffline } from '@/lib/use-known-offline'
@@ -77,7 +77,9 @@ export function IntervalScheduleForm({
   const saveState = useScheduleSave(medicine, saved, current)
   const { retryStartDate, problem } = saveState
   const [defaults] = useState(() =>
-    current ? intervalChangeDefaults(current, today) : intervalFormDefaults(medicine.unit, today),
+    current
+      ? intervalChangeDefaults(current, medicine.unit, today)
+      : intervalFormDefaults(medicine.unit, today),
   )
   const schema = intervalFormSchema({ unit: medicine.unit, today, retryStartDate, current })
   const form = useForm<IntervalFormValues, unknown, IntervalFormOutput>({
@@ -190,7 +192,7 @@ export function IntervalScheduleForm({
               saveState.clear()
               form.reset(
                 current
-                  ? intervalChangeDefaults(current, today)
+                  ? intervalChangeDefaults(current, medicine.unit, today)
                   : intervalFormDefaults(medicine.unit, today),
               )
               draft.discard()

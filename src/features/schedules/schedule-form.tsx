@@ -78,7 +78,9 @@ export function ScheduleForm({
   const saveState = useScheduleSave(medicine, saved, current)
   const retryStartDate = saveState.retryStartDate
   const [defaults] = useState(() =>
-    current ? scheduleChangeDefaults(current, today) : scheduleFormDefaults(medicine.unit, today),
+    current
+      ? scheduleChangeDefaults(current, medicine.unit, today)
+      : scheduleFormDefaults(medicine.unit, today),
   )
   const form = useForm<ScheduleFormValues, unknown, ScheduleFormOutput>({
     resolver: zodResolver(
@@ -150,7 +152,7 @@ export function ScheduleForm({
               saveState.clear()
               form.reset(
                 current
-                  ? scheduleChangeDefaults(current, today)
+                  ? scheduleChangeDefaults(current, medicine.unit, today)
                   : scheduleFormDefaults(medicine.unit, today),
               )
               draft.discard()

@@ -8,7 +8,7 @@ import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/i
 import { medicineForDose } from '@/features/medicines/dose-strength'
 import type { Medicine } from '@/features/medicines/contract'
 import { formatTime } from '@/lib/calendar-date'
-import { quantityLabel } from '@/lib/dose-quantity'
+import { quantityLabel } from '@/lib/quantity-policy'
 import { saveMessages } from '@/lib/save-messages'
 import { discardSessionFormDraft, readSessionDraft } from '@/lib/session-drafts'
 import type { SaveProblem } from '../schedules/dose-save-state'
@@ -160,7 +160,7 @@ export function UnscheduledDoseRow({
             ) : (
               <UnscheduledDoseForm
                 medicine={medicine}
-                defaults={takenFormDefaults(dose.quantity, { local })}
+                defaults={takenFormDefaults(medicine.unit, dose.quantity, { local })}
                 original={{ ...dose, local, instant: dose.takenAt }}
                 saving={save.saving}
                 problem={attemptKind === 'change' ? save.problem : null}

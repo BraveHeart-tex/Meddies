@@ -19,7 +19,12 @@ import {
   SelectItem,
 } from '@/components/ui/select'
 import { DiscardMedicineChanges } from './discard-medicine-changes'
-import { medicineTypeOptions, unitName } from '@/lib/dose-quantity'
+import {
+  isWritableMedicineType,
+  medicineTypeLabel,
+  medicineTypeOptions,
+  unitName,
+} from '@/lib/quantity-policy'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import { useSessionFormDraft } from '@/lib/use-session-form-draft'
 import { saveMessages } from '@/lib/save-messages'
@@ -98,7 +103,8 @@ export function MedicineRecordForm({
   const defaults = {
     label: period.label,
     strength: strength ? '' : (period.strength ?? ''),
-    unit: period.unit,
+    // The menu lists only writable Types; any other Type starts unchosen.
+    unit: isWritableMedicineType(period.unit) ? period.unit : ('' as const),
     expectedRevision: medicine.revision,
     date: '',
     time: '',
@@ -293,9 +299,7 @@ export function MedicineRecordForm({
               </>
             ) : locked ? (
               <div className="space-y-1 text-body-sm">
-                <p className="font-bold">
-                  Type: {medicineTypeOptions.find((option) => option.value === period.unit)?.label}
-                </p>
+                <p className="font-bold">Type: {medicineTypeLabel(period.unit)}</p>
                 <p>Dose unit: {unitName(null, period.unit)}</p>
                 <p className="text-muted-foreground">
                   Type and dose unit can’t change after adding a schedule or dose.

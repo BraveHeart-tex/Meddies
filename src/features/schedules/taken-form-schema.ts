@@ -1,7 +1,13 @@
 import { z } from 'zod'
 import { formatTime, shiftDate } from '@/lib/calendar-date'
 import { isTimeOfDay } from '@/lib/time-of-day'
-import { formatQuantity, parseQuantity, quantityProblem, type DoseUnit } from '@/lib/dose-quantity'
+import {
+  formatQuantity,
+  parseQuantity,
+  quantityProblem,
+  quantityRule,
+  type MedicineType,
+} from '@/lib/quantity-policy'
 import { isScheduleDate, isTakenDateAllowed, istanbulDate } from './contract'
 
 // Client-side Taken intake rules for inline feedback; the Worker stays authoritative. A scheduled
@@ -56,7 +62,7 @@ export function takenDayOptions({
 }
 
 export type TakenFormOptions = {
-  unit: DoseUnit
+  unit: MedicineType
   /** The Now minute on screen; Save stores this minute. */
   now: string
   /** The dose's scheduled minute; never changes. */
@@ -130,13 +136,19 @@ export type TakenFormOutput = z.output<ReturnType<typeof takenFormSchema>>
  * First recording: Now with the scheduled quantity. Editing an intake: Other at its recorded
  * minute and quantity, so the shown day is the actual day.
  */
-export function takenFormDefaults(quantity: number, original?: { local: string }): TakenFormValues {
+export function takenFormDefaults(
+  unit: MedicineType,
+  recorded?: number,
+  original?: { local: string },
+): TakenFormValues {
+  const quantity =
+    recorded === undefined ? quantityRule(unit).initial : formatQuantity(recorded, unit)
   return original
     ? {
         when: 'other',
         date: original.local.slice(0, 10),
         time: original.local.slice(11),
-        quantity: formatQuantity(quantity),
+        quantity,
       }
-    : { when: 'now', date: '', time: '', quantity: formatQuantity(quantity) }
+    : { when: 'now', date: '', time: '', quantity }
 }

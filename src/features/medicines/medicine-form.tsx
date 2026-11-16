@@ -1,6 +1,6 @@
 'use client'
 
-import { medicineTypeOptions } from '@/lib/dose-quantity'
+import { medicineTypeOptions } from '@/lib/quantity-policy'
 
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'

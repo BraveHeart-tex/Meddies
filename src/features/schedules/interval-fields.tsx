@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { TimePicker } from '@/components/ui/time-picker'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { shiftDate } from '@/lib/calendar-date'
-import type { DoseUnit } from '@/lib/dose-quantity'
+import type { MedicineType } from '@/lib/quantity-policy'
 import { useSchedulingClock } from './scheduling-clock'
 
 const HOUR_PRESETS = ['4', '6', '8', '12', '24']
@@ -187,7 +187,7 @@ export function IntervalQuantityField({
   onBlur,
   unit,
   inputRef,
-}: FieldProps & { unit: DoseUnit; inputRef?: Ref<HTMLInputElement> }) {
+}: FieldProps & { unit: MedicineType; inputRef?: Ref<HTMLInputElement> }) {
   return (
     <Field data-invalid={Boolean(error)}>
       <FieldLabel htmlFor="interval-quantity">Amount</FieldLabel>

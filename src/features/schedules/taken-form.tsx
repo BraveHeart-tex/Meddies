@@ -124,6 +124,7 @@ export function TakenForm({
     defaultValues:
       (restore?.values as TakenFormValues | undefined) ??
       takenFormDefaults(
+        medicine.unit,
         dose.status === 'Taken' ? dose.record.quantity : dose.quantity,
         mode === 'edit' ? original : undefined,
       ),
@@ -176,7 +177,7 @@ export function TakenForm({
           onClick={() => {
             if (dose.status === 'Taken') {
               setSubmitted(null)
-              form.reset(takenFormDefaults(dose.record.quantity, original))
+              form.reset(takenFormDefaults(medicine.unit, dose.record.quantity, original))
             }
             onOpen(true)
             requestAnimationFrame(() =>
