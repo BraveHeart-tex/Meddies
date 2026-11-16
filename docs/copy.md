@@ -45,6 +45,9 @@ Use “Amount” for an editable dose quantity in schedule and dose forms. Keep 
 from Amount; internal domain terminology stays unchanged. Use “dose unit” in UI copy for the
 domain term Quantity unit. Keep Type and dose unit as separate facts.
 
+"Edit details" names a Detail correction entry point; "Edit details for this period" names a
+Strength period's. Change strength stays the name for a strength change.
+
 `pnpm lint` fails when outcome, intake, confirmed, unconfirmed or correct appears as a whole word
 in JSX text or in an `aria-label`, `label` or `title` prop in `src`. Review covers the rest:
 "routine", which stays fine in sentences like the sign-in tagline, "medicine", and plain string

@@ -177,7 +177,7 @@ state once at 402x874 with normal text (9 screenshots named `copy-…-402.png`):
 MEDDIES_COPY_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-copy pnpm test:browser:visual screen-capture --grep "schedule copy"
 ```
 
-Record forms include Fix a mistake, Change strength, Strength history, validation with
+Record forms include the Detail correction form, Change strength, Strength history, validation with
 keyboard focus, offline and conflict recovery (6 screenshots named `record-…`). Save
 feedback includes offline, conflict, Unconfirmed save, changed details and Skipped
 (5 screenshots named `save-…-402.png`). These use normal text at 402x874 and retain their

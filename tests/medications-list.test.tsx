@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Medicine } from '../src/features/medicines/contract'
 import { MedicinePanel } from '../src/features/medicines/medicine-panel'
 import { MedicationsHeader } from '../src/features/medicines/medications-header'
+import { medicationRecordHref } from '../src/features/medicines/routes'
 import { MedicationsScreen } from '../src/features/medicines/medications-screen'
 import { medicineKeys } from '../src/features/medicines/queries'
 import { scheduleKeys } from '../src/features/schedules/queries'
@@ -373,15 +374,28 @@ describe('a medication detail', () => {
   }
 
   test('shows its details and that no schedule is set', async () => {
-    medicinesApi(listOf(1))
-    cache(listOf(1))
+    const period = '00000000-0000-4000-8000-0000000000c1'
+    const list = [{ ...medicine(1), currentStrengthRevisionId: period }]
+    medicinesApi(list)
+    cache(list)
     renderDetail(medicine(1).id)
     expect(await screen.findByText('No schedule', { exact: true })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Schedule', level: 2 })).toBeVisible()
     expect(screen.getByText('tablet')).toBeVisible()
-    expect(screen.getByRole('link', { name: /^Fix a mistake/ })).toBeVisible()
-    expect(screen.getByRole('link', { name: /^Change strength/ })).toBeVisible()
-    expect(screen.getByRole('link', { name: /^Strength history/ })).toBeVisible()
+    // 346·C1: Edit details alone with its effect, then the two strength rows together.
+    const details = screen.getByRole('region', { name: 'Medication details' })
+    const edit = within(details).getByRole('link', { name: 'Edit details' })
+    expect(edit).toHaveAttribute('href', medicationRecordHref(medicine(1).id, 'fix', period))
+    expect(within(edit).getByText('Updates doses logged at the current strength.')).toBeVisible()
+    const groups = details.querySelectorAll('[data-slot="item-group"]')
+    expect(groups).toHaveLength(2)
+    expect(within(groups[0] as HTMLElement).getAllByRole('link')).toEqual([edit])
+    expect(
+      within(groups[1] as HTMLElement)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('aria-label')),
+    ).toEqual(['Change strength', 'Strength history'])
+    expect(screen.queryByRole('link', { name: /Fix a mistake/ })).not.toBeInTheDocument()
   })
 
   test('says when the medication is not in the list', async () => {

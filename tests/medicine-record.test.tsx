@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { expect, test, vi } from 'vitest'
@@ -542,19 +542,27 @@ test('record read keeps its shell through loading and error, retries, and identi
   expect(screen.getByRole('link', { name: 'Medication' })).toBeVisible()
   succeeds = true
   await userEvent.setup().click(retry)
-  expect(await screen.findByText('400 mg · Current')).toBeVisible()
-  expect(screen.getByText('200 mg · Earlier strength')).toBeVisible()
+  // 346·C2: the note sits above the periods, only the current period has the Current badge,
+  // and each period links to its own Detail correction.
+  const current = (await screen.findByText('400 mg')).closest('[data-slot="item"]') as HTMLElement
+  const earlier = screen.getByText('200 mg').closest('[data-slot="item"]') as HTMLElement
+  expect(within(current).getByText('Current')).toBeVisible()
+  expect(within(earlier).queryByText('Current')).not.toBeInTheDocument()
+  expect(screen.getAllByText('Current')).toHaveLength(1)
+  expect(screen.queryByText(/Earlier strength/)).not.toBeInTheDocument()
   expect(screen.queryByText(/1901/)).not.toBeInTheDocument()
   expect(screen.getByText(/First strength period/)).toBeVisible()
-  expect(
-    screen.getByText(
-      'Fixing a mistake updates that period’s doses. A strength change keeps earlier doses unchanged.',
-    ),
-  ).toBeVisible()
-  expect(screen.getAllByRole('link', { name: 'Fix a mistake in this period' })[1]).toHaveAttribute(
-    'href',
-    expect.stringContaining(`period=${medicine.strengthRevisions[0].id}`),
+  const note = screen.getByText(
+    'Editing a period updates the doses logged in it. Changing strength starts a new period.',
   )
+  expect(note.compareDocumentPosition(current) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(screen.queryByText(/Fixing a mistake/)).not.toBeInTheDocument()
+  expect(
+    within(current).getByRole('link', { name: 'Edit details for this period' }),
+  ).toHaveAttribute('href', expect.stringContaining(`period=${medicine.strengthRevisions[1].id}`))
+  expect(
+    within(earlier).getByRole('link', { name: 'Edit details for this period' }),
+  ).toHaveAttribute('href', expect.stringContaining(`period=${medicine.strengthRevisions[0].id}`))
 })
 
 function EditReadScreen() {

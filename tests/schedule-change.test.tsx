@@ -205,7 +205,7 @@ describe('Medication detail', () => {
     const change = await screen.findByRole('link', { name: 'Change schedule' })
     expect(change).toHaveAttribute('href', `/medications${setupSearch}#schedule-heading`)
     expect(screen.getByText('Started Mon 2 Nov')).toBeVisible()
-    expect(screen.getByRole('link', { name: /^Fix a mistake/ })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Edit details' })).toBeVisible()
     expect(screen.getByRole('link', { name: /^Change strength/ })).toBeVisible()
     expect(screen.getByRole('link', { name: /^Strength history/ })).toBeVisible()
   })

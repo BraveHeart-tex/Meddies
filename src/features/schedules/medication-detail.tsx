@@ -283,16 +283,19 @@ export function MedicationDetail({
             variant="card"
             render={
               <MedicationsLink
-                aria-label="Fix a mistake"
+                aria-label="Edit details"
                 href={medicationRecordHref(medicine.id, 'fix', medicine.currentStrengthRevisionId)}
               />
             }
           >
             <ItemContent>
-              <ItemTitle>Fix a mistake</ItemTitle>
+              <ItemTitle>Edit details</ItemTitle>
+              <ItemDescription>Updates doses logged at the current strength.</ItemDescription>
             </ItemContent>
             <Pencil aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
           </Item>
+        </ItemGroup>
+        <ItemGroup>
           <Item
             variant="card"
             render={
@@ -308,8 +311,6 @@ export function MedicationDetail({
             </ItemContent>
             <Clock aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
           </Item>
-        </ItemGroup>
-        <ItemGroup>
           <Item
             variant="card"
             render={

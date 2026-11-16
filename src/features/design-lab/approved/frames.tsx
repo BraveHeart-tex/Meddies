@@ -1,5 +1,4 @@
 import type { LabFrame } from '../frames'
-import { editDetailsFrames } from './edit-details-frames'
 import { editDetailsFormFrames } from './record-form-frames'
 import { ScannerFrame } from './scanner-frame'
 
@@ -11,6 +10,5 @@ export const approvedFrames = [
     citation: '193·B·Scanner',
     render: () => <ScannerFrame />,
   },
-  ...editDetailsFrames,
   ...editDetailsFormFrames,
 ] satisfies readonly LabFrame[]

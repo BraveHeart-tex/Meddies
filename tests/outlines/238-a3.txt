@@ -25,10 +25,11 @@
   - region "Medication details"
     - heading "Medication details" [level=2]
     - list
-      - link "Fix a mistake"
-      - link "Change strength"
+      - link "Edit details"
         - paragraph
     - list
+      - link "Change strength"
+        - paragraph
       - link "Strength history"
   - button "Archive medication"
 - navigation "Primary"

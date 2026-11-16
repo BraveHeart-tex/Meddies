@@ -1,7 +1,16 @@
 'use client'
 
+import { Pencil } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemFooter,
+  ItemGroup,
+  ItemTitle,
+} from '@/components/ui/item'
 import { strengthPeriodDescription } from './strength-period'
 import type { MedicinesRead } from './queries'
 import { isArchived, parseMedicineRecord, type MedicineRecord } from './contract'
@@ -53,36 +62,39 @@ export function MedicineRecordScreen({
       body = (
         <>
           <MedicationIdentity medicine={saved} />
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <h2 className="text-heading">Strength history</h2>
+            <p className="text-body-sm text-muted-foreground">
+              Editing a period updates the doses logged in it. Changing strength starts a new
+              period.
+            </p>
           </div>
           <ItemGroup>
             {[...saved.strengthRevisions].reverse().map((period) => (
               <Item key={period.id} variant="card">
                 <ItemContent>
-                  <ItemTitle>
-                    {period.strength ?? 'No strength entered'}
-                    {period.id === saved.currentStrengthRevisionId
-                      ? ' · Current'
-                      : ' · Earlier strength'}
-                  </ItemTitle>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <ItemTitle>{period.strength ?? 'No strength entered'}</ItemTitle>
+                    {period.id === saved.currentStrengthRevisionId && (
+                      <Badge variant="secondary">Current</Badge>
+                    )}
+                  </div>
                   <ItemDescription>
                     {strengthPeriodDescription(saved.strengthRevisions, period.id, today)}
                   </ItemDescription>
+                </ItemContent>
+                <ItemFooter>
                   <MedicationsLink
                     href={medicationRecordHref(saved.id, 'fix', period.id)}
-                    className={buttonVariants({ variant: 'outline' })}
+                    className={buttonVariants({ variant: 'outline', className: 'w-full' })}
                   >
-                    Fix a mistake in this period
+                    <Pencil data-icon="inline-start" aria-hidden="true" />
+                    Edit details for this period
                   </MedicationsLink>
-                </ItemContent>
+                </ItemFooter>
               </Item>
             ))}
           </ItemGroup>
-          <p className="text-body-sm text-muted-foreground">
-            Fixing a mistake updates that period’s doses. A strength change keeps earlier doses
-            unchanged.
-          </p>
         </>
       )
     else {
