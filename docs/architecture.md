@@ -93,6 +93,12 @@ owner.
   `archivedAt`; restore clears `archivedAt` without changing any Schedule version or replaying
   reminders. Each stores its exact retry receipt with revision + 1 and `lastActionId` in the
   same atomic write. Only an explicit schedule change can expect doses after restore.
+  `PATCH /api/medicines` accepts `delete` with an action UUID and expected medication
+  revision only while both permanent usage facts are false. One receipt insert deletes
+  the Medicine, strength revisions and record edit/archive/restore data atomically.
+  Owner-scoped deletion receipts outlive the record and block creation replay, including
+  inserts from an older Worker. The response contains a `deletion` receipt with the action,
+  Medicine, expected revision and server-confirmed `deletedAt`; refused attempts write nothing.
 - **Dose strength:** scheduled doses resolve by Taken time, or due time for Skipped;
   Unscheduled doses resolve by Taken time. Database insertion triggers save period identity,
   strength, label and Quantity unit, including writes from an older Worker during rollout.

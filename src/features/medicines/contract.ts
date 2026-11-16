@@ -37,6 +37,7 @@ export type MedicineResponses = {
   changeStrength: { medicines: MedicineRecord[] }
   archive: { medicines: MedicineRecord[] }
   restore: { medicines: MedicineRecord[] }
+  delete: { deletion: MedicineDeleteReceipt }
 }
 export type MedicineCommand =
   | { operation: 'list'; ownerId: string }
@@ -45,6 +46,7 @@ export type MedicineCommand =
   | { operation: 'changeStrength'; ownerId: string; change: StrengthChange }
   | { operation: 'archive'; ownerId: string; archive: MedicineArchive }
   | { operation: 'restore'; ownerId: string; restore: MedicineRestore }
+  | { operation: 'delete'; ownerId: string; deletion: MedicineDelete }
 
 export type MedicineResponse<C extends MedicineCommand = MedicineCommand> =
   MedicineResponses[C['operation']]
@@ -210,4 +212,17 @@ export function parseMedicineArchive(value: unknown): MedicineArchive {
 export type MedicineRestore = { actionId: string; medicineId: string; expectedRevision: number }
 export function parseMedicineRestore(value: unknown): MedicineRestore {
   return parseEditKey(value)
+}
+
+/** Permanent deletion is only available before any schedule or dose use. */
+export type MedicineDelete = { actionId: string; medicineId: string; expectedRevision: number }
+export type MedicineDeleteReceipt = MedicineDelete & { deletedAt: string }
+export function parseMedicineDelete(value: unknown): MedicineDelete {
+  return parseEditKey(value)
+}
+export function parseMedicineDeleteReceipt(value: unknown): MedicineDeleteReceipt {
+  const key = parseEditKey(value)
+  const input = value as Record<string, unknown>
+  if (!isInstant(input.deletedAt)) throw new ApplicationError('validation', 400)
+  return { ...key, deletedAt: input.deletedAt }
 }

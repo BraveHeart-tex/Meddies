@@ -97,3 +97,37 @@ test('edit operations derive ownership and reject unsupported units, instants an
   assert.equal(commands.length, 2)
   assert.ok(commands.every((command) => command.ownerId === 'google:alice'))
 })
+
+test('delete derives the owner, sends stable input and rejects mismatched or malformed receipts', async () => {
+  const deletion = {
+    actionId: '10000000-0000-4000-8000-000000000001',
+    medicineId: '10000000-0000-4000-8000-000000000002',
+    expectedRevision: 3,
+  }
+  const receipt = { ...deletion, deletedAt: '2026-11-16T10:00:00.000Z' }
+  let result: unknown = receipt
+  const commands: unknown[] = []
+  const operations = createMedicineOperations({
+    requireUser: async () => ({ id: 'google:alice' }),
+    send: async (command) => {
+      commands.push(command)
+      return result as never
+    },
+  })
+  assert.deepEqual(await operations.delete({ ...deletion, ownerId: 'google:other' }), receipt)
+  assert.deepEqual(commands, [{ operation: 'delete', ownerId: 'google:alice', deletion }])
+  for (const invalid of [
+    { ...receipt, actionId: deletion.medicineId },
+    { ...receipt, medicineId: deletion.actionId },
+    { ...receipt, expectedRevision: 4 },
+    { ...receipt, deletedAt: 'tomorrow' },
+    [],
+    null,
+  ]) {
+    result = invalid
+    await assert.rejects(() => operations.delete(deletion), /unavailable/)
+  }
+  const count = commands.length
+  await assert.rejects(() => operations.delete({ ...deletion, expectedRevision: -1 }), /validation/)
+  assert.equal(commands.length, count)
+})

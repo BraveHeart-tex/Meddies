@@ -1,15 +1,17 @@
 import 'server-only'
 import { sendStorage } from '@/lib/medicine-storage'
 import { requireUser } from '@/features/auth/server'
-import { parseMedicineResponse, type MedicineCommand, type MedicineResponse } from './contract'
+import { parseMedicineResponse, parseMedicineDeleteReceipt, type MedicineCommand } from './contract'
 import { ApplicationError } from '../../lib/application-error'
 import { createMedicineOperations } from './operations'
 
-export async function send<C extends MedicineCommand>(
-  command: C,
-): Promise<MedicineResponse<C>['medicines']> {
+export async function send(command: MedicineCommand) {
   try {
-    const data = (await sendStorage('/medicines', command)) as { medicines?: unknown }
+    const data = (await sendStorage('/medicines', command)) as {
+      medicines?: unknown
+      deletion?: unknown
+    }
+    if (command.operation === 'delete') return parseMedicineDeleteReceipt(data.deletion)
     if (!Array.isArray(data.medicines)) throw new Error('contract')
     try {
       // Legacy reads may omit archivedAt, but a restore must explicitly confirm it.

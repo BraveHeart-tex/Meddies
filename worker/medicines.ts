@@ -6,6 +6,8 @@ import { and, eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import {
   parseMedicineRecord,
+  parseMedicineDeleteReceipt,
+  type MedicineDelete,
   type Medicine,
   type MedicineRecord,
   type DetailCorrection,
@@ -178,6 +180,35 @@ export async function restoreMedicine(
   if (!owned) throw new ApplicationError('conflict', 409)
   await db.run(sql`INSERT INTO medicine_restores
     (owner_id,action_id,medicine_id,expected_revision,confirmed_at,request)
+    VALUES(${ownerId},${input.actionId},${input.medicineId},${input.expectedRevision},${now.toISOString()},${request})
+    ON CONFLICT DO NOTHING`)
+  const saved = await replay()
+  if (!saved) throw new ApplicationError('conflict', 409)
+  return saved
+}
+
+// One receipt insert (0016) serializes eligibility with first-use writes, deletes
+// the record and its dependent data, and blocks creation replay even on older Workers.
+// Replay precedes record lookup: the receipt survives the Medicine it removed.
+export async function deleteMedicine(
+  db: DrizzleD1Database,
+  ownerId: string,
+  input: MedicineDelete,
+  now: Date,
+) {
+  const request = JSON.stringify(input)
+  const replay = async () => {
+    const row = await db.get<{ request: string; result: string | null }>(
+      sql`SELECT request,result FROM medicine_deletions WHERE owner_id=${ownerId} AND action_id=${input.actionId}`,
+    )
+    if (!row) return null
+    if (row.request !== request) throw new ApplicationError('conflict', 409)
+    return { deletion: parseMedicineDeleteReceipt(JSON.parse(row.result!)) }
+  }
+  const prior = await replay()
+  if (prior) return prior
+  await db.run(sql`INSERT INTO medicine_deletions
+    (owner_id,action_id,medicine_id,expected_revision,deleted_at,request)
     VALUES(${ownerId},${input.actionId},${input.medicineId},${input.expectedRevision},${now.toISOString()},${request})
     ON CONFLICT DO NOTHING`)
   const saved = await replay()

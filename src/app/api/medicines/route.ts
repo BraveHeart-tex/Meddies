@@ -28,6 +28,8 @@ export async function PATCH(request: Request) {
   if (rejected) return rejected
   try {
     const input = (await readJsonRequest(request)) as Record<string, unknown>
+    if (input?.operation === 'delete')
+      return json({ deletion: await medicines.delete(input.deletion) })
     if (input?.operation === 'correctDetails')
       return json({ medicines: await medicines.correctDetails(input.correction) })
     if (input?.operation === 'changeStrength')

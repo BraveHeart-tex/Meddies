@@ -7,6 +7,7 @@ import {
   editMedicine,
   archiveMedicine,
   restoreMedicine,
+  deleteMedicine,
 } from './medicines'
 import { listLegacySnapshot, listOutcomeSnapshot, saveSchedule, editSchedule } from './schedules'
 import { correctDoseOutcome, recordSkipped, recordTaken } from './doses/mutations'
@@ -34,6 +35,8 @@ export function createWorker(clock: () => Date = () => new Date()) {
               return json(await archiveMedicine(db, command.ownerId, command.archive, clock()))
             case 'restore':
               return json(await restoreMedicine(db, command.ownerId, command.restore, clock()))
+            case 'delete':
+              return json(await deleteMedicine(db, command.ownerId, command.deletion, clock()))
             case 'list':
               return json(await listMedicines(db, command.ownerId))
             case 'save':

@@ -266,3 +266,21 @@ export const medicineRestores = sqliteTable(
     }),
   ],
 )
+
+// No Medicine FK: deletion receipts and facts must survive the deleted record.
+export const medicineDeletions = sqliteTable(
+  'medicine_deletions',
+  {
+    ownerId: text('owner_id').notNull(),
+    actionId: text('action_id').notNull(),
+    medicineId: text('medicine_id').notNull(),
+    expectedRevision: integer('expected_revision').notNull(),
+    deletedAt: text('deleted_at').notNull(),
+    request: text('request').notNull(),
+    result: text('result'),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.actionId] }),
+    unique().on(table.ownerId, table.medicineId),
+  ],
+)
