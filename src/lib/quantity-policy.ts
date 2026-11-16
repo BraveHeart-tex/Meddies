@@ -84,7 +84,7 @@ const medicineTypes = {
     format: (value) => String(Math.round(value * 10) / 10),
     tooSmall: 'Use 0.1 ml or more.',
     offGrid: 'Use steps of 0.1 ml, like 1.2 ml.',
-    writable: false,
+    writable: true,
   },
 } as const satisfies Record<string, QuantityEntry & { writable: boolean }>
 
@@ -109,11 +109,10 @@ const writableKeys = typeKeys.filter((type) => medicineTypes[type].writable) as 
 export const writableMedicineTypes: readonly [WritableMedicineType, ...WritableMedicineType[]] =
   writableKeys
 
-/** The Type menu: writable Types in menu order. */
-export const medicineTypeOptions = writableKeys.map((value) => ({
-  value,
-  label: medicineTypes[value].label,
-}))
+/** The Type menu: writable Types whose Add medication controls have shipped (#336). */
+export const medicineTypeOptions = writableKeys
+  .filter((value) => value !== 'liquid')
+  .map((value) => ({ value, label: medicineTypes[value].label }))
 
 export function isMedicineType(value: unknown): value is MedicineType {
   return typeKeys.includes(value as MedicineType)

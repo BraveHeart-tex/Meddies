@@ -23,16 +23,16 @@ const nbsp = '\u00a0'
 // 265·S2, S5: a counted unit #267 builds on, never registered as a production Type.
 const puff = countedEntry('Inhaler', 'puff', 'puffs')
 
-test('Types: Liquid is readable, only Tablet and Capsule reach the menu and writes', () => {
+test('Types: Liquid is writable, Add medication waits for its controls to ship', () => {
   assert.deepEqual(medicineTypeOptions, [
     { value: 'tablet', label: 'Tablet' },
     { value: 'capsule', label: 'Capsule' },
   ])
-  assert.deepEqual(writableMedicineTypes, ['tablet', 'capsule'])
+  assert.deepEqual(writableMedicineTypes, ['tablet', 'capsule', 'liquid'])
   for (const type of ['tablet', 'capsule', 'liquid']) assert.equal(isMedicineType(type), true)
   for (const type of ['ml', 'puff', 'inhaler', 'drops', 'injection', '', null])
     assert.equal(isMedicineType(type), false)
-  assert.equal(isWritableMedicineType('liquid'), false)
+  assert.equal(isWritableMedicineType('liquid'), true)
   assert.equal(medicineTypeLabel('liquid'), 'Liquid')
 })
 
@@ -130,12 +130,13 @@ test('Liquid validation: tenths of ml with the 265·S1 errors', () => {
   assert.equal(quantityProblem('900719925474100', 'liquid'), 'Enter a smaller quantity.')
 })
 
-test('writes accept only writable Types; reads accept Liquid amounts', () => {
+test('writes accept Liquid amounts and keep unsupported Types rejected', () => {
   assert.equal(isWritableQuantity(1, 'tablet'), true)
-  assert.equal(isWritableQuantity(1.5, 'liquid'), false)
-  assert.equal(isWritableQuantity(1, 'puff'), false)
+  assert.equal(isWritableQuantity(1.5, 'liquid'), true)
+  for (const type of ['inhaler', 'drops', 'injection', 'puff', 'unknown'])
+    assert.equal(isWritableQuantity(1, type), false)
   assert.equal(isWritableQuantity(1, undefined), false)
-  assert.equal(isDoseQuantity(0.3), false)
+  assert.equal(isDoseQuantity(0.3), true)
   assert.equal(isDoseQuantity(0.3, 'read'), true)
   assert.equal(isDoseQuantity(1.25, 'read'), false)
 })

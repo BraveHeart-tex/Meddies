@@ -28,7 +28,14 @@ export const userMedications = sqliteTable(
     creationResult: text('creation_result'),
     unit: text('unit', { enum: writableMedicineTypes }).notNull(),
   },
-  (table) => [primaryKey({ columns: [table.ownerId, table.id] })],
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.id] }),
+    // Reserve approved Types in storage; the shared policy controls Worker acceptance.
+    check(
+      'user_medications_unit',
+      sql`${table.unit} IN ('tablet', 'capsule', 'liquid', 'inhaler', 'drops')`,
+    ),
+  ],
 )
 
 export const dailySchedules = sqliteTable(
@@ -182,10 +189,7 @@ export const unscheduledDoses = sqliteTable(
     }),
     index('unscheduled_doses_owner_taken').on(table.ownerId, table.takenAt),
     check('unscheduled_doses_revision', sql`${table.revision} >= 0`),
-    check(
-      'unscheduled_doses_quantity',
-      sql`${table.quantity} > 0 AND ${table.quantity} * 2 = CAST(${table.quantity} * 2 AS INTEGER)`,
-    ),
+    check('unscheduled_doses_quantity', sql`${table.quantity} > 0`),
     check('unscheduled_doses_removed', sql`${table.removed} IN (0, 1)`),
   ],
 )

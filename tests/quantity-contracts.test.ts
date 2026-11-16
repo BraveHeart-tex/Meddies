@@ -18,8 +18,7 @@ import {
   parseUnscheduledDoseRecord,
 } from '../src/features/unscheduled-doses/contract'
 
-// Compatible rollout (#266): reads show a Liquid Medicine a newer Worker saved; writes keep
-// accepting only Tablet and Capsule until #335.
+// Liquid reads ship before writes (#266, #335); unsupported Types stay rejected.
 const id = '00000000-0000-4000-8000-000000000001'
 const actionId = '00000000-0000-4000-8000-000000000002'
 const liquid = { id, label: 'Amoxicillin', strength: '250 mg/5 ml', unit: 'liquid' }
@@ -64,9 +63,10 @@ test('read contracts accept a Liquid Medicine and decimal ml amounts', () => {
     )
 })
 
-test('write contracts reject Liquid, unknown Types and the test-only counted unit', () => {
+test('write contracts accept Liquid but reject Inhaler, Drops, unknown Types and the test-only unit', () => {
   assert.equal(parseMedicine({ ...liquid, unit: 'capsule' }).unit, 'capsule')
-  for (const unit of ['liquid', 'ml', 'inhaler', 'puff', 'drops', 'injection', undefined]) {
+  assert.equal(parseMedicine(liquid).unit, 'liquid')
+  for (const unit of ['ml', 'inhaler', 'puff', 'drops', 'injection', undefined]) {
     assert.throws(() => parseMedicine({ ...liquid, unit }), /validation/)
     assert.throws(
       () =>
@@ -84,33 +84,54 @@ test('write contracts reject Liquid, unknown Types and the test-only counted uni
   }
 })
 
-test('write contracts reject ml amounts off the Tablet and Capsule grid', () => {
-  assert.throws(() => parseSchedule(schedule), /validation/)
-  assert.throws(() => parseTakenDose({ ...taken, quantity: 0.3 }), /validation/)
-  assert.throws(() => parseUnscheduledDose(unscheduled), /validation/)
-  assert.throws(
-    () =>
-      parseUnscheduledDoseChange({
-        actionId,
-        doseId: id,
-        expectedRevision: 0,
-        removed: false,
-        takenAt: taken.takenAt,
-        quantity: 0.3,
-      }),
-    /validation/,
+test('write contracts accept tenths for Liquid on every quantity write and reject invalid amounts', () => {
+  const correction = {
+    ...taken,
+    actionId,
+    expectedRevision: 0,
+    expectedOutcome: 'Taken',
+    outcome: 'Taken',
+  }
+  const change = {
+    actionId,
+    doseId: id,
+    expectedRevision: 0,
+    removed: false,
+    takenAt: taken.takenAt,
+    quantity: 0.3,
+  }
+  assert.equal(
+    parseDetailCorrection({
+      ...liquid,
+      actionId,
+      medicineId: id,
+      expectedRevision: 0,
+      strengthRevisionId: id,
+    }).unit,
+    'liquid',
   )
-  assert.throws(
-    () =>
-      parseDoseCorrection({
-        ...taken,
-        actionId,
-        expectedRevision: 0,
-        expectedOutcome: 'Taken',
-        outcome: 'Taken',
-        quantity: 0.3,
-      }),
-    /validation/,
-  )
-  assert.equal(parseTakenDose(taken).quantity, 1.5)
+  for (const quantity of [0.1, 0.3, 0.5, 1.5]) {
+    assert.equal(
+      parseSchedule({ ...schedule, times: [{ time: '08:00', quantity }] }).times[0].quantity,
+      quantity,
+    )
+    assert.equal(parseTakenDose({ ...taken, quantity }).quantity, quantity)
+    const parsedCorrection = parseDoseCorrection({ ...correction, quantity })
+    assert.ok('quantity' in parsedCorrection)
+    assert.equal(parsedCorrection.quantity, quantity)
+    assert.equal(parseUnscheduledDose({ ...unscheduled, quantity }).quantity, quantity)
+    const parsedChange = parseUnscheduledDoseChange({ ...change, quantity })
+    assert.ok('quantity' in parsedChange)
+    assert.equal(parsedChange.quantity, quantity)
+  }
+  for (const quantity of [0.05, 1.25, 0, -0.1, Number.MAX_SAFE_INTEGER]) {
+    for (const parse of [
+      () => parseSchedule({ ...schedule, times: [{ time: '08:00', quantity }] }),
+      () => parseTakenDose({ ...taken, quantity }),
+      () => parseDoseCorrection({ ...correction, quantity }),
+      () => parseUnscheduledDose({ ...unscheduled, quantity }),
+      () => parseUnscheduledDoseChange({ ...change, quantity }),
+    ])
+      assert.throws(parse, /validation/)
+  }
 })

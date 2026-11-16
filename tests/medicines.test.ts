@@ -8,7 +8,13 @@ test('medicine operations reject invalid labels and units before persistence', a
     requireUser: async () => ({ id: 'google:alice' }),
     send: async () => assert.fail('invalid input must not reach storage'),
   })
-  for (const patch of [{ label: ' ' }, { unit: 'liquid' }, { strength: 'x'.repeat(121) }]) {
+  for (const patch of [
+    { label: ' ' },
+    { unit: 'inhaler' },
+    { unit: 'drops' },
+    { unit: 'unknown' },
+    { strength: 'x'.repeat(121) },
+  ]) {
     await assert.rejects(
       () =>
         operations.save({
