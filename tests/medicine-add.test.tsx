@@ -284,7 +284,7 @@ test('the session draft survives leaving Add and clears explicitly and after con
   expect(screen.queryByText(note)).not.toBeInTheDocument()
 })
 
-test('the Type menu offers tablet and capsule, checks the choice and saves its unit', async () => {
+test('Type sits between Name and Strength, opens above, and Liquid saves', async () => {
   const posted: Medicine[] = []
   server.use(
     http.post('/api/medicines', async ({ request }) => {
@@ -294,23 +294,34 @@ test('the Type menu offers tablet and capsule, checks the choice and saves its u
     }),
   )
   const { user, onSaved } = openAdd()
-  await user.type(name(), 'Magnesium')
+  const rows = [name(), type(), strength()]
+  for (const [index, row] of rows.slice(1).entries())
+    expect(rows[index].compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  const packHelp = 'On the pack, e.g. 200 mg. Not your dose amount.'
+  expect(strength()).toHaveAccessibleDescription(packHelp)
+  await user.type(name(), 'Amoxicillin')
   await user.click(type())
-  expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual([
-    'Tablet',
-    'Capsule',
-  ])
-  expect(screen.getByRole('option', { name: 'Tablet' })).toHaveAttribute('aria-selected', 'false')
-  await user.click(screen.getByRole('option', { name: 'Tablet' }))
-  await user.click(type())
-  expect(await screen.findByRole('option', { name: 'Tablet' })).toHaveAttribute(
-    'aria-selected',
-    'true',
+  const options = await screen.findAllByRole('option')
+  expect(options.map((option) => option.textContent)).toEqual(['Tablet', 'Capsule', 'Liquid'])
+  for (const option of options) {
+    expect(option).toHaveAttribute('aria-selected', 'false')
+    expect(option.querySelector('[aria-hidden="true"] svg')).toBeInTheDocument()
+  }
+  expect(screen.getByRole('listbox').closest('[data-side]')).toHaveAttribute('data-side', 'top')
+  for (const label of ['Tablet', 'Capsule']) {
+    if (label !== 'Tablet') await user.click(type())
+    await user.click(await screen.findByRole('option', { name: label }))
+    expect(strength()).toHaveAccessibleDescription(packHelp)
+  }
+  await chooseType(user, 'Liquid')
+  expect(type()).toHaveTextContent('Liquid')
+  expect(strength()).toHaveAccessibleDescription(
+    'On the bottle, e.g. 250 mg/5 ml. Not your dose amount.',
   )
-  await user.keyboard('{Escape}')
+  await user.type(strength(), '250 mg/5 ml')
   await user.click(button('Save medication'))
   await waitFor(() => expect(onSaved).toHaveBeenCalledOnce())
-  expect(posted[0]).toMatchObject({ label: 'Magnesium', strength: null, unit: 'tablet' })
+  expect(posted[0]).toMatchObject({ label: 'Amoxicillin', strength: '250 mg/5 ml', unit: 'liquid' })
 })
 
 test.each(['id', 'label', 'strength', 'unit', 'missing', 'malformed'])(

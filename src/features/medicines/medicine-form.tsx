@@ -1,8 +1,8 @@
 'use client'
 
-import { medicineTypeOptions } from '@/lib/quantity-policy'
+import { medicineTypeOptions, strengthHelp } from '@/lib/quantity-policy'
 
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ChevronsUpDownIcon, InfoIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { MedicationUnitTile } from './medication-tile'
+import { TypeTile } from './type-tile'
 import type { Medicine } from './contract'
 import { saveMessages } from '@/lib/save-messages'
 import type { SaveProblem } from '@/lib/session-saves'
@@ -61,6 +61,8 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
     defaultValues: medicineFormDefaults,
   })
   const draft = useSessionFormDraft(medicineAddKey, form)
+  // Strength help follows the chosen Type.
+  const unit = useWatch({ control: form.control, name: 'unit' })
   const offline = useKnownOffline()
   const saveState = useMedicineSave((saved) => {
     form.reset(medicineFormDefaults)
@@ -132,6 +134,62 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
               )}
             />
             <Controller
+              name="unit"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid} className="not-first:border-t">
+                  <Select
+                    items={UNITS}
+                    value={field.value || null}
+                    onValueChange={(value) => field.onChange(value ?? '')}
+                    disabled={field.disabled || locked}
+                  >
+                    {/* The whole row is the trigger, its label included. */}
+                    <SelectTrigger
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      icon={ChevronsUpDownIcon}
+                      aria-labelledby="medicine-unit-label"
+                      aria-describedby={fieldState.invalid ? 'medicine-unit-error' : undefined}
+                      aria-invalid={fieldState.invalid}
+                      className='grid min-h-14 grid-cols-[5.75rem_minmax(0,1fr)_1.375rem] gap-0 rounded-none border-0 bg-transparent px-4 text-body-lg focus-visible:-outline-offset-2 aria-invalid:ring-0 [&_svg:not([class*="size-"])]:size-5.5'
+                    >
+                      <span
+                        id="medicine-unit-label"
+                        className="text-base font-extrabold text-foreground group-data-[invalid=true]/field:text-destructive"
+                      >
+                        Type
+                      </span>
+                      <SelectValue
+                        placeholder="Choose"
+                        className="font-bold in-data-placeholder:font-semibold"
+                      />
+                    </SelectTrigger>
+                    {/* Opens above the row, so it never hides Save medication. */}
+                    <SelectContent side="top" align="end" className="w-61 rounded-lg p-0.5">
+                      {UNITS.map((option) => (
+                        <SelectItem
+                          key={option.value}
+                          value={option.value}
+                          className="min-h-12 pl-1.5 font-extrabold data-[selected]:bg-transparent data-[selected]:text-foreground data-[selected]:data-highlighted:bg-secondary"
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <TypeTile type={option.value} />
+                            {option.label}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError
+                    id="medicine-unit-error"
+                    className="px-4 pb-3 font-extrabold"
+                    errors={[fieldState.error]}
+                  />
+                </Field>
+              )}
+            />
+            <Controller
               name="strength"
               control={form.control}
               render={({ field, fieldState }) => (
@@ -157,64 +215,8 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
                     errors={[fieldState.error]}
                   />
                   <FieldDescription id="medicine-strength-help" className={rowHelp}>
-                    On the pack, e.g. 200 mg. Not your dose amount.
+                    {strengthHelp(unit || null)}
                   </FieldDescription>
-                </Field>
-              )}
-            />
-            <Controller
-              name="unit"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid} className="not-first:border-t">
-                  <Select
-                    items={UNITS}
-                    value={field.value || null}
-                    onValueChange={(value) => field.onChange(value ?? '')}
-                    disabled={field.disabled || locked}
-                  >
-                    {/* The whole row is the trigger, its label included. */}
-                    <SelectTrigger
-                      ref={field.ref}
-                      onBlur={field.onBlur}
-                      icon={ChevronsUpDownIcon}
-                      aria-labelledby="medicine-unit-label"
-                      aria-describedby={fieldState.invalid ? 'medicine-unit-error' : undefined}
-                      aria-invalid={fieldState.invalid}
-                      className='grid min-h-14 grid-cols-[5.75rem_minmax(0,1fr)_1.375rem] gap-0 rounded-none rounded-b-2xl border-0 bg-transparent px-4 text-body-lg focus-visible:-outline-offset-2 aria-invalid:ring-0 [&_svg:not([class*="size-"])]:size-5.5'
-                    >
-                      <span
-                        id="medicine-unit-label"
-                        className="text-base font-extrabold text-foreground group-data-[invalid=true]/field:text-destructive"
-                      >
-                        Type
-                      </span>
-                      <SelectValue
-                        placeholder="Choose"
-                        className="font-bold in-data-placeholder:font-semibold"
-                      />
-                    </SelectTrigger>
-                    {/* Opens above the row, so it never hides Save medication. */}
-                    <SelectContent side="top" align="end" className="w-61 rounded-lg p-0.5">
-                      {UNITS.map((unit) => (
-                        <SelectItem
-                          key={unit.value}
-                          value={unit.value}
-                          className="min-h-12 pl-1.5 font-extrabold data-[selected]:bg-transparent data-[selected]:text-foreground data-[selected]:data-highlighted:bg-secondary"
-                        >
-                          <span className="flex items-center gap-2.5">
-                            <MedicationUnitTile unit={unit.value} />
-                            {unit.label}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FieldError
-                    id="medicine-unit-error"
-                    className="px-4 pb-3 font-extrabold"
-                    errors={[fieldState.error]}
-                  />
                 </Field>
               )}
             />

@@ -1,7 +1,7 @@
 // Quantity policy: the one place that knows each Medicine type's Quantity unit and dose amount
 // rules (docs/product/medication-domain.md#medicine-types-and-quantity-units). UI forms,
 // contracts and the Worker read Types, menu order, steps, minimums, safe bounds, new dose amounts,
-// parsing, stepping, wording and amount errors from here; none of them branch on a Type.
+// parsing, stepping, wording, Strength help and amount errors from here; none of them branch on a Type.
 //
 // Each entry stores amounts on a grid of `1 / scale` (halves for tablets, tenths for ml, wholes
 // for counted units) and checks them by rounding to whole grid steps, so decimals like 0.3 stay
@@ -12,7 +12,7 @@
 // `writable` entries reach the Type menu, write contracts and Worker validation.
 //
 // Adding a Type: add one entry below, in menu order, with its own unit words, grid, minimum,
-// new dose amount and errors (counted units use `countedEntry`). Never reuse another Type's
+// new dose amount, Strength help and errors (counted units use `countedEntry`). Never reuse another Type's
 // rules. Leave it unwritable until its persistence ships, then flip `writable`.
 
 /** A Quantity unit's rules; production entries live in `medicineTypes`, tests may build more. */
@@ -53,6 +53,9 @@ export function countedEntry(label: string, unit: string, plural: string): Quant
   }
 }
 
+/** Strength help while the Type is unset, and for Types sold in packs. */
+const packHelp = 'On the pack, e.g. 200 mg. Not your dose amount.'
+
 const medicineTypes = {
   tablet: {
     label: 'Tablet',
@@ -71,9 +74,14 @@ const medicineTypes = {
     },
     tooSmall: 'Use ½ tablet or more.',
     offGrid: 'Use whole or half tablets.',
+    strengthHelp: packHelp,
     writable: true,
   },
-  capsule: { ...countedEntry('Capsule', 'capsule', 'capsules'), writable: true },
+  capsule: {
+    ...countedEntry('Capsule', 'capsule', 'capsules'),
+    strengthHelp: packHelp,
+    writable: true,
+  },
   liquid: {
     label: 'Liquid',
     unit: 'ml',
@@ -84,9 +92,10 @@ const medicineTypes = {
     format: (value) => String(Math.round(value * 10) / 10),
     tooSmall: 'Use 0.1 ml or more.',
     offGrid: 'Use steps of 0.1 ml, like 1.2 ml.',
+    strengthHelp: 'On the bottle, e.g. 250 mg/5 ml. Not your dose amount.',
     writable: true,
   },
-} as const satisfies Record<string, QuantityEntry & { writable: boolean }>
+} as const satisfies Record<string, QuantityEntry & { strengthHelp: string; writable: boolean }>
 
 type Entries = typeof medicineTypes
 /** A Medicine type a read may show. */
@@ -109,10 +118,11 @@ const writableKeys = typeKeys.filter((type) => medicineTypes[type].writable) as 
 export const writableMedicineTypes: readonly [WritableMedicineType, ...WritableMedicineType[]] =
   writableKeys
 
-/** The Type menu: writable Types whose Add medication controls have shipped (#336). */
-export const medicineTypeOptions = writableKeys
-  .filter((value) => value !== 'liquid')
-  .map((value) => ({ value, label: medicineTypes[value].label }))
+/** The Type menu: writable Types in menu order. */
+export const medicineTypeOptions = writableKeys.map((value) => ({
+  value,
+  label: medicineTypes[value].label,
+}))
 
 export function isMedicineType(value: unknown): value is MedicineType {
   return typeKeys.includes(value as MedicineType)
@@ -124,6 +134,11 @@ export function isWritableMedicineType(value: unknown): value is WritableMedicin
 
 export function medicineTypeLabel(type: MedicineType): string {
   return medicineTypes[type].label
+}
+
+/** Strength help for the chosen Type, or the pack help while none is chosen. */
+export function strengthHelp(type: MedicineType | null): string {
+  return type ? medicineTypes[type].strengthHelp : packHelp
 }
 
 function entry(quantity: Quantity): QuantityEntry {

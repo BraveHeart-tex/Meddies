@@ -1,54 +1,13 @@
 import type { ReactNode } from 'react'
-import { cn } from '@/lib/utils'
+import { GlyphTile, typeGlyphs, typeTints, type TypeTileSize } from '@/features/medicines/type-tile'
 import type { LabType } from './medication-types-model'
 
-// #265 Type icons: two-tone filled glyphs on the medication tile tints. The solid tone is the
-// tile's glyph color, the soft tone the same color at 45%, highlights the card color. Drawn on a
-// 24px grid with rounded joins so they sit beside the Two capsules mark. Decorative only.
+// #265 Type icons for Types not yet built (#267): Inhaler and Drops extend the production
+// Type tile (`type-tile.tsx`) with the same two-tone drawing rules.
 const soft = { opacity: 0.45 }
 
 const glyphs: Record<LabType, ReactNode> = {
-  // Two round tablets, the front one scored.
-  tablet: (
-    <>
-      <circle cx="8.5" cy="9" r="5.5" style={soft} />
-      <circle cx="14" cy="14.5" r="6.5" />
-      <path
-        d="M10.4 18.1 17.6 10.9"
-        className="stroke-card"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </>
-  ),
-  // A two-tone capsule on the diagonal, as in the logo.
-  capsule: (
-    <g transform="rotate(45 12 12)">
-      <path d="M8 12V7a4 4 0 0 1 8 0v5z" />
-      <path d="M8 12v5a4 4 0 0 0 8 0v-5z" style={soft} />
-      <path
-        d="M10.4 6.4v3.4"
-        className="stroke-card"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        opacity="0.8"
-      />
-    </g>
-  ),
-  // A medicine bottle with a cap and a labelled body.
-  liquid: (
-    <>
-      <rect x="8.5" y="2" width="7" height="3.5" rx="1.2" style={soft} />
-      <path d="M9.5 5.5h5v1.6l2.6 2.2c.6.5.9 1.2.9 2V19a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-7.7c0-.8.3-1.5.9-2l2.6-2.2z" />
-      <rect x="6" y="12" width="12" height="5.5" className="fill-card" opacity="0.9" />
-      <path
-        d="M12 13.4v2.7M10.65 14.75h2.7"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-      />
-    </>
-  ),
+  ...typeGlyphs,
   // A pressurised inhaler: canister above an L-shaped actuator with its mouthpiece.
   inhaler: (
     <>
@@ -82,37 +41,12 @@ const glyphs: Record<LabType, ReactNode> = {
 }
 
 const tints: Record<LabType, string> = {
-  tablet: 'bg-medication-blush text-medication-blush-glyph',
-  capsule: 'bg-medication-peach text-medication-peach-glyph',
-  liquid: 'bg-medication-plum text-medication-plum-glyph',
+  ...typeTints,
   inhaler: 'bg-medication-mist text-medication-mist-glyph',
   drops: 'bg-medication-butter text-medication-butter-glyph',
 }
 
 /** The 30px tile beside a Type option; `md` is the 46px identity tile, `lg` the dose drawer's. */
-export function TypeTile({ type, size = 'sm' }: { type: LabType; size?: 'sm' | 'md' | 'lg' }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        'grid shrink-0 place-items-center',
-        size === 'sm'
-          ? 'size-7.5 rounded-md'
-          : size === 'md'
-            ? 'size-11.5 rounded-md'
-            : 'size-13 rounded-lg',
-        tints[type],
-      )}
-    >
-      <svg
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        focusable="false"
-        // On the svg itself, so a Select item's own icon size never shrinks it.
-        className={size === 'sm' ? 'size-6' : size === 'md' ? 'size-7.5' : 'size-8.5'}
-      >
-        {glyphs[type]}
-      </svg>
-    </span>
-  )
+export function TypeTile({ type, size = 'sm' }: { type: LabType; size?: TypeTileSize }) {
+  return <GlyphTile glyph={glyphs[type]} tint={tints[type]} size={size} />
 }

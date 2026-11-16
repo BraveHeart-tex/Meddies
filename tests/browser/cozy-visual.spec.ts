@@ -115,7 +115,11 @@ test(
       await page.getByRole('combobox', { name: 'Type' }).click()
       await expect(page.getByRole('option', { name: 'Tablet' })).toBeVisible()
       await shot('prod-add-medicine-type-menu')
-      await page.keyboard.press('Escape')
+      await page.getByRole('option', { name: 'Liquid' }).click()
+      await expect(
+        page.getByText('On the bottle, e.g. 250 mg/5 ml.', { exact: false }),
+      ).toBeVisible()
+      await shot('prod-add-medicine-liquid')
     })
   },
 )

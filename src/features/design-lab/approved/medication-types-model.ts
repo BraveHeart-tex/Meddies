@@ -3,7 +3,8 @@
 // #266 owns the production policy; nothing here is imported outside `approved/`.
 
 export type LabType = 'tablet' | 'capsule' | 'liquid' | 'inhaler' | 'drops'
-export type AddState = 'unset' | 'menu' | 'liquid' | 'inhaler' | 'drops'
+/** Add medication frames still in the lab; B1-B3 are built (#336). */
+export type AddState = 'inhaler' | 'drops'
 export type SharedState =
   | 'clock-setup'
   | 'interval-setup'
@@ -65,7 +66,6 @@ export const typeRules: Record<LabType, Rule> = {
 }
 
 export const labTypes = Object.keys(typeRules) as LabType[]
-export const unsetHelp = typeRules.tablet.help
 
 /** '1½' for tablets; '1.5' for Liquid; whole numbers otherwise. */
 export function formatAmount(value: number, type: LabType) {

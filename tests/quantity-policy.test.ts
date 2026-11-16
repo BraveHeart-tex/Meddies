@@ -10,6 +10,7 @@ import {
   isWritableQuantity,
   medicineTypeLabel,
   medicineTypeOptions,
+  strengthHelp,
   parseQuantity,
   quantityLabel,
   quantityProblem,
@@ -23,11 +24,15 @@ const nbsp = '\u00a0'
 // 265·S2, S5: a counted unit #267 builds on, never registered as a production Type.
 const puff = countedEntry('Inhaler', 'puff', 'puffs')
 
-test('Types: Liquid is writable, Add medication waits for its controls to ship', () => {
+test('Types: the menu lists every writable Type in order, with Strength help per Type', () => {
   assert.deepEqual(medicineTypeOptions, [
     { value: 'tablet', label: 'Tablet' },
     { value: 'capsule', label: 'Capsule' },
+    { value: 'liquid', label: 'Liquid' },
   ])
+  const pack = 'On the pack, e.g. 200 mg. Not your dose amount.'
+  for (const type of [null, 'tablet', 'capsule'] as const) assert.equal(strengthHelp(type), pack)
+  assert.equal(strengthHelp('liquid'), 'On the bottle, e.g. 250 mg/5 ml. Not your dose amount.')
   assert.deepEqual(writableMedicineTypes, ['tablet', 'capsule', 'liquid'])
   for (const type of ['tablet', 'capsule', 'liquid']) assert.equal(isMedicineType(type), true)
   for (const type of ['ml', 'puff', 'inhaler', 'drops', 'injection', '', null])

@@ -1,26 +1,8 @@
 import type { LabFrame } from '../frames'
 import { AddMedicationScreen, SharedScreen } from './medication-types-screens'
 
-/** #265: approved Direction B, Type first; shared frames cover amounts, schedules and wording. */
+/** #265: approved Direction B, Type first; B1-B3 are built (#336), shared frames cover amounts, schedules and wording. */
 export const medicationTypesFrames = [
-  {
-    slug: '265-b1',
-    citation: '265·B1',
-    title: 'Type first - Type unset',
-    render: () => <AddMedicationScreen state="unset" />,
-  },
-  {
-    slug: '265-b2',
-    citation: '265·B2',
-    title: 'Type first - Type menu',
-    render: () => <AddMedicationScreen state="menu" />,
-  },
-  {
-    slug: '265-b3',
-    citation: '265·B3',
-    title: 'Type first - Liquid',
-    render: () => <AddMedicationScreen state="liquid" />,
-  },
   {
     slug: '265-b4',
     citation: '265·B4',

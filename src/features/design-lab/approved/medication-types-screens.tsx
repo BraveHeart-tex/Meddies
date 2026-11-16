@@ -31,7 +31,6 @@ import {
   amountLabel,
   examples,
   typeRules,
-  unsetHelp,
   type AddState,
   type LabType,
   type SharedState,
@@ -51,9 +50,9 @@ const rowHelp = 'col-span-full pb-3 text-caption'
 
 /** Add medication over Medications: Name, Type, then Strength with the Type's help. */
 export function AddMedicationScreen({ state }: { state: AddState }) {
-  const type: LabType | null = state === 'unset' || state === 'menu' ? null : state
-  const name = type ? examples[type].label : ''
-  const help = type ? typeRules[type].help : unsetHelp
+  const type = state
+  const name = examples[type].label
+  const help = typeRules[type].help
   const nameRow = (
     <Field className={textRow}>
       <FieldLabel htmlFor="lab-name">Name</FieldLabel>
@@ -74,7 +73,7 @@ export function AddMedicationScreen({ state }: { state: AddState }) {
       </FieldDescription>
     </Field>
   )
-  const typeRow = <TypeRow type={type} open={state === 'menu'} />
+  const typeRow = <TypeRow type={type} open={false} />
   return (
     <FixtureQuery {...routine}>
       <AppShell current="/medications">
