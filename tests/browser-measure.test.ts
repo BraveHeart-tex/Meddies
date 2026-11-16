@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest'
-import { summarizeLayoutShifts } from './browser/layout'
+import { snapshotBoxes, summarizeLayoutShifts } from './browser/layout'
+import type { Locator } from '@playwright/test'
 import { apiPath } from './browser/requests'
 
 const origin = 'http://localhost:4100'
@@ -38,4 +39,21 @@ test('summarizeLayoutShifts reports a stable load as zero', () => {
     inputShift: 0,
     inputShifts: 0,
   })
+})
+
+test('snapshotBoxes rejects a missing target with its stage and name', async () => {
+  const missing = { count: async () => 0 } as unknown as Locator
+  await expect(snapshotBoxes('fallback', { header: missing })).rejects.toThrow(
+    'Layout snapshot at stage "fallback" is missing visible box for target "header"',
+  )
+})
+
+test('snapshotBoxes rejects a hidden target with its stage and name', async () => {
+  const hidden = {
+    count: async () => 1,
+    first: () => ({ boundingBox: async () => null }),
+  } as unknown as Locator
+  await expect(snapshotBoxes('loaded', { primaryNav: hidden })).rejects.toThrow(
+    'Layout snapshot at stage "loaded" is missing visible box for target "primaryNav"',
+  )
 })

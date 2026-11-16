@@ -58,6 +58,20 @@ export async function boxes(elements: Record<string, Locator>) {
   return result
 }
 
+/** Capture required element boxes, naming the stage and target when geometry is unavailable. */
+export async function snapshotBoxes(stage: string, elements: Record<string, Locator>) {
+  const captured = await boxes(elements)
+  const result: Record<string, Box> = {}
+  for (const [name, box] of Object.entries(captured)) {
+    if (!box)
+      throw new Error(
+        `Layout snapshot at stage "${stage}" is missing visible box for target "${name}"`,
+      )
+    result[name] = box
+  }
+  return result
+}
+
 /**
  * Track layout shift and element geometry across one load. Sets `viewport` and starts observing
  * before the next document loads, so call it before `page.goto`. For a client navigation, call
@@ -74,7 +88,7 @@ export async function trackLayout(page: Page, viewport: Viewport) {
     },
     /** Record element boxes at a named stage, such as `fallback` or `loaded`. */
     async snapshot(stage: string, elements: Record<string, Locator> = shellElements(page)) {
-      snapshots.push({ stage, boxes: await boxes(elements) })
+      snapshots.push({ stage, boxes: await snapshotBoxes(stage, elements) })
     },
     /** Layout shift since the start, with every snapshot so far. */
     async result() {
