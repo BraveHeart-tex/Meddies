@@ -118,12 +118,14 @@ export async function saveSchedule(
     throw new ApplicationError('validation', 400)
   // A first use races Detail correction: persist only under the unit whose shared
   // quantity policy we validated. The insert and permanent usage trigger are atomic.
-  await db.run(sql`INSERT INTO daily_schedules
+  await refuseArchived(
+    db.run(sql`INSERT INTO daily_schedules
     (owner_id,id,medicine_id,start_date,times,confirmed_at,weekdays,end_date,interval_hours)
     SELECT ${ownerId},${schedule.id},${schedule.medicineId},${schedule.startDate},
       ${JSON.stringify(schedule.times)},${now.toISOString()},${JSON.stringify(schedule.weekdays)},${schedule.endDate},${schedule.intervalHours}
     WHERE EXISTS(SELECT 1 FROM user_medications WHERE owner_id=${ownerId} AND id=${schedule.medicineId} AND unit=${medicine.unit})
-    ON CONFLICT DO NOTHING`)
+    ON CONFLICT DO NOTHING`),
+  )
   const saved = await db
     .select(scheduleColumns)
     .from(dailySchedules)
@@ -228,16 +230,30 @@ export async function editSchedule(
       (anchorDate !== null && change.endDate < anchorDate))
   )
     throw new ApplicationError('validation', 400)
-  await db.run(sql`
+  await refuseArchived(
+    db.run(sql`
     INSERT INTO daily_schedules (owner_id, id, medicine_id, start_date, times, confirmed_at,
       weekdays, end_date, interval_hours, based_on_id, edit_request, stopped_at, paused_at, anchor_date)
     SELECT ${ownerId}, ${edit.id}, ${parent.medicineId}, ${startDate}, ${JSON.stringify(change.times)},
       ${now.toISOString()}, ${JSON.stringify(change.weekdays)}, ${change.endDate}, ${change.intervalHours ?? null}, ${edit.basedOnId}, ${request}, ${stopping ? now.toISOString() : null}, ${pausing ? now.toISOString() : null}, ${anchorDate}
     WHERE NOT EXISTS (SELECT 1 FROM daily_schedules WHERE owner_id = ${ownerId} AND based_on_id = ${edit.basedOnId})
     ON CONFLICT DO NOTHING
-  `)
+  `),
+  )
   const saved = await readSaved()
   if (!saved || saved.editRequest !== request) throw new ApplicationError('conflict', 409)
   const { editRequest: _, ...version } = saved
   return { schedules: [version] }
+}
+
+// An archived Medicine expects no future doses (0014 guard); a write racing an archive
+// is a stale-state conflict, never a partially archived Medicine.
+async function refuseArchived(write: Promise<unknown>) {
+  try {
+    await write
+  } catch (error) {
+    if (/medicine_archived/.test(String(error instanceof Error ? (error.cause ?? error) : error)))
+      throw new ApplicationError('conflict', 409)
+    throw error
+  }
 }

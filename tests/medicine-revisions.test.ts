@@ -22,6 +22,7 @@ const medicine: MedicineRecord = {
   everHadSchedule: true,
   everHadDose: true,
   latestTakenAt: '2026-11-05T06:00:00.000Z',
+  archivedAt: null,
   strengthRevisions: [
     {
       id,

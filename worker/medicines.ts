@@ -10,6 +10,7 @@ import {
   type MedicineRecord,
   type DetailCorrection,
   type StrengthChange,
+  type MedicineArchive,
 } from '../src/features/medicines/contract'
 import { ApplicationError } from '../src/lib/application-error'
 import { medicineEdits, userMedications } from './schema'
@@ -107,6 +108,42 @@ export async function editMedicine(
       throw new ApplicationError('validation', 400)
     throw error
   }
+  const saved = await replay()
+  if (!saved) throw new ApplicationError('conflict', 409)
+  return saved
+}
+
+// Archive (#322) is one insert plus triggers (0014): the schedule stop at the Edit time,
+// archived_at, the revision increment and the receipt commit or roll back together, and
+// a schedule write racing it either becomes the version it stops or is refused.
+// Replay by action precedes the revision check, so an identical retry returns the receipt.
+export async function archiveMedicine(
+  db: DrizzleD1Database,
+  ownerId: string,
+  input: MedicineArchive,
+  now: Date,
+) {
+  const request = JSON.stringify(input)
+  const replay = async () => {
+    const row = await db.get<{ request: string; result: string | null }>(
+      sql`SELECT request,result FROM medicine_archives WHERE owner_id=${ownerId} AND action_id=${input.actionId}`,
+    )
+    if (!row) return null
+    if (row.request !== request) throw new ApplicationError('conflict', 409)
+    return { medicines: [parseMedicineRecord(JSON.parse(row.result!))] }
+  }
+  const prior = await replay()
+  if (prior) return prior
+  const owned = await db
+    .select({ id: userMedications.id })
+    .from(userMedications)
+    .where(and(eq(userMedications.ownerId, ownerId), eq(userMedications.id, input.medicineId)))
+    .get()
+  if (!owned) throw new ApplicationError('validation', 400)
+  await db.run(sql`INSERT INTO medicine_archives
+    (owner_id,action_id,medicine_id,expected_revision,confirmed_at,request)
+    VALUES(${ownerId},${input.actionId},${input.medicineId},${input.expectedRevision},${now.toISOString()},${request})
+    ON CONFLICT DO NOTHING`)
   const saved = await replay()
   if (!saved) throw new ApplicationError('conflict', 409)
   return saved

@@ -6,6 +6,7 @@ import {
   parseMedicine,
   parseDetailCorrection,
   parseStrengthChange,
+  parseMedicineArchive,
   type MedicineCommand,
 } from '../src/features/medicines/contract'
 import {
@@ -57,6 +58,11 @@ export function decodeCommand(path: '/medicines' | '/schedules', value: unknown)
             ownerId,
             change: parseStrengthChange(input.change),
           },
+        }
+      case 'archive':
+        return {
+          path,
+          command: { operation: 'archive', ownerId, archive: parseMedicineArchive(input.archive) },
         }
       case 'list':
         return { path, command: { operation: 'list', ownerId } }

@@ -24,6 +24,8 @@ type MedicineMetadata = {
   everHadSchedule: boolean
   everHadDose: boolean
   latestTakenAt: string | null
+  /** The archive's Edit time; null while active. Reads before #322 omit it (active). */
+  archivedAt: string | null
 }
 
 export type MedicineRecord = Medicine & MedicineMetadata
@@ -33,12 +35,14 @@ export type MedicineResponses = {
   save: { medicines: Medicine[] }
   correctDetails: { medicines: MedicineRecord[] }
   changeStrength: { medicines: MedicineRecord[] }
+  archive: { medicines: MedicineRecord[] }
 }
 export type MedicineCommand =
   | { operation: 'list'; ownerId: string }
   | { operation: 'save'; ownerId: string; medicine: Medicine }
   | { operation: 'correctDetails'; ownerId: string; correction: DetailCorrection }
   | { operation: 'changeStrength'; ownerId: string; change: StrengthChange }
+  | { operation: 'archive'; ownerId: string; archive: MedicineArchive }
 
 export type MedicineResponse<C extends MedicineCommand = MedicineCommand> =
   MedicineResponses[C['operation']]
@@ -80,7 +84,8 @@ export function parseMedicineRecord(value: unknown): MedicineRecord {
     !input.strengthRevisions.length ||
     typeof input.everHadSchedule !== 'boolean' ||
     typeof input.everHadDose !== 'boolean' ||
-    (input.latestTakenAt !== null && !isInstant(input.latestTakenAt))
+    (input.latestTakenAt !== null && !isInstant(input.latestTakenAt)) ||
+    (input.archivedAt != null && !isInstant(input.archivedAt))
   )
     throw new ApplicationError('validation', 400)
   const strengthRevisions = input.strengthRevisions.map((value: unknown) => {
@@ -113,6 +118,7 @@ export function parseMedicineRecord(value: unknown): MedicineRecord {
     everHadSchedule: input.everHadSchedule,
     everHadDose: input.everHadDose,
     latestTakenAt: input.latestTakenAt as string | null,
+    archivedAt: (input.archivedAt as string | null | undefined) ?? null,
   }
 }
 
@@ -190,4 +196,10 @@ export function parseStrengthChange(value: unknown): StrengthChange {
     effectiveAt: input.effectiveAt,
     timeZone: 'Europe/Istanbul',
   }
+}
+
+/** Archive at the server-confirmed Edit time; the revision guards stale state. */
+export type MedicineArchive = { actionId: string; medicineId: string; expectedRevision: number }
+export function parseMedicineArchive(value: unknown): MedicineArchive {
+  return parseEditKey(value)
 }
