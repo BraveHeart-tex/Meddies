@@ -6,8 +6,9 @@ import {
   hydrated,
   scrollsHorizontally,
   stylesheetsLoaded,
+  waitForClientLink,
 } from './actions'
-import { dragHandle, drawerBottom } from './drawers'
+import { dragHandle, drawerAtRest, drawerBottom } from './drawers'
 import { captureCases } from './capture'
 import { captureSettled } from './settled-capture'
 import { expect, test } from './fixtures'
@@ -27,6 +28,47 @@ const scheduleId = '00000000-0000-4000-8000-0000000d0002'
 const out = process.env.MEDDIES_VISUAL_OUT
 const screens = process.env.MEDDIES_SCREENS
 
+// Opt-in #348 cold Add recording on the local Next.js and Worker/D1 fixture stack.
+test.describe('cold Add recording', () => {
+  test('capture one Add tap while the list streams', { tag: '@visual' }, async ({ page, app }) => {
+    // eslint-disable-next-line playwright/no-skipped-test -- opt-in interaction evidence
+    test.skip(!out || process.env.MEDDIES_ADD_CAPTURE !== '1', 'Set MEDDIES_ADD_CAPTURE=1')
+    await mkdir(resolve(out!), { recursive: true })
+    const reads = [
+      { method: 'POST', path: '/medicines', operation: 'list' },
+      { method: 'POST', path: '/schedules', operation: 'listOutcomes' },
+    ]
+    for (const read of reads) app.worker.hold(read)
+    await page.goto('/medications', { waitUntil: 'commit' })
+    await waitForClientLink(page.getByRole('link', { name: 'Add a medication' }))
+    await expect(page.getByRole('status')).toContainText('Loading medications')
+    const add = page.getByRole('link', { name: 'Add a medication' })
+    await add.click()
+    await expect(drawer(page)).toBeVisible()
+    await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Draft stays open')
+    app.worker.release()
+    await expect(page.getByRole('status')).toHaveCount(0)
+    await expect(drawer(page)).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue(
+      'Draft stays open',
+    )
+    await drawerAtRest(page)
+    await captureSettled(page, { path: resolve(out!, 'cold-add.png'), fullPage: true })
+    await page.keyboard.press('Escape')
+    await expect(drawer(page)).toBeHidden()
+    await expect(
+      page.getByRole('link', { name: 'View details for Capture Fixture Medicine' }),
+    ).toBeVisible()
+    await expect(add).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(drawer(page)).toBeVisible()
+    await expect(page.getByRole('status')).toHaveCount(0)
+    await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue('')
+    await drawerAtRest(page)
+    await captureSettled(page, { path: resolve(out!, 'loaded-add.png'), fullPage: true })
+  })
+})
+
 function parseScreens(selection: string) {
   const paths = [...new Set(selection.split(',').map((path) => path.trim()))]
   for (const path of paths)
@@ -42,6 +84,7 @@ function fileName(path: string) {
 }
 
 test.use({
+  video: process.env.MEDDIES_ADD_CAPTURE === '1' ? 'on' : 'off',
   journey: {
     auth: true,
     givenName: 'AlexandriaЖанайым',

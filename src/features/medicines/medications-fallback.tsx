@@ -18,9 +18,9 @@ import {
 import { medicineKeys } from './queries'
 
 /**
- * Suspense fallback for the streamed Medications section. A warm navigation shows the session's
- * cached view while the server reads; otherwise the view's own skeleton holds its place. A cached list without the linked medication isn't proof it's missing, so that waits for
- * the server too.
+ * Route fallback while authentication and the page shell resolve. A warm navigation shows the
+ * session's cached view; otherwise the view's skeleton holds its place. The authenticated page
+ * keeps its own interactive panel mounted while its data-only handoff streams (#348).
  */
 export function MedicationsFallback() {
   const view = useMedicationsView()

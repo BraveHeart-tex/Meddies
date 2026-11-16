@@ -1,7 +1,7 @@
 'use client'
 
 import { Info } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { SchedulePanel } from '@/features/schedules/schedule-panel'
 import { buttonVariants } from '@/components/ui/button'
 import { MedicineArchiveDrawer } from './medicine-archive-drawer'
@@ -20,11 +20,14 @@ export function MedicinePanel({
   serverEntry = false,
   record,
   periodId,
+  loading,
 }: {
   scheduleMode?: 'add' | 'setup' | 'resume' | 'list' | 'detail' | 'archived'
   scheduleMedicineId?: string
   detailMedicineId?: string
   initialNow: string
+  /** Holds only the data view while the server streams; the Add Drawer stays mounted. */
+  loading?: ReactNode
   /** This render's server read already refreshed both queries, so views don't read again. */
   record?: 'fix' | 'strength' | 'history'
   periodId?: string
@@ -113,43 +116,45 @@ export function MedicinePanel({
           <AlertDescription>This medication had no schedule or doses.</AlertDescription>
         </Alert>
       )}
-      <SchedulePanel
-        onArchiveRequested={(medicine) => {
-          setRestoredId(null)
-          setArchive({ medicine, open: true })
-        }}
-        onRestoreRequested={(medicine) => setRestore({ medicine, open: true })}
-        justRestored={scheduleMode === 'detail' && !record && restoredId === detailMedicineId}
-        onDeleteRequested={(medicine) => setDeletion({ medicine, open: true })}
-        record={record}
-        periodId={periodId}
-        onRecordSaved={(medicine, kind) => {
-          setRecordMessage(kind === 'fix' ? 'Fixed details saved' : 'Strength change saved')
-          returnToMedicationPage(medicine.id)
-        }}
-        initialNow={initialNow}
-        onScheduleSaved={scheduled}
-        // Add opens as a Drawer over the list.
-        mode={scheduleMode === 'add' ? 'list' : scheduleMode}
-        initialMedicineId={scheduleMedicineId || detailMedicineId}
-        serverEntry={serverEntry}
-        focusMedicineId={focusMedicineId}
-        onMedicineFocused={() => setFocusMedicineId(null)}
-        detailHeadingRef={detailHeading}
-        justSaved={justSavedHere}
-        justScheduled={justScheduledHere}
-        detailActions={
-          justSavedHere ? (
-            <MedicationsLink
-              href={medicationsHref({ mode: 'list' })}
-              onShow={() => setFocusMedicineId(savedMedicine.id)}
-              className={buttonVariants({ size: 'lg', variant: 'outline' })}
-            >
-              Done for now
-            </MedicationsLink>
-          ) : null
-        }
-      />
+      {loading ?? (
+        <SchedulePanel
+          onArchiveRequested={(medicine) => {
+            setRestoredId(null)
+            setArchive({ medicine, open: true })
+          }}
+          onRestoreRequested={(medicine) => setRestore({ medicine, open: true })}
+          justRestored={scheduleMode === 'detail' && !record && restoredId === detailMedicineId}
+          onDeleteRequested={(medicine) => setDeletion({ medicine, open: true })}
+          record={record}
+          periodId={periodId}
+          onRecordSaved={(medicine, kind) => {
+            setRecordMessage(kind === 'fix' ? 'Fixed details saved' : 'Strength change saved')
+            returnToMedicationPage(medicine.id)
+          }}
+          initialNow={initialNow}
+          onScheduleSaved={scheduled}
+          // Add opens as a Drawer over the list.
+          mode={scheduleMode === 'add' ? 'list' : scheduleMode}
+          initialMedicineId={scheduleMedicineId || detailMedicineId}
+          serverEntry={serverEntry}
+          focusMedicineId={focusMedicineId}
+          onMedicineFocused={() => setFocusMedicineId(null)}
+          detailHeadingRef={detailHeading}
+          justSaved={justSavedHere}
+          justScheduled={justScheduledHere}
+          detailActions={
+            justSavedHere ? (
+              <MedicationsLink
+                href={medicationsHref({ mode: 'list' })}
+                onShow={() => setFocusMedicineId(savedMedicine.id)}
+                className={buttonVariants({ size: 'lg', variant: 'outline' })}
+              >
+                Done for now
+              </MedicationsLink>
+            ) : null
+          }
+        />
+      )}
       {archive && (
         <MedicineArchiveDrawer
           key={archive.medicine.id}

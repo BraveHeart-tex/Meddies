@@ -32,11 +32,8 @@ export function MedicationsHeader() {
           : reservedCount
       }
       action={
-        // Before the list is cached the section may still be streaming, so Add goes through the
-        // router and replaces it; Add's section reads nothing, so its Drawer never waits.
         <MedicationsLink
           href={medicationsHref({ mode: 'add' })}
-          routerNavigation={!medicines}
           keepScroll
           aria-label="Add a medication"
           // The empty state's Add medication is the view's one primary action.

@@ -1,11 +1,16 @@
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import type { Medicine } from '../src/features/medicines/contract'
 import { MedicineAddDrawer } from '../src/features/medicines/medicine-add-drawer'
+import { RouterContext } from 'next/dist/shared/lib/router-context.shared-runtime'
+import type { NextRouter } from 'next/router'
+import { MedicationsReady, MedicationsSection } from '../src/features/medicines/medications-section'
 import { MedicationsHeader } from '../src/features/medicines/medications-header'
+import { medicineKeys } from '../src/features/medicines/queries'
+import { scheduleKeys } from '../src/features/schedules/queries'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
 
@@ -153,4 +158,38 @@ test('every dismissal is refused while saving, and the save still hands off', as
   expect(name()).toHaveValue('Magnesium')
   release()
   await waitFor(() => expect(onSaved).toHaveBeenCalledOnce())
+})
+
+test('one Add tap opens the Drawer before the medicine list is cached', async () => {
+  window.history.replaceState(null, '', '/medications')
+  const ui = (ready: boolean) => (
+    <QueryClientProvider client={client}>
+      <RouterContext.Provider
+        value={{ prefetch: async () => {}, push: vi.fn() } as unknown as NextRouter}
+      >
+        <MedicationsHeader />
+        <MedicationsSection initialNow="2026-11-16T08:00:00.000Z">
+          {ready && <MedicationsReady />}
+        </MedicationsSection>
+      </RouterContext.Provider>
+    </QueryClientProvider>
+  )
+  const view = render(ui(false))
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('link', { name: 'Add a medication' }))
+  expect(await screen.findByRole('dialog', { name: 'Add medication' })).toBeVisible()
+  await user.type(name(), 'Magnesium')
+  act(() => {
+    client.setQueryData(medicineKeys.list(), [])
+    client.setQueryData(scheduleKeys.snapshot(), {
+      schedules: [],
+      records: [],
+      date: '2026-11-16',
+      now: '2026-11-16T08:00:00.000Z',
+    })
+  })
+  view.rerender(ui(true))
+  expect(screen.getByRole('dialog', { name: 'Add medication' })).toBeVisible()
+  expect(name()).toHaveValue('Magnesium')
+  expect(screen.queryByText('Loading medications')).not.toBeInTheDocument()
 })

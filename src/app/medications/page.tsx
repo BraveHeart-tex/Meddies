@@ -4,25 +4,19 @@ import { AppShell } from '@/components/layout/app-shell'
 import { ScreenStack } from '@/components/layout/screen-stack'
 import { auth, authConfigured } from '@/features/auth/server'
 import { SessionBoundary } from '@/features/auth/session-boundary'
-import { MedicationsFallback } from '@/features/medicines/medications-fallback'
 import { MedicationsHeader } from '@/features/medicines/medications-header'
-import { MedicationsScreen } from '@/features/medicines/medications-screen'
+import { MedicationsSection, MedicationsReady } from '@/features/medicines/medications-section'
 import { medicationsHref, parseMedicationsView } from '@/features/medicines/routes'
 import { PrivateQueryHandoff } from '@/lib/private-query-handoff'
 import { prefetchMedications } from '@/features/schedules/prefetch'
 import { schedulingNow } from '@/features/schedules/server'
 
-/**
- * The medicines and schedules every data view shares, read together in one section so the panel
- * stays mounted across views (#87). Add reads nothing here, so its Drawer never waits and the
- * list behind it reads from the browser.
- */
-async function MedicationsSection({ add, initialNow }: { add: boolean; initialNow: string }) {
-  const read = add ? { state: { mutations: [], queries: [] }, complete: false } : null
-  const { state, complete } = read ?? (await prefetchMedications())
+/** Data-only handoff: the interactive panel stays mounted outside Suspense. */
+async function MedicationsData() {
+  const { state } = await prefetchMedications()
   return (
     <PrivateQueryHandoff state={state}>
-      <MedicationsScreen initialNow={initialNow} serverEntry={complete} />
+      <MedicationsReady />
     </PrivateQueryHandoff>
   )
 }
@@ -41,12 +35,16 @@ export default async function MedicationsPage({
       <AppShell>
         <ScreenStack>
           <MedicationsHeader />
-          <Suspense fallback={<MedicationsFallback />}>
-            <MedicationsSection
-              add={view.mode === 'add'}
-              initialNow={schedulingNow().toISOString()}
-            />
-          </Suspense>
+          <MedicationsSection
+            initialNow={schedulingNow().toISOString()}
+            clientEntry={view.mode === 'add'}
+          >
+            {view.mode !== 'add' && (
+              <Suspense fallback={null}>
+                <MedicationsData />
+              </Suspense>
+            )}
+          </MedicationsSection>
         </ScreenStack>
       </AppShell>
     </SessionBoundary>
