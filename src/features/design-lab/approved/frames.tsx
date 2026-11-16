@@ -1,4 +1,5 @@
 import type { LabFrame } from '../frames'
+import { notificationsFrames } from './notifications-frames'
 import { ScannerFrame } from './scanner-frame'
 
 /** Approved designs waiting for their build ticket. */
@@ -9,4 +10,5 @@ export const approvedFrames = [
     citation: '193·B·Scanner',
     render: () => <ScannerFrame />,
   },
+  ...notificationsFrames,
 ] satisfies readonly LabFrame[]
