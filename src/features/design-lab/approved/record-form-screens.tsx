@@ -38,7 +38,7 @@ import {
   unitName,
   type MedicineType,
 } from '@/lib/quantity-policy'
-import { periodSentence } from './edit-details-form-model'
+import { periodSentence } from './record-form-model'
 
 const NOTE = 'These changes also update doses recorded for this period.'
 const LOCKED = 'Type and dose unit can’t change after a schedule or dose is added.'

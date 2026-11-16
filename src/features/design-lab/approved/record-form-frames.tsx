@@ -4,8 +4,8 @@ import {
   ibuprofenRecord,
   magnesiumRecord,
   vitaminDRecord,
-} from './edit-details-form-model'
-import { GroupedForm } from './edit-details-form-screens'
+} from './record-form-model'
+import { GroupedForm } from './record-form-screens'
 
 /** #347: approved Direction C, the Edit details form grouped by what can change. */
 export const editDetailsFormFrames = [
