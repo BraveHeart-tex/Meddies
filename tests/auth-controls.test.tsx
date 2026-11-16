@@ -9,6 +9,7 @@ import { AuthControl } from '../src/features/auth/controls'
 import { endSession } from '../src/features/auth/session-end'
 import { doseSaves, type DoseSaveRequest } from '../src/features/schedules/dose-saves'
 import { scheduleKeys } from '../src/features/schedules/queries'
+import { registeredInstallation } from '../src/features/device-registrations/registration-upkeep'
 import { endSessionQueryClient, sessionQueryClient } from '../src/lib/session-query-client'
 import { sessionSaves } from '../src/lib/session-saves'
 
@@ -224,4 +225,46 @@ test('several outstanding saves are all named', async () => {
   expect(screen.getByRole('alert')).toHaveTextContent(
     "Some saves haven't finished yet.If you sign out now, Meddies can't show whether Aspirin and the schedule for Vitamin D were recorded",
   )
+})
+
+const registration = '/api/device-registration'
+const installationId = 'cTestInstallation0001x'
+
+test('Sign out removes this device registration before signing out', async () => {
+  const { signOut } = await import('next-auth/react')
+  const order: string[] = []
+  vi.mocked(signOut).mockImplementationOnce(async () => {
+    order.push('sign out')
+    return {} as never
+  })
+  registeredInstallation.set({ installationId })
+  server.use(
+    endedSession(),
+    http.delete(registration, async ({ request }) => {
+      order.push(`remove ${JSON.stringify(await request.json())}`)
+      return HttpResponse.json({ registered: false })
+    }),
+  )
+  render(<AuthControl signedIn />)
+  await userEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+  await waitFor(() => expect(endSession).toHaveBeenCalledWith('signed-out'))
+  expect(order).toEqual([`remove {"installationId":"${installationId}"}`, 'sign out'])
+  expect(registeredInstallation.get()).toBeUndefined()
+})
+
+test('Sign out completes when removing the registration fails', async () => {
+  const { signOut } = await import('next-auth/react')
+  vi.mocked(signOut).mockClear()
+  registeredInstallation.set({ installationId })
+  server.use(
+    endedSession(),
+    http.delete(registration, () => new HttpResponse(null, { status: 503 })),
+  )
+  render(<AuthControl signedIn />)
+  await userEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+  await waitFor(() => expect(endSession).toHaveBeenCalledWith('signed-out'))
+  expect(signOut).toHaveBeenCalledTimes(1)
+  // Kept for a later Turn off or launch to remove.
+  expect(registeredInstallation.get()).toEqual({ installationId })
+  localStorage.clear()
 })

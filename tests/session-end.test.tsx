@@ -15,6 +15,7 @@ import { doseSaves, type DoseSaveRequest } from '../src/features/schedules/dose-
 import { useSessionFormDraft } from '../src/lib/use-session-form-draft'
 import { useForm } from 'react-hook-form'
 import { useEffect } from 'react'
+import { registeredInstallation } from '../src/features/device-registrations/registration-upkeep'
 import { server } from './helpers/msw-server'
 
 vi.mock('next-auth/react', () => ({ signIn: vi.fn(), signOut: vi.fn() }))
@@ -86,6 +87,22 @@ test('the absolute deadline ends the session without a network request', async (
   expect(replace).toHaveBeenCalledWith(
     `/?reason=expired&returnTo=${encodeURIComponent('/history?date=2026-11-04')}`,
   )
+})
+
+test('session expiry keeps this device registration', async () => {
+  const removals: unknown[] = []
+  server.use(
+    http.delete('/api/device-registration', async ({ request }) => {
+      removals.push(await request.json())
+      return HttpResponse.json({ registered: false })
+    }),
+  )
+  registeredInstallation.set({ installationId: 'cTestInstallation0001x' })
+  mount(new Date(Date.now() - 1000).toISOString())
+  await screen.findByRole('heading', { name: 'Sign in to Meddies' })
+  expect(removals).toEqual([])
+  expect(registeredInstallation.get()).toEqual({ installationId: 'cTestInstallation0001x' })
+  localStorage.clear()
 })
 
 test('offline expiry keeps the sign-in screen instead of navigating to nothing', async () => {

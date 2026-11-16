@@ -5,7 +5,7 @@
  * status (icon and word, so it never rests on color), at most one short line, and a switch at the
  * end only when Meddies can change the state. Steps follow as numbered rows in the same card and
  * a save alert sits right under it. The switch never moves ahead of the server: while Turn on
- * saves it stays off and disabled. On has no switch until Turn off (#355).
+ * saves it stays off and disabled, and while Turn off (#355) saves it stays on and disabled.
  * Wording follows docs/copy.md and the #29 device registration rules.
  */
 import {
@@ -28,7 +28,7 @@ import { saveMessages } from '@/lib/save-messages'
 import { cn } from '@/lib/utils'
 
 /**
- * The device cases plus the Turn on save's moments. `checking` is the row before this device's
+ * The device cases plus the Turn on and Turn off saves' moments. `checking` is the row before this device's
  * case is known. iPhone needs the Home Screen app; Android Chrome and desktop browsers get
  * notifications in the browser, so only Blocked differs by platform.
  */
@@ -43,6 +43,9 @@ export type NotificationState =
   | 'blocked-iphone'
   | 'blocked-android'
   | 'on'
+  | 'turning-off'
+  | 'off-unconfirmed'
+  | 'off-rejected'
 
 type Shown = Exclude<NotificationState, 'checking'>
 
@@ -56,6 +59,9 @@ const status: Record<Shown, { label: string; icon: LucideIcon }> = {
   'blocked-iphone': { label: 'Blocked', icon: Ban },
   'blocked-android': { label: 'Blocked', icon: Ban },
   on: { label: 'On', icon: BellRing },
+  'turning-off': { label: 'Turning off...', icon: BellRing },
+  'off-unconfirmed': { label: 'On', icon: BellRing },
+  'off-rejected': { label: 'On', icon: BellRing },
 }
 
 const asksFirst = 'Asks permission first.'
@@ -90,10 +96,21 @@ const steps: Partial<Record<Shown, readonly string[]>> = {
 const alerts: Partial<Record<Shown, { title: string; body: string }>> = {
   unconfirmed: { title: saveMessages.mightNotHaveSaved, body: saveMessages.retrySameSave },
   rejected: { title: 'Notifications aren’t on.', body: 'Check your connection and try again.' },
+  'off-unconfirmed': { title: saveMessages.mightNotHaveSaved, body: saveMessages.retrySameSave },
+  'off-rejected': {
+    title: 'Notifications aren’t off.',
+    body: 'Check your connection and try again.',
+  },
 }
 
-const switchable = (state: NotificationState) =>
+const turnsOn = (state: NotificationState) =>
   state === 'off' || state === 'turning-on' || state === 'unconfirmed' || state === 'rejected'
+const turnsOff = (state: NotificationState) =>
+  state === 'on' ||
+  state === 'turning-off' ||
+  state === 'off-unconfirmed' ||
+  state === 'off-rejected'
+const isOn = (state: NotificationState) => state === 'on' || turnsOff(state)
 
 /** A numbered step as an inset-list row, the number in the icon tile's place. */
 function StepRow({ number, children }: { number: number; children: ReactNode }) {
@@ -129,7 +146,7 @@ function Status({ state }: { state: NotificationState }) {
     <span
       className={cn(
         'flex items-center gap-1 text-body-sm font-bold text-muted-foreground [&>svg]:size-4',
-        state === 'on' && 'text-dose-taken-foreground',
+        isOn(state) && 'text-dose-taken-foreground',
       )}
     >
       <Icon aria-hidden="true" />
@@ -140,19 +157,28 @@ function Status({ state }: { state: NotificationState }) {
 
 /**
  * Renders one state. `offline` disables the switch and says why; `onTurnOn` runs from the
- * switch's tap, so a permission prompt it opens comes from that tap.
+ * switch's tap, so a permission prompt it opens comes from that tap, and `onTurnOff` from the
+ * tap on On's switch.
  */
 export function NotificationsGroup({
   state,
   offline = false,
   onTurnOn,
+  onTurnOff,
 }: {
   state: NotificationState
   offline?: boolean
   onTurnOn?: () => void
+  onTurnOff?: () => void
 }) {
   const shown = state === 'checking' ? undefined : state
-  const line = shown && switchable(shown) && offline ? 'Connect to turn on.' : shown && body[shown]
+  const line =
+    shown && offline && turnsOn(shown)
+      ? 'Connect to turn on.'
+      : shown && offline && turnsOff(shown)
+        ? 'Connect to turn off.'
+        : shown && body[shown]
+  const toggle = turnsOn(state) ? onTurnOn : onTurnOff
   const alert = shown && alerts[shown]
   return (
     <section className="flex flex-col gap-2">
@@ -171,11 +197,13 @@ export function NotificationsGroup({
                   <ItemTitle>This device</ItemTitle>
                   <Status state={state} />
                 </div>
-                {switchable(state) && (
+                {(turnsOn(state) || turnsOff(state)) && (
                   <Switch
-                    checked={false}
-                    disabled={state === 'turning-on' || offline || !onTurnOn}
-                    onCheckedChange={(checked) => checked && onTurnOn?.()}
+                    checked={isOn(state)}
+                    disabled={
+                      state === 'turning-on' || state === 'turning-off' || offline || !toggle
+                    }
+                    onCheckedChange={(checked) => checked !== isOn(state) && toggle?.()}
                     aria-label="Notifications on this device"
                   />
                 )}

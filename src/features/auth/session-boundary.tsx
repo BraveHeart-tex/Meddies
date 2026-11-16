@@ -6,13 +6,15 @@ import { endSession, onSessionEnded, type SessionEnded } from './session-end'
 import { SessionSaveFeedback } from './session-save-feedback'
 import { SignInScreen } from './sign-in-screen'
 import { isServer, QueryClientProvider } from '@tanstack/react-query'
+import { RegistrationUpkeep } from '@/features/device-registrations/registration-upkeep'
 import { confirmSessionEnd } from '@/lib/session-check'
 import { createQueryClient, sessionQueryClient } from '@/lib/session-query-client'
 
 /**
  * Replaces authenticated content with sign-in at session end: the absolute deadline without a
  * request, and a server-confirmed end when the page returns. Reads and saves confirm their own 401s.
- * Provides the session's Query client: one per server request, one per browser session.
+ * Provides the session's Query client: one per server request, one per browser session, and
+ * keeps this device's registration current once per signed-in launch.
  */
 export function SessionBoundary({
   ownerId,
@@ -61,6 +63,7 @@ export function SessionBoundary({
     <QueryClientProvider client={client}>
       <EntryFocus />
       <SessionSaveFeedback />
+      <RegistrationUpkeep />
       {children}
     </QueryClientProvider>
   )

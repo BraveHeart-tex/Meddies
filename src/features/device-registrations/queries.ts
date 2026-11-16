@@ -10,8 +10,8 @@ import {
 export const deviceRegistrationKeys = {
   /** Whether this device's installation is registered to the signed-in account. */
   status: () => ['device-registration', 'status'] as const,
-  /** The Turn on saves, kept by the session's mutation cache across navigation. */
-  turnOn: () => ['device-registration', 'turn-on'] as const,
+  /** Turn on and Turn off saves, kept by the session's mutation cache across navigation. */
+  changes: () => ['device-registration', 'change'] as const,
 }
 
 /** Browser read of this installation's registration through the authenticated API route. */
@@ -33,4 +33,28 @@ export function saveDeviceRegistration(
   registration: DeviceRegistration,
 ): Promise<SaveResult<DeviceRegistrationStatus>> {
   return requestSave('/api/device-registration', registration, parseDeviceRegistrationStatus, 'PUT')
+}
+
+/** Renews this installation's existing registration with its current token; never recreates. */
+export function renewDeviceRegistration(
+  registration: DeviceRegistration,
+): Promise<SaveResult<DeviceRegistrationStatus>> {
+  return requestSave(
+    '/api/device-registration',
+    registration,
+    parseDeviceRegistrationStatus,
+    'PATCH',
+  )
+}
+
+/** Removes this installation's registration. Removing an absent one still confirms. */
+export function removeDeviceRegistration({
+  installationId,
+}: DeviceInstallation): Promise<SaveResult<DeviceRegistrationStatus>> {
+  return requestSave(
+    '/api/device-registration',
+    { installationId },
+    parseDeviceRegistrationStatus,
+    'DELETE',
+  )
 }

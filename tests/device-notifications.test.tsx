@@ -123,7 +123,7 @@ test('Off shows the switch off and reads nothing', () => {
   expect(toggle()).not.toHaveAttribute('aria-disabled', 'true')
 })
 
-test('On shows only once the server reports this device registered', async () => {
+test('On, with the switch on, shows only once the server reports this device registered', async () => {
   let answer!: (registered: boolean) => void
   server.use(
     http.get(endpoint, async ({ request }) => {
@@ -138,7 +138,7 @@ test('On shows only once the server reports this device registered', async () =>
   await waitFor(() => expect(answer).toBeDefined())
   answer(true)
   expect(await screen.findByText('On')).toBeVisible()
-  expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+  expect(toggle()).toBeChecked()
 })
 
 test('Turn on asks from the tap, shows Turning on with the switch disabled, and On after the save', async () => {
@@ -162,7 +162,7 @@ test('Turn on asks from the tap, shows Turning on with the switch disabled, and 
 
   confirm()
   expect(await screen.findByText('On')).toBeVisible()
-  expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+  expect(toggle()).toBeChecked()
   expect(device.requestPermission).toHaveBeenCalledOnce()
 })
 
@@ -225,4 +225,45 @@ test('known offline disables the switch and says to connect', () => {
   expect(step('Connect to turn on.')).toBeVisible()
   expect(toggle()).toHaveAttribute('aria-disabled', 'true')
   vi.restoreAllMocks()
+})
+
+test('Turn off on On shows Turning off with the switch on and disabled, and Off only after the server confirms', async () => {
+  let confirm!: () => void
+  const removals: unknown[] = []
+  server.use(
+    http.get(endpoint, () => HttpResponse.json({ registered: true })),
+    http.delete(endpoint, async ({ request }) => {
+      removals.push(await request.json())
+      await new Promise<void>((resolve) => (confirm = resolve))
+      return HttpResponse.json({ registered: false })
+    }),
+  )
+  const user = renderSettingsGroup(fakeDevice('browser', 'granted'))
+  expect(await screen.findByText('On')).toBeVisible()
+  expect(toggle()).toBeChecked()
+
+  await user.click(toggle())
+  expect(await screen.findByText('Turning off...')).toBeVisible()
+  expect(toggle()).toBeChecked()
+  expect(toggle()).toHaveAttribute('aria-disabled', 'true')
+  await waitFor(() => expect(removals).toEqual([{ installationId }]))
+  expect(screen.queryByText('Off')).not.toBeInTheDocument()
+
+  confirm()
+  expect(await screen.findByText('Off')).toBeVisible()
+  expect(toggle()).not.toBeChecked()
+})
+
+test('a Turn off that might not have saved keeps On with the shared save feedback', async () => {
+  server.use(
+    http.get(endpoint, () => HttpResponse.json({ registered: true })),
+    http.delete(endpoint, () => new HttpResponse(null, { status: 503 })),
+  )
+  const user = renderSettingsGroup(fakeDevice('browser', 'granted'))
+  await user.click(await screen.findByRole('switch', { checked: true }))
+
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('That might not have saved.')
+  expect(step('On')).toBeVisible()
+  expect(toggle()).toBeChecked()
 })

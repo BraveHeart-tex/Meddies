@@ -35,8 +35,10 @@ boundary.
 Signed encrypted session cookies have a seven-day absolute lifetime. Reading a
 session does not extend that deadline. Each read rechecks the current allowlist and
 session version. Remove an approved account, change the version or rotate the
-secret and redeploy to invalidate existing sessions. Sign-out clears this browser's cookie; it does
-not revoke copied cookies on other devices or sign out of Google.
+secret and redeploy to invalidate existing sessions. Sign-out first removes this device's
+Device registration, then clears this browser's cookie; a failed removal never stops it, and the
+registration stays until Turn off or the sender drops its token. Sign-out does not revoke copied
+cookies on other devices or sign out of Google. Session expiry keeps the registration.
 
 Google sign-in requests `openid email profile`. The encrypted session retains the optional
 Google `given_name` as display data; blank or missing names remain absent. The Auth.js browser

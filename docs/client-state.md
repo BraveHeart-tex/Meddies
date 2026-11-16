@@ -50,9 +50,11 @@ browser storage is used. Losing it on reload, app closure or browser eviction is
   reads and hydration keep those confirmed facts. Strength changes leave earlier snapshots alone.
 - **Server-confirmed only.** Medicine setup, schedule edits and snooze show no optimistic
   state, and new writes need connectivity.
-- **Turn on notifications** shows On only from a confirmed save or a registration read.
-  Its attempts live in the session's mutation cache, so a pending save and its failure
-  survive navigation; a retry resends the same installation ID and token.
+- **Turn on and Turn off notifications** show On or Off only from a confirmed save, removal
+  or registration read. Their attempts share the session's mutation cache, so a pending save
+  and its failure survive navigation; a Turn on retry resends the same installation ID and
+  token. The browser remembers only the installation ID of a confirmed registration
+  (`localStorage`), which survives session end so launches and Sign out can renew or remove it.
 - **Definite rejection** clears only that save's pending state and writes no cache, never
   touching a newer unrelated save.
 - **Unconfirmed save.** A timeout or lost response keeps the attempted details and action

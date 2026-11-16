@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { signOut } from 'next-auth/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { removeRegistrationForSignOut } from '@/features/device-registrations/registration-upkeep'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import { Button } from '@/components/ui/button'
 import { sessionSaves, type OutstandingSave } from '@/lib/session-saves'
@@ -79,6 +80,8 @@ function SignOutControl() {
     setFailed(false)
     setResult(null)
     try {
+      // Removal needs the session, so it goes first; a failed one never stops Sign out.
+      await removeRegistrationForSignOut()
       // Even a lost POST response can have ended the session. Always check independently.
       try {
         await signOut({ redirect: false })
