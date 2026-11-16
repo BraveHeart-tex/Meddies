@@ -12,6 +12,12 @@ import {
 import { listLegacySnapshot, listOutcomeSnapshot, saveSchedule, editSchedule } from './schedules'
 import { correctDoseOutcome, recordSkipped, recordTaken } from './doses/mutations'
 import { writeUnscheduledDose } from './doses/unscheduled'
+import {
+  readDeviceRegistration,
+  removeDeviceRegistration,
+  renewDeviceRegistration,
+  saveDeviceRegistration,
+} from './device-registrations'
 
 type Env = { DB: D1Database; MEDICINES_WORKER_SECRET: string }
 
@@ -41,6 +47,23 @@ export function createWorker(clock: () => Date = () => new Date()) {
               return json(await listMedicines(db, command.ownerId))
             case 'save':
               return json(await saveMedicine(db, command.ownerId, command.medicine))
+          }
+        }
+        if (decoded.path === '/device-registrations') {
+          const command = decoded.command
+          switch (command.operation) {
+            case 'save':
+              return json(
+                await saveDeviceRegistration(db, command.ownerId, command.registration, clock()),
+              )
+            case 'renew':
+              return json(
+                await renewDeviceRegistration(db, command.ownerId, command.registration, clock()),
+              )
+            case 'remove':
+              return json(await removeDeviceRegistration(db, command.ownerId, command.installation))
+            case 'read':
+              return json(await readDeviceRegistration(db, command.ownerId, command.installation))
           }
         }
         const command = decoded.command

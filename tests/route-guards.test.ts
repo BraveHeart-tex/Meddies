@@ -18,9 +18,15 @@ const basedOnId = '10000000-0000-4000-8000-000000000002'
 const dueAt = '2026-11-03T06:00:00.000Z'
 const takenAt = '2026-11-03T06:05:00.000Z'
 const version = { id, basedOnId }
+const installationId = 'dSyntheticInstallat1on'
+const registration = { installationId, token: `${installationId}:APA91b${'A'.repeat(64)}` }
 // `body` is a valid request, so a signed-in call reaches the Worker. `worker: false`
 // marks a route that never calls it; `reads` counts Worker calls per request (default 1).
 const routes: Record<string, { body?: unknown; query?: string; worker?: false; reads?: number }> = {
+  'device-registration GET': { query: `?installationId=${installationId}` },
+  'device-registration PUT': { body: registration },
+  'device-registration PATCH': { body: registration },
+  'device-registration DELETE': { body: { installationId } },
   'medicines GET': {},
   'medicines PATCH': {
     body: {

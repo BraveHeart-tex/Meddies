@@ -10,6 +10,7 @@ const neutral = new Set([
   'src/features/medicines/contract',
   'src/features/schedules/contract',
   'src/features/unscheduled-doses/contract',
+  'src/features/device-registrations/contract',
   'src/features/schedules/occurrences',
   'src/features/schedules/weekdays',
 ])
@@ -32,6 +33,7 @@ const serverOwners = new Set([
   'src/features/medicines/server',
   'src/features/schedules/server',
   'src/features/schedules/prefetch',
+  'src/features/device-registrations/server',
 ])
 const stem = (value) => value.replace(/\.(?:[cm]?[jt]sx?)$/, '')
 const wiring = (value) => /^src\/features\/[^/]+\/server$/.test(value)
@@ -114,9 +116,12 @@ const architecture = {
         report(node, 'Worker HTTP and command decoding stay free of persistence.')
       if (
         target === 'src/lib/medicine-storage' &&
-        !['src/features/medicines/server', 'src/features/schedules/server', gatewayTest].includes(
-          file,
-        )
+        ![
+          'src/features/medicines/server',
+          'src/features/schedules/server',
+          'src/features/device-registrations/server',
+          gatewayTest,
+        ].includes(file)
       )
         report(node, 'Only feature server wiring owns the private Worker transport.')
       if (operations(target) && !wiring(file) && !file.startsWith('tests/'))

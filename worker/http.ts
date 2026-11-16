@@ -18,11 +18,14 @@ export async function authenticateService(request: Request, secret: string | und
   if (mismatch) throw new ApplicationError('unauthorized', 401)
 }
 
-export function commandPath(request: Request): '/medicines' | '/schedules' | Response {
+const commandPaths = ['/medicines', '/schedules', '/device-registrations'] as const
+export type CommandPath = (typeof commandPaths)[number]
+
+export function commandPath(request: Request): CommandPath | Response {
   const path = new URL(request.url).pathname
-  if (request.method !== 'POST' || (path !== '/medicines' && path !== '/schedules'))
-    return json({ error: 'not_found' }, 404)
-  return path
+  const known = commandPaths.find((candidate) => candidate === path)
+  if (request.method !== 'POST' || !known) return json({ error: 'not_found' }, 404)
+  return known
 }
 
 export function failure(error: unknown) {

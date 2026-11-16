@@ -289,3 +289,15 @@ export const medicineDeletions = sqliteTable(
     unique().on(table.ownerId, table.medicineId),
   ],
 )
+
+// One row per Firebase installation; saving from another account moves it (#353).
+export const deviceRegistrations = sqliteTable(
+  'device_registrations',
+  {
+    installationId: text('installation_id').primaryKey().notNull(),
+    ownerId: text('owner_id').notNull(),
+    token: text('token').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => [index('device_registrations_owner').on(table.ownerId)],
+)

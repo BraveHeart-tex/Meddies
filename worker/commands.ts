@@ -23,7 +23,13 @@ import {
   parseDoseCorrection,
   type ScheduleCommand,
 } from '../src/features/schedules/contract'
+import {
+  parseDeviceInstallation,
+  parseDeviceRegistration,
+  type DeviceRegistrationCommand,
+} from '../src/features/device-registrations/contract'
 import { ApplicationError } from '../src/lib/application-error'
+import type { CommandPath } from './http'
 
 export type WorkerCommand =
   | { path: '/medicines'; command: MedicineCommand }
@@ -33,14 +39,41 @@ export type WorkerCommand =
         | Exclude<ScheduleCommand, { operation: 'save' }>
         | { operation: 'save'; ownerId: string; schedule: ReturnType<typeof parseSchedule> }
     }
+  | { path: '/device-registrations'; command: DeviceRegistrationCommand }
 
 // Decode domain fields only after the service capability, route and owner checks.
 // Shared parsers retain defaults, ignored extra fields and legacy accepted inputs.
-export function decodeCommand(path: '/medicines' | '/schedules', value: unknown): WorkerCommand {
+export function decodeCommand(path: CommandPath, value: unknown): WorkerCommand {
   const input = value as Record<string, unknown> | null
   if (!input || typeof input.ownerId !== 'string' || !/^google:.{1,248}$/.test(input.ownerId))
     throw new ApplicationError('validation', 400)
   const ownerId = input.ownerId
+  if (path === '/device-registrations') {
+    switch (input.operation) {
+      case 'save':
+      case 'renew':
+        return {
+          path,
+          command: {
+            operation: input.operation,
+            ownerId,
+            registration: parseDeviceRegistration(input.registration),
+          },
+        }
+      case 'remove':
+      case 'read':
+        return {
+          path,
+          command: {
+            operation: input.operation,
+            ownerId,
+            installation: parseDeviceInstallation(input.installation),
+          },
+        }
+      default:
+        throw new ApplicationError('validation', 400)
+    }
+  }
   if (path === '/medicines') {
     switch (input.operation) {
       case 'correctDetails':

@@ -65,8 +65,9 @@ owner.
 - `medicines.ts` and `schedules.ts` own feature persistence and snapshot composition.
   `doses/mutations.ts` owns writes and retry reconciliation, `doses/queries.ts` the read
   contracts, `doses/occurrence.ts` owner-scoped occurrence context. `doses/unscheduled.ts` owns
-  Unscheduled dose revisions, action retries and History date reads. The `schedules.ts` and
-  `doses/mutations.ts` headers state their invariants.
+  Unscheduled dose revisions, action retries and History date reads.
+  `device-registrations.ts` owns Device registration writes and reads. The `schedules.ts`
+  and `doses/mutations.ts` headers state their invariants.
 - SQL stays beside its behavior. Map selected rows to wire fields explicitly; snapshot
   null metadata and omitted mutation fields are compatibility contracts.
 - Worker modules import only runtime-neutral contracts, scheduling rules and errors, and
@@ -137,6 +138,11 @@ owner.
   after later changes or removal. Intake validation uses the Worker clock and medication
   unit. Today and History responses include a separate `unscheduledDoses` array for the
   intake's Istanbul History date; Occurrences and next-dose calculations stay unchanged.
+- **Device registrations:** `/api/device-registration` reads with `GET ?installationId=`
+  and saves (`PUT`), renews (`PATCH`) and removes (`DELETE`) with a JSON body. The Firebase
+  installation ID is the row key: save upserts it and moves it to the caller, renew updates
+  only the caller's row, remove is idempotent. Every response is `{ registered }`; the
+  token is stored for the sender and never returned or logged.
 - **Schema changes:** write each migration by hand as the next numbered
   `worker/migrations/NNNN_<name>.sql` and mirror it in the Drizzle tables in
   `worker/schema.ts`. The local stack, tests and Release apply migrations in order. Keep
