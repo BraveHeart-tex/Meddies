@@ -1,4 +1,4 @@
-import type { DoseOccurrence } from './contract'
+import { istanbulDate, type DoseOccurrence } from './contract'
 import { scheduleToday } from './occurrences'
 import type { ScheduleSnapshot } from './queries'
 import { reminderHistoryDate, reminderLinkParam } from './reminder-link'
@@ -25,4 +25,13 @@ export function historyListsReminder(
   doses: DoseOccurrence[] | undefined,
 ) {
   return reminderHistoryDate(occurrence) === date && !!doses?.some(({ id }) => id === occurrence)
+}
+
+/**
+ * Where a grouped Reminder link opens, with no drawer (#374): History for a due day before
+ * today, else Today without the parameter (`/`), which also covers a malformed or future link.
+ */
+export function groupedReminderDestination(dueAt: string | null, now: Date) {
+  const date = dueAt ? istanbulDate(new Date(dueAt)) : null
+  return date && date < istanbulDate(now) ? `/history?date=${date}` : '/'
 }

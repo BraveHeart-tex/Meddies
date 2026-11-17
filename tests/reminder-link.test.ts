@@ -3,10 +3,13 @@ import type { DailySchedule } from '../src/features/schedules/contract'
 import type { ScheduleSnapshot } from '../src/features/schedules/queries'
 import {
   reminderHistoryDate,
+  reminderDueAt,
+  reminderDueLink,
   reminderLink,
   reminderOccurrence,
 } from '../src/features/schedules/reminder-link'
 import {
+  groupedReminderDestination,
   historyListsReminder,
   reminderDestination,
 } from '../src/features/schedules/reminder-destination'
@@ -88,4 +91,36 @@ test('History opens only an Occurrence its owner-scoped read lists on that date'
     false,
   )
   expect(historyListsReminder(own, '2026-11-15', undefined)).toBe(false)
+})
+
+const dueAt = '2026-11-17T06:00:00.000Z'
+const now = new Date('2026-11-17T10:00:00+03:00')
+const dueDestination = (value: unknown) => groupedReminderDestination(reminderDueAt(value), now)
+
+// Regression: the grouped builder and reader must agree, or a grouped reminder opens nothing.
+test('a grouped Reminder link names the due instant only', () => {
+  const link = reminderDueLink('2026-11-17T09:00:00+03:00')
+  expect(link).toBe(`/?due=${encodeURIComponent(dueAt)}`)
+  expect(reminderDueAt(new URLSearchParams(link.slice(2)).get('due'))).toBe(dueAt)
+})
+
+// Regression: a grouped link must open the listing screen, never a drawer or a stale `due`.
+test('a grouped Reminder link due today opens Today with no parameter left', () => {
+  expect(dueDestination(dueAt)).toBe('/')
+})
+
+test('a grouped Reminder link due before today opens History for that day', () => {
+  expect(dueDestination('2026-11-14T21:30:00.000Z')).toBe('/history?date=2026-11-15')
+})
+
+test.each([
+  undefined,
+  ['a', 'b'],
+  '',
+  `${scheduleId}:${dueAt}`,
+  '2026-11-17T06:00:00Z',
+  '2026-02-30T06:00:00.000Z',
+  '2026-11-17T21:00:00.000Z',
+])('a malformed or future grouped Reminder link opens Today: %s', (value) => {
+  expect(dueDestination(value)).toBe('/')
 })

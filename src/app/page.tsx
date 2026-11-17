@@ -13,8 +13,16 @@ import { TodayHeader } from '@/features/schedules/today-header'
 import { TodayDosesReady, TodayDosesSection } from '@/features/schedules/today-doses-section'
 import { requestQueryClient } from '@/lib/request-query-client'
 import { scheduleKeys, type ScheduleSnapshot } from '@/features/schedules/queries'
-import { reminderLinkFor, reminderOccurrence } from '@/features/schedules/reminder-link'
-import { reminderDestination } from '@/features/schedules/reminder-destination'
+import {
+  reminderDueAt,
+  reminderDueLink,
+  reminderLinkFor,
+  reminderOccurrence,
+} from '@/features/schedules/reminder-link'
+import {
+  groupedReminderDestination,
+  reminderDestination,
+} from '@/features/schedules/reminder-destination'
 import { ReminderLinkProvider } from '@/features/schedules/reminder-link-provider'
 
 /**
@@ -38,14 +46,23 @@ export default async function HomePage({
     returnTo?: string | string[]
     notice?: string | string[]
     occurrence?: string | string[]
+    due?: string | string[]
   }>
 }) {
   const configured = authConfigured()
   const session = configured ? await auth() : null
-  const { error, reason, returnTo, notice, occurrence: link } = await searchParams
+  const { error, reason, returnTo, notice, occurrence: link, due } = await searchParams
   const occurrence = reminderOccurrence(link)
-  const destination = occurrence ? reminderLinkFor(occurrence) : safeReturnTo(returnTo)
+  const dueAt = reminderDueAt(due)
+  const destination = occurrence
+    ? reminderLinkFor(occurrence)
+    : dueAt
+      ? reminderDueLink(dueAt)
+      : safeReturnTo(returnTo)
   if (session?.user?.id) {
+    // A grouped Reminder link opens the screen listing its doses, with no drawer (#374).
+    if (!occurrence && due !== undefined)
+      redirect(groupedReminderDestination(dueAt, schedulingNow()))
     if (link !== undefined && !occurrence) redirect('/')
     if (!occurrence && destination !== '/') redirect(destination)
     // A Reminder link waits for Today's read to know whether Today lists its Occurrence (#367).

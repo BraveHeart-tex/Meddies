@@ -1,5 +1,8 @@
 import { isMedicationsReturnTo } from '@/features/medicines/routes'
 import {
+  reminderDueAt,
+  reminderDueLink,
+  reminderDueParam,
   reminderLinkFor,
   reminderLinkParam,
   reminderOccurrence,
@@ -18,6 +21,11 @@ export function safeReturnTo(value: unknown): string {
       new URLSearchParams(value.slice(2)).get(reminderLinkParam),
     )
     return occurrence && reminderLinkFor(occurrence) === value ? value : '/'
+  }
+  // A signed-out grouped Reminder link returns to itself, so its screen opens after sign-in (#374).
+  if (value.startsWith(`/?${reminderDueParam}=`)) {
+    const dueAt = reminderDueAt(new URLSearchParams(value.slice(2)).get(reminderDueParam))
+    return dueAt && reminderDueLink(dueAt) === value ? value : '/'
   }
   if (/^\/history\?date=\d{4}-\d{2}-\d{2}$/.test(value)) {
     const date = value.slice('/history?date='.length)

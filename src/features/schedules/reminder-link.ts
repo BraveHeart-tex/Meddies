@@ -4,9 +4,19 @@ import { istanbulDate } from './contract'
  * Reminder link (#367): `/?occurrence=<scheduleId>:<dueAt>` names an Occurrence by its schedule
  * and due instant only, never a medication. Today and History read it on the server; the screen
  * that lists the Occurrence opens its dose drawer once, then clears the parameter with
- * `history.replaceState` (DESIGN.md). Server-safe, so the reminder sender can build links.
+ * `history.replaceState` (DESIGN.md). A grouped Reminder link, `/?due=<dueAt>` (#374), names only
+ * the due instant several doses share; Today redirects it to the screen listing them, with no
+ * drawer. Server-safe, so the reminder sender can build links.
  */
 export const reminderLinkParam = 'occurrence'
+export const reminderDueParam = 'due'
+
+const instantPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+
+function canonicalInstant(value: string) {
+  const time = Date.parse(value)
+  return Number.isFinite(time) && new Date(time).toISOString() === value
+}
 
 const occurrencePattern =
   /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)$/i
@@ -17,8 +27,7 @@ export function reminderOccurrence(value: unknown): string | null {
   const match = occurrencePattern.exec(value)
   if (!match) return null
   const [, scheduleId, dueAt] = match
-  const time = Date.parse(dueAt)
-  if (!Number.isFinite(time) || new Date(time).toISOString() !== dueAt) return null
+  if (!canonicalInstant(dueAt)) return null
   return `${scheduleId.toLowerCase()}:${dueAt}`
 }
 
@@ -37,4 +46,18 @@ export function reminderLink({ scheduleId, dueAt }: { scheduleId: string; dueAt:
 /** The History date an Occurrence lists on: its due day. */
 export function reminderHistoryDate(occurrence: string): string {
   return istanbulDate(new Date(occurrence.slice(occurrence.indexOf(':') + 1)))
+}
+
+/** The due instant a grouped Reminder link names, or null when the value is not one. */
+export function reminderDueAt(value: unknown): string | null {
+  return typeof value === 'string' && instantPattern.test(value) && canonicalInstant(value)
+    ? value
+    : null
+}
+
+/** The grouped Reminder link path for the doses due at `dueAt`. */
+export function reminderDueLink(dueAt: string): string {
+  const instant = reminderDueAt(new Date(dueAt).toISOString())
+  if (!instant) throw new Error('Invalid reminder due instant')
+  return `/?${reminderDueParam}=${encodeURIComponent(instant)}`
 }
