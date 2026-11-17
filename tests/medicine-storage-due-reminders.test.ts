@@ -19,7 +19,7 @@ import {
   versionFixture,
 } from './helpers/medicine-storage-runtime'
 
-// The due-reminder operation on real D1 with controlled time and a fake provider (#366).
+// The due-reminder operation on real D1 with controlled time and a fake provider (#366, #31).
 // Runs are global, so each case uses its own date and Last day: no other case's Occurrence
 // falls inside its +80 minute window.
 startWorkerRuntime()
@@ -95,6 +95,20 @@ const registrations = async (ownerId: string) =>
       .all<{ id: string; token: string }>()
   ).results
 
+const followUpState = async (ownerId: string) =>
+  (
+    await db
+      .prepare(
+        'SELECT reminder, state FROM follow_up_reminders WHERE owner_id=? ORDER BY due_at, reminder',
+      )
+      .bind(ownerId)
+      .all<{ reminder: number; state: string }>()
+  ).results
+
+/** What `sent` held: each message as `<due instant> #<reminder> x<doses>`, sorted. */
+const summary = (sent: ReminderMessage[]) =>
+  sent.map((m) => `${m.dueAt} #${m.reminder} x${m.scheduleIds.length}`).toSorted()
+
 const reminderState = async (ownerId: string) =>
   (
     await db
@@ -122,7 +136,7 @@ test('A run at or after the due instant submits one Original reminder per Device
     dropped: 0,
     retrying: 0,
   })
-  const message = { dueAt: o.due('09:00'), scheduleIds: [o.scheduleId] }
+  const message = { dueAt: o.due('09:00'), reminder: 0, scheduleIds: [o.scheduleId] }
   assert.deepEqual(
     sent.toSorted((a, b) => a.token.localeCompare(b.token)),
     o.tokens.toSorted().map((token) => ({ ...message, token })),
@@ -136,31 +150,226 @@ test('A run at or after the due instant submits one Original reminder per Device
   assert.equal(sent.length, 2, 'a submitted Original reminder is not submitted again')
 })
 
-test('A run after due +80 minutes drops the Original reminder without submitting', async () => {
+test('A late run submits only the latest reminder due by then, through due +80 minutes inclusive', async () => {
   const atCutoff = await owner('2026-11-11', ['09:00'])
   const pastCutoff = await owner('2026-11-12', ['09:00'])
-  const retried = await owner('2026-11-13', ['09:00'])
+  const delayed = await owner('2026-11-13', ['09:00'])
   const { provider, sent } = fake()
 
-  await run(provider, '2026-11-11T07:20:00.000Z')
+  // Delayed recovery: first check 10:05.
+  assert.deepEqual(await run(provider, '2026-11-13T07:05:00.000Z'), {
+    submitted: 1,
+    dropped: 0,
+    retrying: 0,
+  })
   assert.deepEqual(
-    sent.map((m) => m.token),
-    atCutoff.tokens,
-    '+80:00 still submits',
+    summary(sent),
+    [`${delayed.due('09:00')} #1 x1`],
+    'only the 09:40 Follow-up reminder',
   )
+  await run(provider, '2026-11-13T07:19:00.000Z')
+  await run(provider, '2026-11-13T07:20:00.000Z')
+  assert.deepEqual(
+    summary(sent),
+    [`${delayed.due('09:00')} #1 x1`, `${delayed.due('09:00')} #2 x1`],
+    'the 10:20 one stays',
+  )
+  assert.deepEqual(await reminderState(delayed.ownerId), [], 'the Original reminder is never sent')
 
+  // Exact automatic cutoff: first check 10:20.
+  sent.length = 0
+  await run(provider, '2026-11-11T07:20:00.000Z')
+  await run(provider, '2026-11-11T07:21:00.000Z')
+  assert.deepEqual(summary(sent), [`${atCutoff.due('09:00')} #2 x1`])
+  assert.deepEqual(await followUpState(atCutoff.ownerId), [{ reminder: 2, state: 'submitted' }])
+
+  // Past automatic cutoff: first check 10:20:01.
   sent.length = 0
   await run(provider, '2026-11-12T07:20:01.000Z')
   await run(provider, '2026-11-12T07:21:00.000Z')
   assert.equal(sent.length, 0, '+80:01 never submits')
+  assert.deepEqual(await reminderState(pastCutoff.ownerId), [])
+  assert.deepEqual(await followUpState(pastCutoff.ownerId), [])
+})
 
-  const failing = fake(() => ({ outcome: 'transient', code: 'UNAVAILABLE' }))
-  assert.equal((await run(failing.provider, '2026-11-13T06:00:00.000Z')).retrying, 1)
-  await run(provider, '2026-11-13T07:20:01.000Z')
-  assert.equal(sent.length, 0, 'a reminder left eligible by a transient failure expires at +80:01')
-  assert.deepEqual(await reminderState(retried.ownerId), [
-    { dueAt: retried.due('09:00'), state: 'dropped' },
+test('An Occurrence without Taken or Skipped gets Follow-up reminders at due +40 and +80 minutes on each Device registration', async () => {
+  const o = await owner('2026-11-26', ['09:00'], 2)
+  const { provider, sent } = fake()
+  const runs = []
+  for (const at of ['06:00', '06:39', '06:40', '06:41', '07:19', '07:20:00.400', '07:21', '07:40'])
+    runs.push(await run(provider, `2026-11-26T${at.length === 5 ? `${at}:00.000` : at}Z`))
+  assert.deepEqual(
+    runs.map((result) => result.submitted),
+    [1, 0, 1, 0, 0, 1, 0, 0],
+    'a run part way into 10:20:00 still counts as 10:20',
+  )
+  assert.deepEqual(
+    sent.map((m) => [m.token, m.dueAt, m.reminder, m.scheduleIds]).toSorted(),
+    o.tokens
+      .flatMap((token) =>
+        [0, 1, 2].map((reminder) => [token, o.due('09:00'), reminder, [o.scheduleId]]),
+      )
+      .toSorted(),
+  )
+  const attempts = (
+    await db
+      .prepare('SELECT reminder, attempted_at AS at FROM delivery_attempts WHERE owner_id=?')
+      .bind(o.ownerId)
+      .all<{ reminder: number; at: string }>()
+  ).results
+  assert.deepEqual(
+    attempts.map((row) => `${row.reminder} ${row.at}`).toSorted(),
+    [
+      '0 2026-11-26T06:00:00.000Z',
+      '0 2026-11-26T06:00:00.000Z',
+      '1 2026-11-26T06:40:00.000Z',
+      '1 2026-11-26T06:40:00.000Z',
+      '2 2026-11-26T07:20:00.000Z',
+      '2 2026-11-26T07:20:00.000Z',
+    ],
+    'each Delivery attempt names the reminder it submitted',
+  )
+})
+
+test('Taken or Skipped recorded before a Follow-up reminder runs stops it', async () => {
+  const o = await owner('2026-11-27', ['09:00', '09:10'])
+  const { provider, sent } = fake()
+  await run(provider, '2026-11-27T06:00:00.000Z')
+  await run(provider, '2026-11-27T06:10:00.000Z')
+  assert.equal(sent.length, 2)
+
+  o.setNow('2026-11-27T06:15:00.000Z')
+  await o.operations.recordSkipped({ scheduleId: o.scheduleId, dueAt: o.due('09:00') })
+  await o.operations.recordTaken({
+    scheduleId: o.scheduleId,
+    dueAt: o.due('09:10'),
+    takenAt: '2026-11-27T06:15:00.000Z',
+    quantity: 1,
+  })
+
+  const runs = []
+  for (const at of ['06:40', '06:50', '07:20', '07:30'])
+    runs.push(await run(provider, `2026-11-27T${at}:00.000Z`))
+  assert.deepEqual(runs, Array(4).fill({ submitted: 0, dropped: 1, retrying: 0 }))
+  assert.equal(sent.length, 2, 'no Follow-up reminder is submitted')
+})
+
+test('Transient answers, overlapping runs and retired reminders never add a Follow-up reminder or submit one twice to a Device registration', async () => {
+  const o = await owner('2026-11-28', ['09:00'], 2)
+  const [flaky, steady] = o.tokens
+  const { provider, sent } = fake()
+  const transient: ProviderAnswer = { outcome: 'transient', code: 'UNAVAILABLE' }
+
+  // The Original reminder is left eligible by transient answers, then retired at +40.
+  const failing = fake(() => transient)
+  assert.equal((await run(failing.provider, '2026-11-28T06:00:00.000Z')).retrying, 1)
+
+  // Overlapping runs at +40, with one transient answer for the first Follow-up reminder.
+  let flakyOnce = true
+  const overlapping = fake((message) => {
+    if (message.token !== flaky || !flakyOnce) return { outcome: 'accepted' }
+    flakyOnce = false
+    return transient
+  })
+  await Promise.all([
+    run(overlapping.provider, '2026-11-28T06:40:00.000Z'),
+    run(overlapping.provider, '2026-11-28T06:40:00.000Z'),
+    run(overlapping.provider, '2026-11-28T06:40:30.000Z'),
   ])
+  assert.deepEqual(
+    overlapping.sent.map((m) => `${m.token} #${m.reminder}`).toSorted(),
+    [`${flaky} #1`, `${steady} #1`].toSorted(),
+    'overlapping runs submit the first Follow-up reminder once per Device registration',
+  )
+  await run(provider, '2026-11-28T06:41:00.000Z')
+  await run(provider, '2026-11-28T06:42:00.000Z')
+  await run(provider, '2026-11-28T07:19:00.000Z')
+  assert.deepEqual(
+    sent.map((m) => `${m.token} #${m.reminder}`),
+    [`${flaky} #1`],
+    'the transient answer is retried to its Device registration only',
+  )
+
+  // A run claims the second Follow-up reminder and stalls inside the provider.
+  let resume!: () => void
+  const stalled = new Promise<void>((resolve) => (resume = resolve))
+  let reached!: () => void
+  const claimedByStalledRun = new Promise<void>((resolve) => (reached = resolve))
+  const stalling = fake(async () => {
+    reached()
+    await stalled
+    return { outcome: 'accepted' }
+  })
+  const abandoned = run(stalling.provider, '2026-11-28T07:20:00.000Z')
+  await claimedByStalledRun
+  await run(provider, '2026-11-28T07:20:00.000Z')
+  assert.deepEqual(await run(provider, '2026-11-28T07:25:00.000Z'), {
+    submitted: 0,
+    dropped: 0,
+    retrying: 0,
+  })
+  resume()
+  await abandoned
+  for (const at of ['07:26', '07:40', '08:00']) await run(provider, `2026-11-28T${at}:00.000Z`)
+
+  assert.deepEqual(
+    [...failing.sent, ...overlapping.sent, ...sent, ...stalling.sent]
+      .map((m) => `${m.token} #${m.reminder}`)
+      .toSorted(),
+    [
+      `${flaky} #0`,
+      `${steady} #0`,
+      `${flaky} #1`,
+      `${flaky} #1`,
+      `${steady} #1`,
+      `${flaky} #2`,
+      `${steady} #2`,
+    ].toSorted(),
+    'no third Follow-up reminder; a lapsed claim past +80 is dropped, not submitted again',
+  )
+  assert.deepEqual(await reminderState(o.ownerId), [{ dueAt: o.due('09:00'), state: 'dropped' }])
+  assert.deepEqual(await followUpState(o.ownerId), [
+    { reminder: 1, state: 'submitted' },
+    { reminder: 2, state: 'dropped' },
+  ])
+})
+
+test('Follow-up reminders of Occurrences sharing a due instant go out as one submission per Device registration, never with another instant', async () => {
+  const o = await owner('2026-11-29', ['09:00', '09:40'], 2, 3)
+  const { provider, sent } = fake()
+  await run(provider, '2026-11-29T06:00:00.000Z')
+  sent.length = 0
+  assert.deepEqual(await run(provider, '2026-11-29T06:40:00.000Z'), {
+    submitted: 6,
+    dropped: 0,
+    retrying: 0,
+  })
+  assert.deepEqual(
+    sent.map((m) => [m.token, m.dueAt, m.reminder, m.scheduleIds]).toSorted(),
+    o.tokens
+      .flatMap((token) => [
+        [token, o.due('09:00'), 1, o.scheduleIds],
+        [token, o.due('09:40'), 0, o.scheduleIds],
+      ])
+      .toSorted(),
+    "the 09:40 Original reminders never share the 09:00 Follow-up reminders' push",
+  )
+  const attempts = (
+    await db
+      .prepare(
+        'SELECT schedule_id AS scheduleId, installation_id AS installationId FROM delivery_attempts WHERE owner_id=? AND due_at=? AND reminder=1',
+      )
+      .bind(o.ownerId, o.due('09:00'))
+      .all<Record<string, string>>()
+  ).results
+  const installations = (await registrations(o.ownerId)).map((row) => row.id)
+  assert.deepEqual(
+    attempts.map((row) => `${row.scheduleId} ${row.installationId}`).toSorted(),
+    o.scheduleIds
+      .flatMap((scheduleId) => installations.map((id) => `${scheduleId} ${id}`))
+      .toSorted(),
+    'a Delivery attempt per Occurrence and Device registration',
+  )
 })
 
 test('An Occurrence with Taken or Skipped recorded gets no Original reminder', async () => {
@@ -185,7 +394,7 @@ test('An Occurrence with Taken or Skipped recorded gets no Original reminder', a
     retrying: 0,
   })
   assert.deepEqual(sent, [
-    { token: o.tokens[0], dueAt: o.due('09:20'), scheduleIds: [o.scheduleId] },
+    { token: o.tokens[0], dueAt: o.due('09:20'), reminder: 0, scheduleIds: [o.scheduleId] },
   ])
 })
 
@@ -225,7 +434,7 @@ test('Overlapping runs submit each Original reminder once and an abandoned claim
 
   resume()
   assert.deepEqual(await abandoned, { submitted: 0, dropped: 0, retrying: 0 })
-  await run(provider, '2026-11-15T06:40:00.000Z')
+  await run(provider, '2026-11-15T06:39:00.000Z')
   assert.equal(sent.length, 2)
   assert.deepEqual(await reminderState(o.ownerId), [
     { dueAt: o.due('09:00'), state: 'submitted' },
@@ -260,7 +469,12 @@ test('Each submission records a Delivery attempt with the provider answer and no
       .bind(o.ownerId)
       .all<Record<string, unknown>>()
   ).results
-  const occurrence = { owner_id: o.ownerId, schedule_id: o.scheduleId, due_at: o.due('09:00') }
+  const occurrence = {
+    owner_id: o.ownerId,
+    schedule_id: o.scheduleId,
+    due_at: o.due('09:00'),
+    reminder: 0,
+  }
   assert.deepEqual(
     attempts.map(({ id, ...row }) => (assert.ok(id), row)),
     [
@@ -356,7 +570,7 @@ test('Doses due at the same instant go out as one submission per Device registra
     dropped: 0,
     retrying: 3,
   })
-  const message = { dueAt: o.due('09:00'), scheduleIds: o.scheduleIds }
+  const message = { dueAt: o.due('09:00'), reminder: 0, scheduleIds: o.scheduleIds }
   assert.deepEqual(
     answers.sent.toSorted((a, b) => a.token.localeCompare(b.token)),
     o.tokens.toSorted().map((token) => ({ ...message, token })),
@@ -428,6 +642,7 @@ test("Overlapping runs and a batch limit never split one owner's due instant", a
     ['09:00', '09:10'].map((time) => ({
       token: o.tokens[0],
       dueAt: o.due(time),
+      reminder: 0,
       scheduleIds: o.scheduleIds,
     })),
     'a batch of one due instant claims all three doses due at it',
@@ -456,7 +671,9 @@ test('A due instant with one Occurrence left after Taken or Skipped submits the 
     dropped: 2,
     retrying: 0,
   })
-  assert.deepEqual(sent, [{ token: o.tokens[0], dueAt: o.due('09:00'), scheduleIds: [left] }])
+  assert.deepEqual(sent, [
+    { token: o.tokens[0], dueAt: o.due('09:00'), reminder: 0, scheduleIds: [left] },
+  ])
 })
 
 const schedulerSecret = 'synthetic-scheduler-secret-at-least-32-characters'
@@ -479,7 +696,7 @@ test('The cron trigger runs the due-reminder operation, and stops before claimin
   assert.equal(sent.length, 0)
   await cron('2026-11-20T06:00:00.000Z')
   assert.deepEqual(sent, [
-    { token: o.tokens[0], dueAt: o.due('09:00'), scheduleIds: [o.scheduleId] },
+    { token: o.tokens[0], dueAt: o.due('09:00'), reminder: 0, scheduleIds: [o.scheduleId] },
   ])
   assert.deepEqual(await reminderState(o.ownerId), [{ dueAt: o.due('09:00'), state: 'submitted' }])
 

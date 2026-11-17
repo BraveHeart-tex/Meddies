@@ -68,9 +68,10 @@ owner.
   contracts, `doses/occurrence.ts` owner-scoped occurrence context. `doses/unscheduled.ts` owns
   Unscheduled dose revisions, action retries and History date reads.
   `device-registrations.ts` owns Device registration writes and reads. `due-reminders.ts`
-  owns the due-reminder operation, its Original reminder claims and Delivery attempts, and
-  the provider port, and `fcm.ts` implements that port with FCM HTTP v1. The `schedules.ts`,
-  `doses/mutations.ts`, `due-reminders.ts` and `fcm.ts` headers state their invariants.
+  owns the due-reminder operation, its Original and Follow-up reminder claims and Delivery
+  attempts, and the provider port, and `fcm.ts` implements that port with FCM HTTP v1. The
+  `schedules.ts`, `doses/mutations.ts`, `due-reminders.ts` and `fcm.ts` headers state their
+  invariants.
 - SQL stays beside its behavior. Map selected rows to wire fields explicitly; snapshot
   null metadata and omitted mutation fields are compatibility contracts.
 - Worker modules import only runtime-neutral contracts, scheduling rules, the Reminder link

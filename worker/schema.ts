@@ -323,7 +323,32 @@ export const originalReminders = sqliteTable(
   ],
 )
 
+// One row per Follow-up reminder a due-reminder run found due (#31): reminder 1 at due +40
+// minutes, 2 at due +80. Claims lease it as for Original reminders.
+export const followUpReminders = sqliteTable(
+  'follow_up_reminders',
+  {
+    ownerId: text('owner_id').notNull(),
+    scheduleId: text('schedule_id').notNull(),
+    dueAt: text('due_at').notNull(),
+    reminder: integer('reminder').notNull(),
+    state: text('state', { enum: ['pending', 'submitted', 'dropped'] })
+      .notNull()
+      .default('pending'),
+    claimToken: text('claim_token'),
+    leaseUntil: text('lease_until'),
+    settledAt: text('settled_at'),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.scheduleId, table.dueAt, table.reminder] }),
+    index('follow_up_reminders_state_due').on(table.state, table.dueAt),
+    check('follow_up_reminders_reminder', sql`${table.reminder} IN (1, 2)`),
+    check('follow_up_reminders_state', sql`${table.state} IN ('pending', 'submitted', 'dropped')`),
+  ],
+)
+
 // One submission to one Device registration; never the token or medication name (#366).
+// `reminder` names what it submitted: 0 the Original reminder, 1 and 2 the Follow-up reminders.
 export const deliveryAttempts = sqliteTable(
   'delivery_attempts',
   {
@@ -335,6 +360,7 @@ export const deliveryAttempts = sqliteTable(
     outcome: text('outcome', { enum: ['accepted', 'rejected', 'transient'] }).notNull(),
     code: text('code'),
     attemptedAt: text('attempted_at').notNull(),
+    reminder: integer('reminder').notNull().default(0),
   },
   (table) => [
     index('delivery_attempts_occurrence').on(table.ownerId, table.scheduleId, table.dueAt),
@@ -342,5 +368,6 @@ export const deliveryAttempts = sqliteTable(
       'delivery_attempts_outcome',
       sql`${table.outcome} IN ('accepted', 'rejected', 'transient')`,
     ),
+    check('delivery_attempts_reminder', sql`${table.reminder} IN (0, 1, 2)`),
   ],
 )

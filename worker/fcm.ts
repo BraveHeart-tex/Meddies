@@ -5,15 +5,17 @@
 // One provider holds its token until five minutes before expiry and concurrent submissions share
 // one token request, so the caller keeps one provider per Worker isolate.
 //
-// The message carries the generic wording (docs/copy.md Reminder wording), with the dose count
-// when it covers several doses, and its Reminder link as `data.link` for the service worker's tap
-// handler: the Occurrence's for one dose, the grouped one for several (#372). Its Web Push TTL
-// ends with the reminder's +80 minute window. It never names a medication.
+// The message carries the generic wording (docs/copy.md Reminder wording): an Original reminder's,
+// or a Follow-up reminder's naming the due time (#31), with the dose count when it covers several
+// doses, and its Reminder link as `data.link` for the service worker's tap handler: the
+// Occurrence's for one dose, the grouped one for several (#372). Its Web Push TTL ends with the
+// Occurrence's +80 minute window. It never names a medication.
 //
 // Answers: success is accepted; 429, 5xx, an expired access token, a token-endpoint failure, a
 // network error or a timeout is transient; anything else is rejected with FCM's `errorCode`, or
 // its status. Nothing here logs, so no token, credential or provider message text leaves it.
 import { reminderDueLink, reminderLink } from '../src/features/schedules/reminder-link'
+import { formatTime } from '../src/lib/calendar-date'
 import {
   REMINDER_WINDOW_MS,
   type ProviderAnswer,
@@ -30,6 +32,11 @@ export const reminderTitle = 'Time for your dose'
 export const reminderBody = "Open Meddies when you're ready to log it."
 export const groupedReminderTitle = (count: number) => `Time for ${count} doses`
 export const groupedReminderBody = "Open Meddies when you're ready to log them."
+export const followUpTitle = (time: string) => `Your ${time} dose`
+export const followUpBody = "Not logged yet. Open Meddies when you're ready to log it."
+export const groupedFollowUpTitle = (time: string) => `Your ${time} doses`
+export const groupedFollowUpBody = (count: number) =>
+  `${count} doses not logged yet. Open Meddies when you're ready to log them.`
 
 export const fcmTokenUrl = 'https://oauth2.googleapis.com/token'
 const SCOPE = 'https://www.googleapis.com/auth/firebase.messaging'
@@ -117,9 +124,7 @@ export function fcmMessage(message: ReminderMessage, now: Date) {
   return {
     message: {
       token: message.token,
-      notification: others.length
-        ? { title: groupedReminderTitle(count), body: groupedReminderBody }
-        : { title: reminderTitle, body: reminderBody },
+      notification: notification(message.reminder, formatTime(message.dueAt), count),
       data: {
         link: others.length
           ? reminderDueLink(message.dueAt)
@@ -128,6 +133,16 @@ export function fcmMessage(message: ReminderMessage, now: Date) {
       webpush: { headers: { Urgency: 'high', TTL: String(ttl) } },
     },
   }
+}
+
+function notification(reminder: ReminderMessage['reminder'], time: string, count: number) {
+  if (reminder)
+    return count > 1
+      ? { title: groupedFollowUpTitle(time), body: groupedFollowUpBody(count) }
+      : { title: followUpTitle(time), body: followUpBody }
+  return count > 1
+    ? { title: groupedReminderTitle(count), body: groupedReminderBody }
+    : { title: reminderTitle, body: reminderBody }
 }
 
 // FCM puts its specific code, such as UNREGISTERED, in an FcmError detail; the status, such as

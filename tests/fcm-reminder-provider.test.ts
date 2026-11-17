@@ -31,8 +31,14 @@ const sendUrl = 'https://fcm.googleapis.com/v1/projects/meddies-dev/messages:sen
 const message: ReminderMessage = {
   token: 'registration-token',
   dueAt: '2026-11-17T06:00:00.000Z',
+  reminder: 0,
   scheduleIds: ['6f1d2c4e-8a9b-4c3d-9e2f-1a2b3c4d5e6f'],
 }
+const threeDoses = [
+  ...message.scheduleIds,
+  '7a2e3d5f-9b0c-4d4e-8f30-2b3c4d5e6f70',
+  '8b3f4e60-0c1d-4e5f-9041-3c4d5e6f7081',
+]
 
 type Sent = { url: string; init: RequestInit }
 type Reply = (sent: Sent) => Response | Promise<Response>
@@ -140,14 +146,7 @@ test('A message covering three doses carries the dose count and the grouped Remi
     fetch: network.fetch,
     clock: () => new Date('2026-11-17T06:20:00.000Z'),
   })
-  await provider.submit({
-    ...message,
-    scheduleIds: [
-      ...message.scheduleIds,
-      '7a2e3d5f-9b0c-4d4e-8f30-2b3c4d5e6f70',
-      '8b3f4e60-0c1d-4e5f-9041-3c4d5e6f7081',
-    ],
-  })
+  await provider.submit({ ...message, scheduleIds: threeDoses })
 
   assert.deepEqual(JSON.parse(network.sends()[0].init.body as string), {
     message: {
@@ -160,6 +159,46 @@ test('A message covering three doses carries the dose count and the grouped Remi
       webpush: { headers: { Urgency: 'high', TTL: '3600' } },
     },
   })
+})
+
+test('A Follow-up reminder names its due time, with the dose count and grouped Reminder link for several doses', async () => {
+  let now = new Date('2026-11-17T06:40:00.000Z')
+  const network = fakeNetwork()
+  const provider = createFcmProvider(credentials, { fetch: network.fetch, clock: () => now })
+  await provider.submit({ ...message, reminder: 1 })
+  now = new Date('2026-11-17T07:20:00.000Z')
+  await provider.submit({ ...message, reminder: 2, scheduleIds: threeDoses })
+
+  assert.deepEqual(
+    network.sends().map((entry) => JSON.parse(entry.init.body as string)),
+    [
+      {
+        message: {
+          token: 'registration-token',
+          // 06:00Z is 09:00 in Istanbul.
+          notification: {
+            title: 'Your 09:00 dose',
+            body: "Not logged yet. Open Meddies when you're ready to log it.",
+          },
+          data: {
+            link: reminderLink({ scheduleId: message.scheduleIds[0], dueAt: message.dueAt }),
+          },
+          webpush: { headers: { Urgency: 'high', TTL: '2400' } },
+        },
+      },
+      {
+        message: {
+          token: 'registration-token',
+          notification: {
+            title: 'Your 09:00 doses',
+            body: "3 doses not logged yet. Open Meddies when you're ready to log them.",
+          },
+          data: { link: reminderDueLink(message.dueAt) },
+          webpush: { headers: { Urgency: 'high', TTL: '0' } },
+        },
+      },
+    ],
+  )
 })
 
 test('A transient FCM error or timeout answers retryable; other errors are rejected with their code', async () => {
