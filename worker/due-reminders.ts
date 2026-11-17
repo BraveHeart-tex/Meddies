@@ -13,6 +13,10 @@
 //    time, then submits one reminder per due instant and reminder (#372) through the provider port
 //    to each Device registration, covering the remaining Occurrences without a final answer for it,
 //    and records one Delivery attempt per covered Occurrence naming the reminder and the answer.
+// Suppression is that send-time recheck alone; recording a Dose outcome writes no reminder rows.
+// An outcome that reaches the server after a claim and before the recheck stops that reminder
+// (#32). One that arrives after the recheck may still be submitted, settles it as submitted with
+// its Delivery attempts, and is never recalled: no provider takes a submission back.
 // A reminder recorded after its instant was claimed is claimed, and sent, on its own; a reminder
 // never shares a submission with another due instant's or another reminder number's. A transient
 // answer releases the reminders it covers for the next run while they are current; accepted and

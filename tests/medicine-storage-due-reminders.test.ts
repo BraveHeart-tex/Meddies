@@ -119,6 +119,25 @@ const reminderState = async (ownerId: string) =>
       .all<{ dueAt: string; state: string }>()
   ).results
 
+/** The claim token on `table`'s rows due at `dueAt`, read while a run is mid-flight. */
+const claimTokens = async (table: string, ownerId: string, dueAt: string) =>
+  (
+    await db
+      .prepare(`SELECT claim_token AS token FROM ${table} WHERE owner_id=? AND due_at=?`)
+      .bind(ownerId, dueAt)
+      .all<{ token: string | null }>()
+  ).results.map((row) => row.token)
+
+const attemptedSchedules = async (ownerId: string, dueAt: string, reminder: number) =>
+  (
+    await db
+      .prepare(
+        'SELECT schedule_id AS scheduleId FROM delivery_attempts WHERE owner_id=? AND due_at=? AND reminder=?',
+      )
+      .bind(ownerId, dueAt, reminder)
+      .all<{ scheduleId: string }>()
+  ).results.map((row) => row.scheduleId)
+
 test('A run at or after the due instant submits one Original reminder per Device registration', async () => {
   const o = await owner('2026-11-10', ['09:00'], 2)
   const bystander = await owner('2026-11-10', [], 1)
@@ -252,6 +271,55 @@ test('Taken or Skipped recorded before a Follow-up reminder runs stops it', asyn
     runs.push(await run(provider, `2026-11-27T${at}:00.000Z`))
   assert.deepEqual(runs, Array(4).fill({ submitted: 0, dropped: 1, retrying: 0 }))
   assert.equal(sent.length, 2, 'no Follow-up reminder is submitted')
+})
+
+// #32: Occurrences A and B share 09:00 and 09:10; Skipped for A at 09:10 arrives while the run
+// submits the 09:00 Follow-up reminder, after both instants are claimed.
+test('Taken or Skipped recorded after a run claims a Follow-up reminder leaves only the other Occurrence in it', async () => {
+  const o = await owner('2026-12-05', ['09:00', '09:10'], 1, 2)
+  const [stopped, left] = o.scheduleIds
+  const { provider, sent } = fake()
+  await run(provider, '2026-12-05T06:00:00.000Z')
+  await run(provider, '2026-12-05T06:10:00.000Z')
+  sent.length = 0
+
+  const claimedBeforeOutcome: (string | null)[] = []
+  const midRun = fake(async (message) => {
+    if (message.dueAt !== o.due('09:00')) return { outcome: 'accepted' }
+    claimedBeforeOutcome.push(
+      ...(await claimTokens('follow_up_reminders', o.ownerId, o.due('09:10'))),
+    )
+    o.setNow('2026-12-05T06:50:00.000Z')
+    await o.operations.recordSkipped({ scheduleId: stopped, dueAt: o.due('09:10') })
+    return { outcome: 'accepted' }
+  })
+  assert.deepEqual(await run(midRun.provider, '2026-12-05T06:50:00.000Z'), {
+    submitted: 3,
+    dropped: 1,
+    retrying: 0,
+  })
+  assert.equal(claimedBeforeOutcome.length, 2)
+  assert.ok(
+    claimedBeforeOutcome.every(Boolean),
+    'the 09:10 Follow-up reminders were claimed before the outcome arrived',
+  )
+  assert.deepEqual(midRun.sent, [
+    { token: o.tokens[0], dueAt: o.due('09:00'), reminder: 1, scheduleIds: o.scheduleIds },
+    { token: o.tokens[0], dueAt: o.due('09:10'), reminder: 1, scheduleIds: [left] },
+  ])
+  assert.deepEqual(await attemptedSchedules(o.ownerId, o.due('09:10'), 1), [left])
+  const states = (
+    await db
+      .prepare(
+        'SELECT schedule_id AS scheduleId, state FROM follow_up_reminders WHERE owner_id=? AND due_at=? ORDER BY schedule_id',
+      )
+      .bind(o.ownerId, o.due('09:10'))
+      .all<{ scheduleId: string; state: string }>()
+  ).results
+  assert.deepEqual(states, [
+    { scheduleId: stopped, state: 'dropped' },
+    { scheduleId: left, state: 'submitted' },
+  ])
 })
 
 test('Transient answers, overlapping runs and retired reminders never add a Follow-up reminder or submit one twice to a Device registration', async () => {
@@ -396,6 +464,52 @@ test('An Occurrence with Taken or Skipped recorded gets no Original reminder', a
   assert.deepEqual(sent, [
     { token: o.tokens[0], dueAt: o.due('09:20'), reminder: 0, scheduleIds: [o.scheduleId] },
   ])
+})
+
+// #32: the recheck runs per due instant after the claim, so an outcome that reaches the server
+// while the run submits an earlier instant still stops a later claimed one.
+test('Taken or Skipped recorded after a run claims an Original reminder stops it, dropped with no Delivery attempt', async () => {
+  const o = await owner('2026-12-04', ['09:00', '09:10', '09:20'])
+  const claimedBeforeOutcome: (string | null)[] = []
+  const { provider, sent } = fake(async (message) => {
+    if (message.dueAt !== o.due('09:00')) return { outcome: 'accepted' }
+    claimedBeforeOutcome.push(
+      ...(await claimTokens('original_reminders', o.ownerId, o.due('09:10'))),
+      ...(await claimTokens('original_reminders', o.ownerId, o.due('09:20'))),
+    )
+    o.setNow('2026-12-04T06:20:00.000Z')
+    await o.operations.recordSkipped({ scheduleId: o.scheduleId, dueAt: o.due('09:10') })
+    await o.operations.recordTaken({
+      scheduleId: o.scheduleId,
+      dueAt: o.due('09:20'),
+      takenAt: '2026-12-04T06:20:00.000Z',
+      quantity: 1,
+    })
+    return { outcome: 'accepted' }
+  })
+
+  assert.deepEqual(await run(provider, '2026-12-04T06:20:00.000Z'), {
+    submitted: 1,
+    dropped: 2,
+    retrying: 0,
+  })
+  assert.equal(claimedBeforeOutcome.length, 2)
+  assert.ok(
+    claimedBeforeOutcome.every(Boolean),
+    'the later instants were claimed before the outcome arrived',
+  )
+  assert.deepEqual(summary(sent), [`${o.due('09:00')} #0 x1`])
+  assert.deepEqual(await reminderState(o.ownerId), [
+    { dueAt: o.due('09:00'), state: 'submitted' },
+    { dueAt: o.due('09:10'), state: 'dropped' },
+    { dueAt: o.due('09:20'), state: 'dropped' },
+  ])
+  for (const time of ['09:10', '09:20'])
+    assert.deepEqual(
+      await attemptedSchedules(o.ownerId, o.due(time), 0),
+      [],
+      `no attempt at ${time}`,
+    )
 })
 
 test('Overlapping runs submit each Original reminder once and an abandoned claim is recovered after its lease', async () => {
