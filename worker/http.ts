@@ -28,6 +28,10 @@ export function commandPath(request: Request): CommandPath | Response {
   return known
 }
 
+/** The scheduler command: `POST /due-reminders`, outside the owner-scoped commands. */
+export const isSchedulerRequest = (request: Request) =>
+  request.method === 'POST' && new URL(request.url).pathname === '/due-reminders'
+
 export function failure(error: unknown) {
   if (error instanceof ApplicationError) return json({ error: error.code }, error.status)
   console.error('medicine_storage_failure')

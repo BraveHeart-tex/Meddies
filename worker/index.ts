@@ -1,6 +1,13 @@
 import { drizzle } from 'drizzle-orm/d1'
 import { decodeCommand } from './commands'
-import { authenticateService, commandPath, failure, json, readJsonRequest } from './http'
+import {
+  authenticateService,
+  commandPath,
+  failure,
+  isSchedulerRequest,
+  json,
+  readJsonRequest,
+} from './http'
 import {
   listMedicines,
   saveMedicine,
@@ -18,13 +25,59 @@ import {
   renewDeviceRegistration,
   saveDeviceRegistration,
 } from './device-registrations'
+import { runDueReminders, type ReminderProvider } from './due-reminders'
+import { createFcmProvider } from './fcm'
+import { ApplicationError } from '../src/lib/application-error'
 
-type Env = { DB: D1Database; MEDICINES_WORKER_SECRET: string }
+type Env = {
+  DB: D1Database
+  MEDICINES_WORKER_SECRET: string
+  SCHEDULER_SECRET?: string
+  FCM_PROJECT_ID?: string
+  FCM_CLIENT_EMAIL?: string
+  FCM_PRIVATE_KEY?: string
+}
 
-export function createWorker(clock: () => Date = () => new Date()) {
+// Without every FCM secret the run stops before claiming, so no reminder is spent on it.
+function fcmProvider({ FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY }: Env) {
+  if (!FCM_PROJECT_ID || !FCM_CLIENT_EMAIL || !FCM_PRIVATE_KEY)
+    throw new ApplicationError('unavailable', 503)
+  return createFcmProvider({
+    projectId: FCM_PROJECT_ID,
+    clientEmail: FCM_CLIENT_EMAIL,
+    privateKey: FCM_PRIVATE_KEY,
+  })
+}
+
+/**
+ * The cron trigger (`worker/wrangler.jsonc`, every minute) and the scheduler command for the
+ * approved external scheduler run the same due-reminder operation. The scheduler command
+ * authenticates with its own `SCHEDULER_SECRET`, never the Next.js capability, and answers counts
+ * only. One reminder provider serves the isolate, so its FCM access token is reused across runs.
+ */
+export function createWorker(
+  clock: () => Date = () => new Date(),
+  reminderProvider: (env: Env) => ReminderProvider = fcmProvider,
+) {
+  let provider: ReminderProvider | undefined
+  const dueReminders = (env: Env) =>
+    runDueReminders(drizzle(env.DB), (provider ??= reminderProvider(env)), clock)
   return {
+    async scheduled(_controller: unknown, env: Env): Promise<void> {
+      try {
+        await dueReminders(env)
+      } catch {
+        // A fixed message fails the run without logging query or provider detail.
+        throw new Error('due_reminder_failure')
+      }
+    },
     async fetch(request: Request, env: Env): Promise<Response> {
       try {
+        if (isSchedulerRequest(request)) {
+          await authenticateService(request, env.SCHEDULER_SECRET)
+          const { submitted, dropped, retrying } = await dueReminders(env)
+          return json({ submitted, dropped, retrying })
+        }
         await authenticateService(request, env.MEDICINES_WORKER_SECRET)
         const path = commandPath(request)
         if (path instanceof Response) return path

@@ -9,9 +9,11 @@ import {
   type ReminderMessage,
   type ReminderProvider,
 } from '../worker/due-reminders'
+import { createWorker } from '../worker/index'
 import {
   medicine,
   runtime,
+  secret,
   startWorkerRuntime,
   versionFixture,
 } from './helpers/medicine-storage-runtime'
@@ -322,4 +324,73 @@ test('A run processes a bounded batch and leaves the rest for the next run', asy
   )
   assert.equal((await run(provider, '2026-11-17T06:31:00.000Z', 2)).submitted, 1)
   assert.deepEqual(sent.at(-1)?.dueAt, o.due('09:20'))
+})
+
+const schedulerSecret = 'synthetic-scheduler-secret-at-least-32-characters'
+const bindings = () => ({
+  DB: db,
+  MEDICINES_WORKER_SECRET: secret,
+  SCHEDULER_SECRET: schedulerSecret,
+})
+
+test('The cron trigger runs the due-reminder operation, and stops before claiming without FCM secrets', async () => {
+  const o = await owner('2026-11-20', ['09:00'])
+  const { provider, sent } = fake()
+  const cron = (at: string) =>
+    createWorker(
+      () => new Date(at),
+      () => provider,
+    ).scheduled(undefined, bindings())
+
+  await cron('2026-11-20T05:59:00.000Z')
+  assert.equal(sent.length, 0)
+  await cron('2026-11-20T06:00:00.000Z')
+  assert.deepEqual(sent, [{ token: o.tokens[0], scheduleId: o.scheduleId, dueAt: o.due('09:00') }])
+  assert.deepEqual(await reminderState(o.ownerId), [{ dueAt: o.due('09:00'), state: 'submitted' }])
+
+  const unconfigured = await owner('2026-11-21', ['09:00'])
+  await assert.rejects(
+    createWorker(() => new Date('2026-11-21T06:00:00.000Z')).scheduled(undefined, bindings()),
+    { message: 'due_reminder_failure' },
+  )
+  assert.deepEqual(await reminderState(unconfigured.ownerId), [], 'no reminder is spent')
+})
+
+test('The scheduler command runs the same operation with its own secret and answers counts only', async () => {
+  const o = await owner('2026-11-22', ['09:00'])
+  const { provider, sent } = fake()
+  const worker = createWorker(
+    () => new Date('2026-11-22T06:00:00.000Z'),
+    () => provider,
+  )
+  const command = (authorization?: string, env = bindings(), path = '/due-reminders') =>
+    worker.fetch(
+      new Request(`http://worker${path}`, {
+        method: 'POST',
+        headers: authorization ? { authorization } : {},
+        body: JSON.stringify({ ownerId: o.ownerId, operation: 'list' }),
+      }),
+      env,
+    )
+
+  for (const authorization of [undefined, `Bearer ${secret}`, `Bearer ${schedulerSecret}x`]) {
+    const refused = await command(authorization)
+    assert.equal(refused.status, 401)
+    assert.deepEqual(await refused.json(), { error: 'unauthorized' })
+  }
+  const unset = await command(`Bearer ${schedulerSecret}`, { ...bindings(), SCHEDULER_SECRET: '' })
+  assert.equal(unset.status, 503)
+  const ownerCommand = await command(`Bearer ${schedulerSecret}`, bindings(), '/medicines')
+  assert.equal(ownerCommand.status, 401, 'the scheduler secret runs no owner command')
+  assert.equal(sent.length, 0)
+  assert.deepEqual(await reminderState(o.ownerId), [])
+
+  const response = await command(`Bearer ${schedulerSecret}`)
+  assert.equal(response.status, 200)
+  assert.equal(response.headers.get('cache-control'), 'no-store')
+  assert.deepEqual(await response.json(), { submitted: 1, dropped: 0, retrying: 0 })
+  assert.deepEqual(
+    sent.map((m) => m.token),
+    o.tokens,
+  )
 })

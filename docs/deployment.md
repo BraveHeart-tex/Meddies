@@ -28,6 +28,13 @@ Firebase project for both the web config and these secrets. Local uses the separ
 project `meddies-dev` for both: its web config in `.env.local` and its sender secrets in
 `worker/.dev.vars`, where `FCM_PRIVATE_KEY` is one double-quoted line with `\n` escapes.
 
+A Cron Trigger in `worker/wrangler.jsonc` runs the due-reminder operation every minute. The
+approved external scheduler instead calls `POST /due-reminders` on the Worker origin with
+`Authorization: Bearer <SCHEDULER_SECRET>`, a Worker secret of at least 32 characters that is
+independent of `MEDICINES_WORKER_SECRET`; without it that command answers 503. The answer holds
+only the run's `submitted`, `dropped` and `retrying` counts. Without all three FCM secrets both
+paths stop before claiming any reminder.
+
 ## Verify workflow
 
 `.github/workflows/verify.yml` runs on pull requests and is called by Release before

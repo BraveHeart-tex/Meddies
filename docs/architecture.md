@@ -58,7 +58,8 @@ The Worker trusts the shared capability as proof that Next.js authenticated the 
 has no public browser API and no arbitrary SQL endpoint, and scopes every operation by
 owner.
 
-- `worker/index.ts` owns the HTTP lifecycle, D1 and clock wiring and explicit dispatch.
+- `worker/index.ts` owns the HTTP lifecycle, D1 and clock wiring and explicit dispatch, and
+  wires the cron trigger and the scheduler command to the due-reminder operation.
 - `http.ts` owns capability authentication, route guards, bounded JSON, no-store
   responses and failure mapping. `commands.ts` decodes input into shared typed commands
   after those checks, keeping owner-first validation, defaults and legacy optional dates.
