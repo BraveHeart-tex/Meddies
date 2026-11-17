@@ -145,6 +145,12 @@ An automatic reminder for an Occurrence still without Taken or Skipped, targeted
 after its due instant. Each Occurrence has two; a snooze reserves one rather than adding a third.
 _Avoid_: nudge, repeat push, retry
 
+**Quiet hours**:
+An optional account-wide window, 23:00 to 08:00 Europe/Istanbul and off by default, in which
+Follow-up reminders, snoozes and food reminders are dropped and refill pushes wait until 08:00.
+Original reminders still go out.
+_Avoid_: do not disturb, mute, night mode
+
 **Delivery attempt**:
 One submission of a reminder to one Device registration, with the provider's answer. Provider
 acceptance is not delivery, and never intake.

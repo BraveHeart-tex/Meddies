@@ -177,3 +177,17 @@ eligibility; all doses remain unconfirmed unless specified.
 - Unscheduled doses and other Medicines' Occurrences never drop a reminder.
 - A transient answer, an abandoned claim or a late run never submits a dropped reminder.
 - Snoozes follow the same rule (#36).
+
+## #35 - Approved quiet hours rules (November 17, 2026)
+
+- Quiet hours are one account-wide preference, off by default. Turning them on or off applies to
+  every Device registration of the account.
+- The window is fixed at 23:00 inclusive to 08:00 exclusive, Europe/Istanbul; nothing else is
+  configurable.
+- With quiet hours on, a Follow-up reminder drops unsent when its target or its processing time is
+  inside the window ([#9 D5](#approved-decisions)). Its slot is never replaced and nothing catches
+  up at 08:00. Original reminders still submit at their due instant.
+- The check is a send-time recheck of the current preference, so a change applies to reminders
+  already recorded but unsent; setting it writes no reminder rows.
+- Snoozes (#36), food reminders (#39) and refill pushes (#54) apply the same window by their own
+  rules above.
