@@ -30,10 +30,18 @@ function ToastViewport({ className, ...props }: ToastPrimitive.Viewport.Props) {
   )
 }
 
-function Toast({ className, ...props }: ToastPrimitive.Root.Props) {
+// #376: swipe left, right or down past Base UI's fixed 40px dismisses in that direction;
+// a shorter one springs back on the 320ms transform transition. Dismiss fades with no slide.
+// Reduced motion keeps only the opacity transition, so every exit is a fade.
+function Toast({
+  className,
+  swipeDirection = ['left', 'right', 'down'],
+  ...props
+}: ToastPrimitive.Root.Props) {
   return (
     <ToastPrimitive.Root
       data-slot="toast"
+      swipeDirection={swipeDirection}
       className={cn(
         'group/toast pointer-events-auto absolute right-0 bottom-0 z-[calc(1000-var(--toast-index))] w-full origin-bottom rounded-lg bg-foreground text-primary-foreground shadow-toast will-change-transform outline-none select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
         '[--gap:0.625rem] [--height:var(--toast-frontmost-height,var(--toast-height))] [--offset-y:calc(var(--toast-offset-y)*-1+calc(var(--toast-index)*var(--gap)*-1)+var(--toast-swipe-movement-y))] [--peek:0.625rem] [--scale:calc(max(0,1-(var(--toast-index)*0.06)))] [--shrink:calc(1-var(--scale))]',
@@ -41,7 +49,7 @@ function Toast({ className, ...props }: ToastPrimitive.Root.Props) {
         "after:absolute after:top-full after:left-0 after:h-[calc(var(--gap)+1px)] after:w-full after:content-['']",
         'data-expanded:h-(--toast-height) data-expanded:transform-[translateX(var(--toast-swipe-movement-x))_translateY(var(--offset-y))]',
         'data-limited:opacity-0 data-starting-style:opacity-0 data-starting-style:transform-[translateY(0.5rem)]',
-        '[&[data-ending-style]:not([data-limited]):not([data-swipe-direction])]:opacity-0 [&[data-ending-style]:not([data-limited]):not([data-swipe-direction])]:transform-[translateY(0.5rem)]',
+        '[&[data-ending-style]:not([data-limited]):not([data-swipe-direction])]:opacity-0',
         'data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(var(--toast-swipe-movement-y)+150%))]',
         'data-ending-style:data-[swipe-direction=left]:transform-[translateX(calc(var(--toast-swipe-movement-x)-150%))_translateY(var(--offset-y))]',
         'data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(var(--toast-swipe-movement-x)+150%))_translateY(var(--offset-y))]',
@@ -181,6 +189,7 @@ function ToastList() {
           <ToastDescription />
         </div>
         {toastItem.actionProps ? <ToastAction className="ml-auto" /> : null}
+        <ToastClose className="ml-auto" />
       </ToastContent>
     </Toast>
   ))

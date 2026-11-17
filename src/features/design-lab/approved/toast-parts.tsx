@@ -1,7 +1,7 @@
 'use client'
 
 import type { CSSProperties, ReactNode } from 'react'
-import { ArrowLeftRight, Hand, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ToastIcon } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
@@ -87,30 +87,6 @@ export function LabNote({ children }: { children: ReactNode }) {
   )
 }
 
-/** A fingertip marker for gesture frames. */
-export function LabFinger({ style }: { style: CSSProperties }) {
-  return (
-    <span
-      aria-hidden="true"
-      style={style}
-      className="pointer-events-none absolute z-10 flex items-center gap-1 rounded-full bg-background/90 p-1.5 text-foreground shadow-toast"
-    >
-      <Hand className="size-4" />
-      <ArrowLeftRight className="size-3.5" />
-    </span>
-  )
-}
-
-/** A dashed outline where the Toast rests, behind a moved Toast. */
-export function LabGhost() {
-  return (
-    <div
-      aria-hidden="true"
-      className={cn('absolute inset-0 border-2 border-dashed border-foreground/30', shape)}
-    />
-  )
-}
-
 /**
  * A 320px phone inside the 402px capture. The transform makes the shell's fixed nav and the Toast
  * host position against this box, not the viewport.
@@ -121,15 +97,6 @@ export function Narrow({ children }: { children: ReactNode }) {
       <div className="relative mx-auto h-svh w-80 overflow-y-auto bg-background outline outline-foreground/20 transform-[translateZ(0)]">
         {children}
       </div>
-    </div>
-  )
-}
-
-/** Clips a Toast leaving the screen, so the frame never scrolls sideways. */
-export function LabClip({ children }: { children: ReactNode }) {
-  return (
-    <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden transform-[translateZ(0)]">
-      {children}
     </div>
   )
 }

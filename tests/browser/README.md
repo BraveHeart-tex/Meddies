@@ -183,7 +183,9 @@ feedback includes offline, conflict, Unconfirmed save, changed details and Skipp
 (5 screenshots named `save-…-402.png`). These use normal text at 402x874 and retain their
 interaction assertions. The save recovery case also captures each scheduled and Unscheduled
 success receipt once at 402x874 with normal text (4 screenshots named
-`receipt-…-form-402.png` and `receipt-…-402.png`), checks the drawer heading, Amount name,
+`receipt-…-form-402.png` and `receipt-…-402.png`); the Unscheduled receipt saves under reduced
+motion, and each receipt's Toast transitions transform and opacity, or only opacity under
+reduced motion. It checks the drawer heading, Amount name,
 reachable save action, no horizontal overflow and the receipt's polite live announcement. It
 asserts the drawer's real opening and short swipe-return, then screenshots only through
 `captureSettled` (`settled-capture.ts`), which finishes finite animations and waits for a

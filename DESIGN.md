@@ -49,6 +49,8 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 
 - Distinguish _Scheduled_, _Due now_, _Not logged_, _Taken_, and _Skipped_ with text and icon. Keep scheduled time separate from actual intake and from skip confirmation.
 - Keep explicit confirmation, progress, retries, correction, and stale-state handling. Use a factual success announcement after the server confirms the save; `toast.add({ title, type })` shows it.
+- Save confirmations are Toasts. On-screen save problems, conflicts, offline, load failures, pre-action warnings and screen descriptions stay inline Alerts. Save problems found after she leaves the screen and session-end feedback stay Toasts ([client state](docs/client-state.md#saves)).
+- A Toast's glyph follows this grammar: the check only for a save, restore or Taken; none for a pause, stop or deletion. Every Toast has a 44px _Dismiss_ that fades it out with no slide. Swiping left, right or down past 40px sends it off in that direction; a shorter swipe springs back in 320 ms on `ease-calm`. With reduced motion it fades in and out over 220 ms with no slide, and swipe still works.
 - Dose outcomes have no Undo: correct them through the dose drawer.
 - _Due now_ is the blush `due` badge on rows and drawer chips. In the blush Up next hero the status is its eyebrow line with the clock icon, never a badge, so the berry primary stays the one loud element.
 - The hero's _I took it_ and _I skipped it_ open the record drawer with that choice selected. The tap is her explicit choice, not a default: the drawer still asks _What happened?_ with the choice changeable, and nothing saves until she saves. They show for any featured dose due today or earlier.

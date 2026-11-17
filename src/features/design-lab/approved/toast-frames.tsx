@@ -10,15 +10,7 @@ import { FixtureQuery } from '../fixture-query'
 import type { LabFrame } from '../frames'
 import { amoxicillin, NOW, routine } from '../lab-fixtures'
 import { catalog, confirmations, receiptRow as dir, type LabToast } from './toast-model'
-import {
-  LabClip,
-  LabFinger,
-  LabGhost,
-  LabNote,
-  LabToastCard,
-  LabToastHost,
-  Narrow,
-} from './toast-parts'
+import { LabNote, LabToastCard, LabToastHost, Narrow } from './toast-parts'
 
 /**
  * #371 approved direction A, Receipt row, for floating save confirmations. Each frame composes a
@@ -71,15 +63,8 @@ function Today({ children }: { children?: ReactNode }) {
   )
 }
 
-const m = {
-  mid: 'translateX(34%) rotate(1.5deg)',
-  back: 'translateX(9%)',
-  gone: 'translateX(86%)',
-} as const
-
 function frames(ids: readonly string[], cites: readonly string[]) {
   const card = (toast: LabToast = confirmations.scheduleSaved) => <LabToastCard toast={toast} />
-  const finger = (left: string) => ({ left, top: '62%' })
   const list: { title: string; render: () => ReactNode }[] = [
     {
       title: 'Schedule saved on Medication detail',
@@ -121,60 +106,6 @@ function frames(ids: readonly string[], cites: readonly string[]) {
             <LabToastCard key={toast.title} toast={toast} />
           ))}
         </main>
-      ),
-    },
-    {
-      title: 'Mid-swipe',
-      render: () => (
-        <Detail>
-          <LabNote>Mid-swipe: the Toast follows the finger. {dir.swipe}.</LabNote>
-          <LabToastHost>
-            <div className="relative">
-              <LabGhost />
-              <LabToastCard
-                toast={confirmations.scheduleSaved}
-                style={{ transform: m.mid, opacity: 0.8 }}
-              />
-              <LabFinger style={finger('62%')} />
-            </div>
-          </LabToastHost>
-        </Detail>
-      ),
-    },
-    {
-      title: 'Springing back',
-      render: () => (
-        <Detail>
-          <LabNote>
-            Released before a third of its width: springs back in 320 ms on ease-calm. The timer
-            restarts.
-          </LabNote>
-          <LabToastHost>
-            <div className="relative">
-              <LabGhost />
-              <LabToastCard toast={confirmations.scheduleSaved} style={{ transform: m.back }} />
-            </div>
-          </LabToastHost>
-        </Detail>
-      ),
-    },
-    {
-      title: 'Dismissed',
-      render: () => (
-        <Detail>
-          <LabNote>
-            Past a third, or a fast flick: leaves in the swipe direction and is gone. Dismiss does
-            the same with a fade.
-          </LabNote>
-          <LabClip>
-            <LabToastHost>
-              <LabToastCard
-                toast={confirmations.scheduleSaved}
-                style={{ transform: m.gone, opacity: 0.35 }}
-              />
-            </LabToastHost>
-          </LabClip>
-        </Detail>
       ),
     },
     {
@@ -222,19 +153,6 @@ function frames(ids: readonly string[], cites: readonly string[]) {
         </Narrow>
       ),
     },
-    {
-      title: 'Reduced motion entry',
-      render: () => (
-        <Detail>
-          <LabNote>
-            Reduced motion: fades in and out over 220 ms, no slide. Swipe still works.
-          </LabNote>
-          <LabToastHost>
-            <LabToastCard toast={confirmations.scheduleSaved} style={{ opacity: 0.5 }} />
-          </LabToastHost>
-        </Detail>
-      ),
-    },
   ]
   return list.map((frame, i) => ({
     slug: ids[i] as LabFrame['slug'],
@@ -245,30 +163,6 @@ function frames(ids: readonly string[], cites: readonly string[]) {
 }
 
 export const toastFrames: readonly LabFrame[] = frames(
-  [
-    '371-a1',
-    '371-a2',
-    '371-a3',
-    '371-a4',
-    '371-a5',
-    '371-a6',
-    '371-a7',
-    '371-a8',
-    '371-a9',
-    '371-a10',
-    '371-a11',
-  ],
-  [
-    '371·A1',
-    '371·A2',
-    '371·A3',
-    '371·A4',
-    '371·A5',
-    '371·A6',
-    '371·A7',
-    '371·A8',
-    '371·A9',
-    '371·A10',
-    '371·A11',
-  ],
+  ['371-a1', '371-a2', '371-a3', '371-a4', '371-a8', '371-a9', '371-a10'],
+  ['371·A1', '371·A2', '371·A3', '371·A4', '371·A8', '371·A9', '371·A10'],
 )

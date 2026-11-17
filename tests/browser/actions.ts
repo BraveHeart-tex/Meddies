@@ -330,3 +330,11 @@ export async function openConfirmationWithMotion(page: Page, action: Locator) {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await action.click()
 }
+
+/** The transitioned properties of the Toast holding `message`; computed style has no user-facing API. */
+export async function toastTransitionProperties(message: Locator) {
+  const value = await message.evaluate(
+    (node) => getComputedStyle(node.closest('[data-slot="toast"]')!).transitionProperty,
+  )
+  return value.split(', ')
+}

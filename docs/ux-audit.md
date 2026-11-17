@@ -263,8 +263,8 @@ The Skipped review already uses _I took it instead_.
   Confirmed.
 - **Fix:** keep _Change schedule_ as the outline lead. Put _Pause_ and _Stop schedule_ in one quieter
   row (ghost Buttons), with the destructive tint only inside the Stop confirm. Show the saved
-  confirmation as an Alert (default variant), the pattern DESIGN.md already uses for inline
-  messages.
+  confirmation as a Toast, the DESIGN.md rule for save confirmations; save problems on the
+  screen stay inline Alerts, and save problems found after she leaves stay Toasts.
 
 **F15 - Scanner (future): "Turn it on in Settings" is ambiguous.**
 
@@ -315,7 +315,7 @@ and Add medication drawers.
   one, the next scheduled dose otherwise (F2).
 - The medication page leads with the job she most often comes for: _Change schedule_ for
   scheduled, _Log a dose_ for as-needed. Pause and Stop step back (F9, F14).
-- A saved confirmation is an Alert, not a toast look-alike (F14).
+- A saved confirmation is a Toast, not an inline toast look-alike (F14).
 
 **Navigation**
 
@@ -367,7 +367,7 @@ Each task is one reviewable change. Tasks marked **D** wait for the matching dec
 **Medications and medication page**
 
 13. Tile shape follows the unit (F11).
-14. Pause and Stop in one quieter row; saved confirmation as an Alert (F14).
+14. Pause and Stop in one quieter row; saved confirmation as a Toast (F14).
 15. Paused badge on the card and row (F21).
 16. **D4** _As needed_ state for medications with no schedule (F9).
 17. **D5** Change details and remove a medication (F5): design ticket first.

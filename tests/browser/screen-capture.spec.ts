@@ -7,6 +7,7 @@ import {
   hydrated,
   scrollsHorizontally,
   stylesheetsLoaded,
+  toastTransitionProperties,
   waitForClientLink,
 } from './actions'
 import { dragHandle, drawerAtRest, drawerBottom } from './drawers'
@@ -530,12 +531,14 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
     open,
     save,
     receipt,
+    motion = captureCases.phone.reducedMotion,
   }: {
     name: string
     path: string
     open: () => Promise<void>
     save: string
     receipt: string
+    motion?: 'reduce' | 'no-preference'
   }) {
     await page.goto(path)
     await open()
@@ -560,9 +563,14 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
     await expect(dialog.getByRole('button', { name: save })).toBeVisible()
     expect(await scrollsHorizontally(page)).toBe(false)
     await captureSettled(page, { path: resolve(out!, `receipt-${name}-form-402.png`) })
+    await page.emulateMedia({ reducedMotion: motion })
     await dialog.getByRole('button', { name: save }).click()
     await expect(drawer(page)).toHaveCount(0)
     await expect(toastMessage(page, receipt)).toBeVisible()
+    // The Toast entry slides and fades, or only fades under reduced motion (#376).
+    const transition = await toastTransitionProperties(toastMessage(page, receipt))
+    expect(transition).toContain('opacity')
+    expect(transition.includes('transform')).toBe(motion === 'no-preference')
     await expect(page.getByRole('region', { name: 'Notifications' })).toHaveAttribute(
       'aria-live',
       'polite',
@@ -574,6 +582,7 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
     )
     expect(await scrollsHorizontally(page)).toBe(false)
     await captureSettled(page, { path: resolve(out!, `receipt-${name}-402.png`) })
+    await page.emulateMedia({ reducedMotion: captureCases.phone.reducedMotion })
   }
 
   await captureDoseReceipt({
@@ -594,6 +603,7 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
     },
     save: 'Save as taken',
     receipt: 'Capture Fixture Medicine · Taken at 09:00, 1 tablet',
+    motion: 'reduce',
   })
 })
 
