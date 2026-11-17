@@ -1,6 +1,6 @@
 'use client'
 
-import { TriangleAlert } from 'lucide-react'
+import { LogOut, TriangleAlert } from 'lucide-react'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { signOut } from 'next-auth/react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -164,6 +164,7 @@ function SignOutControl() {
           size="lg"
           className="w-full"
         >
+          <LogOut aria-hidden="true" data-icon="inline-start" />
           {pending
             ? 'Signing out…'
             : offline

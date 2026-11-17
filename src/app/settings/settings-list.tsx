@@ -1,9 +1,10 @@
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { SettingsHeading } from '@/components/layout/settings-heading'
 import { Card } from '@/components/ui/card'
 import { Item, ItemContent, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item'
 
-/** One topic of the inset list: an eyebrow heading over a white group of rows. */
+/** One topic of the inset list: a sentence-case heading over a white group of rows. */
 export function SettingsGroup({
   title,
   note,
@@ -15,9 +16,7 @@ export function SettingsGroup({
 }) {
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="px-1 text-label leading-none tracking-eyebrow text-muted-foreground uppercase">
-        {title}
-      </h2>
+      <SettingsHeading>{title}</SettingsHeading>
       <Card className="gap-0 py-0">
         <ItemGroup className="gap-0">{children}</ItemGroup>
       </Card>

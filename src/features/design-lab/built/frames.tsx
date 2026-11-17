@@ -101,7 +101,7 @@ export const builtFrames = [
     citation: '238·A5',
     route: '/settings',
     render: () => (
-      <FixtureQuery now={NOW}>
+      <FixtureQuery now={NOW} quietHours={{ quietHours: false }}>
         <LabNotificationsOff>
           <SettingsScreen expires={SESSION_EXPIRES} now={NOW} />
         </LabNotificationsOff>

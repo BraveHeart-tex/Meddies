@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { SettingsHeading } from '@/components/layout/settings-heading'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { Item, ItemContent, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item'
@@ -182,9 +183,7 @@ export function NotificationsGroup({
   const alert = shown && alerts[shown]
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="px-1 text-label leading-none tracking-eyebrow text-muted-foreground uppercase">
-        Notifications
-      </h2>
+      <SettingsHeading>Notifications</SettingsHeading>
       <Card className="gap-0 py-0">
         <ItemGroup className="gap-0">
           <Item role="listitem" className="gap-3 rounded-none border-0 px-3.5 py-3">

@@ -4,6 +4,8 @@ import { useState, type ReactNode } from 'react'
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
 import type { Medicine } from '@/features/medicines/contract'
 import { medicineKeys } from '@/features/medicines/queries'
+import type { QuietHours } from '@/features/quiet-hours/contract'
+import { quietHoursKeys } from '@/features/quiet-hours/queries'
 import type { DoseOccurrence } from '@/features/schedules/contract'
 import { scheduleKeys, type ScheduleSnapshot } from '@/features/schedules/queries'
 import { createQueryClient } from '@/lib/session-query-client'
@@ -15,6 +17,8 @@ export type QueryFixtures = {
   snapshot?: ScheduleSnapshot
   /** History days by Istanbul date. */
   history?: Record<string, DoseOccurrence[]>
+  /** The account's saved Quiet hours. */
+  quietHours?: QuietHours
 }
 
 /**
@@ -22,7 +26,13 @@ export type QueryFixtures = {
  * and a read that runs anyway (a retry, an invalidation) answers from the cache. Every fixture is
  * stamped as read at `now`, so the server render and hydration agree.
  */
-export function fixtureQueryClient({ now, medicines, snapshot, history = {} }: QueryFixtures) {
+export function fixtureQueryClient({
+  now,
+  medicines,
+  snapshot,
+  history = {},
+  quietHours,
+}: QueryFixtures) {
   const client = createQueryClient()
   const defaults = client.defaultQueryOptions.bind(client)
   client.defaultQueryOptions = ((options) => ({
@@ -33,6 +43,7 @@ export function fixtureQueryClient({ now, medicines, snapshot, history = {} }: Q
   const updatedAt = Date.parse(now)
   if (medicines) client.setQueryData(medicineKeys.list(), medicines, { updatedAt })
   if (snapshot) client.setQueryData(scheduleKeys.snapshot(), snapshot, { updatedAt })
+  if (quietHours) client.setQueryData(quietHoursKeys.status(), quietHours, { updatedAt })
   for (const [date, doses] of Object.entries(history))
     client.setQueryData(scheduleKeys.history(date), doses, { updatedAt })
   return client
