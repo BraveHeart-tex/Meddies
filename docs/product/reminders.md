@@ -191,3 +191,16 @@ eligibility; all doses remain unconfirmed unless specified.
   already recorded but unsent; setting it writes no reminder rows.
 - Snoozes (#36), food reminders (#39) and refill pushes (#54) apply the same window by their own
   rules above.
+
+## #36 - Approved snooze rules (November 17, 2026)
+
+- A **Snooze** is requested from the dose drawer of a Not logged dose; reminders carry no
+  snooze action.
+- The server accepts it under [#9](#approved-decisions) and targets it 40 minutes after
+  accepting, in whole seconds. It is rejected while the account has no Device registration.
+- Snooze is server-confirmed only ([saves](../client-state.md#saves)): nothing shows it as
+  applied before the server accepts it, and offline it is unavailable.
+- Today and History dose reads carry a pending snooze's target, so every device shows it until
+  it is submitted or dropped.
+- A snooze reminder covers only its Occurrence, with its Reminder link, never grouped with other
+  doses, and uses the Follow-up reminder wording ([copy](../copy.md#reminder-wording)).

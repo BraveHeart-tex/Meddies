@@ -145,6 +145,11 @@ An automatic reminder for an Occurrence still without Taken or Skipped, targeted
 after its due instant. Each Occurrence has two; a snooze reserves one rather than adding a third.
 _Avoid_: nudge, repeat push, retry
 
+**Snooze**:
+A server-confirmed request, from the dose drawer, to be reminded of one Occurrence 40 minutes
+later. It reserves one of the Occurrence's two Follow-up reminders rather than adding a third.
+_Avoid_: remind me later, delay
+
 **Quiet hours**:
 An optional account-wide window, 23:00 to 08:00 Europe/Istanbul and off by default, in which
 Follow-up reminders, snoozes and food reminders are dropped and refill pushes wait until 08:00.
