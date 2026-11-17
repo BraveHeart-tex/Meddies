@@ -18,6 +18,7 @@ import { medicationSetupHref, medicationsHref } from '@/features/medicines/route
 import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord, type Today } from './contract'
 import { DoseStatusBadge } from './dose-status-badge'
 import { DoseActions, type DoseDrawerOpener } from './dose-actions'
+import { DoneTodayLine, nextDoseSentence } from './done-today-line'
 import { NextDose } from './next-dose'
 import { TodayDosesLoading } from './today-skeleton'
 import { scheduleToday } from './occurrences'
@@ -159,33 +160,30 @@ export function TodaySchedule({
         (!medicinesError || medicines.length > 0) &&
         (!medicinesLoading || medicines.length > 0) && (
           <>
-            {today.next && today.doses.length > 0 && (
+            {today.upNext && today.doses.length > 0 && (
               <NextDose
-                dose={today.next}
-                pending={pendingDose(today.next)}
+                dose={today.upNext}
+                pending={pendingDose(today.upNext)}
                 date={today.date}
-                medicine={medicines.find((item) => item.id === today.next?.medicineId)}
-                name={name(today.next.medicineId)}
-                doseText={doseText(today.next)}
+                medicine={medicines.find((item) => item.id === today.upNext?.medicineId)}
+                name={name(today.upNext.medicineId)}
+                doseText={doseText(today.upNext)}
                 onRecord={
-                  today.doses.some((dose) => dose.id === today.next?.id) &&
-                  medicines.some((item) => item.id === today.next?.medicineId)
+                  today.doses.some((dose) => dose.id === today.upNext?.id) &&
+                  medicines.some((item) => item.id === today.upNext?.medicineId)
                     ? (outcome) => heroOpener.current?.open(outcome)
                     : undefined
                 }
               />
             )}
+            <DoneTodayLine today={today} name={name} />
             {today.doses.length || unscheduled.length ? (
               <section aria-label="Today’s doses" className="flex flex-col gap-3.5">
                 <ul aria-label="Today's doses" className="flex flex-col gap-2.5">
                   {[
                     {
                       label: 'To log',
-                      rows: rowsOf(
-                        today.doses.filter(
-                          (dose) => dose.status === 'Due now' || dose.status === 'Not logged',
-                        ),
-                      ),
+                      rows: rowsOf(today.doses.filter(unresolved)),
                     },
                     {
                       label: 'Later today',
@@ -319,7 +317,7 @@ export function TodaySchedule({
                                     appearance="row"
                                     todayDate={today.date}
                                     describedBy={`dose-status-${dose.id}`}
-                                    opener={dose.id === today.next?.id ? heroOpener : undefined}
+                                    opener={dose.id === today.upNext?.id ? heroOpener : undefined}
                                     onRecorded={(record) => announceOutcome(dose, record)}
                                   />
                                 )}
@@ -396,11 +394,10 @@ function TodayEmptyState({
     <EmptyState
       icon={Calendar}
       title="No doses scheduled today"
-      body={
-        next
-          ? `Next is ${name(next.medicineId)} on ${formatShortDay(next.dueAt, date)} at ${formatTime(next.dueAt)}.`
-          : undefined
-      }
+      body={next ? nextDoseSentence(next, date, name) : undefined}
     />
   )
 }
+
+const unresolved = (dose: DoseOccurrence) =>
+  dose.status === 'Due now' || dose.status === 'Not logged'

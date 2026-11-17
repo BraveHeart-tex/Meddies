@@ -1,5 +1,4 @@
 import type { LabFrame } from '../frames'
-import { doneTodayFrames } from './done-today-frames'
 import { ScannerFrame } from './scanner-frame'
 import { toastFrames } from './toast-frames'
 
@@ -12,5 +11,4 @@ export const approvedFrames = [
     render: () => <ScannerFrame />,
   },
   ...toastFrames,
-  ...doneTodayFrames,
 ] satisfies readonly LabFrame[]

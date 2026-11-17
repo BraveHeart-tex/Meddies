@@ -31,15 +31,15 @@ describe('Across midnight', () => {
       dueAt: due('2026-11-13', '23:30'),
       status: 'Not logged',
     })
-    expect(today.next?.dueAt).toBe(due('2026-11-13', '23:30'))
+    expect(today.upNext?.dueAt).toBe(due('2026-11-13', '23:30'))
   })
 
   test('Up next features it until 00:50, then the next Scheduled dose', () => {
-    expect(scheduleToday(daily, at('2026-11-14', '00:50:59.999'), []).next?.dueAt).toBe(
+    expect(scheduleToday(daily, at('2026-11-14', '00:50:59.999'), []).upNext?.dueAt).toBe(
       due('2026-11-13', '23:30'),
     )
     const later = scheduleToday(daily, at('2026-11-14', '00:51:00.000'), [])
-    expect(later.next).toMatchObject({ dueAt: due('2026-11-14', '23:30'), status: 'Upcoming' })
+    expect(later.upNext).toMatchObject({ dueAt: due('2026-11-14', '23:30'), status: 'Upcoming' })
     expect(yesterdays(later.doses)).toHaveLength(1)
   })
 
@@ -49,7 +49,7 @@ describe('Across midnight', () => {
     ).toHaveLength(1)
     const atDue = scheduleToday(daily, at('2026-11-14', '23:30:00.000'), [])
     expect(yesterdays(atDue.doses)).toEqual([])
-    expect(atDue.next).toMatchObject({ dueAt: due('2026-11-14', '23:30'), status: 'Due now' })
+    expect(atDue.upNext).toMatchObject({ dueAt: due('2026-11-14', '23:30'), status: 'Due now' })
   })
 
   test("yesterday's Taken and Skipped doses never appear", () => {
@@ -74,7 +74,7 @@ describe('Across midnight', () => {
       records,
     )
     expect(yesterdays(today.doses)).toEqual([])
-    expect(today.next?.dueAt).toBe(due('2026-11-14', '22:00'))
+    expect(today.upNext?.dueAt).toBe(due('2026-11-14', '22:00'))
   })
 
   test('only doses due in the 24 hours before now come back', () => {

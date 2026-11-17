@@ -856,7 +856,7 @@ test('Interval schedules save, retry and track only real elapsed occurrences thr
       .map((d) => d.dueAt),
     ['2026-11-03T21:00:00.000Z', '2026-11-04T05:00:00.000Z', '2026-11-04T13:00:00.000Z'],
   )
-  assert.equal((await operations.snapshot()).today.next?.dueAt, '2026-11-04T00:00:00.000Z') // hourly schedule is Due now
+  assert.equal((await operations.snapshot()).today.upNext?.dueAt, '2026-11-04T00:00:00.000Z') // hourly schedule is Due now
   assert.deepEqual(await operations.save(input), saved) // retry after midnight preserves cutoff
   for (const invalid of ['2026-11-03T05:00:00.000Z', '2026-11-03T14:00:00.000Z']) {
     await assert.rejects(

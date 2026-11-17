@@ -39,8 +39,8 @@ describe('Due now window', () => {
   })
 
   test('Up next keeps the dose as it turns from Due now to Not logged', () => {
-    expect(scheduleToday([schedule], at('09:14:59.999'), []).next?.status).toBe('Due now')
-    expect(scheduleToday([schedule], at('09:15:00.000'), []).next).toMatchObject({
+    expect(scheduleToday([schedule], at('09:14:59.999'), []).upNext?.status).toBe('Due now')
+    expect(scheduleToday([schedule], at('09:15:00.000'), []).upNext).toMatchObject({
       dueAt: '2026-11-14T06:00:00.000Z',
       status: 'Not logged',
     })

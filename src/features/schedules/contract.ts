@@ -133,6 +133,9 @@ export type Today = {
   date: string
   now: string
   doses: DoseOccurrence[]
+  /** The dose the Up next hero features: due today or earlier, never later (#275, 373·B1). */
+  upNext: DoseOccurrence | null
+  /** The next Scheduled dose on any day, named by the empty day and the done-for-today line. */
   next: DoseOccurrence | null
 }
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

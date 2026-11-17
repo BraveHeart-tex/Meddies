@@ -78,8 +78,12 @@ Due now and Up next windows present doses; they are not medical guidance.
   occurrence stays loggable and correctable.
 - **Up next** features the most recently due unresolved occurrence due within the last 80 minutes,
   inclusive, the last automatic follow-up slot. Occurrences due at the same instant follow To log's
-  order. With none in that window it features the next Scheduled occurrence. Older unresolved
-  occurrences stay in To log.
+  order. With none in that window it features the next Scheduled occurrence due today, never one
+  due tomorrow or later. Older unresolved occurrences stay in To log. Once Today lists doses and
+  none is left to feature today, a done-for-today line takes the hero's slot: "All logged for
+  today" while To log is empty, then the next dose in the empty day's sentence (373·B1-B4). It never
+  shows while a dose due today is unresolved or Scheduled, nor with rows in To log and no next dose.
+  Medication detail's first dose after scheduling names the next Scheduled occurrence.
 - **Today** also lists, in To log, unresolved occurrences due in the 24 hours before now, showing
   their date. Logging one removes it from Today, and its save message names its History date.
   Logged lists only today's doses.

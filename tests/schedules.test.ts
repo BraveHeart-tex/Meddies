@@ -195,7 +195,7 @@ test('Today keeps stable Istanbul doses across reload, date rollover and device 
     [{ dueAt: '2026-11-03T20:40:00.000Z', quantity: 1, status: 'Not logged' }],
   )
   // The Not logged 23:40 dose is inside the Up next window (#275).
-  assert.equal(today.next!.dueAt, '2026-11-03T20:40:00.000Z')
+  assert.equal(today.upNext!.dueAt, '2026-11-03T20:40:00.000Z')
   const previousTz = process.env.TZ
   try {
     process.env.TZ = 'America/Los_Angeles'
@@ -211,7 +211,7 @@ test('Today keeps stable Istanbul doses across reload, date rollover and device 
   assert.equal(midnight.doses[0].dueAt, '2026-11-03T20:40:00.000Z')
   assert.equal(midnight.doses[1].dueAt, '2026-11-03T21:00:00.000Z')
   assert.equal(midnight.doses[1].status, 'Due now')
-  assert.equal(midnight.next!.id, midnight.doses[1].id)
+  assert.equal(midnight.upNext!.id, midnight.doses[1].id)
 })
 
 test('initial confirmation excludes earlier and exactly equal times; future start dates have no Today backlog', async () => {

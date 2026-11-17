@@ -1096,30 +1096,106 @@ describe('next actions', () => {
     expect(screen.getByText('Due now ·', { exact: false })).toHaveTextContent(/^Due now · 09:00$/)
   })
 
-  test('all logged keeps only Logged and a dated future hero without actions', async () => {
-    schedulesApi(initialNow)
-    client.setQueryData(
-      scheduleKeys.snapshot(),
-      {
-        date: '2026-11-14',
-        schedules: [scheduleFor('09:00')],
-        records: [
-          {
-            scheduleId: scheduleFor('09:00').id,
-            dueAt: '2026-11-14T06:00:00.000Z',
-            outcome: 'Skipped',
-            recordedAt: initialNow,
-          },
+  describe('done-for-today line', () => {
+    const skipped = (schedule: DailySchedule, dueAt: string): DoseOutcomeRecord => ({
+      scheduleId: schedule.id,
+      dueAt,
+      outcome: 'Skipped',
+      recordedAt: dueAt,
+    })
+    /** Today at `now` from a snapshot holding `records`. */
+    function seed(now: string, schedule: DailySchedule, records: DoseOutcomeRecord[] = []) {
+      schedulesApi(now, [schedule])
+      client.setQueryData(
+        scheduleKeys.snapshot(),
+        { date: '2026-11-14', schedules: [schedule], records },
+        { updatedAt: Date.now() },
+      )
+      renderToday(now)
+    }
+    const hero = () => screen.queryByRole('heading', { name: 'Up next', hidden: true })
+    /** The line's whole slot: its chip and its text. */
+    const line = () =>
+      screen.queryAllByText(/^(All logged for today|Next is )/)[0]?.parentElement?.parentElement
+    const lineIcon = () => line()?.querySelector('svg')
+
+    // Catches tomorrow's dose taking the hero once today is all logged.
+    test('373·B1: at 23:50 with every dose today logged, the line names the 00:30 dose tomorrow', async () => {
+      const schedule = {
+        ...scheduleFor('00:30'),
+        times: [
+          { time: '00:30', quantity: 1 },
+          { time: '20:00', quantity: 1 },
         ],
-      },
-      { updatedAt: Date.now() },
-    )
-    renderToday()
-    expect(await screen.findByRole('heading', { name: 'Logged · 1' })).toBeVisible()
-    expect(screen.queryByRole('heading', { name: /^(To log|Later today)/ })).not.toBeInTheDocument()
-    expect(screen.getByText(/Scheduled ·/)).toHaveTextContent('Scheduled · 09:00 on Sun 15 Nov')
-    expect(screen.queryByRole('button', { name: /^I took it, / })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^I skipped it, / })).not.toBeInTheDocument()
+      }
+      seed('2026-11-14T20:50:00.000Z', schedule, [
+        skipped(schedule, '2026-11-13T21:30:00.000Z'),
+        skipped(schedule, '2026-11-14T17:00:00.000Z'),
+      ])
+      expect(await screen.findByRole('heading', { name: 'Logged · 2' })).toBeVisible()
+      expect(hero()).not.toBeInTheDocument()
+      expect(screen.getByText('All logged for today')).toBeVisible()
+      expect(screen.getByText('Next is Morning Tablet on Sun 15 Nov at 00:30.')).toBeVisible()
+      expect(lineIcon()).toHaveClass('lucide-check')
+      expect(line()?.querySelector('a, button, h1, h2, h3, h4, [role=status]')).toBeNull()
+    })
+
+    test('373·B2: a next dose days away is named with its short day', async () => {
+      const schedule = { ...scheduleFor('09:00'), weekdays: [2, 6] }
+      seed('2026-11-14T18:00:00.000Z', schedule, [skipped(schedule, '2026-11-14T06:00:00.000Z')])
+      expect(await screen.findByText('All logged for today')).toBeVisible()
+      expect(hero()).not.toBeInTheDocument()
+      expect(screen.getByText('Next is Morning Tablet on Tue 17 Nov at 09:00.')).toBeVisible()
+    })
+
+    test('373·B3: with no next dose the line is only "All logged for today"', async () => {
+      const schedule = { ...scheduleFor('09:00'), endDate: '2026-11-14' }
+      seed('2026-11-14T18:00:00.000Z', schedule, [skipped(schedule, '2026-11-14T06:00:00.000Z')])
+      expect(await screen.findByText('All logged for today')).toBeVisible()
+      expect(hero()).not.toBeInTheDocument()
+      expect(screen.queryByText(/^Next is /)).not.toBeInTheDocument()
+    })
+
+    // Fri 13 Nov 22:00 still unlogged at Sat 10:30, past the 80-minute Up next window.
+    const fridays = { ...scheduleFor('22:00'), startDate: '2026-11-01', weekdays: [5] }
+
+    test("373·B4: with only yesterday's old To log doses, the line names only the next dose", async () => {
+      seed('2026-11-14T07:30:00.000Z', fridays)
+      expect(await screen.findByRole('heading', { name: 'To log · 1' })).toBeVisible()
+      expect(hero()).not.toBeInTheDocument()
+      expect(screen.queryByText('All logged for today')).not.toBeInTheDocument()
+      expect(screen.getByText('Next is Morning Tablet on Fri 20 Nov at 22:00.')).toBeVisible()
+      expect(lineIcon()).toHaveClass('lucide-calendar')
+    })
+
+    test("373·B3, B4: with only yesterday's To log doses and no next dose, neither shows", async () => {
+      seed('2026-11-14T07:30:00.000Z', { ...fridays, endDate: '2026-11-14' })
+      expect(await screen.findByRole('heading', { name: 'To log · 1' })).toBeVisible()
+      expect(hero()).not.toBeInTheDocument()
+      expect(line()).toBeUndefined()
+    })
+
+    test('never shows while a dose due today is unresolved past the Up next window', async () => {
+      seed('2026-11-14T08:00:00.000Z', scheduleFor('09:00'))
+      expect(await screen.findByRole('heading', { name: 'To log · 1' })).toBeVisible()
+      expect(hero()).not.toBeInTheDocument()
+      expect(line()).toBeUndefined()
+    })
+
+    // Catches the hero lingering, or animating out, after today's last dose is logged.
+    test("logging today's last dose swaps the hero for the line at once", async () => {
+      schedulesApi('2026-11-14T17:05:00.000Z', [scheduleFor('20:00')])
+      const user = renderToday('2026-11-14T17:05:00.000Z')
+      await doses()
+      expect(hero()).toBeVisible()
+      await user.click(
+        screen.getByRole('button', { name: 'I skipped it, Morning Tablet at 20:00' }),
+      )
+      await user.click(await screen.findByRole('button', { name: 'Save as skipped' }))
+      await waitFor(() => expect(screen.getByText('All logged for today')).toBeVisible())
+      expect(hero()).not.toBeInTheDocument()
+      expect(screen.getByText('Next is Morning Tablet on Sun 15 Nov at 20:00.')).toBeVisible()
+    })
   })
 
   describe('Up next choice', () => {

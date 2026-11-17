@@ -16,7 +16,7 @@ const schedule = (id: string, times: string[], extra: Partial<DailySchedule> = {
 const at = (time: string) => new Date(`2026-11-14T${time}+03:00`)
 const due = (time: string) => new Date(`2026-11-14T${time}:00+03:00`).toISOString()
 const upNext = (schedules: DailySchedule[], time: string, records: DoseOutcomeRecord[] = []) =>
-  scheduleToday(schedules, at(time), records).next
+  scheduleToday(schedules, at(time), records).upNext
 
 describe('Up next', () => {
   test('Up next window: features a Not logged dose through 80 minutes after it, then the next Scheduled one', () => {
@@ -28,7 +28,7 @@ describe('Up next', () => {
     // Inclusive of the whole 80th minute: the clock still reads 10:20.
     expect(upNext(daily, '10:20:59.999')?.dueAt).toBe(due('09:00'))
     const later = scheduleToday(daily, at('10:21:00.000'), [])
-    expect(later.next).toMatchObject({ dueAt: due('21:00'), status: 'Upcoming' })
+    expect(later.upNext).toMatchObject({ dueAt: due('21:00'), status: 'Upcoming' })
     // 09:00 stays in To log.
     expect(later.doses[0]).toMatchObject({ dueAt: due('09:00'), status: 'Not logged' })
   })
@@ -37,7 +37,7 @@ describe('Up next', () => {
     const a = schedule('a1', ['09:00'])
     const b = schedule('b1', ['09:30'])
     const today = scheduleToday([a, b], at('09:35:00.000'), [])
-    expect(today.next).toMatchObject({ scheduleId: b.id, status: 'Due now' })
+    expect(today.upNext).toMatchObject({ scheduleId: b.id, status: 'Due now' })
     expect(today.doses.find((dose) => dose.scheduleId === a.id)?.status).toBe('Not logged')
   })
 
@@ -60,7 +60,21 @@ describe('Up next', () => {
   test('Same medicine: every 1 hour features 10:00 Due now; 09:00 is Not logged', () => {
     const hourly = schedule('a1', ['09:00'], { intervalHours: 1, anchorDate: '2026-11-14' })
     const today = scheduleToday([hourly], at('10:05:00.000'), [])
-    expect(today.next).toMatchObject({ dueAt: due('10:00'), status: 'Due now' })
+    expect(today.upNext).toMatchObject({ dueAt: due('10:00'), status: 'Due now' })
     expect(today.doses.find((dose) => dose.dueAt === due('09:00'))?.status).toBe('Not logged')
+  })
+
+  // 373·B1: catches tomorrow's dose taking the hero once today is all logged.
+  test('never features a dose due tomorrow or later; next still names it', () => {
+    const daily = [schedule('a1', ['00:30', '20:00'])]
+    const records: DoseOutcomeRecord[] = ['00:30', '20:00'].map((time) => ({
+      scheduleId: daily[0].id,
+      dueAt: due(time),
+      outcome: 'Skipped',
+      recordedAt: due(time),
+    }))
+    const today = scheduleToday(daily, at('23:50:00.000'), records)
+    expect(today.upNext).toBeNull()
+    expect(today.next).toMatchObject({ dueAt: '2026-11-14T21:30:00.000Z', status: 'Upcoming' })
   })
 })

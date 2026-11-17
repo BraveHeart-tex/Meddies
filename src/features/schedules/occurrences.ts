@@ -61,10 +61,10 @@ const TO_LOG_BACKLOG_MS = 24 * 60 * 60_000
 
 /**
  * The most recently due unresolved occurrence inside the Up next window, the first in To log's
- * order among those due at the same instant; otherwise the next Scheduled one. `occurrences` is
- * in To log's order: by due instant, then id.
+ * order among those due at the same instant; otherwise the next Scheduled one due today. Never a
+ * dose due tomorrow or later (373·B1). `occurrences` is in To log's order: by due instant, then id.
  */
-function upNext(occurrences: DoseOccurrence[], now: number) {
+function upNext(occurrences: DoseOccurrence[], now: number, date: string) {
   const recent = occurrences.filter(
     (dose) =>
       (dose.status === 'Due now' || dose.status === 'Not logged') &&
@@ -73,7 +73,9 @@ function upNext(occurrences: DoseOccurrence[], now: number) {
   const latest = recent.at(-1)
   return (
     recent.find((dose) => dose.dueAt === latest?.dueAt) ??
-    occurrences.find((dose) => dose.status === 'Upcoming') ??
+    occurrences.find(
+      (dose) => dose.status === 'Upcoming' && istanbulDate(new Date(dose.dueAt)) <= date,
+    ) ??
     null
   )
 }
@@ -149,7 +151,8 @@ export function scheduleToday(
     date,
     now: nowIso,
     doses: occurrences.filter((dose) => istanbulDate(new Date(dose.dueAt)) <= date),
-    next: upNext(occurrences, now.getTime()),
+    upNext: upNext(occurrences, now.getTime(), date),
+    next: occurrences.find((dose) => dose.status === 'Upcoming') ?? null,
   }
 }
 
