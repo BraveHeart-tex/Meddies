@@ -65,6 +65,7 @@ export const dailySchedules = sqliteTable(
     uniqueIndex('daily_schedules_initial')
       .on(table.ownerId, table.medicineId)
       .where(sql`${table.basedOnId} IS NULL`),
+    index('daily_schedules_owner_medicine').on(table.ownerId, table.medicineId),
     foreignKey({
       columns: [table.ownerId, table.medicineId],
       foreignColumns: [userMedications.ownerId, userMedications.id],
@@ -188,6 +189,11 @@ export const unscheduledDoses = sqliteTable(
       foreignColumns: [userMedications.ownerId, userMedications.id],
     }),
     index('unscheduled_doses_owner_taken').on(table.ownerId, table.takenAt),
+    index('unscheduled_doses_owner_medicine_taken').on(
+      table.ownerId,
+      table.medicineId,
+      table.takenAt,
+    ),
     check('unscheduled_doses_revision', sql`${table.revision} >= 0`),
     check('unscheduled_doses_quantity', sql`${table.quantity} > 0`),
     check('unscheduled_doses_removed', sql`${table.removed} IN (0, 1)`),

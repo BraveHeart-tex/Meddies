@@ -19,6 +19,7 @@ import {
 import { listLegacySnapshot, listOutcomeSnapshot, saveSchedule, editSchedule } from './schedules'
 import { correctDoseOutcome, recordSkipped, recordTaken } from './doses/mutations'
 import { writeUnscheduledDose } from './doses/unscheduled'
+import { readDoseHistory } from './doses/history'
 import {
   readDeviceRegistration,
   removeDeviceRegistration,
@@ -134,6 +135,10 @@ export function createWorker(
         if (decoded.path === '/snoozes') {
           const { ownerId, request } = decoded.command
           return json(await snoozeDose(db, ownerId, request, clock()))
+        }
+        if (decoded.path === '/dose-history') {
+          const { ownerId, medicineId, before } = decoded.command
+          return json(await readDoseHistory(db, ownerId, { medicineId, before }, clock()))
         }
         if (decoded.path === '/quiet-hours') {
           const command = decoded.command

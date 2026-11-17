@@ -1,7 +1,7 @@
 // Runtime-neutral vocabulary shared by the app, contracts and Worker.
 export class ApplicationError extends Error {
   constructor(
-    public code: 'validation' | 'unauthorized' | 'unavailable' | 'conflict',
+    public code: 'validation' | 'unauthorized' | 'unavailable' | 'conflict' | 'not_found',
     public status: number,
   ) {
     super(code)

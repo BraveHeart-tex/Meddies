@@ -27,6 +27,7 @@ const routes: Record<string, { body?: unknown; query?: string; worker?: false; r
   'device-registration PUT': { body: registration },
   'device-registration PATCH': { body: registration },
   'device-registration DELETE': { body: { installationId } },
+  'dose-history GET': { query: `?medicineId=${id}` },
   'medicines GET': {},
   'quiet-hours GET': {},
   'quiet-hours PUT': { body: { actionId: id, quietHours: true } },
@@ -146,13 +147,14 @@ test('private API routes reject cross-origin writes and signed-out requests, nev
     }
     for (const [status, expected] of [
       [400, 400],
+      [404, 404],
       [409, 409],
       [500, 503],
     ]) {
       upstream = status
       assert.equal(await call(), expected, `${key} Worker ${status}`)
     }
-    assert.equal(calls, 3 * reads, key)
+    assert.equal(calls, 4 * reads, key)
   }
 })
 

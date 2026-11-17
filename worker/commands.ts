@@ -34,6 +34,10 @@ import {
   type MedicationNamesCommand,
 } from '../src/features/medication-names/contract'
 import { parseSnoozeRequest, type SnoozeCommand } from '../src/features/snoozes/contract'
+import {
+  parseDoseHistoryRequest,
+  type DoseHistoryCommand,
+} from '../src/features/dose-history/contract'
 import { ApplicationError } from '../src/lib/application-error'
 import type { CommandPath } from './http'
 
@@ -49,6 +53,7 @@ export type WorkerCommand =
   | { path: '/quiet-hours'; command: QuietHoursCommand }
   | { path: '/medication-names'; command: MedicationNamesCommand }
   | { path: '/snoozes'; command: SnoozeCommand }
+  | { path: '/dose-history'; command: DoseHistoryCommand }
 
 // Decode domain fields only after the service capability, route and owner checks.
 // Shared parsers retain defaults, ignored extra fields and legacy accepted inputs.
@@ -57,6 +62,10 @@ export function decodeCommand(path: CommandPath, value: unknown): WorkerCommand 
   if (!input || typeof input.ownerId !== 'string' || !/^google:.{1,248}$/.test(input.ownerId))
     throw new ApplicationError('validation', 400)
   const ownerId = input.ownerId
+  if (path === '/dose-history') {
+    if (input.operation !== 'read') throw new ApplicationError('validation', 400)
+    return { path, command: { operation: 'read', ownerId, ...parseDoseHistoryRequest(input) } }
+  }
   if (path === '/medication-names') {
     switch (input.operation) {
       case 'read':

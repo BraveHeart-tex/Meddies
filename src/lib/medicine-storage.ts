@@ -8,7 +8,8 @@ export async function sendStorage(
     | '/device-registrations'
     | '/quiet-hours'
     | '/medication-names'
-    | '/snoozes',
+    | '/snoozes'
+    | '/dose-history',
   command: unknown,
 ): Promise<unknown> {
   const secret = process.env.MEDICINES_WORKER_SECRET
@@ -31,6 +32,7 @@ export async function sendStorage(
     })
     if (response.status === 409) throw new ApplicationError('conflict', 409)
     if (response.status === 400) throw new ApplicationError('validation', 400)
+    if (response.status === 404) throw new ApplicationError('not_found', 404)
     if (!response.ok) throw new Error('storage')
     return await response.json()
   } catch (error) {

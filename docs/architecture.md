@@ -66,7 +66,8 @@ owner.
 - `medicines.ts` and `schedules.ts` own feature persistence and snapshot composition.
   `doses/mutations.ts` owns writes and retry reconciliation, `doses/queries.ts` the read
   contracts, `doses/occurrence.ts` owner-scoped occurrence context. `doses/unscheduled.ts` owns
-  Unscheduled dose revisions, action retries and History date reads.
+  Unscheduled dose revisions, action retries and History date reads. `doses/history.ts` owns the
+  Dose history read.
   `device-registrations.ts` owns Device registration writes and reads, `quiet-hours.ts` the
   account's Quiet hours reads and sets, and `medication-names.ts` its Medication names reads and
   sets. `snoozes.ts` owns the Snooze command. `due-reminders.ts` owns the due-reminder operation,
@@ -144,6 +145,13 @@ owner.
   after later changes or removal. Intake validation uses the Worker clock and medication
   unit. Today and History responses include a separate `unscheduledDoses` array for the
   intake's Istanbul History date; Occurrences and next-dose calculations stay unchanged.
+- **Dose history:** `GET /api/dose-history?medicineId=&before=` reads one medication's Taken
+  doses at their latest values: scheduled under any of its Schedule versions and Unscheduled,
+  grouped by the Istanbul day of their intake time, newest first. A page holds whole days; `before`
+  is the oldest day returned and null after the first Taken dose. The first page adds the summary:
+  the last dose and today, 7-day and 30-day totals. Totals sum the Quantity unit per saved strength
+  snapshot. An Archived medicine reads normally; an unknown or another owner's medication returns
+  404 `not_found`.
 - **Device registrations:** `/api/device-registration` reads with `GET ?installationId=`
   and saves (`PUT`), renews (`PATCH`) and removes (`DELETE`) with a JSON body. The Firebase
   installation ID is the row key: save upserts it and moves it to the caller, renew updates
