@@ -1,10 +1,12 @@
 import type { LabFrame } from '../frames'
+import { doseHistoryFrames } from './dose-history-frames'
 import { medicationNamesFrames } from './medication-names-frames'
 import { ScannerFrame } from './scanner-frame'
 
 /** Approved designs waiting for their build ticket. */
 export const approvedFrames = [
   ...medicationNamesFrames,
+  ...doseHistoryFrames,
   {
     slug: '193-b-scanner',
     title: 'Scanner',
