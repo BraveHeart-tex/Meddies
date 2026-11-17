@@ -167,3 +167,13 @@ eligibility; all doses remain unconfirmed unless specified.
   registration with the grouped Reminder link. A Follow-up reminder never shares a push with
   another due instant's reminders, so two pushes can arrive in the same minute.
 - The wording names the due time, never the medication ([copy](../copy.md#reminder-wording)).
+
+## #34 - Approved next-occurrence rules (November 17, 2026)
+
+- Once a newer Occurrence of the same Medicine is due, every unsent Original and Follow-up
+  reminder of its older Occurrences drops unsent, at equality too. The newer Occurrence can
+  come from any Schedule version of that Medicine and counts even with an early Taken or Skipped.
+- The older Occurrence keeps Taken, Skipped or Not logged; dropping its reminders records nothing.
+- Unscheduled doses and other Medicines' Occurrences never drop a reminder.
+- A transient answer, an abandoned claim or a late run never submits a dropped reminder.
+- Snoozes follow the same rule (#36).
