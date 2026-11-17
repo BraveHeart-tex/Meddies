@@ -201,6 +201,82 @@ test('A Follow-up reminder names its due time, with the dose count and grouped R
   )
 })
 
+test('With labels, one-dose reminders name the Medicine in the title beside the generic body', async () => {
+  let now = new Date('2026-11-17T05:00:00.000Z')
+  const network = fakeNetwork()
+  const provider = createFcmProvider(credentials, { fetch: network.fetch, clock: () => now })
+  // 05:00Z is 08:00 in Istanbul.
+  const named = { ...message, dueAt: '2026-11-17T05:00:00.000Z', labels: ['Aspirin'] }
+  await provider.submit(named)
+  now = new Date('2026-11-17T05:40:00.000Z')
+  await provider.submit({ ...named, reminder: 1 })
+
+  assert.deepEqual(
+    network.sends().map((entry) => JSON.parse(entry.init.body as string).message),
+    [
+      {
+        token: 'registration-token',
+        notification: {
+          title: 'Time for Aspirin',
+          body: "Open Meddies when you're ready to log it.",
+        },
+        data: { link: reminderLink({ scheduleId: message.scheduleIds[0], dueAt: named.dueAt }) },
+        webpush: { headers: { Urgency: 'high', TTL: '4800' } },
+      },
+      {
+        token: 'registration-token',
+        notification: {
+          title: 'Your 08:00 dose: Aspirin',
+          body: "Not logged yet. Open Meddies when you're ready to log it.",
+        },
+        data: { link: reminderLink({ scheduleId: message.scheduleIds[0], dueAt: named.dueAt }) },
+        webpush: { headers: { Urgency: 'high', TTL: '2400' } },
+      },
+    ],
+  )
+})
+
+test('With labels, grouped reminders keep the count title and list each Medicine in the body', async () => {
+  let now = new Date('2026-11-17T06:00:00.000Z')
+  const network = fakeNetwork()
+  const provider = createFcmProvider(credentials, { fetch: network.fetch, clock: () => now })
+  await provider.submit({
+    ...message,
+    scheduleIds: threeDoses,
+    labels: ['Aspirin', 'Metformin', 'Vitamin D'],
+  })
+  now = new Date('2026-11-17T06:40:00.000Z')
+  await provider.submit({
+    ...message,
+    reminder: 1,
+    scheduleIds: threeDoses.slice(0, 2),
+    labels: ['Aspirin', 'Metformin'],
+  })
+
+  assert.deepEqual(
+    network.sends().map((entry) => {
+      const sent = JSON.parse(entry.init.body as string).message
+      return { notification: sent.notification, link: sent.data.link }
+    }),
+    [
+      {
+        notification: {
+          title: 'Time for 3 doses',
+          body: "Aspirin, Metformin and Vitamin D. Open Meddies when you're ready to log them.",
+        },
+        link: reminderDueLink(message.dueAt),
+      },
+      {
+        notification: {
+          title: 'Your 09:00 doses',
+          body: "Aspirin and Metformin not logged yet. Open Meddies when you're ready to log them.",
+        },
+        link: reminderDueLink(message.dueAt),
+      },
+    ],
+  )
+})
+
 test('A transient FCM error or timeout answers retryable; other errors are rejected with their code', async () => {
   const replies: Record<string, Reply> = {
     unavailable: () => fcmError(503, 'UNAVAILABLE', 'UNAVAILABLE'),

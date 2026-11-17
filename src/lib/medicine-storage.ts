@@ -2,7 +2,8 @@ import 'server-only'
 import { ApplicationError } from '@/lib/application-error'
 
 export async function sendStorage(
-  path: '/medicines' | '/schedules' | '/device-registrations' | '/quiet-hours',
+  path:
+    '/medicines' | '/schedules' | '/device-registrations' | '/quiet-hours' | '/medication-names',
   command: unknown,
 ): Promise<unknown> {
   const secret = process.env.MEDICINES_WORKER_SECRET

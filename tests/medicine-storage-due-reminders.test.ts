@@ -11,6 +11,7 @@ import {
 } from '../worker/due-reminders'
 import { createWorker } from '../worker/index'
 import { setQuietHours } from '../worker/quiet-hours'
+import { setMedicationNames } from '../worker/medication-names'
 import {
   call,
   medicine,
@@ -20,7 +21,8 @@ import {
   versionFixture,
 } from './helpers/medicine-storage-runtime'
 
-// The due-reminder operation on real D1 with controlled time and a fake provider (#366, #31, #35).
+// The due-reminder operation on real D1 with controlled time and a fake provider (#366, #31, #35,
+// #37).
 // Runs are global, so each case uses its own date and Last day: no other case's Occurrence
 // falls inside its +80 minute window.
 startWorkerRuntime()
@@ -1125,4 +1127,95 @@ test('The scheduler command runs the same operation with its own secret and answ
     sent.map((m) => m.token),
     o.tokens,
   )
+})
+
+const names = (ownerId: string, medicationNames: boolean) =>
+  setMedicationNames(
+    drizzle(db),
+    ownerId,
+    { actionId: randomUUID(), medicationNames },
+    new Date('2026-11-17T10:00:00.000Z'),
+  )
+/** Renames the Medicine of `scheduleId` through the Worker's detail correction. */
+async function relabel(ownerId: string, scheduleId: string, label: string) {
+  const row = await db
+    .prepare(
+      `SELECT m.id, m.revision FROM daily_schedules s JOIN user_medications m
+        ON m.owner_id = s.owner_id AND m.id = s.medicine_id WHERE s.owner_id=? AND s.id=?`,
+    )
+    .bind(ownerId, scheduleId)
+    .first<{ id: string; revision: number }>()
+  const corrected = await call({
+    operation: 'correctDetails',
+    ownerId,
+    correction: {
+      actionId: randomUUID(),
+      medicineId: row!.id,
+      expectedRevision: row!.revision,
+      strengthRevisionId: row!.id,
+      label,
+      strength: '1000 IU',
+      unit: 'tablet',
+    },
+  })
+  assert.equal(corrected.status, 200)
+}
+
+test('With Medication names off, single and grouped Original and Follow-up reminders hand the provider no Medicine label', async () => {
+  const single = await owner('2026-12-12', ['09:00'])
+  const grouped = await owner('2026-12-12', ['09:00'], 1, 2)
+  await relabel(single.ownerId, single.scheduleId, 'Aspirin')
+  for (const [index, scheduleId] of grouped.scheduleIds.entries())
+    await relabel(grouped.ownerId, scheduleId, ['Metformin', 'Vitamin D'][index])
+  await names(grouped.ownerId, true)
+  await names(grouped.ownerId, false)
+  const { provider, sent } = fake()
+  await runAt(provider, '2026-12-12', ['09:00', '09:40'])
+
+  assert.deepEqual(summary(sent), [
+    `${single.due('09:00')} #0 x1`,
+    `${single.due('09:00')} #0 x2`,
+    `${single.due('09:00')} #1 x1`,
+    `${single.due('09:00')} #1 x2`,
+  ])
+  for (const message of sent) {
+    assert.ok(!('labels' in message), 'no labels field')
+    assert.doesNotMatch(JSON.stringify(message), /Aspirin|Metformin|Vitamin/)
+  }
+})
+
+test('Turning Medication names on, or renaming the Medicine, after a reminder is recorded and before it is claimed sends the current labels, never stored in Delivery attempts', async () => {
+  const o = await owner('2026-12-13', ['09:00'], 1, 2)
+  const [first, second] = o.scheduleIds
+  await relabel(o.ownerId, first, 'Metformin')
+  await relabel(o.ownerId, second, 'Aspirin')
+  const { provider, sent } = fake()
+  assert.deepEqual(
+    await run(provider, '2026-12-13T09:00:00+03:00', 0),
+    counts(0, 0),
+    'a run with no batch records the Original reminder without claiming it',
+  )
+  await names(o.ownerId, true)
+  await run(provider, '2026-12-13T09:01:00+03:00')
+
+  assert.deepEqual(await run(provider, '2026-12-13T09:40:00+03:00', 0), counts(0, 0))
+  await relabel(o.ownerId, second, 'Vitamin D')
+  await run(provider, '2026-12-13T09:41:00+03:00')
+
+  assert.deepEqual(
+    sent.map((m) => ({ reminder: m.reminder, labels: m.labels })),
+    [
+      { reminder: 0, labels: ['Aspirin', 'Metformin'] },
+      { reminder: 1, labels: ['Metformin', 'Vitamin D'] },
+    ],
+    'each Medicine once, in label order, as labelled when sent',
+  )
+  const attempts = (
+    await db
+      .prepare('SELECT * FROM delivery_attempts WHERE owner_id=?')
+      .bind(o.ownerId)
+      .all<Record<string, unknown>>()
+  ).results
+  assert.equal(attempts.length, 4)
+  assert.doesNotMatch(JSON.stringify(attempts), /Aspirin|Metformin|Vitamin/)
 })

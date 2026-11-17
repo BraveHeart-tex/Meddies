@@ -67,8 +67,9 @@ owner.
   `doses/mutations.ts` owns writes and retry reconciliation, `doses/queries.ts` the read
   contracts, `doses/occurrence.ts` owner-scoped occurrence context. `doses/unscheduled.ts` owns
   Unscheduled dose revisions, action retries and History date reads.
-  `device-registrations.ts` owns Device registration writes and reads, and `quiet-hours.ts`
-  the account's Quiet hours reads and sets. `due-reminders.ts`
+  `device-registrations.ts` owns Device registration writes and reads, `quiet-hours.ts` the
+  account's Quiet hours reads and sets, and `medication-names.ts` its Medication names reads and
+  sets. `due-reminders.ts`
   owns the due-reminder operation, its Original and Follow-up reminder claims and Delivery
   attempts, and the provider port, and `fcm.ts` implements that port with FCM HTTP v1. The
   `schedules.ts`, `doses/mutations.ts`, `due-reminders.ts` and `fcm.ts` headers state their
@@ -157,6 +158,12 @@ owner.
   action UUID whose trigger applies the value in the same statement, so a retry returns its
   original outcome and writes nothing, and a reused action ID with another value returns
   conflict. The due-reminder operation reads the preference at send time.
+- **Medication names:** `/api/medication-names` reads with `GET` and sets with `PUT`
+  `{ actionId, medicationNames }`; every response is `{ medicationNames }`. It shares the
+  `account_preferences` row with Quiet hours, reads as off without one, and keeps its own receipts
+  with the Quiet hours retry and conflict rules; the two read and set independently. The
+  due-reminder operation reads it, and the Medicine labels, at send time and adds labels to the
+  provider message only when on.
 - **Schema changes:** write each migration by hand as the next numbered
   `worker/migrations/NNNN_<name>.sql` and mirror it in the Drizzle tables in
   `worker/schema.ts`. The local stack, tests and Release apply migrations in order. Keep

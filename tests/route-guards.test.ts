@@ -30,6 +30,8 @@ const routes: Record<string, { body?: unknown; query?: string; worker?: false; r
   'medicines GET': {},
   'quiet-hours GET': {},
   'quiet-hours PUT': { body: { actionId: id, quietHours: true } },
+  'medication-names GET': {},
+  'medication-names PUT': { body: { actionId: id, medicationNames: true } },
   'medicines PATCH': {
     body: {
       operation: 'changeStrength',

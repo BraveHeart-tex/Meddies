@@ -1,5 +1,5 @@
-// The FCM reminder provider (#368, docs/product/reminders.md #30): implements the due-reminder
-// provider port by sending one reminder to one Device registration through FCM HTTP v1
+// The FCM reminder provider (#368, docs/product/reminders.md #30 and #37): implements the
+// due-reminder provider port by sending one reminder to one Device registration through FCM HTTP v1
 // (`projects/{id}/messages:send`). Its OAuth2 access token comes from a service-account JWT
 // signed with WebCrypto; `firebase-admin` is Node-only and the legacy server key is never used.
 // One provider holds its token until five minutes before expiry and concurrent submissions share
@@ -9,7 +9,10 @@
 // or a Follow-up reminder's naming the due time (#31), with the dose count when it covers several
 // doses, and its Reminder link as `data.link` for the service worker's tap handler: the
 // Occurrence's for one dose, the grouped one for several (#372). Its Web Push TTL ends with the
-// Occurrence's +80 minute window. It never names a medication.
+// Occurrence's +80 minute window. Only a message with `labels`, which the due-reminder operation
+// adds with Medication names on (#37), uses the named wording: one dose's label in its title,
+// several doses' labels in their body, with the generic body or title beside it. A label appears
+// in nothing else.
 //
 // Answers: success is accepted; 429, 5xx, an expired access token, a token-endpoint failure, a
 // network error or a timeout is transient; anything else is rejected with FCM's `errorCode`, or
@@ -37,6 +40,12 @@ export const followUpBody = "Not logged yet. Open Meddies when you're ready to l
 export const groupedFollowUpTitle = (time: string) => `Your ${time} doses`
 export const groupedFollowUpBody = (count: number) =>
   `${count} doses not logged yet. Open Meddies when you're ready to log them.`
+export const namedReminderTitle = (name: string) => `Time for ${name}`
+export const namedGroupedReminderBody = (names: string) =>
+  `${names}. Open Meddies when you're ready to log them.`
+export const namedFollowUpTitle = (time: string, name: string) => `Your ${time} dose: ${name}`
+export const namedGroupedFollowUpBody = (names: string) =>
+  `${names} not logged yet. Open Meddies when you're ready to log them.`
 
 export const fcmTokenUrl = 'https://oauth2.googleapis.com/token'
 const SCOPE = 'https://www.googleapis.com/auth/firebase.messaging'
@@ -124,7 +133,12 @@ export function fcmMessage(message: ReminderMessage, now: Date) {
   return {
     message: {
       token: message.token,
-      notification: notification(message.reminder, formatTime(message.dueAt), count),
+      notification: notification(
+        message.reminder,
+        formatTime(message.dueAt),
+        count,
+        message.labels,
+      ),
       data: {
         link: others.length
           ? reminderDueLink(message.dueAt)
@@ -135,7 +149,22 @@ export function fcmMessage(message: ReminderMessage, now: Date) {
   }
 }
 
-function notification(reminder: ReminderMessage['reminder'], time: string, count: number) {
+function notification(
+  reminder: ReminderMessage['reminder'],
+  time: string,
+  count: number,
+  labels: string[] | undefined,
+) {
+  if (labels?.length) {
+    const names = listNames(labels)
+    if (reminder)
+      return count > 1
+        ? { title: groupedFollowUpTitle(time), body: namedGroupedFollowUpBody(names) }
+        : { title: namedFollowUpTitle(time, names), body: followUpBody }
+    return count > 1
+      ? { title: groupedReminderTitle(count), body: namedGroupedReminderBody(names) }
+      : { title: namedReminderTitle(names), body: reminderBody }
+  }
   if (reminder)
     return count > 1
       ? { title: groupedFollowUpTitle(time), body: groupedFollowUpBody(count) }
@@ -143,6 +172,13 @@ function notification(reminder: ReminderMessage['reminder'], time: string, count
   return count > 1
     ? { title: groupedReminderTitle(count), body: groupedReminderBody }
     : { title: reminderTitle, body: reminderBody }
+}
+
+// "Aspirin", "Aspirin and Metformin", "Aspirin, Metformin and Vitamin D" (docs/copy.md).
+function listNames(labels: string[]) {
+  return labels.length > 1
+    ? `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`
+    : labels[0]
 }
 
 // FCM puts its specific code, such as UNREGISTERED, in an FcmError detail; the status, such as

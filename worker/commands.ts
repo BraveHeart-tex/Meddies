@@ -29,6 +29,10 @@ import {
   type DeviceRegistrationCommand,
 } from '../src/features/device-registrations/contract'
 import { parseQuietHoursChange, type QuietHoursCommand } from '../src/features/quiet-hours/contract'
+import {
+  parseMedicationNamesChange,
+  type MedicationNamesCommand,
+} from '../src/features/medication-names/contract'
 import { ApplicationError } from '../src/lib/application-error'
 import type { CommandPath } from './http'
 
@@ -42,6 +46,7 @@ export type WorkerCommand =
     }
   | { path: '/device-registrations'; command: DeviceRegistrationCommand }
   | { path: '/quiet-hours'; command: QuietHoursCommand }
+  | { path: '/medication-names'; command: MedicationNamesCommand }
 
 // Decode domain fields only after the service capability, route and owner checks.
 // Shared parsers retain defaults, ignored extra fields and legacy accepted inputs.
@@ -50,6 +55,23 @@ export function decodeCommand(path: CommandPath, value: unknown): WorkerCommand 
   if (!input || typeof input.ownerId !== 'string' || !/^google:.{1,248}$/.test(input.ownerId))
     throw new ApplicationError('validation', 400)
   const ownerId = input.ownerId
+  if (path === '/medication-names') {
+    switch (input.operation) {
+      case 'read':
+        return { path, command: { operation: 'read', ownerId } }
+      case 'set':
+        return {
+          path,
+          command: {
+            operation: 'set',
+            ownerId,
+            change: parseMedicationNamesChange(input.change),
+          },
+        }
+      default:
+        throw new ApplicationError('validation', 400)
+    }
+  }
   if (path === '/quiet-hours') {
     switch (input.operation) {
       case 'read':

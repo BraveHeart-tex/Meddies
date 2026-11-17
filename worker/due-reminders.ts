@@ -1,4 +1,4 @@
-// The due-reminder operation (#366, docs/product/reminders.md #30, #31, #34 and #35). An
+// The due-reminder operation (#366, docs/product/reminders.md #30, #31, #34, #35 and #37). An
 // Occurrence has three reminders: its Original reminder at its due instant (reminder 0) and
 // Follow-up reminders at due +40 and +80 minutes (1 and 2). Each run:
 // 1. records, for every Occurrence due in the last 80 minutes inclusive whose owner has a Device
@@ -16,6 +16,10 @@
 //    provider port to each Device registration, covering the remaining Occurrences without a final
 //    answer for it, and records one Delivery attempt per covered Occurrence naming the reminder
 //    and the answer.
+// With the owner's Medication names on (#37), read when a reminder is about to submit, its message
+// also carries the current labels of the Medicines it covers, each once in label order; off, the
+// message has no labels at all, so a generic submission never receives one. A rename or a
+// preference change therefore applies to reminders already recorded but unsent.
 // Suppression is that send-time recheck alone; recording a Dose outcome, a schedule change or a
 // Quiet hours change writes no reminder rows, and dropping a reminder records no Dose outcome.
 // With Quiet hours on, a Follow-up reminder whose target or processing time is inside 23:00 to
@@ -35,20 +39,22 @@
 // reminder. An `UNREGISTERED` or `NOT_FOUND` answer removes that Device registration unless it has
 // since been renewed with another token. Processing time counts in whole seconds, the precision of
 // the #9 timelines, so a run at 10:20:00.4 still submits a dose's 10:20 Follow-up reminder and one
-// at 10:20:01 drops it. Delivery attempts hold no registration token and no medication name, and
+// at 10:20:01 drops it. Delivery attempts hold no registration token and no Medicine label, and
 // this module logs nothing. The FCM provider is worker/fcm.ts.
-import { and, eq, gte, isNull, lt, lte, or, sql } from 'drizzle-orm'
+import { and, eq, gte, inArray, isNull, lt, lte, or, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import { istanbulDate } from '../src/features/schedules/contract'
 import { scheduleSlotsOn } from '../src/features/schedules/occurrences'
 import { isQuietTime } from '../src/features/quiet-hours/contract'
 import { readQuietHours } from './quiet-hours'
+import { readMedicationNames } from './medication-names'
 import {
   dailySchedules,
   deliveryAttempts,
   deviceRegistrations,
   followUpReminders,
   originalReminders,
+  userMedications,
 } from './schema'
 
 /** 0 is an Occurrence's Original reminder; 1 and 2 its Follow-up reminders at due +40 and +80. */
@@ -57,13 +63,15 @@ export type ReminderNumber = 0 | 1 | 2
 /**
  * One reminder for one Device registration: reminder `reminder` of the Occurrences of the
  * schedules in `scheduleIds` due at `dueAt`. One schedule gets its Occurrence's Reminder link;
- * several get the grouped Reminder link.
+ * several get the grouped Reminder link. `labels`, present only with Medication names on (#37),
+ * names each Medicine covered once, in label order.
  */
 export type ReminderMessage = {
   token: string
   dueAt: string
   reminder: ReminderNumber
   scheduleIds: string[]
+  labels?: string[]
 }
 
 /** The provider's answer; `code` is its status code, such as `UNREGISTERED` or `TIMEOUT`. */
@@ -343,6 +351,7 @@ async function deliver(
       ),
     }))
     .filter((registration) => registration.scheduleIds.length)
+  const labelsOf = registrations.length ? await medicineLabels(db, ownerId, live) : null
   const answers = await Promise.all(
     registrations.map((registration) =>
       submit(provider, {
@@ -350,6 +359,7 @@ async function deliver(
         dueAt,
         reminder,
         scheduleIds: registration.scheduleIds,
+        ...(labelsOf && { labels: labelsOf(registration.scheduleIds) }),
       }),
     ),
   )
@@ -406,6 +416,37 @@ async function quietDrop(
   const target = new Date(Date.parse(dueAt) + reminder * FOLLOW_UP_INTERVAL_MS).toISOString()
   if (!isQuietTime(target) && !isQuietTime(now.toISOString())) return false
   return (await readQuietHours(db, ownerId)).quietHours
+}
+
+// With the owner's Medication names on, the current labels of the Medicines of `scheduleIds`, each
+// once in label order (#37); null when off. Both are read here, at send time.
+async function medicineLabels(db: DrizzleD1Database, ownerId: string, scheduleIds: string[]) {
+  if (!scheduleIds.length || !(await readMedicationNames(db, ownerId)).medicationNames) return null
+  const rows = await db
+    .select({
+      scheduleId: dailySchedules.id,
+      medicineId: userMedications.id,
+      label: userMedications.label,
+    })
+    .from(dailySchedules)
+    .innerJoin(
+      userMedications,
+      and(
+        eq(userMedications.ownerId, dailySchedules.ownerId),
+        eq(userMedications.id, dailySchedules.medicineId),
+      ),
+    )
+    .where(and(eq(dailySchedules.ownerId, ownerId), inArray(dailySchedules.id, scheduleIds)))
+  const medicineOf = new Map(rows.map((row) => [row.scheduleId, row]))
+  const order = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
+  return (covered: string[]) =>
+    [
+      ...new Map(
+        covered.flatMap((id) => medicineOf.get(id) ?? []).map((row) => [row.medicineId, row]),
+      ).values(),
+    ]
+      .sort((a, b) => order(a.label, b.label) || order(a.medicineId, b.medicineId))
+      .map((row) => row.label)
 }
 
 // A thrown submission is transient, and only a status-code-shaped code is stored, so no

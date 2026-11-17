@@ -372,15 +372,20 @@ export const deliveryAttempts = sqliteTable(
   ],
 )
 
-// Account-wide preferences (#35); no row reads as defaults, Quiet hours off.
+// Account-wide preferences (#35, #37); no row reads as defaults, Quiet hours and Medication names
+// off.
 export const accountPreferences = sqliteTable(
   'account_preferences',
   {
     ownerId: text('owner_id').primaryKey().notNull(),
     quietHours: integer('quiet_hours', { mode: 'boolean' }).notNull().default(false),
+    medicationNames: integer('medication_names', { mode: 'boolean' }).notNull().default(false),
     updatedAt: text('updated_at').notNull(),
   },
-  (table) => [check('account_preferences_quiet_hours', sql`${table.quietHours} IN (0, 1)`)],
+  (table) => [
+    check('account_preferences_quiet_hours', sql`${table.quietHours} IN (0, 1)`),
+    check('account_preferences_medication_names', sql`${table.medicationNames} IN (0, 1)`),
+  ],
 )
 
 // One receipt per Quiet hours set, keyed by its action ID (#35).
@@ -395,5 +400,20 @@ export const quietHoursReceipts = sqliteTable(
   (table) => [
     primaryKey({ columns: [table.ownerId, table.actionId] }),
     check('quiet_hours_receipts_quiet_hours', sql`${table.quietHours} IN (0, 1)`),
+  ],
+)
+
+// One receipt per Medication names set, keyed by its action ID (#37).
+export const medicationNamesReceipts = sqliteTable(
+  'medication_names_receipts',
+  {
+    ownerId: text('owner_id').notNull(),
+    actionId: text('action_id').notNull(),
+    medicationNames: integer('medication_names', { mode: 'boolean' }).notNull(),
+    savedAt: text('saved_at').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.actionId] }),
+    check('medication_names_receipts_medication_names', sql`${table.medicationNames} IN (0, 1)`),
   ],
 )

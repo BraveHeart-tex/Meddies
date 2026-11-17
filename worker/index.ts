@@ -26,6 +26,7 @@ import {
   saveDeviceRegistration,
 } from './device-registrations'
 import { readQuietHours, setQuietHours } from './quiet-hours'
+import { readMedicationNames, setMedicationNames } from './medication-names'
 import { runDueReminders, type ReminderProvider } from './due-reminders'
 import { createFcmProvider } from './fcm'
 import { ApplicationError } from '../src/lib/application-error'
@@ -118,6 +119,15 @@ export function createWorker(
               return json(await removeDeviceRegistration(db, command.ownerId, command.installation))
             case 'read':
               return json(await readDeviceRegistration(db, command.ownerId, command.installation))
+          }
+        }
+        if (decoded.path === '/medication-names') {
+          const command = decoded.command
+          switch (command.operation) {
+            case 'read':
+              return json(await readMedicationNames(db, command.ownerId))
+            case 'set':
+              return json(await setMedicationNames(db, command.ownerId, command.change, clock()))
           }
         }
         if (decoded.path === '/quiet-hours') {
