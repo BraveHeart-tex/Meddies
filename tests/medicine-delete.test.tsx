@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -8,6 +9,26 @@ import { medicineKeys, medicinesQuery } from '@/features/medicines/queries'
 import { scheduleKeys } from '@/features/schedules/queries'
 import { createQueryClient } from '@/lib/session-query-client'
 import { server } from './helpers/msw-server'
+
+// Observe the external Drawer boundary without replacing its behavior.
+const drawerMounts = vi.hoisted(() => [] as boolean[])
+vi.mock('@base-ui/react/drawer', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@base-ui/react/drawer')>()
+  return {
+    ...actual,
+    Drawer: {
+      ...actual.Drawer,
+      Root: (props: React.ComponentProps<typeof actual.Drawer.Root>) => {
+        const first = useRef(true)
+        if (first.current) {
+          drawerMounts.push(Boolean(props.open))
+          first.current = false
+        }
+        return <actual.Drawer.Root {...props} />
+      },
+    },
+  }
+})
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
@@ -64,6 +85,16 @@ function open(
 const drawer = () => screen.getByRole('dialog', { name: 'Delete Vitamin D?' })
 const deleteAction = () => screen.getByRole('button', { name: 'Delete medication' })
 const overlay = () => document.querySelector<HTMLElement>('[data-slot="drawer-overlay"]')!
+
+test('Delete confirmation mounts closed so its first open can animate', async () => {
+  const { client, user, unmount } = open()
+  drawerMounts.length = 0
+  await user.click(deleteAction())
+  expect(drawer()).toBeVisible()
+  expect(drawerMounts).toEqual([false])
+  unmount()
+  client.clear()
+})
 
 test('only explicitly unused Medicines offer Delete; dismissal discards confirmation and keyboard focus returns', async () => {
   for (const flags of [

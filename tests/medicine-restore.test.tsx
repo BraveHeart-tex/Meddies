@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -9,6 +10,26 @@ import type { Medicine } from '@/features/medicines/contract'
 import { scheduleKeys, type ScheduleSnapshot } from '@/features/schedules/queries'
 import { createQueryClient } from '@/lib/session-query-client'
 import { server } from './helpers/msw-server'
+
+// Observe the external Drawer boundary without replacing its behavior.
+const drawerMounts = vi.hoisted(() => [] as boolean[])
+vi.mock('@base-ui/react/drawer', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@base-ui/react/drawer')>()
+  return {
+    ...actual,
+    Drawer: {
+      ...actual.Drawer,
+      Root: (props: React.ComponentProps<typeof actual.Drawer.Root>) => {
+        const first = useRef(true)
+        if (first.current) {
+          drawerMounts.push(Boolean(props.open))
+          first.current = false
+        }
+        return <actual.Drawer.Root {...props} />
+      },
+    },
+  }
+})
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
@@ -115,6 +136,16 @@ function expectRestoredDetail() {
   expect(logDose.compareDocumentPosition(set) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(screen.queryByRole('link', { name: 'Change schedule' })).not.toBeInTheDocument()
 }
+
+test('Restore confirmation mounts closed so its first open can animate', async () => {
+  const { client, user, unmount } = open()
+  drawerMounts.length = 0
+  await user.click(restoreAction())
+  expect(drawer()).toBeVisible()
+  expect(drawerMounts).toEqual([false])
+  unmount()
+  client.clear()
+})
 
 test('Restore medication opens the 292·S8 confirmation; Close, Escape, backdrop and Cancel discard it', async () => {
   const attempts: unknown[] = []

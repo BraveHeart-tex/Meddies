@@ -271,3 +271,62 @@ export async function freshNotificationPermission(page: Page) {
     Object.defineProperty(Notification, 'permission', { get: () => 'default' })
   })
 }
+
+type Sample = { bottom: number; opacity: number; properties: string[] }
+declare global {
+  interface Window {
+    confirmationMotion: { samples: Sample[]; done: boolean }
+  }
+}
+
+/** Opt-in visual evidence: sample real frames, before screenshot helpers finish animations. */
+export async function openConfirmationWithMotion(page: Page, action: Locator) {
+  for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+    await page.emulateMedia({ reducedMotion })
+    await action.evaluate((button) => {
+      window.confirmationMotion = { samples: [], done: false }
+      button.addEventListener(
+        'click',
+        () => {
+          const start = performance.now()
+          function sample() {
+            const popup = document.querySelector<HTMLElement>('[data-slot="drawer-popup"]')
+            const scrim = document.querySelector<HTMLElement>('[data-slot="drawer-overlay"]')
+            if (popup && scrim) {
+              window.confirmationMotion.samples.push({
+                bottom: popup.getBoundingClientRect().bottom,
+                opacity: Number(getComputedStyle(scrim).opacity),
+                properties: [
+                  getComputedStyle(popup).transitionProperty,
+                  getComputedStyle(scrim).transitionProperty,
+                ],
+              })
+            }
+            if (performance.now() - start < 600) requestAnimationFrame(sample)
+            else window.confirmationMotion.done = true
+          }
+          requestAnimationFrame(sample)
+        },
+        { once: true },
+      )
+    })
+    await action.click()
+    await expect.poll(() => page.evaluate(() => window.confirmationMotion.done)).toBe(true)
+    const samples = await page.evaluate(() => window.confirmationMotion.samples)
+    expect(samples.length).toBeGreaterThan(0)
+    if (reducedMotion === 'no-preference') {
+      expect(samples.some(({ bottom }) => bottom > page.viewportSize()!.height + 1)).toBe(true)
+      expect(samples.some(({ opacity }) => opacity > 0 && opacity < 1)).toBe(true)
+    } else {
+      expect(samples.every(({ properties }) => properties.every((value) => value === 'none'))).toBe(
+        true,
+      )
+    }
+    expect(samples.at(-1)!.bottom).toBeCloseTo(page.viewportSize()!.height, 0)
+    expect(samples.at(-1)!.opacity).toBe(1)
+    await page.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(page.getByRole('dialog')).toBeHidden()
+  }
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await action.click()
+}

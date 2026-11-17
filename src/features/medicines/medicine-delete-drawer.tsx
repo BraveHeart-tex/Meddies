@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -30,6 +30,12 @@ export function MedicineDeleteDrawer({
   onDeleted: () => void
 }) {
   const save = useMedicineDelete(medicine, open, onDeleted)
+  // Base UI needs a closed mount before the requested open to apply its entrance styles.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronize Base UI's first open after mounting closed
+    setMounted(true)
+  }, [])
   const offline = useKnownOffline()
   const title = useRef<HTMLHeadingElement>(null)
   const [reviewing, setReviewing] = useState(false)
@@ -56,7 +62,7 @@ export function MedicineDeleteDrawer({
   }
   return (
     <Drawer
-      open={open}
+      open={mounted && open}
       onOpenChangeComplete={(next) => {
         if (next) return
         // Wait until the closing scrim releases focus. A confirmed deletion has no trigger.

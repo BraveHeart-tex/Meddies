@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -10,6 +11,26 @@ import { scheduleKeys, type ScheduleSnapshot } from '@/features/schedules/querie
 import { scheduleToday } from '@/features/schedules/occurrences'
 import { createQueryClient } from '@/lib/session-query-client'
 import { server } from './helpers/msw-server'
+
+// Observe the external Drawer boundary without replacing its behavior.
+const drawerMounts = vi.hoisted(() => [] as boolean[])
+vi.mock('@base-ui/react/drawer', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@base-ui/react/drawer')>()
+  return {
+    ...actual,
+    Drawer: {
+      ...actual.Drawer,
+      Root: (props: React.ComponentProps<typeof actual.Drawer.Root>) => {
+        const first = useRef(true)
+        if (first.current) {
+          drawerMounts.push(Boolean(props.open))
+          first.current = false
+        }
+        return <actual.Drawer.Root {...props} />
+      },
+    },
+  }
+})
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
@@ -81,6 +102,16 @@ const drawer = () => screen.getByRole('dialog', { name: 'Archive Magnesium?' })
 const archiveAction = () => screen.getByRole('button', { name: 'Archive medication' })
 const confirmAction = () => within(drawer()).getByRole('button', { name: /archive/i })
 const overlay = () => document.querySelector<HTMLElement>('[data-slot="drawer-overlay"]')!
+
+test('Archive confirmation mounts closed so its first open can animate', async () => {
+  const { client, user, unmount } = open()
+  drawerMounts.length = 0
+  await user.click(archiveAction())
+  expect(drawer()).toBeVisible()
+  expect(drawerMounts).toEqual([false])
+  unmount()
+  client.clear()
+})
 
 test('Archive medication opens the confirmation; Close, Escape, backdrop and Cancel discard it', async () => {
   const attempts: unknown[] = []

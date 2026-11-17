@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import {
   archiveMedicine,
+  openConfirmationWithMotion,
   focusWindow,
   hydrated,
   scrollsHorizontally,
@@ -712,7 +713,7 @@ test(
     await page.goto(`/medications?medicine=${id}`)
     const action = page.getByRole('button', { name: 'Delete medication' })
     const confirmation = page.getByRole('dialog', { name: 'Delete Vitamin D?' })
-    await action.click()
+    await openConfirmationWithMotion(page, action)
     await expect(page.getByRole('heading', { name: 'Delete Vitamin D?' })).toBeFocused()
     await dragHandle(page, 260)
     await expect(confirmation).toBeHidden()
@@ -771,7 +772,7 @@ test(
     await page.goto(`/medications?medicine=${id}`)
     const action = page.getByRole('button', { name: 'Archive medication' })
     const confirmation = page.getByRole('dialog', { name: 'Archive Magnesium?' })
-    await action.click()
+    await openConfirmationWithMotion(page, action)
     await expect(page.getByRole('heading', { name: 'Archive Magnesium?' })).toBeFocused()
     await dragHandle(page, 260)
     await expect(confirmation).toBeHidden()
@@ -833,7 +834,7 @@ test(
     await page.goto(`/medications?medicine=${id}`)
     const action = page.getByRole('button', { name: 'Restore medication' })
     const confirmation = page.getByRole('dialog', { name: 'Restore Magnesium?' })
-    await action.click()
+    await openConfirmationWithMotion(page, action)
     await expect(page.getByRole('heading', { name: 'Restore Magnesium?' })).toBeFocused()
     await dragHandle(page, 260)
     await expect(confirmation).toBeHidden()
