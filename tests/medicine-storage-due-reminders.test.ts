@@ -44,34 +44,59 @@ const fake = (answer: Answer = accepted) => {
 const run = (provider: ReminderProvider, at: string, batch?: number) =>
   runDueReminders(drizzle(db), provider, () => new Date(at), batch)
 
+async function anotherMedicine(ownerId: string) {
+  const id = randomUUID()
+  const saved = await call({ operation: 'save', ownerId, medicine: { ...medicine, id } })
+  assert.equal(saved.status, 200)
+  return id
+}
+
+/** Saves one Schedule of `medicineId` with `times` on `date` only. */
+async function schedule(
+  o: Awaited<ReturnType<typeof owner>>,
+  date: string,
+  medicineId: string,
+  times: string[],
+) {
+  const id = randomUUID()
+  await o.operations.save({
+    id,
+    medicineId,
+    startDate: date,
+    endDate: date,
+    times: times.map((time) => ({ time, quantity: 1 })),
+  })
+  return id
+}
+
 /**
- * One owner with `schedules` Schedules on `date` only (09:00 Istanbul is 06:00Z), each for its own
- * medication, or none without `times`, and `devices` Device registrations.
+ * One owner with `schedules` Schedules per time on `date` only (09:00 Istanbul is 06:00Z), each for
+ * its own medication so no newer Occurrence suppresses another's reminders (#34), and `devices`
+ * Device registrations. `ids(time)` names a time's Schedules, sorted; `scheduleId` the first one of
+ * the first time.
  */
 async function owner(date: string, times: string[], devices = 1, schedules = 1) {
   const f = await versionFixture()
   f.setNow(`${date}T04:00:00.000Z`)
-  const scheduleIds = Array.from({ length: times.length ? schedules : 0 }, () => randomUUID())
-  for (const [index, id] of scheduleIds.entries()) {
-    let medicineId = f.medicineId
-    if (index) {
-      medicineId = randomUUID()
-      const saved = await call({
-        operation: 'save',
-        ownerId: f.ownerId,
-        medicine: { ...medicine, id: medicineId },
-      })
-      assert.equal(saved.status, 200)
-    }
+  const slots = times.flatMap((time) =>
+    Array.from({ length: schedules }, () => ({ time, id: randomUUID() })),
+  )
+  for (const [index, { time, id }] of slots.entries()) {
+    const medicineId = index ? await anotherMedicine(f.ownerId) : f.medicineId
     await f.operations.save({
       id,
       medicineId,
       startDate: date,
       endDate: date,
-      times: times.map((time) => ({ time, quantity: 1 })),
+      times: [{ time, quantity: 1 }],
     })
   }
-  const scheduleId = scheduleIds[0]
+  const ids = (time: string) =>
+    slots
+      .filter((slot) => slot.time === time)
+      .map((slot) => slot.id)
+      .toSorted()
+  const scheduleId = slots[0]?.id
   const tokens: string[] = []
   for (let index = 0; index < devices; index++) {
     const token = `token-${randomUUID()}`
@@ -84,7 +109,7 @@ async function owner(date: string, times: string[], devices = 1, schedules = 1) 
     )
   }
   const due = (time: string) => new Date(`${date}T${time}:00+03:00`).toISOString()
-  return { ...f, scheduleId, scheduleIds: scheduleIds.toSorted(), tokens, due }
+  return { ...f, scheduleId, ids, scheduleIds: ids(times[0]), tokens, due }
 }
 
 const registrations = async (ownerId: string) =>
@@ -258,9 +283,9 @@ test('Taken or Skipped recorded before a Follow-up reminder runs stops it', asyn
   assert.equal(sent.length, 2)
 
   o.setNow('2026-11-27T06:15:00.000Z')
-  await o.operations.recordSkipped({ scheduleId: o.scheduleId, dueAt: o.due('09:00') })
+  await o.operations.recordSkipped({ scheduleId: o.ids('09:00')[0], dueAt: o.due('09:00') })
   await o.operations.recordTaken({
-    scheduleId: o.scheduleId,
+    scheduleId: o.ids('09:10')[0],
     dueAt: o.due('09:10'),
     takenAt: '2026-11-27T06:15:00.000Z',
     quantity: 1,
@@ -273,11 +298,11 @@ test('Taken or Skipped recorded before a Follow-up reminder runs stops it', asyn
   assert.equal(sent.length, 2, 'no Follow-up reminder is submitted')
 })
 
-// #32: Occurrences A and B share 09:00 and 09:10; Skipped for A at 09:10 arrives while the run
+// #32: two Occurrences share 09:00 and two 09:10; Skipped for one at 09:10 arrives while the run
 // submits the 09:00 Follow-up reminder, after both instants are claimed.
 test('Taken or Skipped recorded after a run claims a Follow-up reminder leaves only the other Occurrence in it', async () => {
   const o = await owner('2026-12-05', ['09:00', '09:10'], 1, 2)
-  const [stopped, left] = o.scheduleIds
+  const [stopped, left] = o.ids('09:10')
   const { provider, sent } = fake()
   await run(provider, '2026-12-05T06:00:00.000Z')
   await run(provider, '2026-12-05T06:10:00.000Z')
@@ -304,7 +329,7 @@ test('Taken or Skipped recorded after a run claims a Follow-up reminder leaves o
     'the 09:10 Follow-up reminders were claimed before the outcome arrived',
   )
   assert.deepEqual(midRun.sent, [
-    { token: o.tokens[0], dueAt: o.due('09:00'), reminder: 1, scheduleIds: o.scheduleIds },
+    { token: o.tokens[0], dueAt: o.due('09:00'), reminder: 1, scheduleIds: o.ids('09:00') },
     { token: o.tokens[0], dueAt: o.due('09:10'), reminder: 1, scheduleIds: [left] },
   ])
   assert.deepEqual(await attemptedSchedules(o.ownerId, o.due('09:10'), 1), [left])
@@ -416,8 +441,8 @@ test('Follow-up reminders of Occurrences sharing a due instant go out as one sub
     sent.map((m) => [m.token, m.dueAt, m.reminder, m.scheduleIds]).toSorted(),
     o.tokens
       .flatMap((token) => [
-        [token, o.due('09:00'), 1, o.scheduleIds],
-        [token, o.due('09:40'), 0, o.scheduleIds],
+        [token, o.due('09:00'), 1, o.ids('09:00')],
+        [token, o.due('09:40'), 0, o.ids('09:40')],
       ])
       .toSorted(),
     "the 09:40 Original reminders never share the 09:00 Follow-up reminders' push",
@@ -433,7 +458,8 @@ test('Follow-up reminders of Occurrences sharing a due instant go out as one sub
   const installations = (await registrations(o.ownerId)).map((row) => row.id)
   assert.deepEqual(
     attempts.map((row) => `${row.scheduleId} ${row.installationId}`).toSorted(),
-    o.scheduleIds
+    o
+      .ids('09:00')
       .flatMap((scheduleId) => installations.map((id) => `${scheduleId} ${id}`))
       .toSorted(),
     'a Delivery attempt per Occurrence and Device registration',
@@ -447,9 +473,9 @@ test('An Occurrence with Taken or Skipped recorded gets no Original reminder', a
   assert.equal(failing.sent.length, 1)
 
   o.setNow('2026-11-14T06:05:00.000Z')
-  await o.operations.recordSkipped({ scheduleId: o.scheduleId, dueAt: o.due('09:00') })
+  await o.operations.recordSkipped({ scheduleId: o.ids('09:00')[0], dueAt: o.due('09:00') })
   await o.operations.recordTaken({
-    scheduleId: o.scheduleId,
+    scheduleId: o.ids('09:10')[0],
     dueAt: o.due('09:10'),
     takenAt: '2026-11-14T06:05:00.000Z',
     quantity: 1,
@@ -462,7 +488,7 @@ test('An Occurrence with Taken or Skipped recorded gets no Original reminder', a
     retrying: 0,
   })
   assert.deepEqual(sent, [
-    { token: o.tokens[0], dueAt: o.due('09:20'), reminder: 0, scheduleIds: [o.scheduleId] },
+    { token: o.tokens[0], dueAt: o.due('09:20'), reminder: 0, scheduleIds: o.ids('09:20') },
   ])
 })
 
@@ -478,9 +504,9 @@ test('Taken or Skipped recorded after a run claims an Original reminder stops it
       ...(await claimTokens('original_reminders', o.ownerId, o.due('09:20'))),
     )
     o.setNow('2026-12-04T06:20:00.000Z')
-    await o.operations.recordSkipped({ scheduleId: o.scheduleId, dueAt: o.due('09:10') })
+    await o.operations.recordSkipped({ scheduleId: o.ids('09:10')[0], dueAt: o.due('09:10') })
     await o.operations.recordTaken({
-      scheduleId: o.scheduleId,
+      scheduleId: o.ids('09:20')[0],
       dueAt: o.due('09:20'),
       takenAt: '2026-12-04T06:20:00.000Z',
       quantity: 1,
@@ -757,7 +783,7 @@ test("Overlapping runs and a batch limit never split one owner's due instant", a
       token: o.tokens[0],
       dueAt: o.due(time),
       reminder: 0,
-      scheduleIds: o.scheduleIds,
+      scheduleIds: o.ids(time),
     })),
     'a batch of one due instant claims all three doses due at it',
   )
@@ -787,6 +813,146 @@ test('A due instant with one Occurrence left after Taken or Skipped submits the 
   })
   assert.deepEqual(sent, [
     { token: o.tokens[0], dueAt: o.due('09:00'), reminder: 0, scheduleIds: [left] },
+  ])
+})
+
+// #34: a Medicine's next Occurrence drops its older Occurrences' unsent reminders, at equality too.
+test("Once a Medicine's next Occurrence is due, its older Occurrence's reminders drop unsent, record no Dose outcome and leave other Medicines' reminders", async () => {
+  const date = '2026-12-06'
+  const o = await owner(date, ['08:00'])
+  const other = o.scheduleId
+  const tablet = await schedule(o, date, await anotherMedicine(o.ownerId), ['08:00', '08:40'])
+  const { provider, sent } = fake()
+  await run(provider, `${date}T05:00:00.000Z`)
+  assert.deepEqual(sent, [
+    { token: o.tokens[0], dueAt: o.due('08:00'), reminder: 0, scheduleIds: [other, tablet].sort() },
+  ])
+
+  sent.length = 0
+  assert.deepEqual(await run(provider, `${date}T05:40:00.000Z`), {
+    submitted: 2,
+    dropped: 0,
+    retrying: 0,
+  })
+  assert.deepEqual(
+    sent.map((m) => [m.dueAt, m.reminder, m.scheduleIds]).toSorted(),
+    [
+      [o.due('08:00'), 1, [other]],
+      [o.due('08:40'), 0, [tablet]],
+    ],
+    "only the 08:40 Original reminder and the other Medicine's Follow-up reminder submit",
+  )
+
+  sent.length = 0
+  await run(provider, `${date}T06:20:00.000Z`)
+  assert.deepEqual(sent.map((m) => [m.dueAt, m.reminder, m.scheduleIds]).toSorted(), [
+    [o.due('08:00'), 2, [other]],
+    [o.due('08:40'), 1, [tablet]],
+  ])
+  assert.deepEqual(
+    await attemptedSchedules(o.ownerId, o.due('08:00'), 1),
+    [other],
+    'no Delivery attempt for the older Occurrence',
+  )
+  const outcomes = await db
+    .prepare(
+      `SELECT (SELECT COUNT(*) FROM dose_records WHERE owner_id=?1 AND schedule_id=?2)
+        + (SELECT COUNT(*) FROM skipped_dose_records WHERE owner_id=?1 AND schedule_id=?2) AS n`,
+    )
+    .bind(o.ownerId, tablet)
+    .first<{ n: number }>()
+  assert.equal(outcomes?.n, 0, 'the 08:00 Occurrence stays Not logged')
+})
+
+test('A transient answer, an abandoned claim or a claim processed after the next Occurrence is due never submits the older reminder', async () => {
+  // Transient answer at 08:00; the 08:03 run submits only the 08:03 Original reminder.
+  const transient = await owner('2026-12-07', [])
+  await schedule(transient, '2026-12-07', transient.medicineId, ['08:00', '08:03'])
+  const failing = fake(() => ({ outcome: 'transient', code: 'UNAVAILABLE' }))
+  await run(failing.provider, '2026-12-07T05:00:00.000Z')
+  assert.equal(failing.sent.length, 1)
+  const later = fake()
+  assert.deepEqual(await run(later.provider, '2026-12-07T05:03:00.000Z'), {
+    submitted: 1,
+    dropped: 1,
+    retrying: 0,
+  })
+  assert.deepEqual(summary(later.sent), [`${transient.due('08:03')} #0 x1`])
+  assert.deepEqual(await reminderState(transient.ownerId), [
+    { dueAt: transient.due('08:00'), state: 'dropped' },
+    { dueAt: transient.due('08:03'), state: 'submitted' },
+  ])
+
+  // A claim abandoned at 08:00 whose lease expires at 08:05, after 08:03 is due.
+  const abandoned = await owner('2026-12-08', [])
+  await schedule(abandoned, '2026-12-08', abandoned.medicineId, ['08:00', '08:03'])
+  let resume!: () => void
+  const stalled = new Promise<void>((resolve) => (resume = resolve))
+  let reached!: () => void
+  const claimed = new Promise<void>((resolve) => (reached = resolve))
+  const stalling = fake(async () => {
+    reached()
+    await stalled
+    return { outcome: 'accepted' }
+  })
+  const stalledRun = run(stalling.provider, '2026-12-08T05:00:00.000Z')
+  await claimed
+  const { provider, sent } = fake()
+  await run(provider, '2026-12-08T05:03:00.000Z')
+  assert.deepEqual(await run(provider, '2026-12-08T05:05:00.000Z'), {
+    submitted: 0,
+    dropped: 1,
+    retrying: 0,
+  })
+  resume()
+  assert.deepEqual(await stalledRun, { submitted: 0, dropped: 0, retrying: 0 })
+  assert.deepEqual(summary(sent), [`${abandoned.due('08:03')} #0 x1`])
+
+  // A run claims at 08:02:59 and processes the claim at 08:03:00.
+  const crossing = await owner('2026-12-09', [])
+  await schedule(crossing, '2026-12-09', crossing.medicineId, ['08:00', '08:03'])
+  await run(failing.provider, '2026-12-09T05:00:00.000Z')
+  const times = ['2026-12-09T05:02:59.000Z']
+  const slow = fake()
+  assert.deepEqual(
+    await runDueReminders(
+      drizzle(db),
+      slow.provider,
+      () => new Date(times.shift() ?? '2026-12-09T05:03:00.000Z'),
+    ),
+    { submitted: 0, dropped: 1, retrying: 0 },
+  )
+  assert.deepEqual(slow.sent, [])
+})
+
+test("An Occurrence of a successor Schedule version suppresses the earlier version's reminders", async () => {
+  const date = '2026-12-10'
+  const o = await owner(date, [])
+  const first = await schedule(o, date, o.medicineId, ['08:00', '12:00'])
+  await run(
+    fake(() => ({ outcome: 'transient', code: 'UNAVAILABLE' })).provider,
+    `${date}T05:00:00.000Z`,
+  )
+  o.setNow(`${date}T05:10:00.000Z`)
+  const successor = randomUUID()
+  await o.operations.edit({
+    id: successor,
+    basedOnId: first,
+    endDate: date,
+    times: [
+      { time: '08:30', quantity: 1 },
+      { time: '12:00', quantity: 1 },
+    ],
+  })
+  const { provider, sent } = fake()
+  assert.deepEqual(await run(provider, `${date}T05:30:00.000Z`), {
+    submitted: 1,
+    dropped: 1,
+    retrying: 0,
+  })
+  await run(provider, `${date}T05:40:00.000Z`)
+  assert.deepEqual(sent, [
+    { token: o.tokens[0], dueAt: o.due('08:30'), reminder: 0, scheduleIds: [successor] },
   ])
 })
 

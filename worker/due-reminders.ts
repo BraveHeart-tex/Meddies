@@ -2,18 +2,25 @@
 // reminders: its Original reminder at its due instant (reminder 0) and Follow-up reminders at due
 // +40 and +80 minutes (1 and 2). Each run:
 // 1. records, for every Occurrence due in the last 80 minutes inclusive whose owner has a Device
-//    registration, only its current reminder - the one with the latest target at or before the
-//    run - once per reminder, so a late run never bursts older ones (#9 D4);
+//    registration and with no newer Occurrence of its Medicine due by the run (#34), only its
+//    current reminder - the one with the latest target at or before the run - once per reminder,
+//    so a late run never bursts older ones (#9 D4);
 // 2. drops recorded reminders, unsent, once a later one is due or due +80 minutes has passed;
 // 3. claims a bounded batch of owners' due instants per reminder with one conditional
 //    UPDATE ... RETURNING per table that sets a fresh claim token and lease (#5) on every
 //    claimable reminder of each instant, so overlapping runs never claim the same reminder or
 //    split an instant, and an abandoned claim becomes claimable again once its lease expires;
-// 4. rechecks that the reminder is still current and Taken/Skipped per Occurrence at processing
-//    time, then submits one reminder per due instant and reminder (#372) through the provider port
-//    to each Device registration, covering the remaining Occurrences without a final answer for it,
-//    and records one Delivery attempt per covered Occurrence naming the reminder and the answer.
-// Suppression is that send-time recheck alone; recording a Dose outcome writes no reminder rows.
+// 4. rechecks that the reminder is still current, and Taken/Skipped and a newer Occurrence of the
+//    same Medicine per Occurrence at processing time, then submits one reminder per due instant and
+//    reminder (#372) through the provider port to each Device registration, covering the remaining
+//    Occurrences without a final answer for it, and records one Delivery attempt per covered
+//    Occurrence naming the reminder and the answer.
+// Suppression is that send-time recheck alone; recording a Dose outcome or a schedule change writes
+// no reminder rows, and dropping a reminder records no Dose outcome. A newer Occurrence counts from
+// any Schedule version of the Medicine, even with an early Taken or Skipped, and at its due instant
+// itself; Occurrences are those of Schedule versions running at the run's start, through the end of
+// its Istanbul day, so a transient answer or an abandoned claim never submits an older reminder
+// after a newer one is due.
 // An outcome that reaches the server after a claim and before the recheck stops that reminder
 // (#32). One that arrives after the recheck may still be submitted, settles it as submitted with
 // its Delivery attempts, and is never recalled: no provider takes a submission back.
@@ -98,10 +105,16 @@ export async function runDueReminders(
   const windowStart = new Date(now.getTime() - REMINDER_WINDOW_MS).toISOString()
   const followUpDue = new Date(now.getTime() - FOLLOW_UP_INTERVAL_MS).toISOString()
 
-  const current = (await dueOccurrences(db, now, windowStart)).map((occurrence) => ({
-    ...occurrence,
-    reminder: currentReminder(occurrence.dueAt, now)!,
-  }))
+  const occurrences = await windowOccurrences(db, now, windowStart)
+  const superseded = newerOccurrence(occurrences)
+  const current = occurrences
+    .filter((row) => row.dueAt <= at && !superseded(row.ownerId, row.scheduleId, row.dueAt, now))
+    .map(({ ownerId, scheduleId, dueAt }) => ({
+      ownerId,
+      scheduleId,
+      dueAt,
+      reminder: currentReminder(dueAt, now)!,
+    }))
   const originals = current.filter((row) => row.reminder === 0)
   const followUps = current.filter((row) => row.reminder !== 0)
   // One batch, so a concurrent claim never sees an instant half recorded.
@@ -171,14 +184,16 @@ export async function runDueReminders(
   }
   const run: DueReminderRun = { submitted: 0, dropped: 0, retrying: 0 }
   for (const reminders of instants.values())
-    for (const result of await deliver(db, provider, seconds, token, reminders))
+    for (const result of await deliver(db, provider, seconds, token, superseded, reminders))
       if (result) run[result]++
   return run
 }
 
-// Occurrences due inside the window, from Schedule versions that run in it; a version's
-// occurrences end at its successor's Edit time (docs/architecture.md Occurrences).
-async function dueOccurrences(db: DrizzleD1Database, now: Date, windowStart: string) {
+type Superseded = (ownerId: string, scheduleId: string, dueAt: string, now: Date) => boolean
+
+// Occurrences due from the window's start through the end of today, from Schedule versions that run
+// in it; a version's occurrences end at its successor's Edit time (docs/architecture.md Occurrences).
+async function windowOccurrences(db: DrizzleD1Database, now: Date, windowStart: string) {
   const at = now.toISOString()
   const today = istanbulDate(now)
   const dates = [...new Set([istanbulDate(new Date(windowStart)), today])]
@@ -186,6 +201,7 @@ async function dueOccurrences(db: DrizzleD1Database, now: Date, windowStart: str
     .select({
       ownerId: dailySchedules.ownerId,
       id: dailySchedules.id,
+      medicineId: dailySchedules.medicineId,
       startDate: dailySchedules.startDate,
       anchorDate: dailySchedules.anchorDate,
       endDate: dailySchedules.endDate,
@@ -215,24 +231,46 @@ async function dueOccurrences(db: DrizzleD1Database, now: Date, windowStart: str
         .filter(
           (dueAt) =>
             dueAt >= windowStart &&
-            dueAt <= at &&
             dueAt > schedule.confirmedAt &&
             (!schedule.replacedAt || dueAt <= schedule.replacedAt),
         )
-        .map((dueAt) => ({ ownerId: schedule.ownerId, scheduleId: schedule.id, dueAt })),
+        .map((dueAt) => ({
+          ownerId: schedule.ownerId,
+          medicineId: schedule.medicineId,
+          scheduleId: schedule.id,
+          dueAt,
+        })),
     ),
   )
 }
 
-// Delivers one reminder of one owner's due instant: rechecks that it is still current and
-// Taken/Skipped per Occurrence, then submits one reminder to each Device registration covering the
-// remaining Occurrences without a final answer for it, recording one Delivery attempt per covered
-// Occurrence with that answer.
+// Whether an Occurrence of the same Medicine, from any Schedule version, is due after `dueAt` and
+// by `now` (#34). A schedule with no Occurrence in `occurrences` is never superseded here.
+function newerOccurrence(occurrences: Awaited<ReturnType<typeof windowOccurrences>>): Superseded {
+  const medicineOf = new Map<string, string>()
+  const dues = new Map<string, string[]>()
+  for (const { ownerId, medicineId, scheduleId, dueAt } of occurrences) {
+    const medicine = `${ownerId}:${medicineId}`
+    medicineOf.set(`${ownerId}:${scheduleId}`, medicine)
+    dues.set(medicine, [...(dues.get(medicine) ?? []), dueAt])
+  }
+  return (ownerId, scheduleId, dueAt, now) => {
+    const medicine = medicineOf.get(`${ownerId}:${scheduleId}`)
+    const at = now.toISOString()
+    return !!medicine && dues.get(medicine)!.some((due) => due > dueAt && due <= at)
+  }
+}
+
+// Delivers one reminder of one owner's due instant: rechecks that it is still current, and
+// Taken/Skipped and a newer same-Medicine Occurrence per Occurrence, then submits one reminder to
+// each Device registration covering the remaining Occurrences without a final answer for it,
+// recording one Delivery attempt per covered Occurrence with that answer.
 async function deliver(
   db: DrizzleD1Database,
   provider: ReminderProvider,
   clock: () => Date,
   token: string,
+  superseded: Superseded,
   reminders: Reminder[],
 ): Promise<(keyof DueReminderRun | null)[]> {
   const now = clock()
@@ -253,17 +291,23 @@ async function deliver(
   if (currentReminder(dueAt, now) !== reminder)
     return Promise.all(reminders.map((row) => settle(row.scheduleId, 'dropped')))
 
-  const recorded = new Set(
+  const stopped = new Set(
     (
       await db.all<{ scheduleId: string }>(sql`SELECT schedule_id AS scheduleId FROM dose_records
           WHERE owner_id = ${ownerId} AND due_at = ${dueAt}
         UNION SELECT schedule_id FROM skipped_dose_records
           WHERE owner_id = ${ownerId} AND due_at = ${dueAt}`)
-    ).map((row) => row.scheduleId),
+    )
+      .map((row) => row.scheduleId)
+      .concat(
+        reminders
+          .map((row) => row.scheduleId)
+          .filter((scheduleId) => superseded(ownerId, scheduleId, dueAt, now)),
+      ),
   )
   const live = reminders
     .map((row) => row.scheduleId)
-    .filter((scheduleId) => !recorded.has(scheduleId))
+    .filter((scheduleId) => !stopped.has(scheduleId))
     .sort()
 
   const final = new Set(
@@ -335,7 +379,7 @@ async function deliver(
     reminders.map(({ scheduleId }) =>
       settle(
         scheduleId,
-        recorded.has(scheduleId) ? 'dropped' : retrying.has(scheduleId) ? 'retrying' : 'submitted',
+        stopped.has(scheduleId) ? 'dropped' : retrying.has(scheduleId) ? 'retrying' : 'submitted',
       ),
     ),
   )
