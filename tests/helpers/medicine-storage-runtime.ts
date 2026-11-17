@@ -205,6 +205,7 @@ export async function versionFixture() {
   return {
     operations,
     send,
+    ownerId,
     medicineId: tablet.id,
     setNow: (value: string) => {
       now = new Date(value)

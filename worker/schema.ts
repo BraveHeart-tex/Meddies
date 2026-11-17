@@ -301,3 +301,46 @@ export const deviceRegistrations = sqliteTable(
   },
   (table) => [index('device_registrations_owner').on(table.ownerId)],
 )
+
+// One row per Occurrence a due-reminder run found in its window; claims lease it (#366).
+export const originalReminders = sqliteTable(
+  'original_reminders',
+  {
+    ownerId: text('owner_id').notNull(),
+    scheduleId: text('schedule_id').notNull(),
+    dueAt: text('due_at').notNull(),
+    state: text('state', { enum: ['pending', 'submitted', 'dropped'] })
+      .notNull()
+      .default('pending'),
+    claimToken: text('claim_token'),
+    leaseUntil: text('lease_until'),
+    settledAt: text('settled_at'),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.scheduleId, table.dueAt] }),
+    index('original_reminders_state_due').on(table.state, table.dueAt),
+    check('original_reminders_state', sql`${table.state} IN ('pending', 'submitted', 'dropped')`),
+  ],
+)
+
+// One submission to one Device registration; never the token or medication name (#366).
+export const deliveryAttempts = sqliteTable(
+  'delivery_attempts',
+  {
+    id: text('id').primaryKey().notNull(),
+    ownerId: text('owner_id').notNull(),
+    scheduleId: text('schedule_id').notNull(),
+    dueAt: text('due_at').notNull(),
+    installationId: text('installation_id').notNull(),
+    outcome: text('outcome', { enum: ['accepted', 'rejected', 'transient'] }).notNull(),
+    code: text('code'),
+    attemptedAt: text('attempted_at').notNull(),
+  },
+  (table) => [
+    index('delivery_attempts_occurrence').on(table.ownerId, table.scheduleId, table.dueAt),
+    check(
+      'delivery_attempts_outcome',
+      sql`${table.outcome} IN ('accepted', 'rejected', 'transient')`,
+    ),
+  ],
+)
