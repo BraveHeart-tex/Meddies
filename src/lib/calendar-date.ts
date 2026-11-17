@@ -4,25 +4,18 @@
 
 export const SCHEDULE_TIMEZONE = 'Europe/Istanbul'
 
+// Istanbul keeps UTC+03:00 all year (docs/architecture.md Occurrences), so its day and hour are
+// arithmetic: no Intl timezone lookup on the scheduler's hot path.
+const ISTANBUL_OFFSET_MS = 3 * 60 * 60_000
+
 /** The date-only value of an instant's Istanbul day. */
 export function istanbulDate(now: Date): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: SCHEDULE_TIMEZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now)
+  return new Date(now.getTime() + ISTANBUL_OFFSET_MS).toISOString().slice(0, 10)
 }
 
 /** The Istanbul hour of an instant, 0 to 23. */
 export function istanbulHour(instant: string): number {
-  return Number(
-    new Intl.DateTimeFormat('en-GB', {
-      timeZone: SCHEDULE_TIMEZONE,
-      hour: '2-digit',
-      hourCycle: 'h23',
-    }).format(new Date(instant)),
-  )
+  return new Date(Date.parse(instant) + ISTANBUL_OFFSET_MS).getUTCHours()
 }
 
 // The calendar works with device-local Date objects, so convert through local noon: the day never
