@@ -38,6 +38,7 @@ Cozy Care is the approved visual direction for Meddies. The app should feel warm
 
 ## Drawers
 
+- In the installed iOS app, the status bar band follows the modal Drawer scrim throughout opening, swipe and dismissal. Otherwise it matches the cream canvas. Keep status icons legible over a flat fill that conceals scrolled content.
 - Use Drawer for every slide-in panel: a content-sized bottom drawer on phone and desktop, capped at a readable width, without snap points. Keep its swipe handle and Cozy Care scrim, radius, and safe-area padding.
 - Swiping, Close, backdrop press, and Escape dismiss it and discard unsaved input. While a save is pending, all of them are refused and Close is disabled.
 - A swipe that starts on a form control (Amount, pickers, the outcome choice) never closes the drawer; swipes on the handle, header and empty space still do.
