@@ -9,6 +9,7 @@ import {
   instant,
   drawer,
   takenDay,
+  toastMessage,
 } from './locators'
 import { chooseMedicineType } from './drawers'
 
@@ -62,7 +63,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await page.getByRole('button', { name: 'Save medication' }).press('Enter')
     await expect(page.getByText('Routine Medicine saved.')).toBeVisible()
     expect(pageRequests, 'the saved handoff makes no document or RSC request').toBe(0)
-    await expect(page.getByRole('heading', { name: 'Routine Medicine' })).toBeFocused()
+    await expect(page.getByRole('heading', { name: 'Routine Medicine', exact: true })).toBeFocused()
     await expect(page.getByRole('link', { name: 'Set schedule', exact: true })).toHaveCount(1)
     await page.getByRole('link', { name: 'Done for now' }).click()
     await expect(
@@ -85,7 +86,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     const setSchedule = page.getByRole('link', { name: 'Set schedule', exact: true })
     await expect(setSchedule).toHaveAttribute('href', /^\/medications\?schedule=[\w-]+/)
     await setSchedule.press('Enter')
-    await expect(page.getByRole('heading', { name: 'Routine Medicine' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Routine Medicine', exact: true })).toBeVisible()
   })
 
   await test.step('retry an uncertain schedule save without losing setup', async () => {
@@ -108,12 +109,12 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await expect(page.getByText('Your schedule might not have saved.')).toBeVisible()
     await expectTime(page, 'Time 1', time)
     await page.getByRole('button', { name: 'Try saving schedule again' }).press('Enter')
-    await expect(page.getByText('Schedule saved for Routine Medicine.')).toBeVisible()
+    await expect(toastMessage(page, 'Schedule saved for Routine Medicine.')).toBeVisible()
     expect(pageRequests, 'the schedule handoff makes no document or RSC request').toBe(0)
     // The saved message shows before the return to ?medicine=ID; reloading earlier reopens setup.
     await expect(page).toHaveURL(/[?&]medicine=/)
-    await expect(page.getByRole('heading', { name: 'Routine Medicine' })).toBeFocused()
-    await expect(page.getByText('First dose: today at 09:05.')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Routine Medicine', exact: true })).toBeFocused()
+    await expect(toastMessage(page, 'First dose: today at 09:05.')).toBeVisible()
     // #284: the save returned to the medication page's own entry, so one Back leaves it.
     await page.goBack()
     await expect(page).toHaveURL(app.origin + '/medications')

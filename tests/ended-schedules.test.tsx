@@ -9,6 +9,8 @@ import { scheduleToday } from '../src/features/schedules/occurrences'
 import { SchedulePanel } from '../src/features/schedules/schedule-panel'
 import { ALL_WEEKDAYS } from '../src/features/schedules/weekdays'
 import { createQueryClient } from '../src/lib/session-query-client'
+import { Toaster } from '../src/components/ui/toast'
+import { findConfirmation } from './helpers/toasts'
 import { server } from './helpers/msw-server'
 
 vi.mock('next/navigation', () => ({
@@ -102,7 +104,9 @@ function api(medicines: Medicine[], initial: DailySchedule[], respond?: Respond)
 function renderPanel(mode: 'list' | 'detail' | 'setup' | 'today') {
   return render(
     <QueryClientProvider client={client}>
-      <SchedulePanel mode={mode} initialMedicineId={magnesium.id} initialNow={initialNow} />
+      <Toaster>
+        <SchedulePanel mode={mode} initialMedicineId={magnesium.id} initialNow={initialNow} />
+      </Toaster>
     </QueryClientProvider>,
   )
 }
@@ -132,7 +136,10 @@ test('227·A20 Ended schedules sit in their own group below the others', async (
   )
   renderList()
   expect(await screen.findByRole('region', { name: 'Ended' })).toBeVisible()
-  const groups = screen.getAllByRole('region').map((region) => region.getAttribute('aria-label'))
+  const groups = screen
+    .getAllByRole('region')
+    .filter((region) => !region.matches('[data-slot="toast-viewport"]'))
+    .map((region) => region.getAttribute('aria-label'))
   expect(groups.filter(Boolean)).toEqual(['On a schedule', 'No schedule', 'Ended'])
   expect(rows('On a schedule').join('|')).toMatch(/Magnesium.*Every day · 08:00, 20:00/)
   expect(rows('On a schedule').join('|')).toMatch(/Iron.*Every 7 hours · Next at 11:00/)
@@ -224,9 +231,11 @@ describe('Stop schedule', () => {
     expect(screen.getByRole('dialog', { name: 'Stop this schedule?' })).toBeVisible()
     release()
     await drawerClosed()
-    const alert = await screen.findByRole('status', { name: 'Stopped schedule' })
-    expect(alert).toHaveTextContent('Schedule stopped for Magnesium.')
-    expect(alert).toHaveTextContent('No more doses after 10:00 today.')
+    await findConfirmation(
+      'Schedule stopped for Magnesium.',
+      'none',
+      'No more doses after 10:00 today.',
+    )
     expect(screen.getByText('Ended Mon 9 Nov')).toBeVisible()
     expect(screen.queryByText(/^Last day/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Stop schedule' })).not.toBeInTheDocument()
@@ -249,7 +258,7 @@ describe('Stop schedule', () => {
     ).toBeVisible()
     fail = false
     await user.click(within(dialog).getByRole('button', { name: 'Retry' }))
-    expect(await screen.findByRole('status', { name: 'Stopped schedule' })).toBeVisible()
+    expect(await findConfirmation('Schedule stopped for Magnesium.', 'none')).toBeVisible()
     expect(stops).toHaveLength(2)
     expect(stops[1]).toEqual(stops[0])
   })
@@ -264,7 +273,9 @@ describe('Stop schedule', () => {
     expect(await within(dialog).findByText('This schedule changed elsewhere.')).toBeVisible()
     await user.click(within(dialog).getByRole('button', { name: 'Review current schedule' }))
     await drawerClosed()
-    expect(screen.queryByRole('status', { name: 'Stopped schedule' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('dialog', { name: 'Schedule stopped for Magnesium.' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByText('Last day Tue 10 Nov')).toBeVisible()
   })
 
@@ -272,7 +283,7 @@ describe('Stop schedule', () => {
     const { user, unmount } = await openDetail([running])
     await user.click(button('Stop schedule'))
     await user.click(within(await drawer()).getByRole('button', { name: 'Stop schedule' }))
-    await screen.findByRole('status', { name: 'Stopped schedule' })
+    await findConfirmation('Schedule stopped for Magnesium.', 'none')
     unmount()
     renderList()
     expect(await screen.findByRole('region', { name: 'Ended' })).toBeVisible()

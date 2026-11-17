@@ -1,5 +1,5 @@
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { RouterContext } from 'next/dist/shared/lib/router-context.shared-runtime'
@@ -12,7 +12,8 @@ import { MedicationsScreen } from '../src/features/medicines/medications-screen'
 import { MedicinePanel } from '../src/features/medicines/medicine-panel'
 import { medicineKeys } from '../src/features/medicines/queries'
 import type { DailySchedule } from '../src/features/schedules/contract'
-import { SchedulePanel } from '../src/features/schedules/schedule-panel'
+import { confirmScheduleSaved } from '../src/features/schedules/medication-confirmations'
+import { Toaster } from '../src/components/ui/toast'
 import { scheduleToday } from '../src/features/schedules/occurrences'
 import { scheduleKeys } from '../src/features/schedules/queries'
 import { createQueryClient } from '../src/lib/session-query-client'
@@ -138,35 +139,23 @@ test.each([
   { startDate: '2035-06-15', weekdays: [5], expected: 'First dose: today at 20:00.' },
   { startDate: '2035-06-18', weekdays: [1], expected: 'First dose: Mon 18 Jun at 08:00.' },
 ])(
-  'the saved confirmation uses the first eligible dose: $expected',
+  'the saved Toast uses the first eligible dose: $expected',
   async ({ startDate, weekdays, expected }) => {
-    api({
-      schedules: [
-        {
-          ...schedule,
-          startDate,
-          weekdays,
-          times: [
-            { time: '08:00', quantity: 1 },
-            { time: '20:00', quantity: 0.5 },
-          ],
-        },
-      ],
-    })
-    render(
-      <QueryClientProvider client={client}>
-        <SchedulePanel
-          mode="detail"
-          initialMedicineId={magnesium.id}
-          initialNow={initialNow}
-          justScheduled
-        />
-      </QueryClientProvider>,
+    render(<Toaster />)
+    act(() =>
+      confirmScheduleSaved('Magnesium', {
+        ...schedule,
+        startDate,
+        weekdays,
+        times: [
+          { time: '08:00', quantity: 1 },
+          { time: '20:00', quantity: 0.5 },
+        ],
+      }),
     )
-    expect(await screen.findByText(expected)).toBeVisible()
-    expect(screen.getByRole('status', { name: 'Saved schedule' })).toHaveTextContent(
-      'Schedule saved for Magnesium.',
-    )
+    expect(
+      await screen.findByRole('dialog', { name: 'Schedule saved for Magnesium.' }),
+    ).toHaveTextContent(expected)
   },
 )
 

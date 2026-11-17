@@ -28,7 +28,7 @@ function Close() {
   )
 }
 
-/** One Toast, every one with its 44px Dismiss button (371·A4). */
+/** One Toast, every one with its 44px Dismiss button. */
 export function LabToastCard({
   toast,
   style,
@@ -83,20 +83,6 @@ export function LabNote({ children }: { children: ReactNode }) {
   return (
     <div className="pointer-events-none fixed inset-x-4 top-[calc(0.5rem+env(safe-area-inset-top,0px))] z-50 mx-auto max-w-2xl rounded-md border border-dashed border-foreground/40 bg-background px-3 py-2 text-label font-semibold text-foreground">
       {children}
-    </div>
-  )
-}
-
-/**
- * A 320px phone inside the 402px capture. The transform makes the shell's fixed nav and the Toast
- * host position against this box, not the viewport.
- */
-export function Narrow({ children }: { children: ReactNode }) {
-  return (
-    <div className="min-h-svh bg-muted">
-      <div className="relative mx-auto h-svh w-80 overflow-y-auto bg-background outline outline-foreground/20 transform-[translateZ(0)]">
-        {children}
-      </div>
     </div>
   )
 }

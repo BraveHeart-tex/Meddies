@@ -9,6 +9,8 @@ import { scheduleToday } from '../src/features/schedules/occurrences'
 import { SchedulePanel } from '../src/features/schedules/schedule-panel'
 import { ALL_WEEKDAYS } from '../src/features/schedules/weekdays'
 import { createQueryClient } from '../src/lib/session-query-client'
+import { Toaster } from '../src/components/ui/toast'
+import { findConfirmation } from './helpers/toasts'
 import { server } from './helpers/msw-server'
 
 vi.mock('next/navigation', () => ({
@@ -115,7 +117,9 @@ function api(initial: DailySchedule[], respond?: Respond) {
 function renderPanel(mode: 'list' | 'detail' | 'today') {
   return render(
     <QueryClientProvider client={client}>
-      <SchedulePanel mode={mode} initialMedicineId={magnesium.id} initialNow={initialNow} />
+      <Toaster>
+        <SchedulePanel mode={mode} initialMedicineId={magnesium.id} initialNow={initialNow} />
+      </Toaster>
     </QueryClientProvider>,
   )
 }
@@ -143,14 +147,8 @@ async function pause(user: ReturnType<typeof userEvent.setup>) {
   await user.click(within(await drawer()).getByRole('button', { name: 'Pause schedule' }))
 }
 
-/* eslint-disable meddies/no-cosmetic-class-assertions -- #286: a confirmation's look (default
-   Alert, not the dark confirmation block) and a button's emphasis (ghost, never destructive on
-   the page) have no accessible signal; the variant class is it. */
-function expectDefaultAlertAbove(alert: HTMLElement, action: HTMLElement) {
-  expect(alert).toHaveClass('bg-card')
-  expect(alert).not.toHaveClass('bg-foreground')
-  expect(alert.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-}
+/* eslint-disable meddies/no-cosmetic-class-assertions -- #286: a button's emphasis (ghost, never
+   destructive on the page) has no accessible signal; the variant class is it. */
 const expectGhost = (element: HTMLElement) => {
   expect(element).toHaveClass('hover:bg-muted')
   expect(element).not.toHaveClass('border-border-strong', 'bg-destructive/10')
@@ -260,10 +258,11 @@ describe('Pause', () => {
     expect(dialog).toBeVisible()
     release()
     await drawerClosed()
-    const alert = await screen.findByRole('status', { name: 'Paused schedule' })
-    expectDefaultAlertAbove(alert, button('Stop schedule'))
-    expect(alert).toHaveTextContent('Schedule paused for Magnesium.')
-    expect(alert).toHaveTextContent('No doses expected until you resume.')
+    await findConfirmation(
+      'Schedule paused for Magnesium.',
+      'none',
+      'No doses expected until you resume.',
+    )
     expect(screen.getByText('Paused since Mon 9 Nov')).toBeVisible()
     expect(screen.queryByText(/^(Started|Changed)/)).not.toBeInTheDocument()
     expect(screen.getByText('Last day Tue 10 Nov')).toBeVisible()
@@ -296,7 +295,7 @@ describe('Pause', () => {
     ).toBeVisible()
     fail = false
     await user.click(within(dialog).getByRole('button', { name: 'Retry' }))
-    expect(await screen.findByRole('status', { name: 'Paused schedule' })).toBeVisible()
+    expect(await findConfirmation('Schedule paused for Magnesium.', 'none')).toBeVisible()
     expect(saves).toHaveLength(2)
     expect(saves[1]).toEqual(saves[0])
   })
@@ -310,7 +309,9 @@ describe('Pause', () => {
     expect(await within(dialog).findByText('This schedule changed elsewhere.')).toBeVisible()
     await user.click(within(dialog).getByRole('button', { name: 'Review current schedule' }))
     await drawerClosed()
-    expect(screen.queryByRole('status', { name: 'Paused schedule' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('dialog', { name: 'Schedule paused for Magnesium.' }),
+    ).not.toBeInTheDocument()
     expect(button('Pause')).toBeVisible()
   })
 
@@ -330,8 +331,7 @@ describe('Pause', () => {
     await user.click(button('Stop schedule'))
     const dialog = await screen.findByRole('dialog', { name: 'Stop this schedule?' })
     await user.click(within(dialog).getByRole('button', { name: 'Stop schedule' }))
-    const alert = await screen.findByRole('status', { name: 'Stopped schedule' })
-    expectDefaultAlertAbove(alert, screen.getByRole('link', { name: 'Change schedule' }))
+    await findConfirmation('Schedule stopped for Magnesium.', 'none')
     expect(screen.getByText('Ended Mon 9 Nov')).toBeVisible()
     await waitFor(() => expect(screen.getByRole('link', { name: 'Change schedule' })).toHaveFocus())
   })

@@ -13,6 +13,7 @@ import type { SaveProblem } from '@/lib/session-saves'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import { cn } from '@/lib/utils'
 import type { DailySchedule } from './contract'
+import { confirmPaused, confirmResumed, confirmStopped } from './medication-confirmations'
 import { scheduleKeys } from './queries'
 import { ScheduleConfirmDrawer, type ScheduleConfirmKind } from './schedule-confirm-drawer'
 import { useScheduleCommand, type ScheduleCommandKind } from './use-schedule-command'
@@ -126,25 +127,18 @@ const RESUME_PROBLEM = 'resume-schedule-problem'
  * The actions under the schedule card. A running or not-yet-started schedule has an outline Change
  * schedule full width, then ghost Pause beside ghost Stop schedule (233·A1, A2); a paused one
  * Resume beside Stop schedule (233·A4, A5); an Ended one only Change schedule (227·A16, A17). Only
- * the Stop confirm is destructive (#286). Stays mounted when a save confirms, so the confirmation
- * reaches `onStopped`, `onPaused` or `onResumed`.
+ * the Stop confirm is destructive (#286). A confirmed save shows its Toast (#377).
  */
 export function ScheduleActions({
   medicine,
   schedule,
   ended,
   paused,
-  onStopped,
-  onPaused,
-  onResumed,
 }: {
   medicine: Medicine
   schedule: DailySchedule
   ended: boolean
   paused: boolean
-  onStopped: (stopped: DailySchedule) => void
-  onPaused: (paused: DailySchedule) => void
-  onResumed: (resumed: DailySchedule) => void
 }) {
   const client = useQueryClient()
   const [open, setOpen] = useState<ScheduleConfirmKind | null>(null)
@@ -165,17 +159,17 @@ export function ScheduleActions({
     target.focus()
   }, [confirmed, ended, paused])
   const confirm =
-    (kind: ScheduleCommandKind, onSaved: (saved: DailySchedule) => void) =>
+    (kind: ScheduleCommandKind, onSaved: (label: string, saved: DailySchedule) => void) =>
     (saved: DailySchedule) => {
       setConfirmed(kind)
       setOpen(null)
-      onSaved(saved)
+      onSaved(medicine.label, saved)
     }
   const saves = {
-    stop: useScheduleCommand('stop', medicine, schedule, confirm('stop', onStopped)),
-    pause: useScheduleCommand('pause', medicine, schedule, confirm('pause', onPaused)),
+    stop: useScheduleCommand('stop', medicine, schedule, confirm('stop', confirmStopped)),
+    pause: useScheduleCommand('pause', medicine, schedule, confirm('pause', confirmPaused)),
   }
-  const resume = useScheduleCommand('resume', medicine, schedule, confirm('resume', onResumed))
+  const resume = useScheduleCommand('resume', medicine, schedule, confirm('resume', confirmResumed))
   const begin = (kind: ScheduleConfirmKind) => {
     focused.current = null
     setConfirmed(null)

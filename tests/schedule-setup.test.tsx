@@ -13,6 +13,7 @@ import { SchedulePanel } from '../src/features/schedules/schedule-panel'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
 import { listedOption } from './helpers/select'
+import { Toaster } from '../src/components/ui/toast'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
@@ -82,12 +83,14 @@ function api(medicine: Medicine, initial: DailySchedule[] = [], respond?: Respon
 function panel(medicineId: string, mode: 'setup' | 'detail', onSaved: () => void) {
   return (
     <QueryClientProvider client={client}>
-      <SchedulePanel
-        mode={mode}
-        initialMedicineId={medicineId}
-        initialNow={initialNow}
-        onScheduleSaved={onSaved}
-      />
+      <Toaster>
+        <SchedulePanel
+          mode={mode}
+          initialMedicineId={medicineId}
+          initialNow={initialNow}
+          onScheduleSaved={onSaved}
+        />
+      </Toaster>
     </QueryClientProvider>
   )
 }
@@ -332,7 +335,11 @@ test('a rejected save keeps the medicine and the details, and can be saved again
   expect(minute(1)).toHaveTextContent('00')
   expect(onSaved).not.toHaveBeenCalled()
   await user.click(save())
-  expect(await screen.findByText('Schedule saved for Omega-3.')).toBeVisible()
+  // #377: the confirmation is a Toast with the first dose; the screen shows no status of its own.
+  expect(
+    await screen.findByRole('dialog', { name: 'Schedule saved for Omega-3.' }),
+  ).toHaveTextContent('First dose: Sat 16 Jun at 08:00.')
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
   expect(onSaved).toHaveBeenCalledTimes(1)
   expect(onSaved).toHaveBeenCalledWith(capsules)
   expect(posted).toHaveLength(2)

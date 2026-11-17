@@ -3,6 +3,7 @@ import { expect, test } from './fixtures'
 import { scrollsHorizontally, waitForClientRouter } from './actions'
 import { pickTime } from './pickers'
 import { chooseMedicineType } from './drawers'
+import { toastMessage } from './locators'
 
 test.use({
   journey: { auth: true, storage: true, initialScheduleTime: '2035-06-15T09:00:00+03:00' },
@@ -73,7 +74,7 @@ for (const outcome of ['confirmed', 'unconfirmed'] as const) {
         await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Magnesium')
         await expect(page.getByLabel(/^Strength/)).toHaveValue(' 200 mg ')
         await page.getByRole('button', { name: 'Try saving medication again' }).click()
-        await expect(page.getByRole('status', { name: 'Saved medication' })).toBeVisible()
+        await expect(toastMessage(page, /^Magnesium saved\.$/)).toBeVisible()
         expect(posts).toHaveLength(2)
         expect(posts[1]).toBe(posts[0])
       },

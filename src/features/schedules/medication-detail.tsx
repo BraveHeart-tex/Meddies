@@ -1,10 +1,9 @@
 'use client'
 
-import { Archive, Clock, History, Info, Pencil } from 'lucide-react'
+import { Archive, Clock, History, Pencil } from 'lucide-react'
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
-import { useState, type ReactNode, type Ref } from 'react'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { scheduleToday } from './occurrences'
+import type { ReactNode, Ref } from 'react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { LoadingSection } from '@/components/ui/skeleton'
 import {
@@ -24,51 +23,17 @@ import { MedicationsLink } from '@/features/medicines/medications-nav'
 import type { Medicine } from '@/features/medicines/contract'
 import type { MedicinesRead } from '@/features/medicines/queries'
 import { medicationRecordHref, medicationSetupHref } from '@/features/medicines/routes'
-import { formatShortDay, formatTime } from '@/lib/calendar-date'
-import { currentSchedule, istanbulDate, type DailySchedule } from './contract'
+import { currentSchedule, istanbulDate } from './contract'
 import { ClockScheduleCard } from './clock-schedule-card'
 import { intervalAnchor } from './interval-preview'
 import { IntervalScheduleCard } from './interval-schedule-card'
 import { ScheduleActions } from './schedule-actions'
 import { endedOn, pausedOn } from './last-day'
-import { doseWhen, firstDoseAfterResume } from './resume'
 import type { SchedulesRead } from './queries'
 import { useScheduleNow } from './use-schedule-now'
 import { LogDose } from '../unscheduled-doses/log-dose'
 import { isArchived } from '@/features/medicines/contract'
 import { ArchivedMedicationDetail } from '@/features/medicines/archived-medications'
-
-/** After the server confirms a pause (233·A4). */
-export function PausedScheduleAlert({ label }: { label: string }) {
-  return (
-    <Alert role="status" aria-label="Paused schedule">
-      <AlertTitle>Schedule paused for {label}.</AlertTitle>
-      <AlertDescription>No doses expected until you resume.</AlertDescription>
-    </Alert>
-  )
-}
-
-/** After the server confirms a resume: the next dose, or none left (233·A7, A8, A13). */
-export function ResumedScheduleAlert({
-  label,
-  schedule,
-}: {
-  label: string
-  schedule: DailySchedule
-}) {
-  const today = istanbulDate(new Date(schedule.confirmedAt))
-  const next = firstDoseAfterResume(schedule, schedule.confirmedAt)
-  return (
-    <Alert role="status" aria-label="Resumed schedule">
-      <AlertTitle>Schedule resumed for {label}.</AlertTitle>
-      <AlertDescription>
-        {next
-          ? `Next dose: ${doseWhen(next, today)}.`
-          : `No more doses are due.${schedule.endDate === today ? ' Today is its Last day.' : ''}`}
-      </AlertDescription>
-    </Alert>
-  )
-}
 
 /**
  * The `?medicine=ID` page (238·A3): the Back row and identity header above the schedule, and Change
@@ -83,14 +48,9 @@ export function MedicationDetail({
   schedulesRead,
   now,
   actions,
-  justSaved = false,
-  justScheduled = false,
-  resumed = null,
-  onResumed,
   headingRef,
   onArchiveRequested,
   onRestoreRequested,
-  justRestored = false,
   onDeleteRequested,
 }: {
   medicineId: string
@@ -99,25 +59,14 @@ export function MedicationDetail({
   now: string
   /** Extra actions for the transient medication-save handoff. */
   actions?: ReactNode
-  justSaved?: boolean
-  justScheduled?: boolean
-  /** The resume this panel confirmed, here or on the Resume schedule screen. */
-  resumed?: DailySchedule | null
-  onResumed: (resumed: DailySchedule) => void
   onArchiveRequested?: (medicine: Medicine) => void
   onRestoreRequested?: (medicine: Medicine) => void
-  /** This screen confirmed the restore (292·S9). */
-  justRestored?: boolean
   onDeleteRequested?: (medicine: Medicine) => void
   headingRef?: Ref<HTMLHeadingElement>
 }) {
   const { medicines, loading: medicinesLoading, loadError: medicinesError } = medicinesRead
   const { schedules, loading, loadError, refreshFailed, refreshing, retry } = schedulesRead
   const liveNow = useScheduleNow(now)
-  // The stop this screen confirmed, until the schedule changes again (227·A16).
-  const [stopped, setStopped] = useState<DailySchedule | null>(null)
-  // The pause this screen confirmed, until the schedule changes again (233·A4).
-  const [justPaused, setJustPaused] = useState<DailySchedule | null>(null)
   if (medicinesLoading) return <MedicationDetailSkeleton />
 
   const medicine = medicines.find((item) => item.id === medicineId)
@@ -151,18 +100,12 @@ export function MedicationDetail({
     )
 
   const schedule = currentSchedule(schedules, medicineId)
-  const today = istanbulDate(new Date(now))
   // A Last day passes at midnight on the live clock.
   const liveToday = istanbulDate(new Date(liveNow))
   const ended = schedule ? endedOn(schedule, liveToday) : null
   const paused = schedule ? pausedOn(schedule, liveToday) : null
   // Only a loaded read can say there is no schedule.
   const unscheduled = !loading && !loadError && !schedule
-  // Anchor to the server's save instant, so earlier times today never become the first dose.
-  const first =
-    schedule && justScheduled
-      ? scheduleToday([schedule], new Date(schedule.confirmedAt), []).next
-      : null
   return (
     <div className="flex flex-col gap-5 [overflow-wrap:anywhere]">
       <MedicationBackRow href={medicationsListHref}>Medications</MedicationBackRow>
@@ -177,43 +120,6 @@ export function MedicationDetail({
             </Button>
           </AlertDescription>
         </Alert>
-      )}
-      {(justSaved || justScheduled) && (
-        <Alert role="status" aria-label={justSaved ? 'Saved medication' : 'Saved schedule'}>
-          <AlertTitle>
-            {justSaved ? `${medicine.label} saved.` : `Schedule saved for ${medicine.label}.`}
-          </AlertTitle>
-          {first && (
-            <AlertDescription>
-              {schedule?.basedOnId ? 'Next dose' : 'First dose'}:{' '}
-              {istanbulDate(new Date(first.dueAt)) === today
-                ? 'today'
-                : formatShortDay(first.dueAt, today)}{' '}
-              at {formatTime(first.dueAt)}.
-            </AlertDescription>
-          )}
-        </Alert>
-      )}
-      {justRestored && (
-        <Alert role="status" aria-label="Restored medication">
-          <Info aria-hidden="true" />
-          <AlertTitle>{medicine.label} restored</AlertTitle>
-          <AlertDescription>No schedule has restarted. Set one when you’re ready.</AlertDescription>
-        </Alert>
-      )}
-      {stopped?.stoppedAt && schedule?.id === stopped.id && (
-        <Alert role="status" aria-label="Stopped schedule">
-          <AlertTitle>Schedule stopped for {medicine.label}.</AlertTitle>
-          <AlertDescription>
-            No more doses after {formatTime(stopped.stoppedAt)} today.
-          </AlertDescription>
-        </Alert>
-      )}
-      {justPaused && paused && schedule?.id === justPaused.id && (
-        <PausedScheduleAlert label={medicine.label} />
-      )}
-      {resumed && schedule?.id === resumed.id && !ended && (
-        <ResumedScheduleAlert label={medicine.label} schedule={resumed} />
       )}
       <section
         aria-labelledby="routine-heading"
@@ -249,9 +155,6 @@ export function MedicationDetail({
               schedule={schedule}
               ended={Boolean(ended)}
               paused={Boolean(paused)}
-              onStopped={setStopped}
-              onPaused={setJustPaused}
-              onResumed={onResumed}
             />
           </>
         ) : (

@@ -9,6 +9,8 @@ import { medicineKeys, medicinesQuery } from '@/features/medicines/queries'
 import type { Medicine } from '@/features/medicines/contract'
 import { scheduleKeys, type ScheduleSnapshot } from '@/features/schedules/queries'
 import { createQueryClient } from '@/lib/session-query-client'
+import { Toaster } from '@/components/ui/toast'
+import { findConfirmation } from './helpers/toasts'
 import { server } from './helpers/msw-server'
 
 // Observe the external Drawer boundary without replacing its behavior.
@@ -110,7 +112,9 @@ function open(existingClient?: QueryClient) {
   window.history.replaceState(null, '', `/medications?medicine=${medicine.id}`)
   const view = render(
     <QueryClientProvider client={client}>
-      <MedicationsScreen initialNow={now} serverEntry />
+      <Toaster>
+        <MedicationsScreen initialNow={now} serverEntry />
+      </Toaster>
     </QueryClientProvider>,
   )
   return { ...view, client, user: userEvent.setup() }
@@ -120,10 +124,12 @@ const restoreAction = () => screen.getByRole('button', { name: 'Restore medicati
 const confirmAction = () => within(drawer()).getByRole('button', { name: /restor/i })
 const overlay = () => document.querySelector<HTMLElement>('[data-slot="drawer-overlay"]')!
 
-function expectRestoredDetail() {
-  // 292·S9: the notice, No schedule, Log a dose first and Set schedule separately.
-  expect(screen.getByRole('status', { name: 'Restored medication' })).toHaveTextContent(
-    'Magnesium restoredNo schedule has restarted. Set one when you’re ready.',
+async function expectRestoredDetail() {
+  // 292·S9 and #377: the restored Toast, No schedule, Log a dose first and Set schedule separately.
+  await findConfirmation(
+    'Magnesium restored',
+    'check',
+    'No schedule has restarted. Set one when you’re ready.',
   )
   expect(screen.getByText('No schedule', { exact: true })).toBeVisible()
   expect(screen.queryByText('Kept in History')).not.toBeInTheDocument()
@@ -173,7 +179,9 @@ test('Restore medication opens the 292·S8 confirmation; Close, Escape, backdrop
       ),
     ).toBeVisible()
     await dismiss()
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Restore Magnesium?' })).not.toBeInTheDocument(),
+    )
     await waitFor(() => expect(restoreAction()).toHaveFocus())
   }
   expect(attempts).toHaveLength(0)
@@ -231,10 +239,12 @@ test('known offline blocks, rejection keeps the Drawer, and a pending restore re
   await act(async () => {
     release()
   })
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'Restore Magnesium?' })).not.toBeInTheDocument(),
+  )
   // Same URL, now the restored detail.
   expect(window.location.search).toBe(`?medicine=${medicine.id}`)
-  expectRestoredDetail()
+  await expectRestoredDetail()
   await waitFor(() => expect(screen.getByRole('heading', { name: 'Magnesium' })).toHaveFocus())
   expect(attempts).toHaveLength(2)
   expect(attempts[1]).toMatchObject({ medicineId: medicine.id, expectedRevision: 2 })
@@ -268,7 +278,9 @@ test('an Unconfirmed restore retries the same attempt, reconciles on its receipt
   await user.click(confirmAction())
   expect(await screen.findByText('This medication changed elsewhere.')).toBeVisible()
   await user.click(screen.getByRole('button', { name: 'Review saved medication' }))
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'Restore Magnesium?' })).not.toBeInTheDocument(),
+  )
   expect(client.getQueryData<Medicine[]>(medicineKeys.list())?.[0].revision).toBe(3)
 
   // A receipt for another action is not this restore's.
@@ -284,10 +296,12 @@ test('an Unconfirmed restore retries the same attempt, reconciles on its receipt
   })
   phase = 'success'
   await user.click(screen.getByRole('button', { name: 'Retry restore' }))
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'Restore Magnesium?' })).not.toBeInTheDocument(),
+  )
   expect(attempts[2]).toEqual(attempts[1])
   expect(attempts[1]).toMatchObject({ expectedRevision: 3 })
-  expectRestoredDetail()
+  await expectRestoredDetail()
   unmount()
   client.clear()
 
@@ -305,9 +319,11 @@ test('an Unconfirmed restore retries the same attempt, reconciles on its receipt
   const again = open(second)
   await again.user.click(restoreAction())
   await again.user.click(confirmAction())
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'Restore Magnesium?' })).not.toBeInTheDocument(),
+  )
   expect(attempts).toHaveLength(1)
-  expectRestoredDetail()
+  await expectRestoredDetail()
   again.unmount()
   second.clear()
 })

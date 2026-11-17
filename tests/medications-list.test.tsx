@@ -19,6 +19,8 @@ import { medicineKeys } from '../src/features/medicines/queries'
 import { scheduleKeys } from '../src/features/schedules/queries'
 import { PrivateQueryHandoff } from '@/lib/private-query-handoff'
 import { createQueryClient } from '../src/lib/session-query-client'
+import { Toaster } from '../src/components/ui/toast'
+import { findConfirmation } from './helpers/toasts'
 import { server } from './helpers/msw-server'
 
 vi.mock('next/navigation', () => ({
@@ -461,7 +463,9 @@ describe('Done for now', () => {
     const medicationsScreen = () => (
       <RouterContext.Provider value={router}>
         <QueryClientProvider client={client}>
-          <MedicationsScreen initialNow="2026-11-14T08:00:00.000Z" />
+          <Toaster>
+            <MedicationsScreen initialNow="2026-11-14T08:00:00.000Z" />
+          </Toaster>
         </QueryClientProvider>
       </RouterContext.Provider>
     )
@@ -474,6 +478,8 @@ describe('Done for now', () => {
     await waitFor(() => expect(window.location.search).toBe(`?medicine=${saved.id}`))
     rerender(medicationsScreen())
     expect(await screen.findByRole('heading', { name: saved.label })).toHaveFocus()
+    // #377: the save confirmation is a Toast, not an inline Alert.
+    await findConfirmation(`${saved.label} saved.`, 'check')
     expect(await screen.findByText('No schedule', { exact: true })).toBeVisible()
     expect(
       screen.queryByText('Today lists its doses once it has a schedule, or when you log one.'),
@@ -485,7 +491,6 @@ describe('Done for now', () => {
     expect(
       await screen.findByRole('link', { name: `View details for ${saved.label}` }),
     ).toHaveFocus()
-    expect(screen.queryByText(`${saved.label} saved.`)).not.toBeInTheDocument()
   })
 })
 

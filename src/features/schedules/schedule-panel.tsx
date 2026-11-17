@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode, type Ref } from 'react'
+import type { ReactNode, Ref } from 'react'
 import type { Medicine } from '@/features/medicines/contract'
 import { useMedicines } from '@/features/medicines/queries'
 import { SchedulingClockProvider } from './scheduling-clock'
@@ -14,7 +14,6 @@ import { MedicationDetail } from './medication-detail'
 import { MedicationsList } from './medications-list'
 import { ArchivedMedications } from '@/features/medicines/archived-medications'
 import { ScheduleResumeScreen } from './schedule-resume-screen'
-import type { DailySchedule } from './contract'
 
 export function SchedulePanel({
   mode = 'setup',
@@ -25,15 +24,12 @@ export function SchedulePanel({
   focusMedicineId,
   onMedicineFocused,
   detailActions,
-  justSaved,
-  justScheduled,
   detailHeadingRef,
   record,
   periodId,
   onRecordSaved,
   onArchiveRequested,
   onRestoreRequested,
-  justRestored,
   onDeleteRequested,
 }: {
   /** The server scheduling time at render, until a newer schedules snapshot replaces it. */
@@ -46,15 +42,11 @@ export function SchedulePanel({
   serverEntry?: boolean
   focusMedicineId?: string | null
   onMedicineFocused?: () => void
-  justSaved?: boolean
-  justScheduled?: boolean
   detailActions?: ReactNode
   record?: 'fix' | 'strength' | 'history'
   periodId?: string
   onArchiveRequested?: (medicine: Medicine) => void
   onRestoreRequested?: (medicine: Medicine) => void
-  /** This panel confirmed the detail medicine's restore (292·S9). */
-  justRestored?: boolean
   onDeleteRequested?: (medicine: Medicine) => void
   onRecordSaved?: (medicine: MedicineRecord, kind: 'fix' | 'strength') => void
   detailHeadingRef?: Ref<HTMLHeadingElement>
@@ -65,15 +57,6 @@ export function SchedulePanel({
   // The latest server scheduling time anchors the clock: a snapshot cached before this render
   // is older than `initialNow`, one read since is newer.
   const now = snapshot && snapshot.now > initialNow ? snapshot.now : initialNow
-  // A confirmed resume, carried from the Resume schedule screen to the detail it replaces. Any
-  // other screen drops it, so Back never shows it again.
-  const [resumed, setResumed] = useState<DailySchedule | null>(null)
-  const screen = `${mode}:${initialMedicineId}`
-  const [previousScreen, setPreviousScreen] = useState(screen)
-  if (previousScreen !== screen) {
-    setPreviousScreen(screen)
-    if (resumed && (mode !== 'detail' || initialMedicineId !== resumed.medicineId)) setResumed(null)
-  }
   return (
     <SchedulingClockProvider serverNow={now}>
       <div className="space-y-10">
@@ -107,12 +90,7 @@ export function SchedulePanel({
             actions={detailActions}
             onArchiveRequested={onArchiveRequested}
             onRestoreRequested={onRestoreRequested}
-            justRestored={justRestored}
             onDeleteRequested={onDeleteRequested}
-            justSaved={justSaved}
-            justScheduled={justScheduled}
-            resumed={resumed}
-            onResumed={setResumed}
             headingRef={detailHeadingRef}
           />
         )}
@@ -121,7 +99,6 @@ export function SchedulePanel({
             schedulesRead={schedulesRead}
             now={now}
             medicineId={initialMedicineId}
-            onResumed={setResumed}
             serverEntry={serverEntry}
           />
         )}

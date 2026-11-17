@@ -25,6 +25,7 @@ import { useMedicines } from '@/features/medicines/queries'
 import { cn } from '@/lib/utils'
 import type { DailySchedule } from './contract'
 import { ScheduleDiscardDrawer, ScheduleSetupHeader } from './interval-setup-parts'
+import { confirmScheduleSaved } from './medication-confirmations'
 import { scheduleKeys, type SchedulesRead } from './queries'
 import { ScheduleKindForms } from './schedule-kind-forms'
 import { discardScheduleDrafts, hasScheduleEdits, scheduleDraftBase } from './schedule-setup-drafts'
@@ -34,7 +35,7 @@ import { useScheduleAttempt } from './use-schedule-save'
  * Schedule setup for the `?schedule=ID` medicine, a full-screen modal that covers the tab bar
  * (212·C0). With no schedule it sets the first one; otherwise it changes the
  * current Schedule version (215·A2 to S2). The form shows only once Meddies knows which;
- * `onSaved` runs after server confirmation.
+ * after server confirmation the saved Toast shows and `onSaved` runs.
  */
 export function ScheduleSetupForm({
   schedulesRead: { schedules, loading, loadError, retry: retrySchedules },
@@ -98,7 +99,9 @@ export function ScheduleSetupForm({
 
   function saved(confirmed: DailySchedule) {
     setSavedId(confirmed.id)
-    if (medicine) onSaved?.(medicine)
+    if (!medicine) return
+    confirmScheduleSaved(medicine.label, confirmed)
+    onSaved?.(medicine)
   }
 
   function leave() {
@@ -135,7 +138,8 @@ export function ScheduleSetupForm({
     )
   else if (loadError) body = <ScheduleUnchecked name={medicine.label} onRetry={retrySchedules} />
   else if (schedule && schedule.id === savedId)
-    body = <p role="status">Schedule saved for {medicine.label}.</p>
+    // The Toast announces the save; this only holds the screen while it closes.
+    body = <p>Schedule saved for {medicine.label}.</p>
   else if (conflict || (schedule && !current))
     body = (
       <Alert role="status">

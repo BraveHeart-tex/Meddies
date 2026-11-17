@@ -13,6 +13,8 @@ import { resumeDraftKey } from '../src/features/schedules/schedule-resume-screen
 import { ALL_WEEKDAYS } from '../src/features/schedules/weekdays'
 import { writeSessionDraft } from '../src/lib/session-drafts'
 import { createQueryClient } from '../src/lib/session-query-client'
+import { Toaster } from '../src/components/ui/toast'
+import { findConfirmation } from './helpers/toasts'
 import { server } from './helpers/msw-server'
 
 vi.mock('next/navigation', () => ({
@@ -126,7 +128,9 @@ const router = { prefetch: async () => {} } as unknown as NextRouter
 const screenAt = () => (
   <RouterContext.Provider value={router}>
     <QueryClientProvider client={client}>
-      <MedicationsScreen initialNow={initialNow} />
+      <Toaster>
+        <MedicationsScreen initialNow={initialNow} />
+      </Toaster>
     </QueryClientProvider>
   </RouterContext.Provider>
 )
@@ -186,15 +190,7 @@ describe('Resume a Clock schedule', () => {
     const { user, saves } = await openDetail([clockPaused])
     resumeButton().focus()
     await user.keyboard('{Enter}')
-    const alert = await screen.findByRole('status', { name: 'Resumed schedule' })
-    expect(alert).toHaveTextContent('Schedule resumed for Magnesium.')
-    expect(alert).toHaveTextContent('Next dose: today at 20:00.')
-    // #286: a default Alert above the actions, not the dark confirmation block.
-    // eslint-disable-next-line meddies/no-cosmetic-class-assertions -- the variant is the signal
-    expect(alert).toHaveClass('bg-card')
-    expect(
-      alert.compareDocumentPosition(button('Pause')) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
+    await findConfirmation('Schedule resumed for Magnesium.', 'check', 'Next dose: today at 20:00.')
     expect(screen.getByText('Changed Mon 9 Nov')).toBeVisible()
     expect(button('Pause')).toBeVisible()
     expect(button('Stop schedule')).toBeVisible()
@@ -208,7 +204,9 @@ describe('Resume a Clock schedule', () => {
       paused({ times: [{ time: '08:00', quantity: 1 }], endDate: '2026-11-09' }),
     ])
     await user.click(resumeButton())
-    expect(await screen.findByRole('status', { name: 'Resumed schedule' })).toHaveTextContent(
+    await findConfirmation(
+      'Schedule resumed for Magnesium.',
+      'check',
       'No more doses are due. Today is its Last day.',
     )
   })
@@ -216,7 +214,9 @@ describe('Resume a Clock schedule', () => {
   test('#26 a schedule resumed before its start date names its first dose', async () => {
     const { user } = await openDetail([paused({ startDate: '2026-11-10' })])
     await user.click(resumeButton())
-    expect(await screen.findByRole('status', { name: 'Resumed schedule' })).toHaveTextContent(
+    await findConfirmation(
+      'Schedule resumed for Magnesium.',
+      'check',
       'Next dose: Tue 10 Nov at 08:00.',
     )
   })
@@ -243,7 +243,7 @@ describe('Resume a Clock schedule', () => {
     expect(retry).toHaveAccessibleDescription(/might not have saved/)
     expect(button('Stop schedule')).toBeEnabled()
     await user.click(retry)
-    expect(await screen.findByRole('status', { name: 'Resumed schedule' })).toBeVisible()
+    expect(await findConfirmation('Schedule resumed for Magnesium.', 'check')).toBeVisible()
     expect(saves).toHaveLength(2)
     expect(saves[1]).toEqual(saves[0])
   })
@@ -311,8 +311,7 @@ describe('Resume an Interval schedule', () => {
     await user.click(button('Resume schedule'))
     await waitFor(() => expect(window.location.search).toBe(`?medicine=${magnesium.id}`))
     view.rerender(screenAt())
-    const alert = await screen.findByRole('status', { name: 'Resumed schedule' })
-    expect(alert).toHaveTextContent('Next dose: today at 14:00.')
+    await findConfirmation('Schedule resumed for Magnesium.', 'check', 'Next dose: today at 14:00.')
     // The running Interval card counts from the new Anchor.
     expect(screen.getByText(/^Starts .* at 14:00$/)).toBeVisible()
     expect(button('Pause')).toBeVisible()

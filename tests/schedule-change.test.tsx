@@ -1,5 +1,5 @@
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
@@ -8,6 +8,8 @@ import { ALL_WEEKDAYS } from '../src/features/schedules/weekdays'
 import type { DailySchedule } from '../src/features/schedules/contract'
 import { scheduleToday } from '../src/features/schedules/occurrences'
 import { SchedulePanel } from '../src/features/schedules/schedule-panel'
+import { confirmScheduleSaved } from '../src/features/schedules/medication-confirmations'
+import { Toaster } from '../src/components/ui/toast'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
 
@@ -122,16 +124,17 @@ function api(initial: DailySchedule[], respond?: Respond, medicine: Medicine = m
   return { edits }
 }
 
-function panel(mode: 'setup' | 'detail', onSaved = vi.fn(), justScheduled = false) {
+function panel(mode: 'setup' | 'detail', onSaved = vi.fn()) {
   return (
     <QueryClientProvider client={client}>
-      <SchedulePanel
-        mode={mode}
-        initialMedicineId={magnesium.id}
-        initialNow={initialNow}
-        onScheduleSaved={onSaved}
-        justScheduled={justScheduled}
-      />
+      <Toaster>
+        <SchedulePanel
+          mode={mode}
+          initialMedicineId={magnesium.id}
+          initialNow={initialNow}
+          onScheduleSaved={onSaved}
+        />
+      </Toaster>
     </QueryClientProvider>
   )
 }
@@ -194,10 +197,10 @@ async function chooseFirstTime(user: User, time: string) {
 }
 
 describe('Medication detail', () => {
-  function renderDetail(schedules: DailySchedule[], justScheduled = false) {
+  function renderDetail(schedules: DailySchedule[]) {
     window.history.replaceState(null, '', `/medications${detailSearch}`)
     api(schedules)
-    render(panel('detail', vi.fn(), justScheduled))
+    render(panel('detail'))
   }
 
   test('215·A1 offers Change schedule under the schedule card', async () => {
@@ -219,18 +222,12 @@ describe('Medication detail', () => {
       confirmedAt: initialNow,
       basedOnId: clockVersion.id,
     }
-    renderDetail([{ ...clockVersion, replacedAt: initialNow }, changed], true)
-    const saved = await screen.findByRole('status', { name: 'Saved schedule' })
-    expect(saved).toHaveTextContent('Schedule saved for Magnesium.')
-    expect(saved).toHaveTextContent('Next dose: today at 14:00.')
-    // #286: a default Alert above the actions, not the dark confirmation block.
-    // eslint-disable-next-line meddies/no-cosmetic-class-assertions -- the variant is the signal
-    expect(saved).toHaveClass('bg-card')
+    renderDetail([{ ...clockVersion, replacedAt: initialNow }, changed])
+    expect(await screen.findByText('Changed Mon 9 Nov')).toBeVisible()
+    act(() => confirmScheduleSaved(magnesium.label, changed))
     expect(
-      saved.compareDocumentPosition(screen.getByRole('link', { name: 'Change schedule' })) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-    expect(screen.getByText('Changed Mon 9 Nov')).toBeVisible()
+      await screen.findByRole('dialog', { name: 'Schedule saved for Magnesium.' }),
+    ).toHaveTextContent('Next dose: today at 14:00.')
     // Only the current Schedule version is shown.
     expect(screen.getAllByText('08:00')).toHaveLength(1)
     expect(screen.getByText('14:00')).toBeVisible()
@@ -652,10 +649,10 @@ describe('the Last day', () => {
 })
 
 describe('Medication detail with a Last day', () => {
-  function renderDetail(schedules: DailySchedule[], justScheduled = false) {
+  function renderDetail(schedules: DailySchedule[]) {
     window.history.replaceState(null, '', `/medications${detailSearch}`)
     api(schedules)
-    render(panel('detail', vi.fn(), justScheduled))
+    render(panel('detail'))
   }
 
   test('227·A13 a running Clock schedule shows its Last day under Started', async () => {
@@ -697,13 +694,12 @@ describe('Medication detail with a Last day', () => {
       confirmedAt: initialNow,
       basedOnId: clockVersion.id,
     }
-    renderDetail(
-      [{ ...clockVersion, endDate: '2026-11-03', replacedAt: initialNow }, restarted],
-      true,
-    )
-    const saved = await screen.findByRole('status', { name: 'Saved schedule' })
-    expect(saved).toHaveTextContent('Next dose: today at 20:00.')
-    expect(screen.getByText('Changed Mon 9 Nov')).toBeVisible()
+    renderDetail([{ ...clockVersion, endDate: '2026-11-03', replacedAt: initialNow }, restarted])
+    expect(await screen.findByText('Changed Mon 9 Nov')).toBeVisible()
+    act(() => confirmScheduleSaved(magnesium.label, restarted))
+    expect(
+      await screen.findByRole('dialog', { name: 'Schedule saved for Magnesium.' }),
+    ).toHaveTextContent('Next dose: today at 20:00.')
     expect(screen.queryByText(/^Ended/)).not.toBeInTheDocument()
   })
 })

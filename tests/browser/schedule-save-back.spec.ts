@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from './fixtures'
 import { waitForClientRouter } from './actions'
+import { toastMessage } from './locators'
 import { insertScheduledMedicine } from './seed'
 
 // #284: a schedule save opened from a medication's page returns to that page's own entry.
@@ -31,9 +32,11 @@ async function saveChange(page: Page, quantity: string) {
     .first()
     .fill(quantity)
   await page.getByRole('button', { name: 'Save changes' }).press('Enter')
-  await expect(page.getByText('Schedule saved for Back Fixture Medicine.')).toBeVisible()
+  await expect(toastMessage(page, 'Schedule saved for Back Fixture Medicine.')).toBeVisible()
   await expect(page).toHaveURL(detailUrl)
-  await expect(page.getByRole('heading', { name: 'Back Fixture Medicine' })).toBeFocused()
+  await expect(
+    page.getByRole('heading', { name: 'Back Fixture Medicine', exact: true }),
+  ).toBeFocused()
 }
 
 const scheduleCard = (page: Page) => page.getByRole('region', { name: 'Schedule', exact: true })

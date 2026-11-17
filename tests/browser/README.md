@@ -221,6 +221,13 @@ MEDDIES_DELETE_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-delete pnpm test:browse
 
 ```
 
+A long label's confirmation Toast at 320x693 (1 screenshot, `toast-long-label-320.png`) checks
+that the label wraps, Dismiss stays 44px and nothing scrolls horizontally:
+
+```sh
+MEDDIES_TOAST_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-toast pnpm test:browser:visual screen-capture --grep "long label confirmation"
+```
+
 Archive confirmation and the archived detail it lands on (2 screenshots at 402x874) also check
 keyboard focus and swipe dismissal, including refusal while pending:
 

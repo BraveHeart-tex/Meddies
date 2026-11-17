@@ -25,6 +25,7 @@ import { istanbulDate, type DailySchedule } from './contract'
 import { ScheduleSetupHeader } from './interval-setup-parts'
 import { pausedOn } from './last-day'
 import { scheduleKeys, type SchedulesRead } from './queries'
+import { confirmResumed } from './medication-confirmations'
 import { ResumeScheduleForm } from './resume-schedule-form'
 import { useScheduleCommand } from './use-schedule-command'
 import { useScheduleNow } from './use-schedule-now'
@@ -38,20 +39,18 @@ const leaveTo = (medicineId: string) =>
 /**
  * The `?resume=ID` screen: a paused Interval schedule asks for a new Anchor before it runs again
  * (233·A9 to A13, S5), a full-screen modal over the tab bar like Change schedule. Opens on the
- * paused version it was given; anything else returns to Medication detail. `onResumed` runs
- * after server confirmation, then the detail shows the running card.
+ * paused version it was given; anything else returns to Medication detail. After server
+ * confirmation the resume Toast shows and the detail shows the running card.
  */
 export function ScheduleResumeScreen({
   schedulesRead: { schedules, loading, loadError, retry: retrySchedules },
   now,
   medicineId,
-  onResumed,
   serverEntry = false,
 }: {
   schedulesRead: SchedulesRead
   now: string
   medicineId: string
-  onResumed: (resumed: DailySchedule) => void
   serverEntry?: boolean
 }) {
   const medicinesRead = useMedicines({ serverEntry })
@@ -98,13 +97,7 @@ export function ScheduleResumeScreen({
     >
       <div className="mx-auto flex min-h-full max-w-2xl flex-col gap-5 px-5 pt-[calc(0.875rem+env(safe-area-inset-top,0px))]">
         {current && resumable ? (
-          <ResumeBody
-            medicine={medicine}
-            current={current}
-            today={today}
-            now={liveNow}
-            onResumed={onResumed}
-          />
+          <ResumeBody medicine={medicine} current={current} today={today} now={liveNow} />
         ) : (
           <>
             <ScheduleSetupHeader
@@ -132,20 +125,18 @@ function ResumeBody({
   current,
   today,
   now,
-  onResumed,
 }: {
   medicine: Medicine
   current: DailySchedule
   today: string
   now: string
-  onResumed: (resumed: DailySchedule) => void
 }) {
   const client = useQueryClient()
   const offline = useKnownOffline()
   const draftKey = resumeDraftKey(current.id)
   const save = useScheduleCommand('resume', medicine, current, (resumed) => {
     discardSessionFormDraft(client, draftKey)
-    onResumed(resumed)
+    confirmResumed(medicine.label, resumed)
     returnToMedicationPage(medicine.id)
   })
   return (

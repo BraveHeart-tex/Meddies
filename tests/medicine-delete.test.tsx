@@ -8,6 +8,8 @@ import { MedicationsScreen } from '@/features/medicines/medications-screen'
 import { medicineKeys, medicinesQuery } from '@/features/medicines/queries'
 import { scheduleKeys } from '@/features/schedules/queries'
 import { createQueryClient } from '@/lib/session-query-client'
+import { Toaster } from '@/components/ui/toast'
+import { findConfirmation } from './helpers/toasts'
 import { server } from './helpers/msw-server'
 
 // Observe the external Drawer boundary without replacing its behavior.
@@ -77,7 +79,9 @@ function open(
   window.history.replaceState(null, '', `/medications?medicine=${medicine.id}`)
   const view = render(
     <QueryClientProvider client={client}>
-      <MedicationsScreen initialNow={now} serverEntry />
+      <Toaster>
+        <MedicationsScreen initialNow={now} serverEntry />
+      </Toaster>
     </QueryClientProvider>,
   )
   return { ...view, client, user: userEvent.setup() }
@@ -121,7 +125,9 @@ test('only explicitly unused Medicines offer Delete; dismissal discards confirma
     ).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
     await dismiss()
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Delete Vitamin D?' })).not.toBeInTheDocument(),
+    )
     await waitFor(() => expect(deleteAction()).toHaveFocus())
   }
   unmount()
@@ -171,7 +177,9 @@ test('offline, rejection, conflict review and unknown receipts preserve the reco
   phase = 'conflict'
   await user.click(deleteAction())
   await user.click(await screen.findByRole('button', { name: 'Review saved medication' }))
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'Delete Vitamin D?' })).not.toBeInTheDocument(),
+  )
   phase = 'unknown'
   await user.click(deleteAction())
   await user.click(within(drawer()).getByRole('button', { name: 'Delete medication' }))
@@ -198,7 +206,8 @@ test('offline, rejection, conflict review and unknown receipts preserve the reco
     release()
   })
   await waitFor(() => expect(window.location.search).toBe(''))
-  expect(await screen.findByRole('status')).toHaveTextContent('Vitamin D deleted')
+  // #377: the deletion Toast on Medications, no glyph.
+  await findConfirmation('Vitamin D deleted', 'none', 'This medication had no schedule or doses.')
   expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
   expect(screen.queryByRole('link', { name: 'View details for Vitamin D' })).not.toBeInTheDocument()
   expect(attempts[2]).toMatchObject({ medicineId: medicine.id, expectedRevision: 2 })

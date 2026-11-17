@@ -4,7 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { expect, test, vi } from 'vitest'
 import { MedicineRecordScreen } from '../src/features/medicines/medicine-record-screen'
-import { useMedicines } from '../src/features/medicines/queries'
+import { medicineKeys, useMedicines } from '../src/features/medicines/queries'
+import { MedicinePanel } from '../src/features/medicines/medicine-panel'
+import { Toaster } from '../src/components/ui/toast'
 import { scheduleKeys, type ScheduleSnapshot } from '../src/features/schedules/queries'
 import { MedicineRecordForm } from '../src/features/medicines/medicine-record-form'
 import type { MedicineRecord } from '../src/features/medicines/contract'
@@ -13,6 +15,7 @@ import { medicineRecordKey } from '../src/features/medicines/use-medicine-record
 import { createQueryClient } from '../src/lib/session-query-client'
 import { SchedulingClockProvider } from '../src/features/schedules/scheduling-clock'
 import { server } from './helpers/msw-server'
+import { findConfirmation } from './helpers/toasts'
 
 export const medicine: MedicineRecord = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -683,4 +686,96 @@ test('locked Liquid describes its later current period and retains singular ml',
   expect(within(group).getAllByLabelText('Can’t change')).toHaveLength(2)
   expect(screen.queryByRole('combobox', { name: 'Type' })).not.toBeInTheDocument()
   expect(screen.getByText(/This period started Wed 4 Nov at 09:00\./)).toBeVisible()
+})
+
+// #377: a confirmed record save returns to Medication detail with its Toast. Catches the
+// confirmation going back inline or dropping its check.
+test.each([
+  ['fix', 'Save details', 'Fixed details saved'],
+  ['strength', 'Save strength change', 'Strength change saved'],
+] as const)('a confirmed %s save shows its Toast', async (mode, saveLabel, title) => {
+  const now = '2026-11-15T07:00:00.000Z'
+  server.use(
+    http.patch('/api/medicines', async ({ request }) => {
+      const body = (await request.json()) as {
+        correction?: { actionId: string; strength: string }
+        change?: { actionId: string; effectiveAt: string; strength: string }
+      }
+      const { change, correction } = body
+      const actionId = (change ?? correction)!.actionId
+      return HttpResponse.json({
+        medicines: [
+          {
+            ...medicine,
+            revision: 2,
+            lastActionId: actionId,
+            ...(correction && {
+              strength: correction.strength,
+              strengthRevisions: medicine.strengthRevisions.map((r, i) =>
+                i === 1 ? { ...r, strength: correction.strength } : r,
+              ),
+            }),
+            ...(change && {
+              strength: change.strength,
+              currentStrengthRevisionId: actionId,
+              strengthRevisions: [
+                ...medicine.strengthRevisions,
+                {
+                  id: actionId,
+                  strength: change.strength,
+                  label: medicine.label,
+                  unit: medicine.unit,
+                  effectiveAt: change.effectiveAt,
+                  previousValues: [],
+                },
+              ],
+            }),
+          },
+        ],
+      })
+    }),
+    http.get('/api/medicines', () => HttpResponse.json({ medicines: [medicine] })),
+    http.get('/api/schedules', () =>
+      HttpResponse.json({ schedules: [], records: [], date: '2026-11-15', now }),
+    ),
+  )
+  const periodId = medicine.currentStrengthRevisionId
+  const client = createQueryClient()
+  client.setQueryData(medicineKeys.list(), [medicine])
+  client.setQueryData<ScheduleSnapshot>(scheduleKeys.snapshot(), {
+    schedules: [],
+    records: [],
+    now,
+    date: '2026-11-15',
+  })
+  if (mode === 'strength')
+    writeSessionDraft(client, medicineRecordKey(medicine.id, mode, periodId), {
+      label: medicine.label,
+      strength: '600 mg',
+      unit: medicine.unit,
+      date: '2026-11-15',
+      time: '09:00',
+      expectedRevision: medicine.revision,
+    })
+  render(
+    <QueryClientProvider client={client}>
+      <Toaster>
+        <MedicinePanel
+          scheduleMode="detail"
+          detailMedicineId={medicine.id}
+          record={mode}
+          periodId={periodId}
+          initialNow={now}
+          serverEntry
+        />
+      </Toaster>
+    </QueryClientProvider>,
+  )
+  const user = userEvent.setup()
+  if (mode === 'fix') {
+    await user.clear(await screen.findByRole('textbox', { name: /Strength/ }))
+    await user.type(screen.getByRole('textbox', { name: /Strength/ }), '450 mg')
+  }
+  await user.click(await screen.findByRole('button', { name: saveLabel }))
+  await findConfirmation(title, 'check')
 })

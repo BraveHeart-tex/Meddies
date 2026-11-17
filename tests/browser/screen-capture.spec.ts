@@ -749,11 +749,48 @@ test(
     await expect(confirmation).toBeVisible()
     app.worker.release(deletion)
     await expect(page).toHaveURL(`${app.origin}/medications`)
-    await expect(page.getByRole('status')).toContainText('Vitamin D deleted')
+    await expect(toastMessage(page, 'Vitamin D deleted')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeFocused()
     await expect(page.getByRole('link', { name: 'View details for Vitamin D' })).toHaveCount(0)
     await expect.poll(() => scrollsHorizontally(page)).toBe(false)
     await page.screenshot({ path: resolve(out!, 'delete-result-402.png'), fullPage: true })
+  },
+)
+
+// Opt-in #377 evidence: at 320px a long label's confirmation Toast wraps and keeps its
+// 44px Dismiss, with no horizontal overflow.
+test(
+  'capture a long label confirmation Toast at 320px',
+  { tag: '@visual' },
+  async ({ page, app }) => {
+    // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
+    test.skip(!out || process.env.MEDDIES_TOAST_CAPTURE !== '1', 'Set MEDDIES_TOAST_CAPTURE=1')
+    await mkdir(resolve(out!), { recursive: true })
+    await page.setViewportSize({ width: 320, height: 693 })
+    const id = '00000000-0000-4000-8000-0000000d0377'
+    const label = 'Amoxicillin with clavulanic acid oral suspension'
+    await app.api('POST', '/api/medicines', { id, label, strength: '', unit: 'tablet' })
+    await page.goto(`/medications?medicine=${id}`)
+    await page.getByRole('button', { name: 'Delete medication' }).click()
+    await page
+      .getByRole('dialog', { name: `Delete ${label}?` })
+      .getByRole('button', { name: 'Delete medication' })
+      .click()
+    await expect(page).toHaveURL(`${app.origin}/medications`)
+    const title = toastMessage(page, `${label} deleted`)
+    await expect(title).toBeVisible()
+    // Base UI shows Dismiss once pointer or focus expands the stack.
+    await title.hover()
+    const dismiss = page
+      .getByRole('region', { name: 'Notifications' })
+      .getByRole('button', { name: 'Dismiss' })
+    await expect(dismiss).toBeVisible()
+    const target = (await dismiss.boundingBox())!
+    expect([target.width, target.height]).toEqual([44, 44])
+    // The label wraps: one line of the title is about 20px tall.
+    expect((await title.boundingBox())!.height).toBeGreaterThan(30)
+    expect(await scrollsHorizontally(page)).toBe(false)
+    await captureSettled(page, { path: resolve(out!, 'toast-long-label-320.png') })
   },
 )
 

@@ -1,13 +1,17 @@
 'use client'
 
-import { Info } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  confirmDeleted,
+  confirmMedicationSaved,
+  confirmRecordSaved,
+  confirmRestored,
+} from '@/features/schedules/medication-confirmations'
 import { SchedulePanel } from '@/features/schedules/schedule-panel'
 import { buttonVariants } from '@/components/ui/button'
 import { MedicineArchiveDrawer } from './medicine-archive-drawer'
 import { MedicineDeleteDrawer } from './medicine-delete-drawer'
 import { MedicineAddDrawer } from './medicine-add-drawer'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import type { Medicine } from './contract'
 import { MedicationsLink, returnToMedicationPage, showMedicationsView } from './medications-nav'
 import { medicationsHref } from './routes'
@@ -43,15 +47,13 @@ export function MedicinePanel({
   const [focusMedicineId, setFocusMedicineId] = useState<string | null>(null)
   const [archive, setArchive] = useState<{ medicine: Medicine; open: boolean } | null>(null)
   const [restore, setRestore] = useState<{ medicine: Medicine; open: boolean } | null>(null)
-  // The restore this panel confirmed (292·S9), until the user leaves that medicine's page.
-  const [restoredId, setRestoredId] = useState<string | null>(null)
   const [deletion, setDeletion] = useState<{ medicine: Medicine; open: boolean } | null>(null)
-  const [deletedLabel, setDeletedLabel] = useState<string | null>(null)
-  const [recordMessage, setRecordMessage] = useState<string | null>(null)
   const mounted = useRef(true)
   const mode = useRef(scheduleMode)
   const setupMedicineId = useRef(scheduleMedicineId)
   const detailHeading = useRef<HTMLHeadingElement>(null)
+  // A confirmed record save hands focus to the detail heading it returns to.
+  const focusAfterRecord = useRef(false)
   useEffect(() => {
     mounted.current = true
     return () => {
@@ -64,16 +66,12 @@ export function MedicinePanel({
   }, [scheduleMode, scheduleMedicineId])
   const justSavedHere = scheduleMode === 'detail' && savedMedicine?.id === detailMedicineId
   const justScheduledHere = scheduleMode === 'detail' && scheduledMedicine?.id === detailMedicineId
-  // The panel stays mounted across query-state navigation, so drop the confirmation once she
-  // leaves the saved medicine's page (Back must not show it again).
+  // The panel stays mounted across query-state navigation, so drop the handoff once she
+  // leaves the saved medicine's page (Back must not offer Done for now again).
   const screen = `${scheduleMode}:${detailMedicineId}:${record ?? ''}`
   const [previousScreen, setPreviousScreen] = useState(screen)
   if (previousScreen !== screen) {
     setPreviousScreen(screen)
-    if (deletedLabel && scheduleMode !== 'list') setDeletedLabel(null)
-    if (recordMessage && (record || scheduleMode !== 'detail')) setRecordMessage(null)
-    if (restoredId && (record || scheduleMode !== 'detail' || detailMedicineId !== restoredId))
-      setRestoredId(null)
     if (savedMedicine && scheduleMode !== 'add' && !justSavedHere) setSavedMedicine(null)
     if (scheduledMedicine && scheduleMode !== 'setup' && !justScheduledHere)
       setScheduledMedicine(null)
@@ -85,8 +83,10 @@ export function MedicinePanel({
   }, [justSavedHere, justScheduledHere])
 
   useEffect(() => {
-    if (recordMessage && !record) detailHeading.current?.focus()
-  }, [recordMessage, record])
+    if (record || !focusAfterRecord.current) return
+    focusAfterRecord.current = false
+    detailHeading.current?.focus()
+  }, [record])
 
   function scheduled(medicine: Medicine) {
     setScheduledMedicine(medicine)
@@ -96,6 +96,7 @@ export function MedicinePanel({
   }
 
   function saved(medicine: Medicine) {
+    confirmMedicationSaved(medicine.label)
     setSavedMedicine(medicine)
     // Never navigate someone who has already left the Add screen.
     if (mounted.current && mode.current === 'add')
@@ -104,31 +105,16 @@ export function MedicinePanel({
 
   return (
     <>
-      {recordMessage && !record && (
-        <Alert role="status">
-          <AlertTitle>{recordMessage}</AlertTitle>
-        </Alert>
-      )}
-      {deletedLabel && scheduleMode === 'list' && (
-        <Alert role="status">
-          <Info aria-hidden="true" />
-          <AlertTitle>{deletedLabel} deleted</AlertTitle>
-          <AlertDescription>This medication had no schedule or doses.</AlertDescription>
-        </Alert>
-      )}
       {loading ?? (
         <SchedulePanel
-          onArchiveRequested={(medicine) => {
-            setRestoredId(null)
-            setArchive({ medicine, open: true })
-          }}
+          onArchiveRequested={(medicine) => setArchive({ medicine, open: true })}
           onRestoreRequested={(medicine) => setRestore({ medicine, open: true })}
-          justRestored={scheduleMode === 'detail' && !record && restoredId === detailMedicineId}
           onDeleteRequested={(medicine) => setDeletion({ medicine, open: true })}
           record={record}
           periodId={periodId}
           onRecordSaved={(medicine, kind) => {
-            setRecordMessage(kind === 'fix' ? 'Fixed details saved' : 'Strength change saved')
+            confirmRecordSaved(kind)
+            focusAfterRecord.current = true
             returnToMedicationPage(medicine.id)
           }}
           initialNow={initialNow}
@@ -140,8 +126,6 @@ export function MedicinePanel({
           focusMedicineId={focusMedicineId}
           onMedicineFocused={() => setFocusMedicineId(null)}
           detailHeadingRef={detailHeading}
-          justSaved={justSavedHere}
-          justScheduled={justScheduledHere}
           detailActions={
             justSavedHere ? (
               <MedicationsLink
@@ -186,7 +170,7 @@ export function MedicinePanel({
           // The confirmed record is cached, so this same page now shows the restored detail.
           onSaved={() => {
             setRestore({ ...restore, open: false })
-            setRestoredId(restore.medicine.id)
+            confirmRestored(restore.medicine.label)
           }}
           heading={detailHeading}
         />
@@ -204,7 +188,7 @@ export function MedicinePanel({
           onClose={() => setDeletion({ ...deletion, open: false })}
           onDeleted={() => {
             setDeletion({ ...deletion, open: false })
-            setDeletedLabel(deletion.medicine.label)
+            confirmDeleted(deletion.medicine.label)
             showMedicationsView(medicationsHref({ mode: 'list' }), 'replace')
           }}
         />
