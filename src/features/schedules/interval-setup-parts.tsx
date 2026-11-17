@@ -85,7 +85,7 @@ export function IntervalRow({
         onClick={onClick}
         aria-label={`${label}: ${value ?? 'Choose'}`}
         aria-describedby={error ? errorId : undefined}
-        className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left outline-none active:bg-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring disabled:opacity-70"
+        className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left active:bg-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring disabled:opacity-70"
       >
         <span className="min-w-0 flex-1 text-body-lg font-bold">{label}</span>
         <span className={cn('text-body-lg font-extrabold', !value && 'text-primary')}>

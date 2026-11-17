@@ -9,7 +9,7 @@ import { calendarDay, dateValue, formatTodayRelativeDay } from '@/lib/calendar-d
 import { cn } from '@/lib/utils'
 
 export const pickerTriggerClassName =
-  'flex min-h-12 w-full min-w-0 items-center gap-2 [&>svg]:size-4.5 rounded-md border border-input bg-card py-2 pr-4 pl-4 text-left text-base font-semibold text-foreground transition-colors duration-140 ease-calm outline-none select-none active:bg-secondary focus-visible:border-ring focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 data-popup-open:border-ring aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20'
+  'flex min-h-12 w-full min-w-0 items-center gap-2 [&>svg]:size-4.5 rounded-md border border-input bg-card py-2 pr-4 pl-4 text-left text-base font-semibold text-foreground transition-colors duration-140 ease-calm select-none active:bg-secondary focus-visible:border-ring focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 data-popup-open:border-ring aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20'
 
 /** What a form library needs to focus a picker, such as React Hook Form's `field.ref`. */
 export type PickerHandle = { focus: () => void }

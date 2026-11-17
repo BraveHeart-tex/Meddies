@@ -38,14 +38,15 @@ function focusScenarios(checkRing: (actual: unknown, expected: unknown) => void)
     { path: '/', role: 'button', name: `I took it, ${label} at 09:01` },
     { path: '/history', role: 'button', name: 'Previous day' },
     { path: '/medications', role: 'link', name: 'Add a medication' },
-    { path: '/settings', role: 'button', name: 'Sign out' },
+    // Quiet hours' switch (#381) comes before Sign out once its saved value loads.
+    { path: '/settings', role: 'switch', name: 'Quiet hours on all your devices' },
   ] as const) {
     test(`first load of ${path} focuses the page title`, async ({ page }) => {
       await page.goto(path)
       const title = page.getByRole('heading', { level: 1 })
       await expect(title).toBeFocused()
       checkRing(await focusRing(title), noRing)
-      // Today's doses arrive after the title, and its first control is among them.
+      // Each page's first control can arrive after the title, as Today's doses do.
       const control = page.getByRole(role, { name })
       await expect(control).toBeVisible()
       await expect(title).toBeFocused()
@@ -114,6 +115,10 @@ test.describe('script focus', () => {
   test('a Reminder link opens its dose drawer once', async ({ page, app }) => {
     const dialog = drawer(page)
     await page.goto('/settings')
+    // Settings reads Quiet hours in the browser (#381); count only after that read lands.
+    await expect(
+      page.getByRole('switch', { name: 'Quiet hours on all your devices' }),
+    ).toBeVisible()
     const api = countApiRequests(page, app.origin)
     await page.goto(reminderLink({ scheduleId, dueAt: `${today}T09:01:00+03:00` }))
     await expect(dialog).toBeVisible()
