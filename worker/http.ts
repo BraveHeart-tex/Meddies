@@ -18,7 +18,7 @@ export async function authenticateService(request: Request, secret: string | und
   if (mismatch) throw new ApplicationError('unauthorized', 401)
 }
 
-const commandPaths = ['/medicines', '/schedules', '/device-registrations'] as const
+const commandPaths = ['/medicines', '/schedules', '/device-registrations', '/quiet-hours'] as const
 export type CommandPath = (typeof commandPaths)[number]
 
 export function commandPath(request: Request): CommandPath | Response {

@@ -67,7 +67,8 @@ owner.
   `doses/mutations.ts` owns writes and retry reconciliation, `doses/queries.ts` the read
   contracts, `doses/occurrence.ts` owner-scoped occurrence context. `doses/unscheduled.ts` owns
   Unscheduled dose revisions, action retries and History date reads.
-  `device-registrations.ts` owns Device registration writes and reads. `due-reminders.ts`
+  `device-registrations.ts` owns Device registration writes and reads, and `quiet-hours.ts`
+  the account's Quiet hours reads and sets. `due-reminders.ts`
   owns the due-reminder operation, its Original and Follow-up reminder claims and Delivery
   attempts, and the provider port, and `fcm.ts` implements that port with FCM HTTP v1. The
   `schedules.ts`, `doses/mutations.ts`, `due-reminders.ts` and `fcm.ts` headers state their
@@ -150,6 +151,12 @@ owner.
   Firebase in `device-registrations/notification-device.ts`, loaded on first use, and
   `public/sw.js` displays incoming messages. `device-registrations/registration-upkeep.tsx`
   renews or removes a remembered registration once per signed-in launch and on Sign out.
+- **Quiet hours:** `/api/quiet-hours` reads with `GET` and sets with `PUT`
+  `{ actionId, quietHours }`; every response is `{ quietHours }`. An account with no
+  `account_preferences` row reads as off. A set inserts an owner-scoped receipt keyed by its
+  action UUID whose trigger applies the value in the same statement, so a retry returns its
+  original outcome and writes nothing, and a reused action ID with another value returns
+  conflict. The due-reminder operation reads the preference at send time.
 - **Schema changes:** write each migration by hand as the next numbered
   `worker/migrations/NNNN_<name>.sql` and mirror it in the Drizzle tables in
   `worker/schema.ts`. The local stack, tests and Release apply migrations in order. Keep

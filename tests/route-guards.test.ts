@@ -28,6 +28,8 @@ const routes: Record<string, { body?: unknown; query?: string; worker?: false; r
   'device-registration PATCH': { body: registration },
   'device-registration DELETE': { body: { installationId } },
   'medicines GET': {},
+  'quiet-hours GET': {},
+  'quiet-hours PUT': { body: { actionId: id, quietHours: true } },
   'medicines PATCH': {
     body: {
       operation: 'changeStrength',

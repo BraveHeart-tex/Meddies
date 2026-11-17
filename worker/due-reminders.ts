@@ -1,6 +1,6 @@
-// The due-reminder operation (#366, docs/product/reminders.md #30 and #31). An Occurrence has three
-// reminders: its Original reminder at its due instant (reminder 0) and Follow-up reminders at due
-// +40 and +80 minutes (1 and 2). Each run:
+// The due-reminder operation (#366, docs/product/reminders.md #30, #31, #34 and #35). An
+// Occurrence has three reminders: its Original reminder at its due instant (reminder 0) and
+// Follow-up reminders at due +40 and +80 minutes (1 and 2). Each run:
 // 1. records, for every Occurrence due in the last 80 minutes inclusive whose owner has a Device
 //    registration and with no newer Occurrence of its Medicine due by the run (#34), only its
 //    current reminder - the one with the latest target at or before the run - once per reminder,
@@ -10,17 +10,21 @@
 //    UPDATE ... RETURNING per table that sets a fresh claim token and lease (#5) on every
 //    claimable reminder of each instant, so overlapping runs never claim the same reminder or
 //    split an instant, and an abandoned claim becomes claimable again once its lease expires;
-// 4. rechecks that the reminder is still current, and Taken/Skipped and a newer Occurrence of the
-//    same Medicine per Occurrence at processing time, then submits one reminder per due instant and
-//    reminder (#372) through the provider port to each Device registration, covering the remaining
-//    Occurrences without a final answer for it, and records one Delivery attempt per covered
-//    Occurrence naming the reminder and the answer.
-// Suppression is that send-time recheck alone; recording a Dose outcome or a schedule change writes
-// no reminder rows, and dropping a reminder records no Dose outcome. A newer Occurrence counts from
-// any Schedule version of the Medicine, even with an early Taken or Skipped, and at its due instant
-// itself; Occurrences are those of Schedule versions running at the run's start, through the end of
-// its Istanbul day, so a transient answer or an abandoned claim never submits an older reminder
-// after a newer one is due.
+// 4. rechecks that the reminder is still current, the owner's Quiet hours for a Follow-up reminder
+//    (#35), and Taken/Skipped and a newer Occurrence of the same Medicine per Occurrence at
+//    processing time, then submits one reminder per due instant and reminder (#372) through the
+//    provider port to each Device registration, covering the remaining Occurrences without a final
+//    answer for it, and records one Delivery attempt per covered Occurrence naming the reminder
+//    and the answer.
+// Suppression is that send-time recheck alone; recording a Dose outcome, a schedule change or a
+// Quiet hours change writes no reminder rows, and dropping a reminder records no Dose outcome.
+// With Quiet hours on, a Follow-up reminder whose target or processing time is inside 23:00 to
+// 08:00 Istanbul drops; its slot is never replaced and nothing catches up at 08:00. Original
+// reminders ignore Quiet hours.
+// A newer Occurrence counts from any Schedule version of the Medicine, even with an early Taken or
+// Skipped, and at its due instant itself; Occurrences are those of Schedule versions running at
+// the run's start, through the end of its Istanbul day, so a transient answer or an abandoned claim
+// never submits an older reminder after a newer one is due.
 // An outcome that reaches the server after a claim and before the recheck stops that reminder
 // (#32). One that arrives after the recheck may still be submitted, settles it as submitted with
 // its Delivery attempts, and is never recalled: no provider takes a submission back.
@@ -37,6 +41,8 @@ import { and, eq, gte, isNull, lt, lte, or, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import { istanbulDate } from '../src/features/schedules/contract'
 import { scheduleSlotsOn } from '../src/features/schedules/occurrences'
+import { isQuietTime } from '../src/features/quiet-hours/contract'
+import { readQuietHours } from './quiet-hours'
 import {
   dailySchedules,
   deliveryAttempts,
@@ -288,7 +294,10 @@ async function deliver(
       RETURNING due_at`)
     return held.length ? result : null
   }
-  if (currentReminder(dueAt, now) !== reminder)
+  if (
+    currentReminder(dueAt, now) !== reminder ||
+    (reminder && (await quietDrop(db, ownerId, dueAt, reminder, now)))
+  )
     return Promise.all(reminders.map((row) => settle(row.scheduleId, 'dropped')))
 
   const stopped = new Set(
@@ -383,6 +392,20 @@ async function deliver(
       ),
     ),
   )
+}
+
+// With the owner's Quiet hours on, a Follow-up reminder drops when its target or its processing
+// time is inside the window (#35, #9 D5). The preference is read here, at send time.
+async function quietDrop(
+  db: DrizzleD1Database,
+  ownerId: string,
+  dueAt: string,
+  reminder: ReminderNumber,
+  now: Date,
+) {
+  const target = new Date(Date.parse(dueAt) + reminder * FOLLOW_UP_INTERVAL_MS).toISOString()
+  if (!isQuietTime(target) && !isQuietTime(now.toISOString())) return false
+  return (await readQuietHours(db, ownerId)).quietHours
 }
 
 // A thrown submission is transient, and only a status-code-shaped code is stored, so no

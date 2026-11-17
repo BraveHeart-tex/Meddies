@@ -371,3 +371,29 @@ export const deliveryAttempts = sqliteTable(
     check('delivery_attempts_reminder', sql`${table.reminder} IN (0, 1, 2)`),
   ],
 )
+
+// Account-wide preferences (#35); no row reads as defaults, Quiet hours off.
+export const accountPreferences = sqliteTable(
+  'account_preferences',
+  {
+    ownerId: text('owner_id').primaryKey().notNull(),
+    quietHours: integer('quiet_hours', { mode: 'boolean' }).notNull().default(false),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => [check('account_preferences_quiet_hours', sql`${table.quietHours} IN (0, 1)`)],
+)
+
+// One receipt per Quiet hours set, keyed by its action ID (#35).
+export const quietHoursReceipts = sqliteTable(
+  'quiet_hours_receipts',
+  {
+    ownerId: text('owner_id').notNull(),
+    actionId: text('action_id').notNull(),
+    quietHours: integer('quiet_hours', { mode: 'boolean' }).notNull(),
+    savedAt: text('saved_at').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.actionId] }),
+    check('quiet_hours_receipts_quiet_hours', sql`${table.quietHours} IN (0, 1)`),
+  ],
+)

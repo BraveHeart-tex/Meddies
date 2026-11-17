@@ -10,6 +10,7 @@ import {
   type ReminderProvider,
 } from '../worker/due-reminders'
 import { createWorker } from '../worker/index'
+import { setQuietHours } from '../worker/quiet-hours'
 import {
   call,
   medicine,
@@ -19,7 +20,7 @@ import {
   versionFixture,
 } from './helpers/medicine-storage-runtime'
 
-// The due-reminder operation on real D1 with controlled time and a fake provider (#366, #31).
+// The due-reminder operation on real D1 with controlled time and a fake provider (#366, #31, #35).
 // Runs are global, so each case uses its own date and Last day: no other case's Occurrence
 // falls inside its +80 minute window.
 startWorkerRuntime()
@@ -961,6 +962,105 @@ const bindings = () => ({
   DB: db,
   MEDICINES_WORKER_SECRET: secret,
   SCHEDULER_SECRET: schedulerSecret,
+})
+
+const quiet = (ownerId: string, quietHours: boolean) =>
+  setQuietHours(
+    drizzle(db),
+    ownerId,
+    { actionId: randomUUID(), quietHours },
+    new Date('2026-11-17T10:00:00.000Z'),
+  )
+/** Runs at each Istanbul time on `date`, answering each run's counts. */
+const runAt = async (provider: ReminderProvider, date: string, times: string[]) => {
+  const runs = []
+  for (const time of times) runs.push(await run(provider, `${date}T${time}:00+03:00`))
+  return runs
+}
+const counts = (submitted: number, dropped: number) => ({ submitted, dropped, retrying: 0 })
+
+test('With Quiet hours on, Follow-up reminders targeted inside 23:00 to 08:00 drop unsent while Original reminders submit', async () => {
+  const o = await owner('2026-12-01', ['07:19', '07:20', '22:20', '23:30'])
+  await quiet(o.ownerId, true)
+  const { provider, sent } = fake()
+  const runs = await runAt(provider, '2026-12-01', [
+    '07:19',
+    '07:20',
+    '07:59',
+    '08:00',
+    '22:20',
+    '23:00',
+    '23:01',
+    '23:30',
+    '23:40',
+  ])
+  assert.deepEqual(runs, [
+    counts(1, 0),
+    counts(1, 0),
+    counts(0, 1),
+    counts(1, 0),
+    counts(1, 0),
+    counts(0, 1),
+    counts(0, 0),
+    counts(1, 0),
+    counts(0, 1),
+  ])
+  assert.deepEqual(
+    summary(sent),
+    [
+      `${o.due('07:19')} #0 x1`,
+      `${o.due('07:20')} #0 x1`,
+      `${o.due('07:20')} #1 x1`,
+      `${o.due('22:20')} #0 x1`,
+      `${o.due('23:30')} #0 x1`,
+    ],
+    'the 07:59 and 23:00 Follow-up reminders drop, the 08:00 one and the 23:30 Original submit',
+  )
+  assert.deepEqual(await followUpState(o.ownerId), [
+    { reminder: 1, state: 'dropped' },
+    { reminder: 1, state: 'submitted' },
+    { reminder: 1, state: 'dropped' },
+    { reminder: 2, state: 'dropped' },
+  ])
+  assert.deepEqual(await attemptedSchedules(o.ownerId, o.due('07:19'), 1), [])
+  assert.deepEqual(await attemptedSchedules(o.ownerId, o.due('22:20'), 1), [])
+})
+
+test('With Quiet hours on, a Follow-up reminder targeted at 22:59 and processed at 23:01 drops unsent', async () => {
+  const o = await owner('2026-12-03', ['22:19'])
+  await quiet(o.ownerId, true)
+  const { provider, sent } = fake()
+  assert.deepEqual(await runAt(provider, '2026-12-03', ['23:01']), [counts(0, 1)])
+  assert.deepEqual(sent, [])
+  assert.deepEqual(await followUpState(o.ownerId), [{ reminder: 1, state: 'dropped' }])
+})
+
+test('With Quiet hours off, Follow-up reminders targeted at 23:00 and 07:59 submit', async () => {
+  const o = await owner('2026-12-02', ['07:19', '22:20'])
+  await quiet(o.ownerId, true)
+  await quiet(o.ownerId, false)
+  const { provider, sent } = fake()
+  assert.deepEqual(await runAt(provider, '2026-12-02', ['07:59', '23:00']), [
+    counts(1, 0),
+    counts(1, 0),
+  ])
+  assert.deepEqual(summary(sent), [`${o.due('07:19')} #1 x1`, `${o.due('22:20')} #1 x1`])
+})
+
+test('Turning Quiet hours on after a Follow-up reminder is recorded and before it is claimed drops it at send time', async () => {
+  const o = await owner('2026-12-11', ['22:20'])
+  const { provider, sent } = fake()
+  assert.deepEqual(
+    await run(provider, '2026-12-11T23:00:00+03:00', 0),
+    counts(0, 0),
+    'a run with no batch records the reminder without claiming it',
+  )
+  assert.deepEqual(await followUpState(o.ownerId), [{ reminder: 1, state: 'pending' }])
+
+  await quiet(o.ownerId, true)
+  assert.deepEqual(await runAt(provider, '2026-12-11', ['23:01']), [counts(0, 1)])
+  assert.deepEqual(sent, [])
+  assert.deepEqual(await followUpState(o.ownerId), [{ reminder: 1, state: 'dropped' }])
 })
 
 test('The cron trigger runs the due-reminder operation, and stops before claiming without FCM secrets', async () => {

@@ -25,6 +25,7 @@ import {
   renewDeviceRegistration,
   saveDeviceRegistration,
 } from './device-registrations'
+import { readQuietHours, setQuietHours } from './quiet-hours'
 import { runDueReminders, type ReminderProvider } from './due-reminders'
 import { createFcmProvider } from './fcm'
 import { ApplicationError } from '../src/lib/application-error'
@@ -117,6 +118,15 @@ export function createWorker(
               return json(await removeDeviceRegistration(db, command.ownerId, command.installation))
             case 'read':
               return json(await readDeviceRegistration(db, command.ownerId, command.installation))
+          }
+        }
+        if (decoded.path === '/quiet-hours') {
+          const command = decoded.command
+          switch (command.operation) {
+            case 'read':
+              return json(await readQuietHours(db, command.ownerId))
+            case 'set':
+              return json(await setQuietHours(db, command.ownerId, command.change, clock()))
           }
         }
         const command = decoded.command
