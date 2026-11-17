@@ -192,6 +192,21 @@ eligibility; all doses remain unconfirmed unless specified.
 - Snoozes (#36), food reminders (#39) and refill pushes (#54) apply the same window by their own
   rules above.
 
+## #37 - Approved medication names rules (November 17, 2026)
+
+- Medication names in reminders is one account-wide preference, off by default. Turning it on or
+  off applies to every Device registration of the account.
+- Off, a reminder uses the generic wording in [copy](../copy.md#reminder-wording) and its
+  submission carries no Medicine label: not in its title, body, Reminder link or other data.
+- On, a dose reminder names each Medicine it covers by its label alone, never its strength, dose
+  amount or Type. One covering several Medicines lists each once, in label order.
+- A label appears only in the title and body. Delivery attempts, error responses and logs never
+  hold one.
+- The check is a send-time recheck of the current preference and labels, so a change or a renamed
+  Medicine applies to reminders already recorded but unsent; setting it writes no reminder rows.
+- Snoozes (#36) use the named Follow-up reminder wording. Food reminders (#39) and refill pushes
+  (#54) read the same preference; their named wording belongs to those tickets.
+
 ## #36 - Approved snooze rules (November 17, 2026)
 
 - A **Snooze** is requested from the dose drawer of a Not logged dose; reminders carry no

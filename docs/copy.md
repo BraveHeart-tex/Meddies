@@ -92,8 +92,9 @@ deduplication, timeout and action behavior.
 
 ## Reminder wording
 
-A dose reminder never names the medication before the #37 opt-in, and never implies the dose was
-taken.
+A dose reminder names a medication only with medication names on
+([#37](product/reminders.md#37---approved-medication-names-rules-november-17-2026)), and never
+implies the dose was taken. Generic wording:
 
 - **Title:** "Time for your dose"
 - **Body:** "Open Meddies when you're ready to log it."
@@ -103,6 +104,16 @@ taken.
   log it." `{time}` is the due time in the Time format.
 - **Several follow-up reminders at once:** "Your {time} doses" / "{count} doses not logged yet.
   Open Meddies when you're ready to log them."
+
+With medication names on, `{name}` is the Medicine's label and `{names}` lists the labels of the
+Medicines covered, in label order, as "Aspirin, Metformin and Vitamin D":
+
+- **Title:** "Time for {name}"; generic body.
+- **Several doses at once:** generic title / "{names}. Open Meddies when you're ready to log
+  them."
+- **Follow-up reminder:** "Your {time} dose: {name}"; generic body.
+- **Several follow-up reminders at once:** generic title / "{names} not logged yet. Open Meddies
+  when you're ready to log them."
 
 ## Errors
 
