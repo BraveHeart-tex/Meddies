@@ -97,6 +97,8 @@ taken.
 
 - **Title:** "Time for your dose"
 - **Body:** "Open Meddies when you're ready to log it."
+- **Several doses at once:** "Time for {count} doses" / "Open Meddies when you're ready to log
+  them." `{count}` is the number of doses the reminder covers, as a numeral.
 
 ## Errors
 

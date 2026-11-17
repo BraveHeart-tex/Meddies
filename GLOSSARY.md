@@ -146,7 +146,9 @@ acceptance is not delivery, and never intake.
 _Avoid_: send result, push result
 
 **Reminder link**:
-The link a reminder carries to its Occurrence. Opening it shows that dose's drawer once.
+The link a reminder carries to its Occurrence. Opening it shows that dose's drawer once. A
+reminder covering several Occurrences links to their due instant and opens the screen listing
+them.
 _Avoid_: deep link, notification URL
 
 ## Saves and drafts

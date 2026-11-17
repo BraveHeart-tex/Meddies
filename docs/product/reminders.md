@@ -139,8 +139,15 @@ eligibility; all doses remain unconfirmed unless specified.
   attempt** per Device registration of its owner. A transient provider failure leaves it eligible
   for the next run inside its window. A provider answer of `UNREGISTERED` or `NOT_FOUND` removes
   that registration.
-- The reminder uses the generic wording in [copy](../copy.md#reminder-wording) and carries the
-  occurrence's **Reminder link**, never a medication name before the #37 opt-in.
-- Tapping the reminder opens that dose's drawer: on Today when Today lists the occurrence,
-  otherwise on History for its History date. A signed-out tap opens it after sign-in. A link to an
-  occurrence that no longer exists or belongs to another account opens Today with no drawer.
+- Original reminders due at the same instant for one owner go out as one reminder per Device
+  registration, covering those without Taken or Skipped at processing time (#372). One recorded
+  after its instant's reminder was submitted goes out on its own.
+- The reminder uses the generic wording in [copy](../copy.md#reminder-wording), never a medication
+  name before the #37 opt-in. A reminder covering one occurrence carries its **Reminder link**; one
+  covering several carries a Reminder link to their due instant.
+- Tapping a one-dose reminder opens that dose's drawer: on Today when Today lists the occurrence,
+  otherwise on History for its History date. A link to an occurrence that no longer exists or
+  belongs to another account opens Today with no drawer.
+- Tapping a several-dose reminder opens the screen that lists them, with no drawer: Today when
+  their due day is today, otherwise History for that day.
+- A signed-out tap opens its destination after sign-in.
