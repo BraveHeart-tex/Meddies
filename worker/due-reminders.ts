@@ -10,8 +10,9 @@
 //    Delivery attempt per submission.
 // A transient answer releases the reminder for the next run inside its window; accepted and
 // rejected answers are final for that Device registration. Only the claim token holder settles a
-// reminder. Delivery attempts hold no registration token and no medication name, and this module
-// logs nothing. FCM, the schedule and token pruning are #368.
+// reminder. An `UNREGISTERED` or `NOT_FOUND` answer removes that Device registration unless it has
+// since been renewed with another token. Delivery attempts hold no registration token and no
+// medication name, and this module logs nothing. The FCM provider is worker/fcm.ts.
 import { and, eq, gte, isNull, lt, lte, or, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import { istanbulDate } from '../src/features/schedules/contract'
@@ -33,9 +34,11 @@ export type ReminderProvider = { submit(message: ReminderMessage): Promise<Provi
 /** Reminders this run settled or released; a claim lost to another run counts in none. */
 export type DueReminderRun = { submitted: number; dropped: number; retrying: number }
 
-const WINDOW_MS = 80 * 60_000
+/** An Original reminder is eligible from its due instant through due +80 minutes (#9 D4). */
+export const REMINDER_WINDOW_MS = 80 * 60_000
 const LEASE_MS = 5 * 60_000
 const DUE_REMINDER_BATCH = 25
+const UNREGISTERED_CODES = new Set(['UNREGISTERED', 'NOT_FOUND'])
 // D1 binds at most 100 parameters per statement.
 const ROWS_PER_INSERT = 10
 
@@ -49,7 +52,7 @@ export async function runDueReminders(
 ): Promise<DueReminderRun> {
   const now = clock()
   const at = now.toISOString()
-  const windowStart = new Date(now.getTime() - WINDOW_MS).toISOString()
+  const windowStart = new Date(now.getTime() - REMINDER_WINDOW_MS).toISOString()
   for (const rows of chunks(await dueOccurrences(db, now, windowStart)))
     await db.insert(originalReminders).values(rows).onConflictDoNothing()
   await db
@@ -160,7 +163,10 @@ async function deliver(
       .returning({ dueAt: originalReminders.dueAt })
     return held.length ? result : null
   }
-  if (now.getTime() > Date.parse(reminder.dueAt) + WINDOW_MS || (await hasOutcome(db, reminder)))
+  if (
+    now.getTime() > Date.parse(reminder.dueAt) + REMINDER_WINDOW_MS ||
+    (await hasOutcome(db, reminder))
+  )
     return settle('dropped')
 
   const registrations = await db
@@ -200,6 +206,19 @@ async function deliver(
     attemptedAt: now.toISOString(),
   }))
   for (const rows of chunks(attempts)) await db.insert(deliveryAttempts).values(rows)
+  const unregistered = registrations.filter((_, index) => {
+    const answer = answers[index]
+    return answer.outcome === 'rejected' && UNREGISTERED_CODES.has(answer.code)
+  })
+  for (const registration of unregistered)
+    await db
+      .delete(deviceRegistrations)
+      .where(
+        and(
+          eq(deviceRegistrations.installationId, registration.installationId),
+          eq(deviceRegistrations.token, registration.token),
+        ),
+      )
 
   return settle(answers.some((answer) => answer.outcome === 'transient') ? 'retrying' : 'submitted')
 }

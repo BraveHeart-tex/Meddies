@@ -6,7 +6,9 @@ commands from the repository root.
 Copy `.env.example` to `.env.local` and `worker/.dev.vars.example` to
 `worker/.dev.vars`. Set an independent `MEDICINES_WORKER_SECRET`
 of at least 32 characters in both files. Google sign-in values are optional for
-local stack startup; sign-in needs the configured Google OAuth values.
+local stack startup; sign-in needs the configured Google OAuth values. Notifications
+and reminders use the Firebase project `meddies-dev`
+([push notifications](deployment.md#push-notifications)).
 
 ```sh
 pnpm dev:stack start

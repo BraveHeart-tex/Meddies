@@ -72,6 +72,14 @@ async function owner(date: string, times: string[], devices = 1) {
   return { ...f, scheduleId, tokens, due }
 }
 
+const registrations = async (ownerId: string) =>
+  (
+    await db
+      .prepare('SELECT installation_id AS id, token FROM device_registrations WHERE owner_id=?')
+      .bind(ownerId)
+      .all<{ id: string; token: string }>()
+  ).results
+
 const reminderState = async (ownerId: string) =>
   (
     await db
@@ -211,6 +219,8 @@ test('Overlapping runs submit each Original reminder once and an abandoned claim
 test('Each submission records a Delivery attempt with the provider answer and no token or medication name', async () => {
   const o = await owner('2026-11-16', ['09:00'], 3)
   const [acceptedToken, rejectedToken, failingToken] = o.tokens
+  const installations = await registrations(o.ownerId)
+  const installation = (token: string) => installations.find((row) => row.token === token)!.id
   const answers = fake((message) => {
     if (message.token === rejectedToken) return { outcome: 'rejected', code: 'UNREGISTERED' }
     if (message.token === failingToken) throw new Error(`provider echoed ${failingToken}`)
@@ -233,13 +243,6 @@ test('Each submission records a Delivery attempt with the provider answer and no
       .bind(o.ownerId)
       .all<Record<string, unknown>>()
   ).results
-  const installations = (
-    await db
-      .prepare('SELECT installation_id AS id, token FROM device_registrations WHERE owner_id=?')
-      .bind(o.ownerId)
-      .all<{ id: string; token: string }>()
-  ).results
-  const installation = (token: string) => installations.find((row) => row.token === token)!.id
   const occurrence = { owner_id: o.ownerId, schedule_id: o.scheduleId, due_at: o.due('09:00') }
   assert.deepEqual(
     attempts.map(({ id, ...row }) => (assert.ok(id), row)),
@@ -279,6 +282,34 @@ test('Each submission records a Delivery attempt with the provider answer and no
   const stored = JSON.stringify(attempts)
   for (const token of o.tokens) assert.equal(stored.includes(token), false)
   assert.equal(stored.includes(medicine.label), false)
+})
+
+test('An UNREGISTERED or NOT_FOUND answer removes that Device registration unless it was renewed', async () => {
+  const o = await owner('2026-11-18', ['09:00'], 5)
+  const [unregistered, notFound, invalid, renewed, kept] = o.tokens
+  const renewedId = (await registrations(o.ownerId)).find((row) => row.token === renewed)!.id
+  const answers = fake(async (message) => {
+    if (message.token === unregistered) return { outcome: 'rejected', code: 'UNREGISTERED' }
+    if (message.token === notFound) return { outcome: 'rejected', code: 'NOT_FOUND' }
+    if (message.token === invalid) return { outcome: 'rejected', code: 'INVALID_ARGUMENT' }
+    if (message.token === renewed) {
+      // The device renews its token while the stale one is being submitted.
+      await saveDeviceRegistration(
+        drizzle(db),
+        o.ownerId,
+        { installationId: renewedId, token: 'token-renewed' },
+        new Date('2026-11-18T06:00:00.000Z'),
+      )
+      return { outcome: 'rejected', code: 'UNREGISTERED' }
+    }
+    return { outcome: 'accepted' }
+  })
+  assert.equal((await run(answers.provider, '2026-11-18T06:00:00.000Z')).submitted, 1)
+
+  assert.deepEqual(
+    (await registrations(o.ownerId)).map((row) => row.token).toSorted(),
+    [invalid, 'token-renewed', kept].toSorted(),
+  )
 })
 
 test('A run processes a bounded batch and leaves the rest for the next run', async () => {

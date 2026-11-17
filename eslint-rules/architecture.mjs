@@ -13,6 +13,7 @@ const neutral = new Set([
   'src/features/device-registrations/contract',
   'src/features/schedules/occurrences',
   'src/features/schedules/weekdays',
+  'src/features/schedules/reminder-link',
 ])
 
 // Narrow, centrally owned exceptions. Never use inline disables for this rule.

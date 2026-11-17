@@ -21,6 +21,13 @@ Production variables and in local `.env.local`: `NEXT_PUBLIC_FIREBASE_API_KEY`,
 time, so redeploy after changing them. Without all five, Settings shows notifications as not
 available. `public/sw.js` is the service worker that displays incoming messages.
 
+The Worker sends reminders through FCM HTTP v1 as the Firebase project's service account, from
+three Worker secrets set with `wrangler secret put`: `FCM_PROJECT_ID`, `FCM_CLIENT_EMAIL` and
+`FCM_PRIVATE_KEY`, copied from the service-account JSON key. Production uses the production
+Firebase project for both the web config and these secrets. Local uses the separate Firebase
+project `meddies-dev` for both: its web config in `.env.local` and its sender secrets in
+`worker/.dev.vars`, where `FCM_PRIVATE_KEY` is one double-quoted line with `\n` escapes.
+
 ## Verify workflow
 
 `.github/workflows/verify.yml` runs on pull requests and is called by Release before
