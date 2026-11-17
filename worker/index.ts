@@ -27,6 +27,7 @@ import {
 } from './device-registrations'
 import { readQuietHours, setQuietHours } from './quiet-hours'
 import { readMedicationNames, setMedicationNames } from './medication-names'
+import { snoozeDose } from './snoozes'
 import { runDueReminders, type ReminderProvider } from './due-reminders'
 import { createFcmProvider } from './fcm'
 import { ApplicationError } from '../src/lib/application-error'
@@ -129,6 +130,10 @@ export function createWorker(
             case 'set':
               return json(await setMedicationNames(db, command.ownerId, command.change, clock()))
           }
+        }
+        if (decoded.path === '/snoozes') {
+          const { ownerId, request } = decoded.command
+          return json(await snoozeDose(db, ownerId, request, clock()))
         }
         if (decoded.path === '/quiet-hours') {
           const command = decoded.command

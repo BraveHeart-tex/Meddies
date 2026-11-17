@@ -277,6 +277,33 @@ test('With labels, grouped reminders keep the count title and list each Medicine
   )
 })
 
+test("A Snooze's reminder uses the Follow-up wording and stays deliverable through its target +5 minutes", async () => {
+  const network = fakeNetwork()
+  // Final-slot extension: due 09:00, Snooze target 11:00, submitted at 11:02 Istanbul.
+  const provider = createFcmProvider(credentials, {
+    fetch: network.fetch,
+    clock: () => new Date('2026-11-17T08:02:00.000Z'),
+  })
+  await provider.submit({ ...message, reminder: 2, snoozedTo: '2026-11-17T08:00:00.000Z' })
+
+  assert.deepEqual(
+    network.sends().map((entry) => JSON.parse(entry.init.body as string).message),
+    [
+      {
+        token: 'registration-token',
+        notification: {
+          title: 'Your 09:00 dose',
+          body: "Not logged yet. Open Meddies when you're ready to log it.",
+        },
+        data: {
+          link: reminderLink({ scheduleId: message.scheduleIds[0], dueAt: message.dueAt }),
+        },
+        webpush: { headers: { Urgency: 'high', TTL: '180' } },
+      },
+    ],
+  )
+})
+
 test('A transient FCM error or timeout answers retryable; other errors are rejected with their code', async () => {
   const replies: Record<string, Reply> = {
     unavailable: () => fcmError(503, 'UNAVAILABLE', 'UNAVAILABLE'),

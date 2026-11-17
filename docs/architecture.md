@@ -69,10 +69,10 @@ owner.
   Unscheduled dose revisions, action retries and History date reads.
   `device-registrations.ts` owns Device registration writes and reads, `quiet-hours.ts` the
   account's Quiet hours reads and sets, and `medication-names.ts` its Medication names reads and
-  sets. `due-reminders.ts`
-  owns the due-reminder operation, its Original and Follow-up reminder claims and Delivery
-  attempts, and the provider port, and `fcm.ts` implements that port with FCM HTTP v1. The
-  `schedules.ts`, `doses/mutations.ts`, `due-reminders.ts` and `fcm.ts` headers state their
+  sets. `snoozes.ts` owns the Snooze command. `due-reminders.ts` owns the due-reminder operation,
+  its Original reminder, Follow-up reminder and Snooze claims and Delivery attempts, and the
+  provider port, and `fcm.ts` implements that port with FCM HTTP v1. The `schedules.ts`,
+  `doses/mutations.ts`, `snoozes.ts`, `due-reminders.ts` and `fcm.ts` headers state their
   invariants.
 - SQL stays beside its behavior. Map selected rows to wire fields explicitly; snapshot
   null metadata and omitted mutation fields are compatibility contracts.
@@ -164,6 +164,12 @@ owner.
   with the Quiet hours retry and conflict rules; the two read and set independently. The
   due-reminder operation reads it, and the Medicine labels, at send time and adds labels to the
   provider message only when on.
+- **Snoozes:** `/api/snoozes` accepts `POST { actionId, scheduleId, dueAt }` and answers
+  `{ outcome: 'snoozed' | 'dropped', targetAt }` or `{ outcome: 'rejected', reason }`; a
+  rejection writes nothing. An accepted Snooze is one `snoozes` row keyed by its reserved
+  Follow-up reminder and its action UUID, so a retry returns its original outcome and a reused
+  action ID naming another dose returns conflict. The due-reminder operation sends it and drops
+  the automatic reminders it rules out at send time.
 - **Schema changes:** write each migration by hand as the next numbered
   `worker/migrations/NNNN_<name>.sql` and mirror it in the Drizzle tables in
   `worker/schema.ts`. The local stack, tests and Release apply migrations in order. Keep

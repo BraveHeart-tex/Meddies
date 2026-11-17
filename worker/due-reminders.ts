@@ -1,18 +1,22 @@
-// The due-reminder operation (#366, docs/product/reminders.md #30, #31, #34, #35 and #37). An
+// The due-reminder operation (#366, docs/product/reminders.md #30, #31, #34, #35, #36 and #37). An
 // Occurrence has three reminders: its Original reminder at its due instant (reminder 0) and
-// Follow-up reminders at due +40 and +80 minutes (1 and 2). Each run:
+// Follow-up reminders at due +40 and +80 minutes (1 and 2). A Snooze (worker/snoozes.ts) reserves
+// one Follow-up reminder and targets it 40 minutes after accepting. Each run:
 // 1. records, for every Occurrence due in the last 80 minutes inclusive whose owner has a Device
 //    registration and with no newer Occurrence of its Medicine due by the run (#34), only its
 //    current reminder - the one with the latest target at or before the run - once per reminder,
 //    so a late run never bursts older ones (#9 D4);
-// 2. drops recorded reminders, unsent, once a later one is due or due +80 minutes has passed;
-// 3. claims a bounded batch of owners' due instants per reminder with one conditional
+// 2. drops recorded reminders, unsent, once a later one is due or due +80 minutes has passed, and
+//    pending Snoozes more than 5 minutes past their target;
+// 3. claims a bounded batch of owners' due instants per reminder, and of Snoozes due by the run,
+//    with one conditional
 //    UPDATE ... RETURNING per table that sets a fresh claim token and lease (#5) on every
 //    claimable reminder of each instant, so overlapping runs never claim the same reminder or
 //    split an instant, and an abandoned claim becomes claimable again once its lease expires;
 // 4. rechecks that the reminder is still current, the owner's Quiet hours for a Follow-up reminder
-//    (#35), and Taken/Skipped and a newer Occurrence of the same Medicine per Occurrence at
-//    processing time, then submits one reminder per due instant and reminder (#372) through the
+//    or Snooze (#35), and Taken/Skipped, a Snooze and a newer Occurrence of the same Medicine per
+//    Occurrence at processing time, then submits one reminder per due instant and reminder (#372),
+//    and one per Snooze covering only its Occurrence, through the
 //    provider port to each Device registration, covering the remaining Occurrences without a final
 //    answer for it, and records one Delivery attempt per covered Occurrence naming the reminder
 //    and the answer.
@@ -20,8 +24,16 @@
 // also carries the current labels of the Medicines it covers, each once in label order; off, the
 // message has no labels at all, so a generic submission never receives one. A rename or a
 // preference change therefore applies to reminders already recorded but unsent.
-// Suppression is that send-time recheck alone; recording a Dose outcome, a schedule change or a
-// Quiet hours change writes no reminder rows, and dropping a reminder records no Dose outcome.
+// Suppression is that send-time recheck alone; recording a Dose outcome, a schedule change, a Quiet
+// hours change or a Snooze writes no Original or Follow-up reminder rows, and dropping a reminder
+// records no Dose outcome.
+// A Snooze of an Occurrence drops its automatic reminders at send time (#9 D2, D4): the Original
+// reminder, the Follow-up reminder it reserved and any older one, and the remaining Follow-up
+// reminder when it would move past due +80 minutes. That moved target, 40 minutes after the Snooze's
+// target, stays inside only for a Snooze accepted at the due instant, where it equals due +80, so
+// the remaining reminder keeps its target or retires. A Snooze submits from its target through 5
+// minutes later (#9 D5) and drops with Taken or Skipped, a paused Schedule, a newer Occurrence of
+// its Medicine due by then, or Quiet hours at its target or processing time.
 // With Quiet hours on, a Follow-up reminder whose target or processing time is inside 23:00 to
 // 08:00 Istanbul drops; its slot is never replaced and nothing catches up at 08:00. Original
 // reminders ignore Quiet hours.
@@ -55,6 +67,7 @@ import {
   followUpReminders,
   originalReminders,
   userMedications,
+  snoozes,
 } from './schema'
 
 /** 0 is an Occurrence's Original reminder; 1 and 2 its Follow-up reminders at due +40 and +80. */
@@ -72,6 +85,8 @@ export type ReminderMessage = {
   reminder: ReminderNumber
   scheduleIds: string[]
   labels?: string[]
+  /** A Snooze's target; set only on a Snooze's reminder, which covers one schedule. */
+  snoozedTo?: string
 }
 
 /** The provider's answer; `code` is its status code, such as `UNREGISTERED` or `TIMEOUT`. */
@@ -91,7 +106,11 @@ export type DueReminderRun = { submitted: number; dropped: number; retrying: num
 
 /** No automatic reminder submits after due +80 minutes; at equality the last may (#9 D4). */
 export const REMINDER_WINDOW_MS = 80 * 60_000
-const FOLLOW_UP_INTERVAL_MS = 40 * 60_000
+export const FOLLOW_UP_INTERVAL_MS = 40 * 60_000
+/** A Snooze submits from its target through 5 minutes later inclusive (#9 D5). */
+export const SNOOZE_LATENESS_MS = 5 * 60_000
+// The latest Snooze, accepted at due +80 minutes, submits by due +125.
+const OCCURRENCE_LOOKBACK_MS = REMINDER_WINDOW_MS + FOLLOW_UP_INTERVAL_MS + SNOOZE_LATENESS_MS
 const LEASE_MS = 5 * 60_000
 const DUE_REMINDER_BATCH = 25
 const UNREGISTERED_CODES = new Set(['UNREGISTERED', 'NOT_FOUND'])
@@ -99,12 +118,47 @@ const UNREGISTERED_CODES = new Set(['UNREGISTERED', 'NOT_FOUND'])
 const ROWS_PER_INSERT = 10
 
 type Reminder = { ownerId: string; scheduleId: string; dueAt: string; reminder: ReminderNumber }
+/** A claimed reminder; `targetAt` is set for a Snooze. */
+type Claimed = Reminder & { targetAt?: string }
+type SnoozeSlot = { reminder: number; targetAt: string }
 
 /** The reminder with the latest target at or before `now`, or null before due or after +80. */
 function currentReminder(dueAt: string, now: Date): ReminderNumber | null {
   const elapsed = now.getTime() - Date.parse(dueAt)
   if (elapsed < 0 || elapsed > REMINDER_WINDOW_MS) return null
   return Math.floor(elapsed / FOLLOW_UP_INTERVAL_MS) as ReminderNumber
+}
+
+/** Follow-up reminder `reminder`'s automatic target. */
+export function followUpTarget(dueAt: string, reminder: ReminderNumber): string {
+  return new Date(Date.parse(dueAt) + reminder * FOLLOW_UP_INTERVAL_MS).toISOString()
+}
+
+/**
+ * Whether the Occurrence's Snoozes rule out automatic reminder `reminder` (#9 D2, D4): one
+ * reserved it or a later Follow-up reminder, or one reserved an earlier one and moved this one
+ * past due +80 minutes.
+ */
+export function retiredBySnooze(reminder: number, dueAt: string, snoozes: SnoozeSlot[]): boolean {
+  const windowEnd = Date.parse(dueAt) + REMINDER_WINDOW_MS
+  return snoozes.some(
+    (snooze) =>
+      snooze.reminder >= reminder ||
+      Date.parse(snooze.targetAt) + FOLLOW_UP_INTERVAL_MS > windowEnd,
+  )
+}
+
+/** Whether the latest version of a Schedule's version chain is paused. */
+export async function schedulePaused(db: DrizzleD1Database, ownerId: string, scheduleId: string) {
+  const [latest] = await db.all<{
+    pausedAt: string | null
+  }>(sql`WITH RECURSIVE chain(id, paused_at) AS (
+      SELECT id, paused_at FROM daily_schedules WHERE owner_id = ${ownerId} AND id = ${scheduleId}
+      UNION ALL SELECT successor.id, successor.paused_at FROM daily_schedules successor
+        JOIN chain ON successor.owner_id = ${ownerId} AND successor.based_on_id = chain.id)
+    SELECT paused_at AS pausedAt FROM chain WHERE NOT EXISTS (SELECT 1 FROM daily_schedules next
+      WHERE next.owner_id = ${ownerId} AND next.based_on_id = chain.id)`)
+  return !!latest?.pausedAt
 }
 
 export async function runDueReminders(
@@ -118,11 +172,26 @@ export async function runDueReminders(
   const at = now.toISOString()
   const windowStart = new Date(now.getTime() - REMINDER_WINDOW_MS).toISOString()
   const followUpDue = new Date(now.getTime() - FOLLOW_UP_INTERVAL_MS).toISOString()
+  const lateStart = new Date(now.getTime() - SNOOZE_LATENESS_MS).toISOString()
 
-  const occurrences = await windowOccurrences(db, now, windowStart)
+  const occurrences = await windowOccurrences(
+    db,
+    now,
+    new Date(now.getTime() - OCCURRENCE_LOOKBACK_MS).toISOString(),
+  )
   const superseded = newerOccurrence(occurrences)
+  const known = new Set(occurrences.map((row) => `${row.ownerId}:${row.scheduleId}:${row.dueAt}`))
+  const context: Context = {
+    superseded,
+    present: (ownerId, scheduleId, dueAt) => known.has(`${ownerId}:${scheduleId}:${dueAt}`),
+  }
   const current = occurrences
-    .filter((row) => row.dueAt <= at && !superseded(row.ownerId, row.scheduleId, row.dueAt, now))
+    .filter(
+      (row) =>
+        row.dueAt >= windowStart &&
+        row.dueAt <= at &&
+        !superseded(row.ownerId, row.scheduleId, row.dueAt, now),
+    )
     .map(({ ownerId, scheduleId, dueAt }) => ({
       ownerId,
       scheduleId,
@@ -170,6 +239,16 @@ export async function runDueReminders(
           or(isNull(followUpReminders.leaseUntil), lte(followUpReminders.leaseUntil, at)),
         ),
       ),
+    db
+      .update(snoozes)
+      .set(dropped)
+      .where(
+        and(
+          eq(snoozes.state, 'pending'),
+          lt(snoozes.targetAt, lateStart),
+          or(isNull(snoozes.leaseUntil), lte(snoozes.leaseUntil, at)),
+        ),
+      ),
   ])
 
   const token = crypto.randomUUID()
@@ -187,27 +266,54 @@ export async function runDueReminders(
       RETURNING owner_id AS ownerId, schedule_id AS scheduleId, due_at AS dueAt,
         ${sql.raw(original ? '0' : 'reminder')} AS reminder`)
   }
-  const claimed = [...(await claim('original_reminders')), ...(await claim('follow_up_reminders'))]
+  // Each Snooze is claimed, and sent, on its own.
+  const claimSnoozes = () =>
+    db.all<Claimed>(sql`UPDATE snoozes
+      SET claim_token = ${token}, lease_until = ${leaseUntil}
+      WHERE rowid IN (SELECT rowid FROM snoozes
+        WHERE state = 'pending' AND (lease_until IS NULL OR lease_until <= ${at})
+          AND target_at >= ${lateStart} AND target_at <= ${at}
+        ORDER BY target_at LIMIT ${batch})
+      RETURNING owner_id AS ownerId, schedule_id AS scheduleId, due_at AS dueAt, reminder,
+        target_at AS targetAt`)
+  const claimed: Claimed[] = [
+    ...(await claim('original_reminders')),
+    ...(await claim('follow_up_reminders')),
+    ...(await claimSnoozes()),
+  ]
 
-  const instants = new Map<string, Reminder[]>()
+  const instants = new Map<string, Claimed[]>()
   for (const reminder of [...claimed].sort(
     (a, b) => a.dueAt.localeCompare(b.dueAt) || a.reminder - b.reminder,
   )) {
-    const key = `${reminder.ownerId}:${reminder.dueAt}:${reminder.reminder}`
+    const key = reminder.targetAt
+      ? `snooze:${reminder.ownerId}:${reminder.scheduleId}:${reminder.dueAt}:${reminder.reminder}`
+      : `${reminder.ownerId}:${reminder.dueAt}:${reminder.reminder}`
     instants.set(key, [...(instants.get(key) ?? []), reminder])
   }
   const run: DueReminderRun = { submitted: 0, dropped: 0, retrying: 0 }
   for (const reminders of instants.values())
-    for (const result of await deliver(db, provider, seconds, token, superseded, reminders))
+    for (const result of await deliver(db, provider, seconds, token, context, reminders))
       if (result) run[result]++
   return run
 }
 
 type Superseded = (ownerId: string, scheduleId: string, dueAt: string, now: Date) => boolean
+type Context = {
+  superseded: Superseded
+  /** Whether the Occurrence is one of a running Schedule version of an owner with a registration. */
+  present: (ownerId: string, scheduleId: string, dueAt: string) => boolean
+}
 
 // Occurrences due from the window's start through the end of today, from Schedule versions that run
-// in it; a version's occurrences end at its successor's Edit time (docs/architecture.md Occurrences).
-async function windowOccurrences(db: DrizzleD1Database, now: Date, windowStart: string) {
+// in it, of owners with a Device registration, or of `ownerId` alone; a version's occurrences end
+// at its successor's Edit time (docs/architecture.md Occurrences).
+export async function windowOccurrences(
+  db: DrizzleD1Database,
+  now: Date,
+  windowStart: string,
+  ownerId?: string,
+) {
   const at = now.toISOString()
   const today = istanbulDate(now)
   const dates = [...new Set([istanbulDate(new Date(windowStart)), today])]
@@ -234,6 +340,7 @@ async function windowOccurrences(db: DrizzleD1Database, now: Date, windowStart: 
         lte(dailySchedules.startDate, today),
         or(isNull(dailySchedules.endDate), gte(dailySchedules.endDate, dates[0])),
         lt(dailySchedules.confirmedAt, at),
+        ownerId ? eq(dailySchedules.ownerId, ownerId) : undefined,
         sql`EXISTS (SELECT 1 FROM device_registrations
           WHERE device_registrations.owner_id = ${dailySchedules.ownerId})`,
       ),
@@ -260,7 +367,9 @@ async function windowOccurrences(db: DrizzleD1Database, now: Date, windowStart: 
 
 // Whether an Occurrence of the same Medicine, from any Schedule version, is due after `dueAt` and
 // by `now` (#34). A schedule with no Occurrence in `occurrences` is never superseded here.
-function newerOccurrence(occurrences: Awaited<ReturnType<typeof windowOccurrences>>): Superseded {
+export function newerOccurrence(
+  occurrences: Awaited<ReturnType<typeof windowOccurrences>>,
+): Superseded {
   const medicineOf = new Map<string, string>()
   const dues = new Map<string, string[]>()
   for (const { ownerId, medicineId, scheduleId, dueAt } of occurrences) {
@@ -275,21 +384,23 @@ function newerOccurrence(occurrences: Awaited<ReturnType<typeof windowOccurrence
   }
 }
 
-// Delivers one reminder of one owner's due instant: rechecks that it is still current, and
-// Taken/Skipped and a newer same-Medicine Occurrence per Occurrence, then submits one reminder to
-// each Device registration covering the remaining Occurrences without a final answer for it,
-// recording one Delivery attempt per covered Occurrence with that answer.
+// Delivers one reminder of one owner's due instant, or one Snooze: rechecks that it is still
+// current, and Taken/Skipped, a Snooze, a pause and a newer same-Medicine Occurrence per Occurrence,
+// then submits one reminder to each Device registration covering the remaining Occurrences without
+// a final answer for it, recording one Delivery attempt per covered Occurrence with that answer.
 async function deliver(
   db: DrizzleD1Database,
   provider: ReminderProvider,
   clock: () => Date,
   token: string,
-  superseded: Superseded,
-  reminders: Reminder[],
+  { superseded, present }: Context,
+  reminders: Claimed[],
 ): Promise<(keyof DueReminderRun | null)[]> {
   const now = clock()
-  const { ownerId, dueAt, reminder } = reminders[0]
-  const table = sql.raw(reminder ? 'follow_up_reminders' : 'original_reminders')
+  const { ownerId, dueAt, reminder, targetAt } = reminders[0]
+  const table = sql.raw(
+    targetAt ? 'snoozes' : reminder ? 'follow_up_reminders' : 'original_reminders',
+  )
   const sameReminder = reminder ? sql`AND reminder = ${reminder}` : sql``
   // Settles only while this run still holds the claim; null once another run has reclaimed it.
   const settle = async (scheduleId: string, result: keyof DueReminderRun) => {
@@ -302,9 +413,13 @@ async function deliver(
       RETURNING due_at`)
     return held.length ? result : null
   }
+  const stale = targetAt
+    ? now.getTime() < Date.parse(targetAt) ||
+      now.getTime() > Date.parse(targetAt) + SNOOZE_LATENESS_MS
+    : currentReminder(dueAt, now) !== reminder
   if (
-    currentReminder(dueAt, now) !== reminder ||
-    (reminder && (await quietDrop(db, ownerId, dueAt, reminder, now)))
+    stale ||
+    (reminder && (await quietDrop(db, ownerId, targetAt ?? followUpTarget(dueAt, reminder), now)))
   )
     return Promise.all(reminders.map((row) => settle(row.scheduleId, 'dropped')))
 
@@ -320,6 +435,11 @@ async function deliver(
         reminders
           .map((row) => row.scheduleId)
           .filter((scheduleId) => superseded(ownerId, scheduleId, dueAt, now)),
+      )
+      .concat(
+        targetAt
+          ? await snoozeStops(db, ownerId, reminders[0].scheduleId, dueAt, present)
+          : await snoozedReminders(db, ownerId, dueAt, reminder),
       ),
   )
   const live = reminders
@@ -360,6 +480,7 @@ async function deliver(
         reminder,
         scheduleIds: registration.scheduleIds,
         ...(labelsOf && { labels: labelsOf(registration.scheduleIds) }),
+        ...(targetAt ? { snoozedTo: targetAt } : {}),
       }),
     ),
   )
@@ -404,16 +525,41 @@ async function deliver(
   )
 }
 
-// With the owner's Quiet hours on, a Follow-up reminder drops when its target or its processing
-// time is inside the window (#35, #9 D5). The preference is read here, at send time.
-async function quietDrop(
+// The schedules of an owner's due instant whose Snoozes rule out automatic reminder `reminder`.
+async function snoozedReminders(
   db: DrizzleD1Database,
   ownerId: string,
   dueAt: string,
   reminder: ReminderNumber,
-  now: Date,
 ) {
-  const target = new Date(Date.parse(dueAt) + reminder * FOLLOW_UP_INTERVAL_MS).toISOString()
+  const rows = await db.all<SnoozeSlot & { scheduleId: string }>(sql`SELECT
+      schedule_id AS scheduleId, reminder, target_at AS targetAt FROM snoozes
+    WHERE owner_id = ${ownerId} AND due_at = ${dueAt}`)
+  return [...new Set(rows.map((row) => row.scheduleId))].filter((scheduleId) =>
+    retiredBySnooze(
+      reminder,
+      dueAt,
+      rows.filter((row) => row.scheduleId === scheduleId),
+    ),
+  )
+}
+
+// A Snooze's schedule when its Schedule is paused or its Occurrence is no longer a running one.
+async function snoozeStops(
+  db: DrizzleD1Database,
+  ownerId: string,
+  scheduleId: string,
+  dueAt: string,
+  present: Context['present'],
+) {
+  return !present(ownerId, scheduleId, dueAt) || (await schedulePaused(db, ownerId, scheduleId))
+    ? [scheduleId]
+    : []
+}
+
+// With the owner's Quiet hours on, a Follow-up reminder or Snooze drops when its target or its
+// processing time is inside the window (#35, #9 D5). The preference is read here, at send time.
+async function quietDrop(db: DrizzleD1Database, ownerId: string, target: string, now: Date) {
   if (!isQuietTime(target) && !isQuietTime(now.toISOString())) return false
   return (await readQuietHours(db, ownerId)).quietHours
 }

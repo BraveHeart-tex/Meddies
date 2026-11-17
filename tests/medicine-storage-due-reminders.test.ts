@@ -12,6 +12,9 @@ import {
 import { createWorker } from '../worker/index'
 import { setQuietHours } from '../worker/quiet-hours'
 import { setMedicationNames } from '../worker/medication-names'
+import { snoozeDose } from '../worker/snoozes'
+import { fcmMessage } from '../worker/fcm'
+import { reminderLink } from '../src/features/schedules/reminder-link'
 import {
   call,
   medicine,
@@ -22,7 +25,7 @@ import {
 } from './helpers/medicine-storage-runtime'
 
 // The due-reminder operation on real D1 with controlled time and a fake provider (#366, #31, #35,
-// #37).
+// #36, #37).
 // Runs are global, so each case uses its own date and Last day: no other case's Occurrence
 // falls inside its +80 minute window.
 startWorkerRuntime()
@@ -135,7 +138,12 @@ const followUpState = async (ownerId: string) =>
 
 /** What `sent` held: each message as `<due instant> #<reminder> x<doses>`, sorted. */
 const summary = (sent: ReminderMessage[]) =>
-  sent.map((m) => `${m.dueAt} #${m.reminder} x${m.scheduleIds.length}`).toSorted()
+  sent
+    .map(
+      (m) =>
+        `${m.dueAt} #${m.reminder} x${m.scheduleIds.length}${m.snoozedTo ? ` snoozed ${m.snoozedTo}` : ''}`,
+    )
+    .toSorted()
 
 const reminderState = async (ownerId: string) =>
   (
@@ -1218,4 +1226,270 @@ test('Turning Medication names on, or renaming the Medicine, after a reminder is
   ).results
   assert.equal(attempts.length, 4)
   assert.doesNotMatch(JSON.stringify(attempts), /Aspirin|Metformin|Vitamin/)
+})
+
+// Snoozes (#36). Times are Istanbul; `ist` turns `<date>`, `<HH:MM[:SS]>` into an instant.
+const ist = (date: string, time: string) =>
+  new Date(`${date}T${time.length === 5 ? `${time}:00` : time}+03:00`).toISOString()
+const snooze = (o: Awaited<ReturnType<typeof owner>>, at: string, scheduleId = o.scheduleId) =>
+  snoozeDose(
+    drizzle(db),
+    o.ownerId,
+    { actionId: randomUUID(), scheduleId, dueAt: o.due('09:00') },
+    new Date(at),
+  )
+const snoozeState = async (ownerId: string) =>
+  (
+    await db
+      .prepare(
+        'SELECT reminder, target_at AS targetAt, state FROM snoozes WHERE owner_id=? ORDER BY reminder',
+      )
+      .bind(ownerId)
+      .all<{ reminder: number; targetAt: string; state: string }>()
+  ).results
+const runIst = async (provider: ReminderProvider, date: string, times: string[]) => {
+  for (const time of times) await run(provider, ist(date, time))
+}
+
+test('Snooze timing follows #9 D2: immediate, intermediate and final-slot extension', async () => {
+  const immediate = await owner('2027-01-04', ['09:00'])
+  const intermediate = await owner('2027-01-05', ['09:00'])
+  const extension = await owner('2027-01-06', ['09:00'])
+  const { provider, sent } = fake()
+
+  // Immediate snooze: accepted at 09:00 sends at 09:40 and keeps 10:20.
+  const day = '2027-01-04'
+  await runIst(provider, day, ['09:00'])
+  assert.deepEqual(await snooze(immediate, ist(day, '09:00')), {
+    outcome: 'snoozed',
+    targetAt: ist(day, '09:40'),
+  })
+  await runIst(provider, day, ['09:40', '09:41', '10:20', '10:21'])
+  const due = immediate.due('09:00')
+  assert.deepEqual(summary(sent), [
+    `${due} #0 x1`,
+    `${due} #1 x1 snoozed ${ist(day, '09:40')}`,
+    `${due} #2 x1`,
+  ])
+
+  // Intermediate snooze: accepted at 09:20 sends at 10:00 and retires 10:20.
+  sent.length = 0
+  const day2 = '2027-01-05'
+  await runIst(provider, day2, ['09:00'])
+  assert.deepEqual(await snooze(intermediate, ist(day2, '09:20')), {
+    outcome: 'snoozed',
+    targetAt: ist(day2, '10:00'),
+  })
+  await runIst(provider, day2, ['09:40', '10:00', '10:01', '10:20', '10:21'])
+  const due2 = intermediate.due('09:00')
+  assert.deepEqual(summary(sent), [`${due2} #0 x1`, `${due2} #1 x1 snoozed ${ist(day2, '10:00')}`])
+  assert.deepEqual(await followUpState(intermediate.ownerId), [
+    { reminder: 1, state: 'dropped' },
+    { reminder: 2, state: 'dropped' },
+  ])
+
+  // Final-slot extension: after the 09:40 submission, one at 10:10 replaces 10:20 with 10:50.
+  sent.length = 0
+  const day3 = '2027-01-06'
+  await runIst(provider, day3, ['09:00', '09:40'])
+  assert.deepEqual(await snooze(extension, ist(day3, '10:10')), {
+    outcome: 'snoozed',
+    targetAt: ist(day3, '10:50'),
+  })
+  await runIst(provider, day3, ['10:20', '10:21', '10:50', '10:51'])
+  const due3 = extension.due('09:00')
+  assert.deepEqual(summary(sent), [
+    `${due3} #0 x1`,
+    `${due3} #1 x1`,
+    `${due3} #2 x1 snoozed ${ist(day3, '10:50')}`,
+  ])
+  assert.deepEqual(await snoozeState(extension.ownerId), [
+    { reminder: 2, targetAt: ist(day3, '10:50'), state: 'submitted' },
+  ])
+})
+
+test('A snooze at 10:20 before the 10:20 reminder submits targets 11:00; after that submission it is exhausted', async () => {
+  const first = await owner('2027-01-07', ['09:00'])
+  const late = await owner('2027-01-08', ['09:00'])
+  const { provider, sent } = fake()
+
+  const day = '2027-01-07'
+  await runIst(provider, day, ['09:40'])
+  assert.deepEqual(await snooze(first, ist(day, '10:20')), {
+    outcome: 'snoozed',
+    targetAt: ist(day, '11:00'),
+  })
+  await runIst(provider, day, ['10:20', '10:21', '11:00'])
+  const due = first.due('09:00')
+  assert.deepEqual(summary(sent), [`${due} #1 x1`, `${due} #2 x1 snoozed ${ist(day, '11:00')}`])
+
+  sent.length = 0
+  const day2 = '2027-01-08'
+  await runIst(provider, day2, ['09:40', '10:20'])
+  assert.deepEqual(await snooze(late, ist(day2, '10:20')), {
+    outcome: 'rejected',
+    reason: 'exhausted',
+  })
+  assert.deepEqual(await snoozeState(late.ownerId), [])
+  assert.equal(sent.length, 2)
+})
+
+test('A pending snooze blocks automatic reminders until its target and submits through 5 minutes later', async () => {
+  const recovery = await owner('2027-01-09', ['09:00'])
+  const dropped = await owner('2027-01-10', ['09:00'])
+  const onTime = await owner('2027-01-11', ['09:00'])
+  const { provider, sent } = fake()
+
+  // Pending snooze recovery: a 10:00 snooze checked at 09:50 and 10:04 sends once at 10:04.
+  const day = '2027-01-09'
+  await snooze(recovery, ist(day, '09:20'))
+  await runIst(provider, day, ['09:50'])
+  assert.equal(sent.length, 0, 'no automatic 09:40 send')
+  await runIst(provider, day, ['10:04', '10:05', '10:20'])
+  assert.deepEqual(summary(sent), [`${recovery.due('09:00')} #1 x1 snoozed ${ist(day, '10:00')}`])
+
+  // Snooze lateness: a 10:50 snooze first processed at 10:55:01 drops with no replacement.
+  sent.length = 0
+  const day2 = '2027-01-10'
+  await runIst(provider, day2, ['09:40'])
+  await snooze(dropped, ist(day2, '10:10'))
+  await runIst(provider, day2, ['10:55:01', '10:56', '11:00'])
+  assert.deepEqual(summary(sent), [`${dropped.due('09:00')} #1 x1`])
+  assert.deepEqual(await snoozeState(dropped.ownerId), [
+    { reminder: 2, targetAt: ist(day2, '10:50'), state: 'dropped' },
+  ])
+
+  // Processed at exactly 10:55, it submits.
+  sent.length = 0
+  const day3 = '2027-01-11'
+  await runIst(provider, day3, ['09:40'])
+  await snooze(onTime, ist(day3, '10:10'))
+  await runIst(provider, day3, ['10:55'])
+  assert.deepEqual(summary(sent), [
+    `${onTime.due('09:00')} #1 x1`,
+    `${onTime.due('09:00')} #2 x1 snoozed ${ist(day3, '10:50')}`,
+  ])
+})
+
+test('With Quiet hours on, a snooze targeted inside them is accepted dropped and retires the second Follow-up reminder, and a 22:59 target processed at 23:01 drops', async () => {
+  const target = await owner('2027-01-12', ['22:00'])
+  const crossing = await owner('2027-01-13', ['22:00'])
+  await quiet(target.ownerId, true)
+  await quiet(crossing.ownerId, true)
+  const { provider, sent } = fake()
+  const at22 = (o: typeof target, at: string) =>
+    snoozeDose(
+      drizzle(db),
+      o.ownerId,
+      { actionId: randomUUID(), scheduleId: o.scheduleId, dueAt: o.due('22:00') },
+      new Date(at),
+    )
+
+  // Quiet target: a snooze accepted at 22:30 targets 23:10.
+  const day = '2027-01-12'
+  await runIst(provider, day, ['22:00'])
+  assert.deepEqual(await at22(target, ist(day, '22:30')), {
+    outcome: 'dropped',
+    targetAt: ist(day, '23:10'),
+  })
+  await runIst(provider, day, ['22:40', '23:10', '23:20', '23:21'])
+  assert.deepEqual(summary(sent), [`${target.due('22:00')} #0 x1`])
+  assert.deepEqual(await snoozeState(target.ownerId), [
+    { reminder: 1, targetAt: ist(day, '23:10'), state: 'dropped' },
+  ])
+  assert.deepEqual(await followUpState(target.ownerId), [
+    { reminder: 1, state: 'dropped' },
+    { reminder: 2, state: 'dropped' },
+  ])
+
+  // Quiet crossing: a 22:59 target processed at 23:01 drops.
+  sent.length = 0
+  const day2 = '2027-01-13'
+  assert.deepEqual(await at22(crossing, ist(day2, '22:19')), {
+    outcome: 'snoozed',
+    targetAt: ist(day2, '22:59'),
+  })
+  await runIst(provider, day2, ['23:01', '23:02'])
+  assert.equal(sent.length, 0)
+  assert.deepEqual(await snoozeState(crossing.ownerId), [
+    { reminder: 1, targetAt: ist(day2, '22:59'), state: 'dropped' },
+  ])
+})
+
+test('Taken, Skipped, a pause or the next same-Medicine dose due at 10:50 drops a pending 10:50 snooze unsent', async () => {
+  const taken = await owner('2027-01-14', ['09:00'])
+  const skipped = await owner('2027-01-15', ['09:00'])
+  const paused = await owner('2027-01-16', ['09:00'])
+  const next = await owner('2027-01-17', [])
+  const nextId = await schedule(next, '2027-01-17', next.medicineId, ['09:00', '10:50'])
+  const { provider, sent } = fake()
+  const pending = async (o: typeof taken, day: string, scheduleId = o.scheduleId) => {
+    await runIst(provider, day, ['09:40'])
+    assert.deepEqual(await snooze(o, ist(day, '10:10'), scheduleId), {
+      outcome: 'snoozed',
+      targetAt: ist(day, '10:50'),
+    })
+    o.setNow(ist(day, '10:49'))
+  }
+
+  await pending(taken, '2027-01-14')
+  await taken.operations.recordTaken({
+    scheduleId: taken.scheduleId,
+    dueAt: taken.due('09:00'),
+    takenAt: ist('2027-01-14', '10:49'),
+    quantity: 1,
+  })
+  await pending(skipped, '2027-01-15')
+  await skipped.operations.recordSkipped({
+    scheduleId: skipped.scheduleId,
+    dueAt: skipped.due('09:00'),
+  })
+  await pending(paused, '2027-01-16')
+  await paused.operations.pause({ id: randomUUID(), basedOnId: paused.scheduleId })
+  await pending(next, '2027-01-17', nextId)
+  sent.length = 0
+
+  for (const day of ['2027-01-14', '2027-01-15', '2027-01-16', '2027-01-17'])
+    await runIst(provider, day, ['10:50', '10:51'])
+  assert.deepEqual(
+    summary(sent),
+    [`${next.due('10:50')} #0 x1`],
+    "only the next dose's own Original reminder",
+  )
+  assert.deepEqual(sent[0].scheduleIds, [nextId])
+  for (const o of [taken, skipped, paused, next])
+    assert.deepEqual(
+      (await snoozeState(o.ownerId)).map((row) => row.state),
+      ['dropped'],
+    )
+})
+
+test('A snooze reminder goes to each Device registration covering only its Occurrence, even when another dose shared its due instant', async () => {
+  const o = await owner('2027-01-18', ['09:00'], 2, 2)
+  const [snoozed, other] = o.ids('09:00')
+  const { provider, sent } = fake()
+  const day = '2027-01-18'
+  await runIst(provider, day, ['09:00'])
+  await snooze(o, ist(day, '09:00'), snoozed)
+  sent.length = 0
+  await runIst(provider, day, ['09:40'])
+
+  const dueAt = o.due('09:00')
+  const byToken = (a: ReminderMessage, b: ReminderMessage) =>
+    a.token.localeCompare(b.token) || Number(!!a.snoozedTo) - Number(!!b.snoozedTo)
+  assert.deepEqual(
+    sent.toSorted(byToken),
+    o.tokens.toSorted().flatMap((token) => [
+      { token, dueAt, reminder: 1, scheduleIds: [other] },
+      { token, dueAt, reminder: 1, scheduleIds: [snoozed], snoozedTo: ist(day, '09:40') },
+    ]),
+  )
+  const message = sent.find((m) => m.snoozedTo)!
+  const body = fcmMessage(message, new Date(ist(day, '09:40'))).message
+  assert.equal(body.data.link, reminderLink({ scheduleId: snoozed, dueAt }))
+  assert.equal(body.notification.title, 'Your 09:00 dose')
+  assert.deepEqual(
+    (await attemptedSchedules(o.ownerId, dueAt, 1)).toSorted(),
+    [other, other, snoozed, snoozed].toSorted(),
+  )
 })

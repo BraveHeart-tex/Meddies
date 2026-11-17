@@ -32,6 +32,9 @@ const routes: Record<string, { body?: unknown; query?: string; worker?: false; r
   'quiet-hours PUT': { body: { actionId: id, quietHours: true } },
   'medication-names GET': {},
   'medication-names PUT': { body: { actionId: id, medicationNames: true } },
+  'snoozes POST': {
+    body: { actionId: id, scheduleId: basedOnId, dueAt: '2026-11-17T06:00:00.000Z' },
+  },
   'medicines PATCH': {
     body: {
       operation: 'changeStrength',

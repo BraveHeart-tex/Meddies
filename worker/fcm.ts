@@ -9,10 +9,10 @@
 // or a Follow-up reminder's naming the due time (#31), with the dose count when it covers several
 // doses, and its Reminder link as `data.link` for the service worker's tap handler: the
 // Occurrence's for one dose, the grouped one for several (#372). Its Web Push TTL ends with the
-// Occurrence's +80 minute window. Only a message with `labels`, which the due-reminder operation
-// adds with Medication names on (#37), uses the named wording: one dose's label in its title,
-// several doses' labels in their body, with the generic body or title beside it. A label appears
-// in nothing else.
+// Occurrence's +80 minute window, or a Snooze's (#36) target +5 minutes when later. Only a message
+// with `labels`, which the due-reminder operation adds with Medication names on (#37), uses the
+// named wording: one dose's label in its title, several doses' labels in their body, with the
+// generic body or title beside it. A label appears in nothing else.
 //
 // Answers: success is accepted; 429, 5xx, an expired access token, a token-endpoint failure, a
 // network error or a timeout is transient; anything else is rejected with FCM's `errorCode`, or
@@ -21,6 +21,7 @@ import { reminderDueLink, reminderLink } from '../src/features/schedules/reminde
 import { formatTime } from '../src/lib/calendar-date'
 import {
   REMINDER_WINDOW_MS,
+  SNOOZE_LATENESS_MS,
   type ProviderAnswer,
   type ReminderMessage,
   type ReminderProvider,
@@ -126,7 +127,11 @@ export function createFcmProvider(
 
 /** The FCM HTTP v1 request body for one reminder. */
 export function fcmMessage(message: ReminderMessage, now: Date) {
-  const windowEnd = Date.parse(message.dueAt) + REMINDER_WINDOW_MS
+  // A Snooze stays eligible through its target +5 minutes, past due +80 for an extension.
+  const windowEnd = Math.max(
+    Date.parse(message.dueAt) + REMINDER_WINDOW_MS,
+    message.snoozedTo ? Date.parse(message.snoozedTo) + SNOOZE_LATENESS_MS : 0,
+  )
   const ttl = Math.max(0, Math.floor((windowEnd - now.getTime()) / 1000))
   const [scheduleId, ...others] = message.scheduleIds
   const count = message.scheduleIds.length

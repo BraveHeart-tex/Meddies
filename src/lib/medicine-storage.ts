@@ -3,7 +3,12 @@ import { ApplicationError } from '@/lib/application-error'
 
 export async function sendStorage(
   path:
-    '/medicines' | '/schedules' | '/device-registrations' | '/quiet-hours' | '/medication-names',
+    | '/medicines'
+    | '/schedules'
+    | '/device-registrations'
+    | '/quiet-hours'
+    | '/medication-names'
+    | '/snoozes',
   command: unknown,
 ): Promise<unknown> {
   const secret = process.env.MEDICINES_WORKER_SECRET

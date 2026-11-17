@@ -24,6 +24,7 @@ const commandPaths = [
   '/device-registrations',
   '/quiet-hours',
   '/medication-names',
+  '/snoozes',
 ] as const
 export type CommandPath = (typeof commandPaths)[number]
 

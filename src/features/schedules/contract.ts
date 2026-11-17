@@ -372,7 +372,7 @@ export function parseDoseCorrection(value: unknown): DoseCorrectionInput {
 
 export const parseSkippedDose = parseOccurrenceKey
 
-function parseOccurrenceKey(value: unknown): DoseOccurrenceKey {
+export function parseOccurrenceKey(value: unknown): DoseOccurrenceKey {
   if (!value || typeof value !== 'object') throw new ApplicationError('validation', 400)
   const { scheduleId, dueAt } = value as Record<string, unknown>
   if (typeof scheduleId !== 'string' || !uuid.test(scheduleId) || !isInstant(dueAt))

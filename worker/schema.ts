@@ -347,6 +347,36 @@ export const followUpReminders = sqliteTable(
   ],
 )
 
+// One Follow-up reminder a Snooze reserved (#36), keyed like follow_up_reminders and by its action.
+export const snoozes = sqliteTable(
+  'snoozes',
+  {
+    ownerId: text('owner_id').notNull(),
+    scheduleId: text('schedule_id').notNull(),
+    dueAt: text('due_at').notNull(),
+    reminder: integer('reminder').notNull(),
+    actionId: text('action_id').notNull(),
+    acceptedAt: text('accepted_at').notNull(),
+    targetAt: text('target_at').notNull(),
+    state: text('state', { enum: ['pending', 'submitted', 'dropped'] })
+      .notNull()
+      .default('pending'),
+    claimToken: text('claim_token'),
+    leaseUntil: text('lease_until'),
+    settledAt: text('settled_at'),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.scheduleId, table.dueAt, table.reminder] }),
+    unique().on(table.ownerId, table.actionId),
+    uniqueIndex('snoozes_one_pending')
+      .on(table.ownerId, table.scheduleId, table.dueAt)
+      .where(sql`${table.state} = 'pending'`),
+    index('snoozes_state_target').on(table.state, table.targetAt),
+    check('snoozes_reminder', sql`${table.reminder} IN (1, 2)`),
+    check('snoozes_state', sql`${table.state} IN ('pending', 'submitted', 'dropped')`),
+  ],
+)
+
 // One submission to one Device registration; never the token or medication name (#366).
 // `reminder` names what it submitted: 0 the Original reminder, 1 and 2 the Follow-up reminders.
 export const deliveryAttempts = sqliteTable(
