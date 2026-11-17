@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { reminderLink } from '../src/features/schedules/reminder-link'
+import { reminderDueLink, reminderLink } from '../src/features/schedules/reminder-link'
 import type { ReminderMessage } from '../worker/due-reminders'
 import { createFcmProvider, fcmTokenUrl } from '../worker/fcm'
 
@@ -30,8 +30,8 @@ const sendUrl = 'https://fcm.googleapis.com/v1/projects/meddies-dev/messages:sen
 
 const message: ReminderMessage = {
   token: 'registration-token',
-  scheduleId: '6f1d2c4e-8a9b-4c3d-9e2f-1a2b3c4d5e6f',
   dueAt: '2026-11-17T06:00:00.000Z',
+  scheduleIds: ['6f1d2c4e-8a9b-4c3d-9e2f-1a2b3c4d5e6f'],
 }
 
 type Sent = { url: string; init: RequestInit }
@@ -127,8 +127,36 @@ test('The message carries the generic wording and the Reminder link, with no med
         title: 'Time for your dose',
         body: "Open Meddies when you're ready to log it.",
       },
-      data: { link: reminderLink(message) },
+      data: { link: reminderLink({ scheduleId: message.scheduleIds[0], dueAt: message.dueAt }) },
       // The push expires with the +80 minute window: 60 minutes remain.
+      webpush: { headers: { Urgency: 'high', TTL: '3600' } },
+    },
+  })
+})
+
+test('A message covering three doses carries the dose count and the grouped Reminder link', async () => {
+  const network = fakeNetwork()
+  const provider = createFcmProvider(credentials, {
+    fetch: network.fetch,
+    clock: () => new Date('2026-11-17T06:20:00.000Z'),
+  })
+  await provider.submit({
+    ...message,
+    scheduleIds: [
+      ...message.scheduleIds,
+      '7a2e3d5f-9b0c-4d4e-8f30-2b3c4d5e6f70',
+      '8b3f4e60-0c1d-4e5f-9041-3c4d5e6f7081',
+    ],
+  })
+
+  assert.deepEqual(JSON.parse(network.sends()[0].init.body as string), {
+    message: {
+      token: 'registration-token',
+      notification: {
+        title: 'Time for 3 doses',
+        body: "Open Meddies when you're ready to log them.",
+      },
+      data: { link: reminderDueLink(message.dueAt) },
       webpush: { headers: { Urgency: 'high', TTL: '3600' } },
     },
   })

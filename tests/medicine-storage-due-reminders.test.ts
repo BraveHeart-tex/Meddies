@@ -11,6 +11,7 @@ import {
 } from '../worker/due-reminders'
 import { createWorker } from '../worker/index'
 import {
+  call,
   medicine,
   runtime,
   secret,
@@ -44,21 +45,33 @@ const run = (provider: ReminderProvider, at: string, batch?: number) =>
   runDueReminders(drizzle(db), provider, () => new Date(at), batch)
 
 /**
- * One owner with a Schedule on `date` only (09:00 Istanbul is 06:00Z), or none without `times`,
- * and `devices` Device registrations.
+ * One owner with `schedules` Schedules on `date` only (09:00 Istanbul is 06:00Z), each for its own
+ * medication, or none without `times`, and `devices` Device registrations.
  */
-async function owner(date: string, times: string[], devices = 1) {
+async function owner(date: string, times: string[], devices = 1, schedules = 1) {
   const f = await versionFixture()
   f.setNow(`${date}T04:00:00.000Z`)
-  const scheduleId = randomUUID()
-  if (times.length)
+  const scheduleIds = Array.from({ length: times.length ? schedules : 0 }, () => randomUUID())
+  for (const [index, id] of scheduleIds.entries()) {
+    let medicineId = f.medicineId
+    if (index) {
+      medicineId = randomUUID()
+      const saved = await call({
+        operation: 'save',
+        ownerId: f.ownerId,
+        medicine: { ...medicine, id: medicineId },
+      })
+      assert.equal(saved.status, 200)
+    }
     await f.operations.save({
-      id: scheduleId,
-      medicineId: f.medicineId,
+      id,
+      medicineId,
       startDate: date,
       endDate: date,
       times: times.map((time) => ({ time, quantity: 1 })),
     })
+  }
+  const scheduleId = scheduleIds[0]
   const tokens: string[] = []
   for (let index = 0; index < devices; index++) {
     const token = `token-${randomUUID()}`
@@ -71,7 +84,7 @@ async function owner(date: string, times: string[], devices = 1) {
     )
   }
   const due = (time: string) => new Date(`${date}T${time}:00+03:00`).toISOString()
-  return { ...f, scheduleId, tokens, due }
+  return { ...f, scheduleId, scheduleIds: scheduleIds.toSorted(), tokens, due }
 }
 
 const registrations = async (ownerId: string) =>
@@ -109,7 +122,7 @@ test('A run at or after the due instant submits one Original reminder per Device
     dropped: 0,
     retrying: 0,
   })
-  const message = { scheduleId: o.scheduleId, dueAt: o.due('09:00') }
+  const message = { dueAt: o.due('09:00'), scheduleIds: [o.scheduleId] }
   assert.deepEqual(
     sent.toSorted((a, b) => a.token.localeCompare(b.token)),
     o.tokens.toSorted().map((token) => ({ ...message, token })),
@@ -171,7 +184,9 @@ test('An Occurrence with Taken or Skipped recorded gets no Original reminder', a
     dropped: 2,
     retrying: 0,
   })
-  assert.deepEqual(sent, [{ token: o.tokens[0], scheduleId: o.scheduleId, dueAt: o.due('09:20') }])
+  assert.deepEqual(sent, [
+    { token: o.tokens[0], dueAt: o.due('09:20'), scheduleIds: [o.scheduleId] },
+  ])
 })
 
 test('Overlapping runs submit each Original reminder once and an abandoned claim is recovered after its lease', async () => {
@@ -326,6 +341,124 @@ test('A run processes a bounded batch and leaves the rest for the next run', asy
   assert.deepEqual(sent.at(-1)?.dueAt, o.due('09:20'))
 })
 
+test('Doses due at the same instant go out as one submission per Device registration, with a Delivery attempt per Occurrence', async () => {
+  const o = await owner('2026-11-23', ['09:00'], 2, 3)
+  const [failingToken, acceptedToken] = o.tokens
+  const installations = await registrations(o.ownerId)
+  const installation = (token: string) => installations.find((row) => row.token === token)!.id
+  const answers = fake((message) =>
+    message.token === failingToken
+      ? { outcome: 'transient', code: 'UNAVAILABLE' }
+      : { outcome: 'accepted' },
+  )
+  assert.deepEqual(await run(answers.provider, '2026-11-23T06:00:00.000Z'), {
+    submitted: 0,
+    dropped: 0,
+    retrying: 3,
+  })
+  const message = { dueAt: o.due('09:00'), scheduleIds: o.scheduleIds }
+  assert.deepEqual(
+    answers.sent.toSorted((a, b) => a.token.localeCompare(b.token)),
+    o.tokens.toSorted().map((token) => ({ ...message, token })),
+    'one submission per Device registration covering every dose due at the instant',
+  )
+
+  const retry = fake()
+  assert.deepEqual(await run(retry.provider, '2026-11-23T06:01:00.000Z'), {
+    submitted: 3,
+    dropped: 0,
+    retrying: 0,
+  })
+  assert.deepEqual(
+    retry.sent,
+    [{ ...message, token: failingToken }],
+    'the group is retried only to the Device registration without a final answer',
+  )
+
+  const attempts = (
+    await db
+      .prepare(
+        'SELECT schedule_id AS scheduleId, installation_id AS installationId, outcome, attempted_at AS attemptedAt FROM delivery_attempts WHERE owner_id=?',
+      )
+      .bind(o.ownerId)
+      .all<Record<string, string>>()
+  ).results
+  const key = (row: Record<string, string>) => Object.values(row).join()
+  const expected = o.scheduleIds.flatMap((scheduleId) => [
+    {
+      scheduleId,
+      installationId: installation(acceptedToken),
+      outcome: 'accepted',
+      attemptedAt: '2026-11-23T06:00:00.000Z',
+    },
+    {
+      scheduleId,
+      installationId: installation(failingToken),
+      outcome: 'transient',
+      attemptedAt: '2026-11-23T06:00:00.000Z',
+    },
+    {
+      scheduleId,
+      installationId: installation(failingToken),
+      outcome: 'accepted',
+      attemptedAt: '2026-11-23T06:01:00.000Z',
+    },
+  ])
+  assert.deepEqual(
+    attempts.map(key).toSorted(),
+    expected.map(key).toSorted(),
+    'each covered Occurrence records the submission answer per Device registration',
+  )
+})
+
+test("Overlapping runs and a batch limit never split one owner's due instant", async () => {
+  const o = await owner('2026-11-24', ['09:00', '09:10'], 1, 3)
+  const { provider, sent } = fake()
+  const runs = await Promise.all([
+    run(provider, '2026-11-24T06:10:00.000Z', 1),
+    run(provider, '2026-11-24T06:10:00.000Z', 1),
+    run(provider, '2026-11-24T06:10:00.000Z', 1),
+  ])
+  assert.equal(
+    runs.reduce((total, result) => total + result.submitted, 0),
+    6,
+  )
+  assert.deepEqual(
+    sent.toSorted((a, b) => a.dueAt.localeCompare(b.dueAt)),
+    ['09:00', '09:10'].map((time) => ({
+      token: o.tokens[0],
+      dueAt: o.due(time),
+      scheduleIds: o.scheduleIds,
+    })),
+    'a batch of one due instant claims all three doses due at it',
+  )
+})
+
+test('A due instant with one Occurrence left after Taken or Skipped submits the single-dose reminder', async () => {
+  const o = await owner('2026-11-25', ['09:00'], 1, 3)
+  const failing = fake(() => ({ outcome: 'transient', code: 'UNAVAILABLE' }))
+  await run(failing.provider, '2026-11-25T06:00:00.000Z')
+  assert.equal(failing.sent[0].scheduleIds.length, 3)
+
+  const [skipped, taken, left] = o.scheduleIds
+  o.setNow('2026-11-25T06:05:00.000Z')
+  await o.operations.recordSkipped({ scheduleId: skipped, dueAt: o.due('09:00') })
+  await o.operations.recordTaken({
+    scheduleId: taken,
+    dueAt: o.due('09:00'),
+    takenAt: '2026-11-25T06:05:00.000Z',
+    quantity: 1,
+  })
+
+  const { provider, sent } = fake()
+  assert.deepEqual(await run(provider, '2026-11-25T06:06:00.000Z'), {
+    submitted: 1,
+    dropped: 2,
+    retrying: 0,
+  })
+  assert.deepEqual(sent, [{ token: o.tokens[0], dueAt: o.due('09:00'), scheduleIds: [left] }])
+})
+
 const schedulerSecret = 'synthetic-scheduler-secret-at-least-32-characters'
 const bindings = () => ({
   DB: db,
@@ -345,7 +478,9 @@ test('The cron trigger runs the due-reminder operation, and stops before claimin
   await cron('2026-11-20T05:59:00.000Z')
   assert.equal(sent.length, 0)
   await cron('2026-11-20T06:00:00.000Z')
-  assert.deepEqual(sent, [{ token: o.tokens[0], scheduleId: o.scheduleId, dueAt: o.due('09:00') }])
+  assert.deepEqual(sent, [
+    { token: o.tokens[0], dueAt: o.due('09:00'), scheduleIds: [o.scheduleId] },
+  ])
   assert.deepEqual(await reminderState(o.ownerId), [{ dueAt: o.due('09:00'), state: 'submitted' }])
 
   const unconfigured = await owner('2026-11-21', ['09:00'])

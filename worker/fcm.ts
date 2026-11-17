@@ -1,18 +1,19 @@
 // The FCM reminder provider (#368, docs/product/reminders.md #30): implements the due-reminder
-// provider port by sending one Original reminder to one Device registration through FCM HTTP v1
+// provider port by sending one reminder to one Device registration through FCM HTTP v1
 // (`projects/{id}/messages:send`). Its OAuth2 access token comes from a service-account JWT
 // signed with WebCrypto; `firebase-admin` is Node-only and the legacy server key is never used.
 // One provider holds its token until five minutes before expiry and concurrent submissions share
 // one token request, so the caller keeps one provider per Worker isolate.
 //
-// The message carries the generic wording (docs/copy.md Reminder wording), the Reminder link as
-// `data.link` for the service worker's tap handler, and a Web Push TTL ending with the reminder's
-// +80 minute window. It never names a medication.
+// The message carries the generic wording (docs/copy.md Reminder wording), with the dose count
+// when it covers several doses, and its Reminder link as `data.link` for the service worker's tap
+// handler: the Occurrence's for one dose, the grouped one for several (#372). Its Web Push TTL
+// ends with the reminder's +80 minute window. It never names a medication.
 //
 // Answers: success is accepted; 429, 5xx, an expired access token, a token-endpoint failure, a
 // network error or a timeout is transient; anything else is rejected with FCM's `errorCode`, or
 // its status. Nothing here logs, so no token, credential or provider message text leaves it.
-import { reminderLink } from '../src/features/schedules/reminder-link'
+import { reminderDueLink, reminderLink } from '../src/features/schedules/reminder-link'
 import {
   REMINDER_WINDOW_MS,
   type ProviderAnswer,
@@ -27,6 +28,8 @@ type Options = { fetch?: typeof fetch; clock?: () => Date; timeoutMs?: number }
 
 export const reminderTitle = 'Time for your dose'
 export const reminderBody = "Open Meddies when you're ready to log it."
+export const groupedReminderTitle = (count: number) => `Time for ${count} doses`
+export const groupedReminderBody = "Open Meddies when you're ready to log them."
 
 export const fcmTokenUrl = 'https://oauth2.googleapis.com/token'
 const SCOPE = 'https://www.googleapis.com/auth/firebase.messaging'
@@ -109,11 +112,19 @@ export function createFcmProvider(
 export function fcmMessage(message: ReminderMessage, now: Date) {
   const windowEnd = Date.parse(message.dueAt) + REMINDER_WINDOW_MS
   const ttl = Math.max(0, Math.floor((windowEnd - now.getTime()) / 1000))
+  const [scheduleId, ...others] = message.scheduleIds
+  const count = message.scheduleIds.length
   return {
     message: {
       token: message.token,
-      notification: { title: reminderTitle, body: reminderBody },
-      data: { link: reminderLink(message) },
+      notification: others.length
+        ? { title: groupedReminderTitle(count), body: groupedReminderBody }
+        : { title: reminderTitle, body: reminderBody },
+      data: {
+        link: others.length
+          ? reminderDueLink(message.dueAt)
+          : reminderLink({ scheduleId, dueAt: message.dueAt }),
+      },
       webpush: { headers: { Urgency: 'high', TTL: String(ttl) } },
     },
   }

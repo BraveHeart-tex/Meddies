@@ -2,13 +2,16 @@
 // 1. records every Occurrence whose Original reminder is due - from its due instant through due
 //    +80 minutes inclusive (#9 D4) - for owners with a Device registration, once per Occurrence;
 // 2. drops recorded reminders whose window has passed, unsent;
-// 3. claims a bounded batch with one conditional UPDATE ... RETURNING that sets a fresh claim
-//    token and lease (#5), so overlapping runs never claim the same reminder and an abandoned
-//    claim becomes claimable again once its lease expires;
-// 4. rechecks expiry and Taken/Skipped at processing time, then submits through the provider
-//    port to each Device registration without a final answer for the Occurrence, recording one
-//    Delivery attempt per submission.
-// A transient answer releases the reminder for the next run inside its window; accepted and
+// 3. claims a bounded batch of owners' due instants with one conditional UPDATE ... RETURNING that
+//    sets a fresh claim token and lease (#5) on every claimable reminder of each instant, so
+//    overlapping runs never claim the same reminder or split an instant, and an abandoned claim
+//    becomes claimable again once its lease expires;
+// 4. rechecks expiry and Taken/Skipped per Occurrence at processing time, then submits one
+//    reminder per due instant (#372) through the provider port to each Device registration,
+//    covering the remaining Occurrences without a final answer for it, and records one Delivery
+//    attempt per covered Occurrence with the submission's answer.
+// A reminder recorded after its instant was claimed is claimed, and sent, on its own. A transient
+// answer releases the reminders it covers for the next run inside their window; accepted and
 // rejected answers are final for that Device registration. Only the claim token holder settles a
 // reminder. An `UNREGISTERED` or `NOT_FOUND` answer removes that Device registration unless it has
 // since been renewed with another token. Delivery attempts hold no registration token and no
@@ -19,8 +22,12 @@ import { istanbulDate } from '../src/features/schedules/contract'
 import { scheduleSlotsOn } from '../src/features/schedules/occurrences'
 import { dailySchedules, deliveryAttempts, deviceRegistrations, originalReminders } from './schema'
 
-/** One Original reminder for one Device registration; the Occurrence identifies its Reminder link. */
-export type ReminderMessage = { token: string; scheduleId: string; dueAt: string }
+/**
+ * One reminder for one Device registration, covering the Original reminders of the schedules in
+ * `scheduleIds` due at `dueAt`. One schedule gets its Occurrence's Reminder link; several get the
+ * grouped Reminder link.
+ */
+export type ReminderMessage = { token: string; dueAt: string; scheduleIds: string[] }
 
 /** The provider's answer; `code` is its status code, such as `UNREGISTERED` or `TIMEOUT`. */
 export type ProviderAnswer =
@@ -31,7 +38,10 @@ export type ProviderAnswer =
 /** Submits one reminder and settles within a bounded time, answering a timeout as transient. */
 export type ReminderProvider = { submit(message: ReminderMessage): Promise<ProviderAnswer> }
 
-/** Reminders this run settled or released; a claim lost to another run counts in none. */
+/**
+ * Original reminders this run settled or released; a claim lost to another run counts in none.
+ * `batch` bounds the due instants a run claims.
+ */
 export type DueReminderRun = { submitted: number; dropped: number; retrying: number }
 
 /** An Original reminder is eligible from its due instant through due +80 minutes (#9 D4). */
@@ -53,8 +63,11 @@ export async function runDueReminders(
   const now = clock()
   const at = now.toISOString()
   const windowStart = new Date(now.getTime() - REMINDER_WINDOW_MS).toISOString()
-  for (const rows of chunks(await dueOccurrences(db, now, windowStart)))
-    await db.insert(originalReminders).values(rows).onConflictDoNothing()
+  // One batch, so a concurrent claim never sees an instant half recorded.
+  const [first, ...rest] = chunks(await dueOccurrences(db, now, windowStart)).map((rows) =>
+    db.insert(originalReminders).values(rows).onConflictDoNothing(),
+  )
+  if (first) await db.batch([first, ...rest])
   await db
     .update(originalReminders)
     .set({ state: 'dropped', settledAt: at, claimToken: null, leaseUntil: null })
@@ -70,17 +83,22 @@ export async function runDueReminders(
   const leaseUntil = new Date(now.getTime() + LEASE_MS).toISOString()
   const claimed = await db.all<Reminder>(sql`UPDATE original_reminders
     SET claim_token = ${token}, lease_until = ${leaseUntil}
-    WHERE rowid IN (SELECT rowid FROM original_reminders
-      WHERE state = 'pending' AND (lease_until IS NULL OR lease_until <= ${at})
-        AND due_at >= ${windowStart} AND due_at <= ${at}
-      ORDER BY due_at LIMIT ${batch})
+    WHERE state = 'pending' AND (lease_until IS NULL OR lease_until <= ${at})
+      AND (owner_id, due_at) IN (SELECT owner_id, due_at FROM original_reminders
+        WHERE state = 'pending' AND (lease_until IS NULL OR lease_until <= ${at})
+          AND due_at >= ${windowStart} AND due_at <= ${at}
+        GROUP BY owner_id, due_at ORDER BY due_at LIMIT ${batch})
     RETURNING owner_id AS ownerId, schedule_id AS scheduleId, due_at AS dueAt`)
 
-  const run: DueReminderRun = { submitted: 0, dropped: 0, retrying: 0 }
-  for (const reminder of claimed) {
-    const result = await deliver(db, provider, clock, token, reminder)
-    if (result) run[result]++
+  const instants = new Map<string, Reminder[]>()
+  for (const reminder of [...claimed].sort((a, b) => a.dueAt.localeCompare(b.dueAt))) {
+    const key = `${reminder.ownerId}:${reminder.dueAt}`
+    instants.set(key, [...(instants.get(key) ?? []), reminder])
   }
+  const run: DueReminderRun = { submitted: 0, dropped: 0, retrying: 0 }
+  for (const reminders of instants.values())
+    for (const result of await deliver(db, provider, clock, token, reminders))
+      if (result) run[result]++
   return run
 }
 
@@ -135,16 +153,20 @@ async function dueOccurrences(db: DrizzleD1Database, now: Date, windowStart: str
   )
 }
 
+// Delivers one owner's due instant: rechecks expiry and Taken/Skipped per Occurrence, then submits
+// one reminder to each Device registration covering the remaining Occurrences without a final
+// answer for it, recording one Delivery attempt per covered Occurrence with that answer.
 async function deliver(
   db: DrizzleD1Database,
   provider: ReminderProvider,
   clock: () => Date,
   token: string,
-  reminder: Reminder,
-): Promise<keyof DueReminderRun | null> {
+  reminders: Reminder[],
+): Promise<(keyof DueReminderRun | null)[]> {
   const now = clock()
+  const { ownerId, dueAt } = reminders[0]
   // Settles only while this run still holds the claim; null once another run has reclaimed it.
-  const settle = async (result: keyof DueReminderRun) => {
+  const settle = async (scheduleId: string, result: keyof DueReminderRun) => {
     const held = await db
       .update(originalReminders)
       .set(
@@ -154,57 +176,71 @@ async function deliver(
       )
       .where(
         and(
-          eq(originalReminders.ownerId, reminder.ownerId),
-          eq(originalReminders.scheduleId, reminder.scheduleId),
-          eq(originalReminders.dueAt, reminder.dueAt),
+          eq(originalReminders.ownerId, ownerId),
+          eq(originalReminders.scheduleId, scheduleId),
+          eq(originalReminders.dueAt, dueAt),
           eq(originalReminders.claimToken, token),
         ),
       )
       .returning({ dueAt: originalReminders.dueAt })
     return held.length ? result : null
   }
-  if (
-    now.getTime() > Date.parse(reminder.dueAt) + REMINDER_WINDOW_MS ||
-    (await hasOutcome(db, reminder))
-  )
-    return settle('dropped')
+  if (now.getTime() > Date.parse(dueAt) + REMINDER_WINDOW_MS)
+    return Promise.all(reminders.map((reminder) => settle(reminder.scheduleId, 'dropped')))
 
-  const registrations = await db
-    .select({
-      installationId: deviceRegistrations.installationId,
-      token: deviceRegistrations.token,
-    })
-    .from(deviceRegistrations)
-    .where(
-      and(
-        eq(deviceRegistrations.ownerId, reminder.ownerId),
-        sql`NOT EXISTS (SELECT 1 FROM delivery_attempts
-          WHERE delivery_attempts.owner_id = ${reminder.ownerId}
-            AND delivery_attempts.schedule_id = ${reminder.scheduleId}
-            AND delivery_attempts.due_at = ${reminder.dueAt}
-            AND delivery_attempts.installation_id = ${deviceRegistrations.installationId}
-            AND delivery_attempts.outcome <> 'transient')`,
+  const recorded = new Set(
+    (
+      await db.all<{ scheduleId: string }>(sql`SELECT schedule_id AS scheduleId FROM dose_records
+          WHERE owner_id = ${ownerId} AND due_at = ${dueAt}
+        UNION SELECT schedule_id FROM skipped_dose_records
+          WHERE owner_id = ${ownerId} AND due_at = ${dueAt}`)
+    ).map((row) => row.scheduleId),
+  )
+  const live = reminders
+    .map((reminder) => reminder.scheduleId)
+    .filter((scheduleId) => !recorded.has(scheduleId))
+    .sort()
+
+  const final = new Set(
+    (
+      await db.all<{ installationId: string; scheduleId: string }>(sql`SELECT
+          installation_id AS installationId, schedule_id AS scheduleId FROM delivery_attempts
+        WHERE owner_id = ${ownerId} AND due_at = ${dueAt} AND outcome <> 'transient'`)
+    ).map((row) => `${row.installationId}:${row.scheduleId}`),
+  )
+  const registrations = (
+    await db
+      .select({
+        installationId: deviceRegistrations.installationId,
+        token: deviceRegistrations.token,
+      })
+      .from(deviceRegistrations)
+      .where(eq(deviceRegistrations.ownerId, ownerId))
+  )
+    .map((registration) => ({
+      ...registration,
+      scheduleIds: live.filter(
+        (scheduleId) => !final.has(`${registration.installationId}:${scheduleId}`),
       ),
-    )
+    }))
+    .filter((registration) => registration.scheduleIds.length)
   const answers = await Promise.all(
     registrations.map((registration) =>
-      submit(provider, {
-        token: registration.token,
-        scheduleId: reminder.scheduleId,
-        dueAt: reminder.dueAt,
-      }),
+      submit(provider, { token: registration.token, dueAt, scheduleIds: registration.scheduleIds }),
     ),
   )
-  const attempts = registrations.map((registration, index) => ({
-    id: crypto.randomUUID(),
-    ownerId: reminder.ownerId,
-    scheduleId: reminder.scheduleId,
-    dueAt: reminder.dueAt,
-    installationId: registration.installationId,
-    outcome: answers[index].outcome,
-    code: 'code' in answers[index] ? answers[index].code : null,
-    attemptedAt: now.toISOString(),
-  }))
+  const attempts = registrations.flatMap((registration, index) =>
+    registration.scheduleIds.map((scheduleId) => ({
+      id: crypto.randomUUID(),
+      ownerId,
+      scheduleId,
+      dueAt,
+      installationId: registration.installationId,
+      outcome: answers[index].outcome,
+      code: 'code' in answers[index] ? answers[index].code : null,
+      attemptedAt: now.toISOString(),
+    })),
+  )
   for (const rows of chunks(attempts)) await db.insert(deliveryAttempts).values(rows)
   const unregistered = registrations.filter((_, index) => {
     const answer = answers[index]
@@ -220,15 +256,17 @@ async function deliver(
         ),
       )
 
-  return settle(answers.some((answer) => answer.outcome === 'transient') ? 'retrying' : 'submitted')
-}
-
-async function hasOutcome(db: DrizzleD1Database, { ownerId, scheduleId, dueAt }: Reminder) {
-  const row = await db.get<{ recorded: number }>(sql`SELECT EXISTS (
-    SELECT 1 FROM dose_records WHERE owner_id = ${ownerId} AND schedule_id = ${scheduleId} AND due_at = ${dueAt}
-    UNION ALL SELECT 1 FROM skipped_dose_records WHERE owner_id = ${ownerId} AND schedule_id = ${scheduleId} AND due_at = ${dueAt}
-  ) AS recorded`)
-  return Boolean(row?.recorded)
+  const retrying = new Set(
+    attempts.filter((attempt) => attempt.outcome === 'transient').map((row) => row.scheduleId),
+  )
+  return Promise.all(
+    reminders.map(({ scheduleId }) =>
+      settle(
+        scheduleId,
+        recorded.has(scheduleId) ? 'dropped' : retrying.has(scheduleId) ? 'retrying' : 'submitted',
+      ),
+    ),
+  )
 }
 
 // A thrown submission is transient, and only a status-code-shaped code is stored, so no
