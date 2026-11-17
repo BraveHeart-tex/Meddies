@@ -54,7 +54,7 @@ Separate the **scheduled dose**, **delivery attempt**, **provider acknowledgemen
 
 ## Remaining delivery and integration decisions
 
-**Still unverified:** the Worker sender's credentials and real sends (#368, #369), tap navigation and reinstallation on the iPhone (#370), and operational monitoring (#61).
+**Still unverified:** operational monitoring (#61).
 
 The precise copy and device-settings UX remain design work within these rules.
 
@@ -132,9 +132,10 @@ eligibility; all doses remain unconfirmed unless specified.
 
 - A Cloudflare Cron Trigger runs the due-reminder operation on the Worker every minute. An
   authenticated Worker command runs the same operation for the approved external scheduler.
-- An **Original reminder** is eligible from its occurrence's due instant through due +80 minutes
-  inclusive ([#9 D4](#approved-decisions)); later processing drops it without sending. An
-  occurrence with Taken or Skipped recorded at processing time gets none.
+- An **Original reminder** is eligible from its occurrence's due instant until a later reminder of
+  that occurrence is due ([#9 D4](#approved-decisions)), and never after due +80 minutes; later
+  processing drops it without sending. An occurrence with Taken or Skipped recorded at processing
+  time gets none.
 - Each run claims an Original reminder once, even when runs overlap, and records one **Delivery
   attempt** per Device registration of its owner. A transient provider failure leaves it eligible
   for the next run inside its window. A provider answer of `UNREGISTERED` or `NOT_FOUND` removes
@@ -151,3 +152,18 @@ eligibility; all doses remain unconfirmed unless specified.
 - Tapping a several-dose reminder opens the screen that lists them, with no drawer: Today when
   their due day is today, otherwise History for that day.
 - A signed-out tap opens its destination after sign-in.
+
+## #31 - Approved follow-up reminder rules (November 17, 2026)
+
+- Each occurrence has two **Follow-up reminders**, targeted at due +40 and +80 minutes. Retries,
+  transient answers and dropped or retired reminders never add one.
+- Per occurrence, a run submits only the reminder with the latest target at or before processing
+  time and retires the older ones, the Original reminder included ([#9 D4](#approved-decisions)).
+  No automatic reminder submits after due +80 minutes; at equality the second Follow-up reminder
+  may still submit.
+- Follow-up reminders recheck Taken or Skipped at processing time, are claimed once, retry and
+  record Delivery attempts as Original reminders do ([#30 rules](#30---approved-dose-reminder-rules-november-17-2026)).
+- Follow-up reminders of occurrences sharing a due instant go out as one reminder per Device
+  registration with the grouped Reminder link. A Follow-up reminder never shares a push with
+  another due instant's reminders, so two pushes can arrive in the same minute.
+- The wording names the due time, never the medication ([copy](../copy.md#reminder-wording)).

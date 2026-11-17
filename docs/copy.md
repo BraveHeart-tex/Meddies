@@ -99,6 +99,10 @@ taken.
 - **Body:** "Open Meddies when you're ready to log it."
 - **Several doses at once:** "Time for {count} doses" / "Open Meddies when you're ready to log
   them." `{count}` is the number of doses the reminder covers, as a numeral.
+- **Follow-up reminder:** "Your {time} dose" / "Not logged yet. Open Meddies when you're ready to
+  log it." `{time}` is the due time in the Time format.
+- **Several follow-up reminders at once:** "Your {time} doses" / "{count} doses not logged yet.
+  Open Meddies when you're ready to log them."
 
 ## Errors
 

@@ -136,9 +136,14 @@ alone does not.
 _Avoid_: subscription, push token, in UI copy and tickets
 
 **Original reminder**:
-The first reminder for an Occurrence, targeted at its due instant. Follow-ups and snoozes are
-separate.
+The first reminder for an Occurrence, targeted at its due instant. Follow-up reminders and
+snoozes are separate.
 _Avoid_: dose notification, first push
+
+**Follow-up reminder**:
+An automatic reminder for an Occurrence still without Taken or Skipped, targeted 40 or 80 minutes
+after its due instant. Each Occurrence has two; a snooze reserves one rather than adding a third.
+_Avoid_: nudge, repeat push, retry
 
 **Delivery attempt**:
 One submission of a reminder to one Device registration, with the provider's answer. Provider
