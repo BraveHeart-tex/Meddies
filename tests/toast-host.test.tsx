@@ -1,6 +1,6 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { createToastManager, Toaster } from '../src/components/ui/toast'
 
 // The Toast host's Dismiss and swipe (#376). Base UI owns the 40px threshold; these
@@ -80,4 +80,131 @@ test('a swipe of 40px springs back and keeps the Toast', () => {
   expect(screen.getByRole('dialog', { name: title })).toBe(toastElement)
   expect(toastElement).not.toHaveAttribute('data-swiping')
   expect(toastElement).not.toHaveAttribute('data-swipe-direction')
+})
+
+// #378 stack and timer (371·A8, A9). Base UI owns expansion and pausing; these cases catch a lost
+// `limit`, a reading time that ignores the detail line, or a stack that no longer pauses.
+
+function host() {
+  const manager = createToastManager()
+  render(<Toaster toastManager={manager} />)
+  const add = (title: string, description?: string) =>
+    act(() => {
+      manager.add({ title, description, type: 'success' })
+    })
+  const toastOf = (name: string) => screen.getByRole('dialog', { name })
+  return { add, toastOf }
+}
+
+const isBehind = (toastElement: HTMLElement) =>
+  toastElement.querySelector('[data-slot="toast-content"]')?.hasAttribute('data-behind')
+
+test('two Toasts collapse with the older behind, and a tap expands them', async () => {
+  const user = userEvent.setup()
+  const { add, toastOf } = host()
+  add('Fixed details saved')
+  add('Schedule saved for Amoxicillin.')
+
+  expect(isBehind(toastOf('Fixed details saved'))).toBe(true)
+  expect(isBehind(toastOf('Schedule saved for Amoxicillin.'))).toBe(false)
+  expect(toastOf('Fixed details saved')).not.toHaveAttribute('data-expanded')
+
+  await user.pointer({ keys: '[TouchA]', target: toastOf('Schedule saved for Amoxicillin.') })
+
+  expect(toastOf('Fixed details saved')).toHaveAttribute('data-expanded')
+  expect(toastOf('Schedule saved for Amoxicillin.')).toHaveAttribute('data-expanded')
+})
+
+test('keyboard focus expands the stack', async () => {
+  const user = userEvent.setup()
+  const { add, toastOf } = host()
+  add('Fixed details saved')
+  add('Schedule saved for Amoxicillin.')
+
+  await user.keyboard('{F6}')
+
+  expect(toastOf('Fixed details saved')).toHaveAttribute('data-expanded')
+})
+
+test('expanded, each Toast closes on its own', async () => {
+  const user = userEvent.setup()
+  const { add, toastOf } = host()
+  add('Fixed details saved')
+  add('Schedule saved for Amoxicillin.')
+  await user.hover(toastOf('Schedule saved for Amoxicillin.'))
+
+  const older = toastOf('Fixed details saved')
+  await user.click(within(older).getByRole('button', { name: 'Dismiss' }))
+
+  expect(screen.queryByRole('dialog', { name: 'Fixed details saved' })).not.toBeInTheDocument()
+  expect(toastOf('Schedule saved for Amoxicillin.')).toBeVisible()
+})
+
+test('a third Toast drops the oldest', () => {
+  const { add, toastOf } = host()
+  add('First saved')
+  add('Second saved')
+  add('Third saved')
+
+  expect(document.querySelector('[data-limited]')).toHaveTextContent('First saved')
+  expect(toastOf('Second saved')).not.toHaveAttribute('data-limited')
+  expect(toastOf('Third saved')).not.toHaveAttribute('data-limited')
+})
+
+describe('reading time', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  test.each([
+    ['without a detail line', undefined, 4000],
+    ['with a detail line', 'Next dose: today at 20:00.', 6000],
+  ] as const)('a Toast %s stays %d ms', (_, detail, ms) => {
+    const { add } = host()
+    add('Schedule saved for Amoxicillin.', detail)
+
+    act(() => vi.advanceTimersByTime(ms - 100))
+    expect(screen.getByRole('dialog', { name: 'Schedule saved for Amoxicillin.' })).toBeVisible()
+    act(() => vi.advanceTimersByTime(200))
+    expect(
+      screen.queryByRole('dialog', { name: 'Schedule saved for Amoxicillin.' }),
+    ).not.toBeInTheDocument()
+  })
+
+  test('a touch pauses the timer until a touch outside the stack', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const { add, toastOf } = host()
+    add('Fixed details saved')
+
+    await user.pointer({ keys: '[TouchA]', target: toastOf('Fixed details saved') })
+    act(() => vi.advanceTimersByTime(10_000))
+    expect(toastOf('Fixed details saved')).toBeVisible()
+
+    await user.pointer({ keys: '[TouchA]', target: document.body })
+    act(() => vi.advanceTimersByTime(4_100))
+    expect(screen.queryByRole('dialog', { name: 'Fixed details saved' })).not.toBeInTheDocument()
+  })
+
+  test('focus pauses the timer', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const { add, toastOf } = host()
+    add('Fixed details saved')
+
+    await user.keyboard('{F6}')
+    act(() => vi.advanceTimersByTime(10_000))
+    expect(toastOf('Fixed details saved')).toBeVisible()
+  })
+
+  test('a set timeout keeps its own', () => {
+    const manager = createToastManager()
+    render(<Toaster toastManager={manager} />)
+    act(() => {
+      manager.add({ title: 'That might not have saved.', description: 'Try again.', timeout: 0 })
+    })
+    act(() => vi.advanceTimersByTime(60_000))
+    expect(screen.getByRole('dialog', { name: 'That might not have saved.' })).toBeVisible()
+  })
 })

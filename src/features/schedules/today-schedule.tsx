@@ -2,9 +2,9 @@
 
 import { medicineForDose } from '@/features/medicines/dose-strength'
 
-import { Calendar, Check, Clock, Pill } from 'lucide-react'
+import { Calendar, Clock, Pill } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { quantityLabel } from '@/lib/quantity-policy'
 import { cn } from '@/lib/utils'
@@ -15,7 +15,7 @@ import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/i
 import type { Medicine } from '@/features/medicines/contract'
 import { useMedicines } from '@/features/medicines/queries'
 import { medicationSetupHref, medicationsHref } from '@/features/medicines/routes'
-import { istanbulDate, type DoseOccurrence, type DoseOutcomeRecord, type Today } from './contract'
+import { istanbulDate, type DoseOccurrence, type Today } from './contract'
 import { DoseStatusBadge } from './dose-status-badge'
 import { DoseActions, type DoseDrawerOpener } from './dose-actions'
 import { DoneTodayLine, nextDoseSentence } from './done-today-line'
@@ -90,7 +90,6 @@ export function TodaySchedule({
       ? `Taken at ${formatTime(attempt.takenAt)}, ${quantityLabel(attempt.quantity, unit)} · might not have saved · open to try again`
       : 'Skipped · might not have saved · open to try again'
   }
-  const [intakeMessage, setIntakeMessage] = useState('')
   const doseText = (dose: DoseOccurrence, quantity = dose.quantity) => {
     const currentMedicine = medicines.find((item) => item.id === dose.medicineId)
     const medicine = currentMedicine
@@ -101,14 +100,12 @@ export function TodaySchedule({
       : undefined
     return quantityLabel(quantity, medicine?.unit ?? 'tablet')
   }
-  function announceOutcome(dose: DoseOccurrence, record: DoseOutcomeRecord, reconciled = false) {
+  // A confirmed save announces itself with a Toast from DoseActions, and a reconciled one with the
+  // already-saved Toast from the dose saves (371·A3); Today only returns focus to the row.
+  function focusRow(dose: DoseOccurrence) {
     const heading = document.getElementById(`dose-${dose.id}`)
     const active = document.activeElement
     if (active === document.body || heading?.parentElement?.contains(active)) heading?.focus()
-    // A confirmed save announces itself with a Toast from DoseActions.
-    if (!reconciled) return setIntakeMessage('')
-    const description = `${name(dose.medicineId)} scheduled for ${formatTime(dose.dueAt)}`
-    setIntakeMessage(`${description} was already recorded as ${record.outcome.toLowerCase()}.`)
   }
 
   return (
@@ -116,17 +113,6 @@ export function TodaySchedule({
       <h2 id="today-heading" tabIndex={-1} className="sr-only">
         Your doses
       </h2>
-      {/* The skeleton's status is the section's only one while it loads (DESIGN.md). */}
-      <div role={showLoading ? undefined : 'status'} className="empty:sr-only">
-        {intakeMessage && (
-          <Alert role="none" variant="confirmation" className="[overflow-wrap:anywhere]">
-            <span className="grid size-6.5 place-items-center [&>svg]:size-3.5 rounded-full bg-dose-taken text-dose-taken-foreground">
-              <Check aria-hidden="true" />
-            </span>
-            <AlertDescription className="font-bold">{intakeMessage}</AlertDescription>
-          </Alert>
-        )}
-      </div>
       {showLoading && <TodayDosesLoading />}
       {medicinesError && (
         <Alert role={medicines.length === 0 ? 'alert' : 'status'}>
@@ -318,7 +304,7 @@ export function TodaySchedule({
                                     todayDate={today.date}
                                     describedBy={`dose-status-${dose.id}`}
                                     opener={dose.id === today.upNext?.id ? heroOpener : undefined}
-                                    onRecorded={(record) => announceOutcome(dose, record)}
+                                    onRecorded={() => focusRow(dose)}
                                   />
                                 )}
                               </Item>

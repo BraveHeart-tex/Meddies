@@ -210,6 +210,8 @@ test('focus and reconnect recheck an unconfirmed save; a found record confirms o
   expect(screen.getAllByText(/already saved as taken/)).toHaveLength(1)
   app.back()
   expect(await row()).toHaveTextContent('Taken')
+  // 371·A3: the Toast is Today's only confirmation; no inline Alert repeats it.
+  expect(screen.getAllByText(/already (saved|recorded) as taken/)).toHaveLength(1)
   expect(await row()).not.toHaveTextContent('Might not have saved')
   expect(state.puts).toHaveLength(1)
 })

@@ -7,14 +7,13 @@ import { doseWhen, firstDoseAfterResume } from './resume'
 /**
  * Medication detail and Medications save confirmations as Toasts (#377): each keeps the text
  * its inline Alert had. The check marks a save, resume or restore; a pause, stop or deletion shows
- * no glyph (DESIGN.md). A Toast with a detail line stays 6 s, one without 4 s.
+ * no glyph (DESIGN.md). The Toast host sets how long each stays (#378).
  */
 function show(title: string, glyph: 'check' | 'none', description?: string) {
   toast.add({
     title,
     description,
     type: glyph === 'check' ? 'success' : undefined,
-    timeout: description ? 6000 : 4000,
   })
 }
 

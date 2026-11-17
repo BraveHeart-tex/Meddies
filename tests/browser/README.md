@@ -228,6 +228,14 @@ that the label wraps, Dismiss stays 44px and nothing scrolls horizontally:
 MEDDIES_TOAST_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-toast pnpm test:browser:visual screen-capture --grep "long label confirmation"
 ```
 
+Two stacked confirmation Toasts at 402x874 (2 screenshots, `toast-stack-collapsed-402.png` and
+`toast-stack-expanded-402.png`) check the older Toast peeking behind, scaled, and the hovered
+stack fanned out with a Dismiss on each:
+
+```sh
+MEDDIES_TOAST_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-toast pnpm test:browser:visual screen-capture --grep "two stacked"
+```
+
 Archive confirmation and the archived detail it lands on (2 screenshots at 402x874) also check
 keyboard focus and swipe dismissal, including refusal while pending:
 

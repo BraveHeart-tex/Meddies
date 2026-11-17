@@ -794,6 +794,42 @@ test(
   },
 )
 
+// Opt-in #378 evidence: two confirmations collapse with the older peeking behind, scaled
+// (371·A8), and hovering fans them out, each with its own Dismiss (371·A9).
+test('capture two stacked confirmation Toasts', { tag: '@visual' }, async ({ page, app }) => {
+  // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
+  test.skip(!out || process.env.MEDDIES_TOAST_CAPTURE !== '1', 'Set MEDDIES_TOAST_CAPTURE=1')
+  await mkdir(resolve(out!), { recursive: true })
+  await page.setViewportSize({ width: 402, height: 874 })
+  const medicines = [
+    { id: '00000000-0000-4000-8000-0000000d0378', label: 'Vitamin D' },
+    { id: '00000000-0000-4000-8000-0000000e0378', label: 'Magnesium' },
+  ]
+  for (const { id, label } of medicines) {
+    await app.api('POST', '/api/medicines', { id, label, strength: '', unit: 'tablet' })
+  }
+  const remove = async ({ id, label }: (typeof medicines)[number]) => {
+    // By id: the closing confirmation drawer still holds its own Delete medication. Enter, as
+    // the first Toast covers the button.
+    await page.locator(`#delete-medicine-${id}`).press('Enter')
+    await page
+      .getByRole('dialog', { name: `Delete ${label}?` })
+      .getByRole('button', { name: 'Delete medication' })
+      .click()
+    await expect(toastMessage(page, `${label} deleted`)).toBeVisible()
+  }
+  await page.goto(`/medications?medicine=${medicines[0]!.id}`)
+  await remove(medicines[0]!)
+  // In-app navigation keeps the first Toast; a page load would drop it.
+  await page.getByRole('link', { name: /Magnesium/ }).click()
+  await remove(medicines[1]!)
+  const region = page.getByRole('region', { name: 'Notifications' })
+  await captureSettled(page, { path: resolve(out!, 'toast-stack-collapsed-402.png') })
+  await toastMessage(page, 'Magnesium deleted').hover()
+  await expect(region.getByRole('button', { name: 'Dismiss' })).toHaveCount(2)
+  await captureSettled(page, { path: resolve(out!, 'toast-stack-expanded-402.png') })
+})
+
 // Opt-in #327 archive evidence, including real pointer dismissal and keyboard focus.
 test(
   'capture medication archive confirmation and result',

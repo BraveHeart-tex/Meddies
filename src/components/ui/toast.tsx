@@ -6,7 +6,21 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
 // Cozy Care toast: quiet cocoa confirmation above the bottom nav that states what was saved.
-const toast = ToastPrimitive.createToastManager()
+
+/**
+ * #378: a Toast that sets no `timeout` stays 4 s, or 6 s with a detail line. Touch, hover or
+ * keyboard focus expands the stack and pauses every timer until it leaves (Base UI).
+ */
+function createToastManager(): ReturnType<typeof ToastPrimitive.createToastManager> {
+  const manager = ToastPrimitive.createToastManager()
+  return {
+    ...manager,
+    add: (options) =>
+      manager.add({ ...options, timeout: options.timeout ?? (options.description ? 6000 : 4000) }),
+  }
+}
+
+const toast = createToastManager()
 
 function ToastProvider({ ...props }: ToastPrimitive.Provider.Props) {
   return <ToastPrimitive.Provider {...props} />
@@ -43,8 +57,8 @@ function Toast({
       data-slot="toast"
       swipeDirection={swipeDirection}
       className={cn(
-        'group/toast pointer-events-auto absolute right-0 bottom-0 z-[calc(1000-var(--toast-index))] w-full origin-bottom rounded-lg bg-foreground text-primary-foreground shadow-toast will-change-transform outline-none select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-        '[--gap:0.625rem] [--height:var(--toast-frontmost-height,var(--toast-height))] [--offset-y:calc(var(--toast-offset-y)*-1+calc(var(--toast-index)*var(--gap)*-1)+var(--toast-swipe-movement-y))] [--peek:0.625rem] [--scale:calc(max(0,1-(var(--toast-index)*0.06)))] [--shrink:calc(1-var(--scale))]',
+        'group/toast pointer-events-auto absolute right-0 bottom-0 z-[calc(1000-var(--toast-index))] w-full origin-bottom rounded-lg text-primary-foreground will-change-transform outline-none select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+        '[--gap:0.625rem] [--height:var(--toast-frontmost-height,var(--toast-height))] [--offset-y:calc(var(--toast-offset-y)*-1+calc(var(--toast-index)*var(--gap)*-1)+var(--toast-swipe-movement-y))] [--peek:0.875rem] [--scale:calc(max(0,1-(var(--toast-index)*0.08)))] [--shrink:calc(1-var(--scale))]',
         'h-(--height) transform-[translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-swipe-movement-y)-(var(--toast-index)*var(--peek))-(var(--shrink)*var(--height))))_scale(var(--scale))] [transition:transform_320ms_var(--ease-calm),opacity_220ms_var(--ease-calm),height_140ms_var(--ease-calm)] motion-reduce:[transition:opacity_220ms_var(--ease-calm)]',
         "after:absolute after:top-full after:left-0 after:h-[calc(var(--gap)+1px)] after:w-full after:content-['']",
         'data-expanded:h-(--toast-height) data-expanded:transform-[translateX(var(--toast-swipe-movement-x))_translateY(var(--offset-y))]',
@@ -65,12 +79,13 @@ function Toast({
   )
 }
 
+// The card surface lives here so the older, collapsed Toast peeks as a plain 60% surface (371·A8).
 function ToastContent({ className, ...props }: ToastPrimitive.Content.Props) {
   return (
     <ToastPrimitive.Content
       data-slot="toast-content"
       className={cn(
-        'flex h-full min-h-13 flex-wrap items-center gap-2.5 overflow-hidden py-2 pr-2 pl-3.5 transition-opacity duration-220 ease-calm motion-reduce:transition-none data-behind:opacity-0 data-expanded:opacity-100',
+        'flex h-full min-h-13 flex-wrap items-center gap-2.5 overflow-hidden rounded-lg bg-foreground py-2 pr-2 pl-3.5 shadow-toast transition-opacity duration-220 ease-calm motion-reduce:transition-none *:transition-opacity *:duration-220 *:ease-calm motion-reduce:*:transition-none data-behind:opacity-60 data-expanded:opacity-100 [&[data-behind]:not([data-expanded])>*]:opacity-0',
         className,
       )}
       {...props}
@@ -195,9 +210,15 @@ function ToastList() {
   ))
 }
 
-function Toaster({ children, toastManager = toast, ...props }: ToastPrimitive.Provider.Props) {
+// Two Toasts at once (371·A8): a third drops the oldest.
+function Toaster({
+  children,
+  toastManager = toast,
+  limit = 2,
+  ...props
+}: ToastPrimitive.Provider.Props) {
   return (
-    <ToastProvider toastManager={toastManager} {...props}>
+    <ToastProvider toastManager={toastManager} limit={limit} {...props}>
       {children}
       <ToastPortal>
         <ToastViewport>
@@ -208,7 +229,6 @@ function Toaster({ children, toastManager = toast, ...props }: ToastPrimitive.Pr
   )
 }
 
-const createToastManager = ToastPrimitive.createToastManager
 const useToastManager = ToastPrimitive.useToastManager
 
 export {

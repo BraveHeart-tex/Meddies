@@ -5,7 +5,6 @@
     - heading "Good morning" [level=1]
   - region "Your doses"
     - heading "Your doses" [level=2]
-    - status
     - heading "Up next" [level=3]
     - paragraph
       - text: Scheduled ·
