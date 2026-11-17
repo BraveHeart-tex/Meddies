@@ -2,6 +2,7 @@ import { expect, test } from 'vitest'
 import { callbackReturnTo, safeReturnTo } from '../src/features/auth/return-to'
 
 const id = 'c0c22213-a56e-42f5-859b-1d5ba320c036'
+const occurrence = encodeURIComponent(`${id}:2026-11-17T06:00:00.000Z`)
 test.each([
   '/',
   '/history',
@@ -11,6 +12,8 @@ test.each([
   '/medications?add',
   `/medications?medicine=${id}`,
   `/medications?schedule=${id}`,
+  // A signed-out Reminder link returns to itself, so its drawer opens after sign-in (#367).
+  `/?occurrence=${occurrence}`,
 ])('allows supported destination %s', (path) => {
   expect(safeReturnTo(path)).toBe(path)
   expect(callbackReturnTo(`https://meddies.test${path}`, 'https://meddies.test')).toBe(path)
@@ -29,6 +32,10 @@ test.each([
   '/medications?add&x=1',
   '/\\evil.test',
   '/\nsettings',
+  `/?occurrence=${id}`,
+  `/?occurrence=${occurrence}&extra=1`,
+  `/?occurrence=${id}:2026-11-17T06:00:00.000Z`,
+  `/?occurrence=${encodeURIComponent(`${id}:2026-02-30T06:00:00.000Z`)}`,
 ])('unsupported destination falls back to Today: %s', (path) => {
   expect(safeReturnTo(path)).toBe('/')
 })

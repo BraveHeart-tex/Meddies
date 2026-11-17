@@ -1,13 +1,16 @@
 import { expect, test } from './fixtures'
 import { clearFocus, focusRing, rowHeadingFocus, trackRowHeadingFocus } from './actions'
 import { doseTrigger, drawer, toastMessage } from './locators'
+import { countApiRequests } from './requests'
 import { insertScheduledMedicine } from './seed'
+import { reminderLink } from '../../src/features/schedules/reminder-link'
 import type { WorkerRoute } from './worker-proxy'
 
 // #168: focus moved by script stays on headings and titles without looking like a control.
 const initialScheduleTime = '2035-06-15T09:00:00+03:00'
 const today = initialScheduleTime.slice(0, 10)
 const label = 'Focus Fixture Medicine'
+const scheduleId = '6f1d3c52-8a0e-4d6b-9c1a-3e2f4b5a6c7d'
 
 test.use({
   journey: {
@@ -17,6 +20,7 @@ test.use({
     seed: ({ db, ownerId }) =>
       insertScheduledMedicine(db, ownerId, {
         label,
+        scheduleId,
         // Starts today, so To log has no dose from yesterday (#275) and Today has one row.
         startDate: today,
         times: [{ time: '09:01', quantity: 1 }],
@@ -105,6 +109,34 @@ function focusScenarios(checkRing: (actual: unknown, expected: unknown) => void)
 
 test.describe('script focus', () => {
   focusScenarios(() => {})
+
+  // #367: focus moved by script after hydration, and Back, Forward or reload behavior.
+  test('a Reminder link opens its dose drawer once', async ({ page, app }) => {
+    const dialog = drawer(page)
+    await page.goto('/settings')
+    const api = countApiRequests(page, app.origin)
+    await page.goto(reminderLink({ scheduleId, dueAt: `${today}T09:01:00+03:00` }))
+    await expect(dialog).toBeVisible()
+    // The drawer's title takes initial focus, as when a row opens it.
+    await expect(dialog.getByRole('heading', { name: label })).toBeFocused()
+    // The link is cleared in place: no router navigation, so no browser read either.
+    await expect(page).toHaveURL(`${app.origin}/`)
+    expect(api.counts()).toEqual({})
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await expect(doseTrigger(page, label)).toBeFocused()
+
+    await page.reload()
+    await expect(doseTrigger(page, label)).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1 })).toBeFocused()
+    await expect(dialog).toBeHidden()
+    await page.goBack()
+    await expect(page).toHaveURL(`${app.origin}/settings`)
+    await page.goForward()
+    await expect(page).toHaveURL(`${app.origin}/`)
+    await expect(doseTrigger(page, label)).toBeVisible()
+    await expect(dialog).toBeHidden()
+  })
 })
 
 function expectRing(actual: unknown, expected: unknown) {

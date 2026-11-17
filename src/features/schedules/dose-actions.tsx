@@ -20,6 +20,7 @@ import type { AttemptForm, DoseCommand } from './dose-saves'
 import { useDoseDrawerDraft } from './use-dose-drawer-draft'
 import { useDoseOutcomeMutation } from './use-dose-outcome-mutation'
 import { useSchedulingClock } from './scheduling-clock'
+import { useReminderLinkOpen } from './reminder-link-provider'
 
 type Outcome = DoseOutcomeRecord['outcome']
 export type DoseDrawerOpener = { open: (outcome: Outcome) => void }
@@ -151,6 +152,8 @@ export function DoseActions({
     setDrawerOpen(true)
     if (!recorded && unconfirmed && attempt) choose(attempt.outcome)
   }
+  // A Reminder link for this dose opens its drawer like a row tap (#367).
+  useReminderLinkOpen(dose.id, openDrawer)
 
   useImperativeHandle(opener, () => ({
     open(outcome: Outcome) {

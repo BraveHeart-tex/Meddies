@@ -56,6 +56,8 @@ Lessons from Today:
 - Render the authenticated shell (header, page title, navigation and data-independent
   controls) outside slow data work, so it appears first and stays stable while sections
   stream.
+  A Reminder link is the one exception: Today and History await their read before the shell
+  to choose the screen, because a redirect after streaming starts would flash the wrong one.
 - Load initial data in Server Components through authenticated feature operations; the
   browser reuses it after hydration.
 - Start independent reads concurrently: sibling Suspense boundaries, or start each before

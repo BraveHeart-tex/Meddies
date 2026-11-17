@@ -7,6 +7,7 @@ import type { DoseOccurrence } from '../src/features/schedules/contract'
 import { dayHeadingId, HistoryDateNav } from '../src/features/schedules/history-date-nav'
 import { HistoryDay } from '../src/features/schedules/history-day'
 import { SchedulingClockProvider } from '../src/features/schedules/scheduling-clock'
+import { ReminderLinkProvider } from '../src/features/schedules/reminder-link-provider'
 import { createQueryClient } from '../src/lib/session-query-client'
 
 let search = new URLSearchParams()
@@ -77,16 +78,18 @@ const occurrence = (time: string, rest: Partial<DoseOccurrence> = {}) =>
     ...rest,
   }) as DoseOccurrence
 
-function renderDay(props: Partial<Parameters<typeof HistoryDay>[0]> = {}) {
+function renderDay(props: Partial<Parameters<typeof HistoryDay>[0]> = {}, reminder?: string) {
   return render(
     <QueryClientProvider client={createQueryClient()}>
       <SchedulingClockProvider serverNow="2026-11-06T09:00:00.000Z">
-        <HistoryDay
-          date="2026-11-05"
-          today="2026-11-06"
-          result={{ status: 'loaded', doses: [], medicines: [medicine] }}
-          {...props}
-        />
+        <ReminderLinkProvider occurrence={reminder ?? null}>
+          <HistoryDay
+            date="2026-11-05"
+            today="2026-11-06"
+            result={{ status: 'loaded', doses: [], medicines: [medicine] }}
+            {...props}
+          />
+        </ReminderLinkProvider>
       </SchedulingClockProvider>
     </QueryClientProvider>,
   )
@@ -141,6 +144,34 @@ test('a past Not logged row opens the record drawer on its own day and returns f
   expect(within(drawer).getByRole('button', { name: 'I skipped it' })).toBeVisible()
   await userEvent.keyboard('{Escape}')
   await waitFor(() => expect(row).toHaveFocus())
+})
+
+// Regression: a Reminder link for a dose Today no longer lists must open it on its History date.
+test('a Reminder link opens its dose drawer on History once and clears the link (#367)', async () => {
+  const dose = occurrence('08:00')
+  const linked = { ...dose, id: `${scheduleId}:${dose.dueAt}` }
+  const link = `/history?date=2026-11-05&occurrence=${encodeURIComponent(linked.id)}`
+  window.history.replaceState(null, '', link)
+  const replace = vi.spyOn(window.history, 'replaceState')
+  renderDay(
+    { result: { status: 'loaded', doses: [occurrence('07:00'), linked], medicines: [medicine] } },
+    linked.id,
+  )
+  const drawer = await screen.findByRole('dialog', { name: 'Melatonin' })
+  expect(drawer).toHaveTextContent('Scheduled 08:00 on Thu 5 Nov')
+  await waitFor(() => expect(drawer).toContainElement(document.activeElement as HTMLElement))
+  expect(replace).toHaveBeenCalledTimes(1)
+  expect(`${location.pathname}${location.search}`).toBe('/history?date=2026-11-05')
+  await userEvent.keyboard('{Escape}')
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', {
+        name: 'Record dose for Melatonin scheduled at 08:00 on Thu 5 Nov',
+      }),
+    ).toHaveFocus(),
+  )
+  expect(screen.queryByRole('dialog')).toBeNull()
+  replace.mockRestore()
 })
 
 test('today so far opens the record drawer from a Not logged row', () => {

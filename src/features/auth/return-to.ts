@@ -1,4 +1,9 @@
 import { isMedicationsReturnTo } from '@/features/medicines/routes'
+import {
+  reminderLinkFor,
+  reminderLinkParam,
+  reminderOccurrence,
+} from '@/features/schedules/reminder-link'
 
 /** Carried to sign-in in place of any save detail. */
 export const saveInProgressNotice = 'save-in-progress'
@@ -7,6 +12,13 @@ export const saveInProgressNotice = 'save-in-progress'
 export function safeReturnTo(value: unknown): string {
   if (typeof value !== 'string') return '/'
   if (['/', '/history', '/settings'].includes(value)) return value
+  // A signed-out Reminder link returns to itself, so the drawer opens after sign-in (#367).
+  if (value.startsWith(`/?${reminderLinkParam}=`)) {
+    const occurrence = reminderOccurrence(
+      new URLSearchParams(value.slice(2)).get(reminderLinkParam),
+    )
+    return occurrence && reminderLinkFor(occurrence) === value ? value : '/'
+  }
   if (/^\/history\?date=\d{4}-\d{2}-\d{2}$/.test(value)) {
     const date = value.slice('/history?date='.length)
     const parsed = new Date(`${date}T00:00:00Z`)
