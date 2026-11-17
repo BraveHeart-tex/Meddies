@@ -53,7 +53,7 @@ See **Unscheduled dose** and **History date** (GLOSSARY.md).
 - An Unscheduled dose is always Taken: it keeps an actual intake time and quantity and never requires a schedule or DoseOccurrence. It never stands in for an occurrence: due and Not logged occurrences, later occurrences, Interval Anchors and reminders stay unchanged.
 - The user logs it from Medication detail, for any medication, whether its schedule is missing, running, paused or Ended. Today and History do not start one. Its save reads _Save as taken_, like every other Taken save (#283, in place of #241's _Save dose_).
 - Intake time is Now, or a minute today or yesterday (Istanbul), never in the future. Quantity starts at 1 of the medication's unit and follows the supported quantities above.
-- It shows on Today and on History for its History date, the Istanbul day it was taken, in time order among scheduled doses and marked as not on a schedule. It never becomes Today's next dose. Today lists it in place of its empty state. Medication detail shows no list of past Unscheduled doses.
+- It shows on Today and on History for its History date, the Istanbul day it was taken, in time order among scheduled doses and marked as not on a schedule. It never becomes Today's next dose. Today lists it in place of its empty state. Medication detail itself shows no list of past doses; its Dose history screen does (#385).
 - When the saved intake falls on a day other than today, the save message names that day.
 - From Today or History the user can change its intake time and quantity under the same rules, or remove it after a confirm step. A removed Unscheduled dose leaves Today and History; the server keeps its revisions for retry safety and export, and stock treats it as never taken (#50).
 - Meddies records what the user reports and gives no advice: no suggestion to take an extra dose, no warning about earlier doses and no limit on how many are logged.
@@ -134,6 +134,40 @@ See **Detail correction**, **Strength change** and **Archived medicine** (GLOSSA
   unchanged. Unarchiving restores the Medicine without restarting anything; schedules restart only
   through an explicit schedule change.
 - Only a Medicine that has never had a schedule or a dose can be deleted.
+
+### #385 - Approved Dose history rules (November 17, 2026)
+
+See **Dose history**, **Taken** and **Unscheduled dose** (GLOSSARY.md).
+
+- Dose history answers when a medication was last taken and how much was taken recently. It is
+  not adherence: it lists only Taken doses, scheduled and Unscheduled, never Skipped or Not
+  logged.
+- Every medication has it, including one with no schedule and an Archived medicine. Its own
+  screen opens from a Dose history row above Strength history on Medication detail, and on
+  Archived medication detail. The History tab is unchanged.
+- Doses group by the Istanbul day of their intake time, not their History date: a 23:00 dose
+  taken at 00:30 counts toward the next day. Days without a Taken dose are not listed.
+- A summary leads: the last dose with its intake time and amount, then totals for today, the last
+  7 days and the last 30 days. Each window is today plus the 6 or 29 calendar days before it, in
+  Istanbul time. No charts.
+- Totals add amounts in the Quantity unit, never strength. When doses in a day or window saved
+  different strengths, the total splits by strength, such as "2 tablets (500 mg) · 1 tablet
+  (1000 mg)".
+- The daily list runs newest first back to the first Taken dose, loaded in pages.
+- It shows current values only: a corrected intake time or amount moves the dose and changes the
+  totals; a removed Unscheduled dose and deleted history (#56) leave it. A Pending save or
+  Unconfirmed save shows and counts, marked as saving.
+- It is read-only. Each dose links to its History date, where it can be corrected.
+- With no Taken doses, it shows an empty message and leads with logging a dose.
+- It shows no stock (#46-#54) and gives no advice or limits, like the [#28 rules](#28---approved-unscheduled-dose-rules-november-13-2026).
+
+| Example         | Setup                                                          | Expected                                                          |
+| --------------- | -------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Late intake     | 23:00 dose on Nov 3 saved as Taken at Nov 4 00:30              | Counts on Nov 4 in Dose history; History still shows it on Nov 3. |
+| Mixed           | Nov 4: scheduled 1 tablet at 08:00, Unscheduled 1 tablet 14:10 | Nov 4 lists both; its total reads 2 tablets.                      |
+| Strength change | 500 mg until Nov 3, 1000 mg from Nov 4; 1 tablet each day      | 7-day total splits: "N tablets (500 mg) · M tablets (1000 mg)".   |
+| Skipped         | Nov 4 08:00 Skipped, 20:00 Taken                               | Nov 4 lists only the 20:00 dose.                                  |
+| Never taken     | New medication with no Taken dose                              | Empty message and Log a dose; no summary totals.                  |
 
 ## Required product behavior
 

@@ -127,6 +127,11 @@ The day a dose was due, in Istanbul time; for an Unscheduled dose, the day it wa
 scheduled dose shows on its History date even when it was taken on another day.
 _Avoid_: taken date, record date
 
+**Dose history**:
+A medication's Taken doses, grouped by the day they were taken in Istanbul time, with totals of
+the amount taken. Unlike History, it groups by intake day, not History date.
+_Avoid_: usage stats, intake log, adherence
+
 ## Reminders
 
 **Device registration**:
