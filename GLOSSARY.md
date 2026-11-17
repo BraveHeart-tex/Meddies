@@ -135,6 +135,20 @@ for one account. Saving it is what makes notifications on for that device; syste
 alone does not.
 _Avoid_: subscription, push token, in UI copy and tickets
 
+**Original reminder**:
+The first reminder for an Occurrence, targeted at its due instant. Follow-ups and snoozes are
+separate.
+_Avoid_: dose notification, first push
+
+**Delivery attempt**:
+One submission of a reminder to one Device registration, with the provider's answer. Provider
+acceptance is not delivery, and never intake.
+_Avoid_: send result, push result
+
+**Reminder link**:
+The link a reminder carries to its Occurrence. Opening it shows that dose's drawer once.
+_Avoid_: deep link, notification URL
+
 ## Saves and drafts
 
 **Pending save**:

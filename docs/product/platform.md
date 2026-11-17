@@ -2,16 +2,16 @@
 
 ## Selected architecture and evidence status
 
-| Concern               | Selected or preferred direction                                                                                  | Evidence / remaining work                                     |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Client / app host     | **Next.js mobile-first PWA on Vercel**                                                                           | Vercel deployment demonstrated in #3                          |
-| D1 access boundary    | **Authenticated Cloudflare Worker** called by Vercel Node                                                        | Remote path demonstrated in #5; hardening separate            |
-| Background scheduling | **Cloudflare Cron Triggers / Worker**, or approved authenticated [cron-job.org](http://cron-job.org) alternative | Reliability validation still required                         |
-| Durable persistence   | **Cloudflare D1 with Drizzle ORM** via Worker                                                                    | Remote migration, atomic writes and claims demonstrated in #5 |
-| Push                  | **Firebase Cloud Messaging** preferred                                                                           | Real iPhone Home Screen PWA proof still blocked by #6         |
-| Medication catalog    | Indexed D1 catalog tables separate from user records                                                             | Data licensing and coverage unresolved                        |
-| Cache                 | **No Redis by default**                                                                                          | Add only on measured need                                     |
-| Database alternatives | **Neon/PostgreSQL** acceptable conditional fallback; Convex not selected                                         | No D1 blocker currently warrants fallback                     |
+| Concern               | Selected or preferred direction                                                                                                                         | Evidence / remaining work                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Client / app host     | **Next.js mobile-first PWA on Vercel**                                                                                                                  | Vercel deployment demonstrated in #3                              |
+| D1 access boundary    | **Authenticated Cloudflare Worker** called by Vercel Node                                                                                               | Remote path demonstrated in #5; hardening separate                |
+| Background scheduling | **Cloudflare Cron Trigger / Worker** every minute, with an authenticated command for the approved [cron-job.org](http://cron-job.org) alternative (#30) | Reliability validation still required                             |
+| Durable persistence   | **Cloudflare D1 with Drizzle ORM** via Worker                                                                                                           | Remote migration, atomic writes and claims demonstrated in #5     |
+| Push                  | **Firebase Cloud Messaging**                                                                                                                            | Real-iPhone closed and locked delivery shown in #6; sender in #30 |
+| Medication catalog    | Indexed D1 catalog tables separate from user records                                                                                                    | Data licensing and coverage unresolved                            |
+| Cache                 | **No Redis by default**                                                                                                                                 | Add only on measured need                                         |
+| Database alternatives | **Neon/PostgreSQL** acceptable conditional fallback; Convex not selected                                                                                | No D1 blocker currently warrants fallback                         |
 
 The D1 decision prioritizes a cost-conscious, low-operations setup for a very small initial audience while preserving production engineering practices. **Neon inactivity behavior was a concern** and Convex was considered more BaaS than needed.
 
@@ -47,7 +47,7 @@ These are conceptual modules, not a finalized table schema.
 | #4       | Google allowlist/session lifecycle tested in a narrow deployment, with user-observed real-account checks                                      | Final production revocation/ownership policies                                             |
 | #5       | Vercel to authenticated Worker to D1/Drizzle, remote migration, atomic stock/intake rollback, idempotency and competing reminder-claim leases | Full production schema and capacity, provider delivery guarantees                          |
 | #7       | Synthetic encrypted D1 → private R2 → isolated D1 restore and independent key-recovery round trip                                             | Automated daily schedule, independent key custody, live restore and deleted-account safety |
-| #6       | **Not completed**                                                                                                                             | Installed/closed/locked real-iPhone FCM delivery, token lifecycle and deep links           |
+| #6       | Real-iPhone (iOS 27.2.1) Home Screen install, permission from a tap, closed and locked FCM delivery, Focus and revoked permission             | Worker sender credentials, tap navigation and reinstall (#30)                              |
 
 Keep shared application behavior independent of invocation transport; avoid generic multi-provider frameworks without a measured need. Standard Web Push, Neon/PostgreSQL and an authenticated external scheduler are conditional fallbacks, not parallel MVP deployments.
 

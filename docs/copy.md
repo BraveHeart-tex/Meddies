@@ -90,6 +90,14 @@ When Taken time falls on a different day, name that day. Use the date formats ab
 the year when it differs from the current Istanbul year. Keep the existing delivery,
 deduplication, timeout and action behavior.
 
+## Reminder wording
+
+A dose reminder never names the medication before the #37 opt-in, and never implies the dose was
+taken.
+
+- **Title:** "Time for your dose"
+- **Body:** "Open Meddies when you're ready to log it."
+
 ## Errors
 
 Say what happened, what is safe, and what to do next.

@@ -8,12 +8,11 @@ Reminder configuration and confirmed dose history are separate. A notification b
 
 ## Current preferred technical direction
 
-- Backend-scheduled delivery through a Cloudflare Workers/Cron-oriented service.
-- **Firebase Cloud Messaging (FCM)** is the currently preferred push direction, replacing earlier reliance on web push alone.
-- Email reminder fallback is outside the approved private MVP; it requires a separate scope decision if push feasibility fails.
-- iPhone Home Screen PWA notification behavior is a mandatory feasibility spike before committing to the reminder architecture.
+- Backend-scheduled delivery through a Cloudflare Worker Cron Trigger (#30).
+- **Firebase Cloud Messaging (FCM)** is the push provider. #6 proved closed and locked delivery to the Home Screen app on a real iPhone, so standard Web Push is not used.
+- Email reminder fallback is outside the approved private MVP; it requires a separate scope decision.
 
-The iOS PWA delivery path, service worker integration and actual behavior on target devices are **unvalidated**. FCM preference does not prove that all platform push requirements or reliability guarantees are met.
+FCM delivery is best effort. Neither #6 nor provider acceptance guarantees that a reminder arrives.
 
 ## Required scenarios to investigate
 
@@ -55,7 +54,7 @@ Separate the **scheduled dose**, **delivery attempt**, **provider acknowledgemen
 
 ## Remaining delivery and integration decisions
 
-**Still unverified:** real installed/closed/locked iPhone Home Screen PWA delivery with FCM (#6), token lifecycle, reinstallation/revocation, device navigation, Focus/OS limitations, exact production provider credentials and operational monitoring. Standard Web Push is an approved fallback candidate if real-device FCM evidence requires it.
+**Still unverified:** the Worker sender's credentials and real sends (#368, #369), tap navigation and reinstallation on the iPhone (#370), and operational monitoring (#61).
 
 The precise copy and device-settings UX remain design work within these rules.
 
@@ -111,9 +110,8 @@ eligibility; all doses remain unconfirmed unless specified.
 - A **Device registration** lets backend reminders reach one installed Meddies app on one device.
   An account can have several; each belongs to exactly one account. Registering an installation
   that another account registered moves it to the signing-in account.
-- Registrations hold an FCM registration token and are built on FCM ahead of the #6 real-iPhone
-  proof. If #6 falls back to standard Web Push, the subscription replaces the token; Meddies
-  never runs both providers.
+- Registrations hold an FCM registration token. #6 proved FCM on a real iPhone, so Meddies
+  never runs a second provider.
 - Turning notifications on asks for system permission only from an explicit tap in Settings, and
   only where the device can receive pushes; on iPhone that means the Home Screen app. Settings
   shows notifications as on only after the server confirms the registration.
@@ -129,3 +127,20 @@ eligibility; all doses remain unconfirmed unless specified.
   removal fails. Session expiry keeps the registration, so reminders do not stop when the
   seven-day session ends. After signing in again, notifications are off until turned on.
 - Registration tokens are credentials: never shown in reads, logs, error responses or export.
+
+## #30 - Approved dose reminder rules (November 17, 2026)
+
+- A Cloudflare Cron Trigger runs the due-reminder operation on the Worker every minute. An
+  authenticated Worker command runs the same operation for the approved external scheduler.
+- An **Original reminder** is eligible from its occurrence's due instant through due +80 minutes
+  inclusive ([#9 D4](#approved-decisions)); later processing drops it without sending. An
+  occurrence with Taken or Skipped recorded at processing time gets none.
+- Each run claims an Original reminder once, even when runs overlap, and records one **Delivery
+  attempt** per Device registration of its owner. A transient provider failure leaves it eligible
+  for the next run inside its window. A provider answer of `UNREGISTERED` or `NOT_FOUND` removes
+  that registration.
+- The reminder uses the generic wording in [copy](../copy.md#reminder-wording) and carries the
+  occurrence's **Reminder link**, never a medication name before the #37 opt-in.
+- Tapping the reminder opens that dose's drawer: on Today when Today lists the occurrence,
+  otherwise on History for its History date. A signed-out tap opens it after sign-in. A link to an
+  occurrence that no longer exists or belongs to another account opens Today with no drawer.
