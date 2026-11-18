@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
+import { hydrated } from './actions'
 import { expect, test } from './fixtures'
 import { pickDate, pickTime } from './pickers'
 
@@ -98,6 +99,8 @@ test('detail correction retains its draft and pending save across navigation, th
   app,
 }) => {
   await page.goto('/medications')
+  // A click before hydration loads a document with no Medications history state to return to.
+  await expect.poll(() => hydrated(page)).toBe(true)
   await page.getByRole('link', { name: 'View details for Cached Medicine' }).click()
   const detail = page.url()
   await page.getByRole('link', { name: 'Edit details', exact: true }).click()
