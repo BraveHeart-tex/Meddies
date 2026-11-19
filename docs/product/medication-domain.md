@@ -55,7 +55,7 @@ See **Unscheduled dose** and **History date** (GLOSSARY.md).
 - Intake time is Now, or a minute today or yesterday (Istanbul), never in the future. Quantity starts at 1 of the medication's unit and follows the supported quantities above.
 - It shows on Today and on History for its History date, the Istanbul day it was taken, in time order among scheduled doses and marked as not on a schedule. It never becomes Today's next dose. Today lists it in place of its empty state. Medication detail itself shows no list of past doses; its Dose history screen does (#385).
 - When the saved intake falls on a day other than today, the save message names that day.
-- From Today or History the user can change its intake time and quantity under the same rules, or remove it after a confirm step. A removed Unscheduled dose leaves Today and History; the server keeps its revisions for retry safety and export, and stock treats it as never taken (#50).
+- From Today or History the user can change its intake time and quantity under the same rules, or remove it after a confirm step. A removed Unscheduled dose leaves Today and History; the server keeps its revisions for retry safety and export, and stock treats it as never taken (#47).
 - Meddies records what the user reports and gives no advice: no suggestion to take an extra dose, no warning about earlier doses and no limit on how many are logged.
 - Each log is its own action with its own action ID: an identical retry returns the saved dose, and two logs at the same minute are two doses. Saves follow the [session contract](./ux-journeys.md#session-contract); stock effects belong to #47 and offline logging stays deferred (D3 in [deferred](./deferred.md)).
 
@@ -212,6 +212,41 @@ See **Stock** and **Quantity unit** (GLOSSARY.md).
 | Off and on again  | Stock 24; turn off; later turn on                        | The count field starts empty; the new count stands.  |
 | Retry             | Turn-on save retried with the same action ID             | One starting count.                                  |
 | Type lock         | Stock on; Edit details                                   | Type cannot change until stock is turned off.        |
+
+### #47 - Approved intake stock rules (November 19, 2026)
+
+See **Stock** (GLOSSARY.md).
+
+- Stock follows each dose's latest saved version. A dose counts when it is Taken, its Medicine
+  tracks stock, and its Taken time is not in a minute before the latest reconciliation point (the
+  starting count or a count correction); a Taken time in the same minute counts. It counts its
+  recorded quantity. Doses of an Archived medicine count too; its count stays read-only.
+- Each dose save changes stock once, by the difference between what its new and previous
+  versions count: a first log, Taken to Skipped and back, a quantity or Taken time change, or an
+  Unscheduled removal. A retry changes nothing further.
+- Intake past the count is kept: the stored count goes below zero, Medication detail and the
+  Medications list show 0, and a later correction restores the true remainder. Exactly zero is
+  not past the count. The correction prompt for intake past the count belongs to #49.
+- Liquid counts stay exact to 0.1 ml. Each change is a StockMovement for that dose save.
+
+| Example             | Setup (start 30 tablets at 10:00:40)       | Expected                   |
+| ------------------- | ------------------------------------------ | -------------------------- |
+| Taken               | Taken 1 at 12:00                           | 29 tablets left            |
+| Same minute         | Taken 1 at 10:00                           | 29 tablets left            |
+| Half tablet         | Taken 0.5                                  | 29½ tablets left           |
+| Skipped             | Skipped                                    | 30 tablets left            |
+| Unscheduled         | Unscheduled 2 at 14:10                     | 28 tablets left            |
+| Late from History   | Taken at 08:00, logged at 14:00            | 30 tablets left            |
+| Taken to Skipped    | Taken 1; corrected to Skipped              | 30 tablets left            |
+| Quantity change     | Taken 1; quantity corrected to 2           | 28 tablets left            |
+| Time before start   | Taken 1 at 11:00; time corrected to 09:00  | 30 tablets left            |
+| Removed Unscheduled | Unscheduled 1; removed                     | 30 tablets left            |
+| Past the count      | Start 0.5; Taken 1                         | 0 tablets left             |
+| Undo past the count | Previous row; corrected to Skipped         | ½ tablet left              |
+| Liquid              | Start 0.3 ml; Taken 0.1 ml three times     | 0 ml left                  |
+| Stock off           | Any dose save                              | Nothing counted            |
+| Archived            | Archived at 30; late Taken 1 logged        | 29 tablets left, read-only |
+| Retry               | Taken save retried with the same action ID | 29 tablets left            |
 
 ## Required product behavior
 
