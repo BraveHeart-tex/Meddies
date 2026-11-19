@@ -501,3 +501,25 @@ export const medicineStockActions = sqliteTable(
     }).onDelete('cascade'),
   ],
 )
+
+// One movement per dose version that changes stock; migration 0026 triggers write and apply it.
+export const intakeStockMovements = sqliteTable(
+  'intake_stock_movements',
+  {
+    ownerId: text('owner_id').notNull(),
+    medicineId: text('medicine_id').notNull(),
+    doseKey: text('dose_key').notNull(),
+    revision: integer('revision').notNull(),
+    countChange: real('count_change').notNull(),
+    unit: text('unit', { enum: writableMedicineTypes }).notNull(),
+    occurredAt: text('occurred_at').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.doseKey, table.revision] }),
+    foreignKey({
+      columns: [table.ownerId, table.medicineId],
+      foreignColumns: [userMedications.ownerId, userMedications.id],
+    }).onDelete('cascade'),
+    check('intake_stock_movements_count_change', sql`${table.countChange} <> 0`),
+  ],
+)

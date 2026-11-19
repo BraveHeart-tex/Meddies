@@ -1,5 +1,5 @@
-import { dehydrate, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { dehydrate, QueryClientProvider, QueryObserver } from '@tanstack/react-query'
+import { render, screen, waitFor } from '@testing-library/react'
 import { PrivateQueryHandoff } from '@/lib/private-query-handoff'
 import { expect, test } from 'vitest'
 import {
@@ -16,7 +16,9 @@ import { scheduleToday } from '../src/features/schedules/occurrences'
 import { parseSchedule } from '../src/features/schedules/contract'
 import type { DoseOccurrence, DoseOutcomeRecord } from '../src/features/schedules/contract'
 import { createQueryClient } from '../src/lib/session-query-client'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
+import { medicinesQuery } from '../src/features/medicines/queries'
+import type { Medicine } from '../src/features/medicines/contract'
 import { server } from './helpers/msw-server'
 
 const base: ScheduleSnapshot = {
@@ -241,5 +243,73 @@ test('a confirmed change ends the version it edits in the cached snapshot at its
   void applySchedule(client, changed).catch(() => {})
   const { schedules } = client.getQueryData<ScheduleSnapshot>(scheduleKeys.snapshot())!
   expect(schedules).toEqual([{ ...earlier, replacedAt: changed.confirmedAt }, changed])
+  client.clear()
+})
+
+// Regression (#47): a confirmed dose save left Medications and Medication detail on the old count.
+test('a confirmed dose rereads medicines, and an older read cannot bring back the old count', async () => {
+  const client = createQueryClient()
+  let confirmed = false
+  let requests = 0
+  let started: () => void
+  const staleReadStarted = new Promise<void>((resolve) => (started = resolve))
+  server.use(
+    http.get('/api/medicines', async () => {
+      const count = confirmed ? 29 : 30
+      requests += 1
+      // The second read is a background refresh still in flight when the save confirms.
+      if (requests === 2) started()
+      await delay(requests === 2 ? 100 : 0)
+      return HttpResponse.json({
+        medicines: [
+          {
+            id: original.scheduleId,
+            label: 'Magnesium',
+            strength: null,
+            unit: 'tablet',
+            stock: { tracked: true, count },
+            revision: 1,
+            lastActionId: null,
+            currentStrengthRevisionId: original.scheduleId,
+            strengthRevisions: [
+              {
+                id: original.scheduleId,
+                label: 'Magnesium',
+                strength: null,
+                unit: 'tablet',
+                effectiveAt: '0001-01-01T00:00:00.000Z',
+                previousValues: [],
+              },
+            ],
+            everHadSchedule: true,
+            everHadDose: true,
+            latestTakenAt: null,
+            archivedAt: null,
+          },
+        ],
+      })
+    }),
+  )
+  const observer = new QueryObserver(client, medicinesQuery(client))
+  const unsubscribe = observer.subscribe(() => {})
+  const count = () =>
+    (
+      client.getQueryData<Medicine[]>(medicinesQuery(client).queryKey)?.[0] as
+        { stock?: { count?: number } } | undefined
+    )?.stock?.count
+  await waitFor(() => expect(count()).toBe(30))
+  void observer.refetch()
+  await staleReadStarted
+  confirmed = true
+  await applyRecord(client, {
+    ...latest,
+    outcome: 'Taken',
+    takenAt: base.now,
+    quantity: 1,
+  } as DoseOutcomeRecord)
+  await waitFor(() => expect(count()).toBe(29))
+  await delay(150)
+  expect(count()).toBe(29)
+  unsubscribe()
   client.clear()
 })

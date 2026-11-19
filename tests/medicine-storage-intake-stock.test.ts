@@ -1,0 +1,336 @@
+// Real-D1 proofs for #47: dose saves change Stock once, atomically with the dose write.
+import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
+import { test } from 'vitest'
+import { createWorker } from '../worker/index'
+import { createScheduleOperations } from '../src/features/schedules/operations'
+import type { ScheduleCommand, ScheduleResponse } from '../src/features/schedules/contract'
+import type { MedicineRecord } from '../src/features/medicines/contract'
+import {
+  startWorkerRuntime,
+  secret,
+  runtime,
+  stockBackfill,
+} from './helpers/medicine-storage-runtime'
+
+startWorkerRuntime()
+
+// Istanbul 09:00-20:00 on 2026-11-19 is 06:00Z-17:00Z; stock starts at 10:00:40Z.
+const due = (hourUtc: number) => `2026-11-19T${String(hourUtc).padStart(2, '0')}:00:00.000Z`
+
+async function fixture(unit: 'tablet' | 'liquid' = 'tablet', startingCount = 30) {
+  let now = new Date('2026-11-19T04:00:00.000Z')
+  const handler = createWorker(() => now)
+  const db = await runtime.getD1Database('DB')
+  const ownerId = `google:${randomUUID()}`
+  const medicineId = randomUUID()
+  const env = { DB: db, MEDICINES_WORKER_SECRET: secret }
+  const post = async (path: string, command: object) => {
+    const response = await handler.fetch(
+      new Request(`http://worker/${path}`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${secret}` },
+        body: JSON.stringify({ ownerId, ...command }),
+      }),
+      env,
+    )
+    return { status: response.status, body: (await response.json()) as Record<string, unknown> }
+  }
+  const medicines = async () =>
+    ((await post('medicines', { operation: 'list' })).body.medicines as MedicineRecord[])[0]
+  const operations = createScheduleOperations({
+    requireUser: async () => ({ id: ownerId }),
+    send: async <C extends ScheduleCommand>(command: C) => {
+      const { status, body } = await post('schedules', command)
+      if (status !== 200) throw Object.assign(new Error(body.error as string), { status })
+      return body as ScheduleResponse<C>
+    },
+    now: () => now,
+  })
+  await post('medicines', {
+    operation: 'save',
+    medicine: { id: medicineId, label: 'Example', strength: null, unit },
+  })
+  const [schedule] = await operations.save({
+    id: randomUUID(),
+    medicineId,
+    startDate: '2026-11-19',
+    times: Array.from({ length: 12 }, (_, index) => ({
+      time: `${String(index + 9).padStart(2, '0')}:00`,
+      quantity: 1,
+    })),
+  })
+  const stockAt = async (count: number | null, at: string) => {
+    now = new Date(at)
+    const { revision } = await medicines()
+    const result = await post('medicines', {
+      operation: count === null ? 'stockOff' : 'stockOn',
+      stock: {
+        actionId: randomUUID(),
+        medicineId,
+        expectedRevision: revision,
+        ...(count === null ? {} : { unit, startingCount: count }),
+      },
+    })
+    assert.equal(result.status, 200)
+  }
+  await stockAt(startingCount, '2026-11-19T10:00:40.000Z')
+  now = new Date('2026-11-19T17:30:00.000Z')
+  const occurrence = (hourUtc: number) => ({ scheduleId: schedule.id, dueAt: due(hourUtc) })
+  const taken = (hourUtc: number, quantity = 1, takenAt = due(hourUtc)) =>
+    operations.recordTaken({ ...occurrence(hourUtc), takenAt, quantity })
+  const unscheduled = (takenAt: string, quantity = 1) =>
+    operations.saveUnscheduled({ actionId: randomUUID(), medicineId, takenAt, quantity })
+  const stock = async () => (await medicines()).stock
+  const stored = async () =>
+    (
+      await db
+        .prepare('SELECT stock_count AS count FROM user_medications WHERE owner_id=? AND id=?')
+        .bind(ownerId, medicineId)
+        .first<{ count: number | null }>()
+    )?.count
+  const movements = async () =>
+    (
+      await db
+        .prepare(
+          'SELECT count_change AS change FROM intake_stock_movements WHERE owner_id=? ORDER BY rowid',
+        )
+        .bind(ownerId)
+        .all<{ change: number }>()
+    ).results.map((row) => row.change)
+  return {
+    db,
+    ownerId,
+    medicineId,
+    post,
+    medicines,
+    operations,
+    occurrence,
+    taken,
+    unscheduled,
+    stock,
+    stored,
+    movements,
+    stockAt,
+  }
+}
+
+test('Taken first logs lower Stock by their quantity, including Unscheduled and Archived; Skipped changes nothing', async () => {
+  const f = await fixture()
+  await f.taken(11)
+  assert.deepEqual(await f.stock(), { tracked: true, count: 29 })
+  await f.taken(12, 0.5)
+  await f.operations.recordSkipped(f.occurrence(13))
+  assert.deepEqual(await f.stock(), { tracked: true, count: 28.5 })
+  await f.unscheduled('2026-11-19T14:10:00.000Z', 2)
+  assert.deepEqual(await f.stock(), { tracked: true, count: 26.5 })
+  const { revision } = await f.medicines()
+  const archived = await f.post('medicines', {
+    operation: 'archive',
+    archive: { actionId: randomUUID(), medicineId: f.medicineId, expectedRevision: revision },
+  })
+  assert.equal(archived.status, 200)
+  await f.taken(14)
+  const medicine = await f.medicines()
+  assert.ok(medicine.archivedAt)
+  assert.deepEqual(medicine.stock, { tracked: true, count: 25.5 })
+  assert.deepEqual(await f.movements(), [-1, -0.5, -2, -1])
+})
+
+test('liquid intake stays exact to 0.1 ml', async () => {
+  const f = await fixture('liquid', 0.3)
+  for (const minute of ['10', '20', '30'])
+    await f.unscheduled(`2026-11-19T14:${minute}:00.000Z`, 0.1)
+  assert.equal(await f.stored(), 0)
+  assert.deepEqual(await f.stock(), { tracked: true, count: 0 })
+  await f.unscheduled('2026-11-19T14:40:00.000Z', 0.1)
+  assert.equal(await f.stored(), -0.1)
+})
+
+test('a Taken time in a minute before the reconciliation point changes nothing; the same minute counts', async () => {
+  const f = await fixture()
+  await f.taken(8)
+  await f.unscheduled('2026-11-19T09:59:00.000Z')
+  assert.deepEqual(await f.stock(), { tracked: true, count: 30 })
+  await f.taken(10, 1, '2026-11-19T10:00:00.000Z')
+  assert.deepEqual(await f.stock(), { tracked: true, count: 29 })
+  assert.deepEqual(await f.movements(), [-1])
+})
+
+test('corrections, Unscheduled changes and removals change Stock by the version difference', async () => {
+  const f = await fixture()
+  const correct = (hourUtc: number, expectedRevision: number, change: object) =>
+    f.operations.correctOutcome({
+      ...f.occurrence(hourUtc),
+      actionId: randomUUID(),
+      expectedRevision,
+      ...change,
+    })
+  await f.taken(12)
+  await correct(12, 0, { expectedOutcome: 'Taken', outcome: 'Skipped' })
+  assert.deepEqual(await f.stock(), { tracked: true, count: 30 })
+  await correct(12, 1, {
+    expectedOutcome: 'Skipped',
+    outcome: 'Taken',
+    takenAt: due(12),
+    quantity: 1,
+  })
+  await correct(12, 2, {
+    expectedOutcome: 'Taken',
+    outcome: 'Taken',
+    takenAt: due(12),
+    quantity: 2,
+  })
+  assert.deepEqual(await f.stock(), { tracked: true, count: 28 })
+  await correct(12, 3, {
+    expectedOutcome: 'Taken',
+    outcome: 'Taken',
+    takenAt: '2026-11-19T09:00:00.000Z',
+    quantity: 2,
+  })
+  assert.deepEqual(await f.stock(), { tracked: true, count: 30 })
+  await f.operations.recordSkipped(f.occurrence(13))
+  await correct(13, 0, {
+    expectedOutcome: 'Skipped',
+    outcome: 'Taken',
+    takenAt: due(13),
+    quantity: 0.5,
+  })
+  assert.deepEqual(await f.stock(), { tracked: true, count: 29.5 })
+
+  const dose = await f.unscheduled('2026-11-19T14:10:00.000Z')
+  const change = (expectedRevision: number, value: object) =>
+    f.operations.changeUnscheduled({
+      actionId: randomUUID(),
+      doseId: dose.id,
+      expectedRevision,
+      ...value,
+    })
+  await change(0, { removed: false, takenAt: dose.takenAt, quantity: 3 })
+  assert.deepEqual(await f.stock(), { tracked: true, count: 26.5 })
+  await change(1, { removed: false, takenAt: '2026-11-19T09:30:00.000Z', quantity: 3 })
+  assert.deepEqual(await f.stock(), { tracked: true, count: 29.5 })
+  await change(2, { removed: false, takenAt: dose.takenAt, quantity: 1 })
+  await change(3, { removed: true })
+  assert.deepEqual(await f.stock(), { tracked: true, count: 29.5 })
+})
+
+test('intake past the count shows 0 with the flag, and a correction restores the true remainder', async () => {
+  const f = await fixture('tablet', 0.5)
+  await f.taken(12)
+  assert.equal(await f.stored(), -0.5)
+  assert.deepEqual(await f.stock(), { tracked: true, count: 0, intakePastCount: true })
+  await f.operations.correctOutcome({
+    ...f.occurrence(12),
+    actionId: randomUUID(),
+    expectedRevision: 0,
+    expectedOutcome: 'Taken',
+    outcome: 'Skipped',
+  })
+  assert.deepEqual(await f.stock(), { tracked: true, count: 0.5 })
+  await f.unscheduled('2026-11-19T14:10:00.000Z', 0.5)
+  assert.deepEqual(await f.stock(), { tracked: true, count: 0 })
+})
+
+test('dose saves with stock off change no Stock, and a fresh count stands', async () => {
+  const f = await fixture()
+  await f.stockAt(null, '2026-11-19T11:00:00.000Z')
+  await f.taken(9, 1, '2026-11-19T11:00:00.000Z')
+  const dose = await f.unscheduled('2026-11-19T11:00:00.000Z')
+  await f.operations.changeUnscheduled({
+    actionId: randomUUID(),
+    doseId: dose.id,
+    expectedRevision: 0,
+    removed: true,
+  })
+  assert.deepEqual(await f.stock(), { tracked: false })
+  assert.deepEqual(await f.movements(), [])
+  await f.stockAt(10, '2026-11-19T12:00:00.000Z')
+  await f.operations.correctOutcome({
+    ...f.occurrence(9),
+    actionId: randomUUID(),
+    expectedRevision: 0,
+    expectedOutcome: 'Taken',
+    outcome: 'Skipped',
+  })
+  assert.deepEqual(await f.stock(), { tracked: true, count: 10 })
+})
+
+test('retries, concurrent identical saves and rejected writes apply each stock change at most once', async () => {
+  const f = await fixture()
+  const taken = { ...f.occurrence(12), takenAt: due(12), quantity: 1 }
+  await Promise.all([f.operations.recordTaken(taken), f.operations.recordTaken(taken)])
+  await f.operations.recordTaken(taken)
+  await assert.rejects(() => f.operations.recordTaken({ ...taken, quantity: 2 }), /conflict/)
+  await f.operations.recordSkipped(f.occurrence(13))
+  await assert.rejects(
+    () => f.operations.recordTaken({ ...f.occurrence(13), takenAt: due(13), quantity: 1 }),
+    /conflict/,
+  )
+  assert.deepEqual(await f.stock(), { tracked: true, count: 29 })
+
+  const correction = {
+    ...f.occurrence(12),
+    actionId: randomUUID(),
+    expectedRevision: 0,
+    expectedOutcome: 'Taken' as const,
+    outcome: 'Taken' as const,
+    takenAt: due(12),
+    quantity: 3,
+  }
+  await Promise.all([
+    f.operations.correctOutcome(correction),
+    f.operations.correctOutcome(correction),
+  ])
+  await f.operations.correctOutcome(correction)
+  await assert.rejects(
+    () => f.operations.correctOutcome({ ...correction, actionId: randomUUID(), quantity: 5 }),
+    /conflict/,
+  )
+  assert.deepEqual(await f.stock(), { tracked: true, count: 27 })
+
+  const dose = { actionId: randomUUID(), medicineId: f.medicineId, takenAt: due(14), quantity: 2 }
+  await Promise.all([f.operations.saveUnscheduled(dose), f.operations.saveUnscheduled(dose)])
+  await f.operations.saveUnscheduled(dose)
+  const removal = {
+    actionId: randomUUID(),
+    doseId: dose.actionId,
+    expectedRevision: 0,
+    removed: true,
+  }
+  await f.operations.changeUnscheduled(removal)
+  await f.operations.changeUnscheduled(removal)
+  await assert.rejects(
+    () =>
+      f.operations.changeUnscheduled({
+        actionId: randomUUID(),
+        doseId: dose.actionId,
+        expectedRevision: 0,
+        removed: false,
+        takenAt: due(14),
+        quantity: 1,
+      }),
+    /conflict/,
+  )
+  assert.deepEqual(await f.stock(), { tracked: true, count: 27 })
+  assert.deepEqual(await f.movements(), [-1, -2, -2, 2])
+})
+
+test('migration counts doses saved after a starting count once, at their latest version', async () => {
+  const db = await runtime.getD1Database('DB')
+  const row = await db
+    .prepare('SELECT stock_count AS count FROM user_medications WHERE owner_id=? AND id=?')
+    .bind(stockBackfill.ownerId, stockBackfill.medicineId)
+    .first<{ count: number }>()
+  assert.equal(row?.count, 8.5)
+  const changes = await db
+    .prepare(
+      'SELECT count_change AS change FROM intake_stock_movements WHERE owner_id=? ORDER BY dose_key',
+    )
+    .bind(stockBackfill.ownerId)
+    .all<{ change: number }>()
+  assert.deepEqual(
+    changes.results.map((item) => item.change),
+    [-1, -0.5],
+  )
+})

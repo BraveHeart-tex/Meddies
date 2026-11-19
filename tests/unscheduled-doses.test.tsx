@@ -337,6 +337,40 @@ test('a lost response keeps the details and retries the same attempt, so one dos
   expect(state.doses).toHaveLength(1)
 })
 
+// Regression (#47): the Stock row kept the count from before the save.
+test('a confirmed log shows the new Stock count on Medication detail', async () => {
+  const state = api({ doses: [] })
+  server.use(
+    http.get('/api/medicines', () =>
+      HttpResponse.json({
+        medicines: [
+          magnesium,
+          {
+            ...ibuprofen,
+            stock: { tracked: true, count: 24 - state.doses.length },
+            revision: 1,
+            lastActionId: null,
+            currentStrengthRevisionId: ibuprofen.id,
+            strengthRevisions: [
+              { ...ibuprofen, effectiveAt: '0001-01-01T00:00:00.000Z', previousValues: [] },
+            ],
+            everHadSchedule: true,
+            everHadDose: false,
+            latestTakenAt: null,
+            archivedAt: null,
+          },
+        ],
+      }),
+    ),
+  )
+  const user = renderDetail()
+  expect(await screen.findByText('24 tablets left')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Log a dose' }))
+  await user.click(await screen.findByRole('button', { name: 'Save as taken' }))
+  expect(await screen.findByText('Ibuprofen · Taken at 10:00, 1 tablet')).toBeVisible()
+  expect(await screen.findByText('23 tablets left', {}, { timeout: 3000 })).toBeInTheDocument()
+})
+
 test('a rejected save shows Not saved and keeps the drawer open', async () => {
   api({ replies: ['reject'] })
   const user = renderDetail()

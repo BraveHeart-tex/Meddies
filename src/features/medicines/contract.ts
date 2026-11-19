@@ -33,7 +33,8 @@ type MedicineMetadata = {
   latestTakenAt: string | null
   /** The archive's Edit time; null while active. Reads before #322 omit it (active). */
   archivedAt: string | null
-  stock: { tracked: false } | { tracked: true; count: number }
+  /** Count shows never below zero; `intakePastCount` marks intake past it (#47), for #49. */
+  stock: { tracked: false } | { tracked: true; count: number; intakePastCount?: true }
 }
 
 export type MedicineRecord = Medicine & MedicineMetadata
@@ -276,6 +277,8 @@ function parseStock(value: unknown, unit: MedicineType): MedicineRecord['stock']
   const stock = value as Record<string, unknown>
   if (stock.tracked === false) return { tracked: false }
   if (stock.tracked === true && isStockCount(stock.count, unit))
-    return { tracked: true, count: stock.count }
+    return stock.intakePastCount === true
+      ? { tracked: true, count: stock.count, intakePastCount: true }
+      : { tracked: true, count: stock.count }
   throw new ApplicationError('validation', 400)
 }

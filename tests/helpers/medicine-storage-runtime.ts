@@ -38,6 +38,103 @@ export const call = (command: unknown, authorization = `Bearer ${secret}`) =>
     body: JSON.stringify(command),
   })
 
+// Doses saved after a starting count but before 0026 count once when it applies.
+export const stockBackfill = {
+  ownerId: 'google:stock-backfill',
+  medicineId: '10000000-0000-4000-8000-000000000020',
+  scheduleId: '10000000-0000-4000-8000-000000000021',
+}
+async function seedStockBackfill(db: Awaited<ReturnType<Miniflare['getD1Database']>>) {
+  const { ownerId, medicineId, scheduleId } = stockBackfill
+  const run = (query: string, ...values: unknown[]) =>
+    db
+      .prepare(query)
+      .bind(...values)
+      .run()
+  await run(
+    'INSERT INTO user_medications(owner_id,id,label,strength,unit,starting_count,stock_started_at) VALUES(?,?,?,?,?,?,?)',
+    ownerId,
+    medicineId,
+    'Backfill',
+    null,
+    'tablet',
+    10,
+    '2026-11-05T05:00:30.000Z',
+  )
+  await run(
+    'INSERT INTO daily_schedules(owner_id,id,medicine_id,start_date,times,confirmed_at) VALUES(?,?,?,?,?,?)',
+    ownerId,
+    scheduleId,
+    medicineId,
+    legacy.date,
+    '[{"time":"07:00","quantity":1},{"time":"09:00","quantity":1},{"time":"10:00","quantity":1}]',
+    '2026-11-04T20:00:00.000Z',
+  )
+  const dose =
+    'INSERT INTO dose_records(owner_id,schedule_id,due_at,taken_at,quantity,outcome) VALUES(?,?,?,?,?,?)'
+  // Before the starting count: not counted. Same minute: counted.
+  await run(
+    dose,
+    ownerId,
+    scheduleId,
+    '2026-11-05T04:00:00.000Z',
+    '2026-11-05T04:00:00.000Z',
+    1,
+    'Taken',
+  )
+  await run(dose, ownerId, scheduleId, legacy.dueAt, '2026-11-05T05:00:00.000Z', 1, 'Taken')
+  // Skipped, then corrected to Taken 0.5: the latest version counts.
+  await run(
+    'INSERT INTO skipped_dose_records(owner_id,schedule_id,due_at,recorded_at,outcome) VALUES(?,?,?,?,?)',
+    ownerId,
+    scheduleId,
+    '2026-11-05T07:00:00.000Z',
+    '2026-11-05T07:01:00.000Z',
+    'Skipped',
+  )
+  await run(
+    'INSERT INTO dose_corrections(owner_id,schedule_id,due_at,revision,action_id,expected_outcome,outcome,taken_at,quantity,recorded_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
+    ownerId,
+    scheduleId,
+    '2026-11-05T07:00:00.000Z',
+    1,
+    '10000000-0000-4000-8000-000000000022',
+    'Skipped',
+    'Taken',
+    '2026-11-05T07:02:00.000Z',
+    0.5,
+    '2026-11-05T07:03:00.000Z',
+  )
+  // Unscheduled 2, then removed: never taken.
+  const unscheduled =
+    'INSERT INTO unscheduled_doses(owner_id,id,revision,action_id,medicine_id,taken_at,quantity,removed,request) VALUES(?,?,?,?,?,?,?,?,?)'
+  const doseId = '10000000-0000-4000-8000-000000000023'
+  await run(
+    unscheduled,
+    ownerId,
+    doseId,
+    0,
+    doseId,
+    medicineId,
+    '2026-11-05T08:00:00.000Z',
+    2,
+    0,
+    '{}',
+  )
+  await run(
+    unscheduled,
+    ownerId,
+    doseId,
+    1,
+    '10000000-0000-4000-8000-000000000024',
+    medicineId,
+    '2026-11-05T08:00:00.000Z',
+    2,
+    1,
+    '{}',
+  )
+}
+
 export function startWorkerRuntime() {
   beforeAll(async () => {
     runtime = new Miniflare(
@@ -52,6 +149,7 @@ export function startWorkerRuntime() {
     const db = await runtime.getD1Database('DB')
     await applyD1Migrations(db, {
       async afterMigration(file) {
+        if (file === '0025_stock_tracking.sql') await seedStockBackfill(db)
         if (file === '0012_unscheduled_doses.sql') {
           await db
             .prepare(

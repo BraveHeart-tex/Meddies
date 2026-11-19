@@ -37,7 +37,9 @@ browser storage is used. Losing it on reload, app closure or browser eviction is
 - **Medicine stock** on and off confirm only from a record bearing their action ID, revision + 1
   and the requested stock, so a count shows only once the server has it. After cancelling older
   medicine reads they publish that record; revision merges keep a delayed read from showing the
-  old count.
+  old count. A confirmed dose save, Unscheduled log, change or removal changes Stock without a
+  revision, so it invalidates medicine reads; the fresh read cancels any older one in flight, so
+  only the server's count shows.
 - **Medicine archive** confirms only from a record bearing its action ID, revision + 1 and
   `archivedAt`. After cancelling older reads it publishes that record and the head Schedule
   version's stop successor (the server's, keyed by the action ID). Schedule versions only advance

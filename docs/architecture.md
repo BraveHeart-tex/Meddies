@@ -118,6 +118,13 @@ owner.
   Add medicine accepts an optional `startingCount`; the Medicine, movement and immutable
   creation receipt commit together. Stock action receipts replay exactly before state
   validation. Medicine deletion cascades to stock movements and action receipts.
+  Intake (#47) needs no request of its own: an insertion trigger on each dose version (first
+  log, correction, Unscheduled log, change or removal) records one intake movement with the
+  difference between what its previous and new versions count, applied to the stored count in
+  the same statement, so retries and refused writes move nothing. A version counts against the
+  current reconciliation point (`stock_started_at`) by minute. The stored count rounds to tenths
+  and keeps a negative remainder; reads show it floored at 0 with `intakePastCount`. Dose saves
+  never change the Medicine revision.
 - **Dose strength:** scheduled doses resolve by Taken time, or due time for Skipped;
   Unscheduled doses resolve by Taken time. Database insertion triggers save period identity,
   strength, label and Quantity unit, including writes from an older Worker during rollout.

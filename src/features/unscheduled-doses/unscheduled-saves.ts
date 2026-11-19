@@ -12,6 +12,7 @@ import { confirmSessionEnd } from '@/lib/session-check'
 import { discardSessionFormDraft } from '@/lib/session-drafts'
 import { sessionSaves, type OutstandingSave } from '@/lib/session-saves'
 import { doseHistoryKeys } from '../dose-history/queries'
+import { medicineKeys } from '../medicines/queries'
 import type { AttemptForm, PendingDose, SaveProblem } from '../schedules/dose-save-state'
 import { readFreshHistoryDay, readFreshSnapshot, scheduleKeys } from '../schedules/queries'
 import { parseUnscheduledDoseRecord, takenDate, type UnscheduledDose } from './contract'
@@ -298,6 +299,8 @@ class UnscheduledSaves {
         })
         .catch(() => {})
     void this.client.invalidateQueries({ queryKey: doseHistoryKeys.all }).catch(() => {})
+    // Stock reflects the confirmed dose (#47); only the server count shows.
+    void this.client.invalidateQueries({ queryKey: medicineKeys.all }).catch(() => {})
     this.set(key, undefined)
     this.finish(key)
     const title =
