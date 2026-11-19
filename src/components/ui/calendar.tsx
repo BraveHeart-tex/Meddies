@@ -14,7 +14,7 @@ import {
 } from '@/lib/calendar-date'
 import { cn } from '@/lib/utils'
 
-// Cozy Care calendar: 44px day targets that shrink only to fit a 320px phone, blush today,
+// Cozy Care calendar: 44px day targets that shrink only when the screen is too narrow, blush today,
 // berry selected day, heavy caption.
 function Calendar({
   className,

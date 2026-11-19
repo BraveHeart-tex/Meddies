@@ -13,8 +13,8 @@ const swipeIgnore = { 'data-base-ui-swipe-ignore': 'y' }
 
 /**
  * Taken at _Other_: the Taken date as a ToggleGroup of `days` (takenDayOptions) shown as short
- * days and named as long days, then the time on its own row so its digits stay on one line at
- * 320px (#277). Shared by the record drawer and the Unscheduled dose drawers.
+ * days and named as long days, then the time on its own row so its digits stay on one line
+ * (#277). Shared by the record drawer and the Unscheduled dose drawers.
  */
 export function TakenOtherFields({
   id,

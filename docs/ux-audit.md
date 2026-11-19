@@ -1,6 +1,7 @@
 # UX audit - November 2026
 
-Audit only: nothing here is approved, and no application code changed. Findings are evidence for
+Audit only: nothing here is approved, and no application code changed. Its 320px checks are
+historical; current visual checks use 402x874 only ([verification](verification.md#visual-verification)). Findings are evidence for
 later tickets, not product rules. If a recommendation conflicts with [PRODUCT.md](../PRODUCT.md),
 [DESIGN.md](../DESIGN.md) or the [product docs](product/README.md), the docs win until a decision
 in [Open decisions](#6-open-decisions) changes them.

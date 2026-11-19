@@ -88,6 +88,9 @@ Migrations 0 · New screens 1 · Owned frames 2 · Journeys 0 · Proofs 3
 - Criteria state product or technical outcomes. `pnpm verify:local`, pushing, evidence and
   closing are the [done definition](../AGENTS.md), never criteria.
 - There is no fixed criterion count; more than eight means the ticket holds two slices.
+- Visual criteria name no viewport or text size: every visual check runs at
+  [402×874 with normal text](verification.md#visual-verification). Never ask for 320px,
+  other widths or enlarged-text captures, even where an older ticket did.
 - A design build ticket cites frame IDs with key copy in quotes, never "the approved
   frames". Designs hand off through the
   [design-ticket skill](../.agents/skills/design-ticket/SKILL.md): approved lab frames, the

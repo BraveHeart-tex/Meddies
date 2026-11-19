@@ -19,7 +19,7 @@ function Bar({ width }: { width: string }) {
 // The session is unknown here, so the account rows and sign-out stay placeholders: no line may
 // claim that anyone is signed in. The Settings tab stays selected.
 // Placeholder widths match the loaded text so rows wrap alike; the caption's container
-// breakpoints follow where its text wraps, measured from 320px to 700px.
+// breakpoints follow where its text wraps.
 export default function Loading() {
   return (
     <SettingsFrame

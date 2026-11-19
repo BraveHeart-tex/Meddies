@@ -50,7 +50,7 @@ export function AppShell({
                 const active = pathname === href
                 return (
                   // Tabs share the width equally but never shrink below their label, so
-                  // "Medications" stays whole at 320px; enlarged text can wrap whole tabs.
+                  // "Medications" never truncates; enlarged text can wrap whole tabs.
                   <li key={href} className="min-w-fit flex-1">
                     <Link
                       href={href}

@@ -108,4 +108,4 @@ All dates/times use Europe/Istanbul.
 
 ## Accessibility and visual verification - approved November 7, 2026
 
-Safeguards: [PRODUCT.md](../../PRODUCT.md#accessibility--inclusion). Checks: [verification](../verification.md#visual-verification). One approved exception: the calendar day target is about 39.7px at 320px width (#102).
+Safeguards: [PRODUCT.md](../../PRODUCT.md#accessibility--inclusion). Checks: [verification](../verification.md#visual-verification). One approved exception: calendar day targets shrink below 44px only when the screen is too narrow to fit them (#102).
