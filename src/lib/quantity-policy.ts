@@ -244,3 +244,26 @@ export function quantityProblem(text: string, quantity: Quantity): string | null
   if (!isQuantityFor(value, rule)) return rule.offGrid
   return null
 }
+
+/**
+ * A Stock count in words: "24 tablets left", "12½ tablets left", "150 ml left". Zero and
+ * counts above one take the plural; ml never changes. Shared by the Medications list and the
+ * Medication detail Stock section.
+ */
+export function stockLeft(count: number, quantity: Quantity): string {
+  return `${formatQuantity(count, quantity)} ${unitName(count > 0 ? count : null, quantity)} left`
+}
+
+/**
+ * The inline error for optional starting-count text, or null when it is empty or a valid count.
+ * Zero is allowed; the grid and safe bound follow the unit.
+ */
+export function stockCountProblem(text: string, quantity: Quantity): string | null {
+  const rule = entry(quantity)
+  const value = parseQuantity(text)
+  if (value === null || value === 0) return null
+  if (Number.isNaN(value)) return 'Enter a number, like 30.'
+  if (value > rule.max) return 'Enter a smaller quantity.'
+  if (!isQuantityFor(value, rule)) return rule.offGrid
+  return null
+}

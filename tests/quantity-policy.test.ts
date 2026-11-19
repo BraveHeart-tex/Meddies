@@ -13,6 +13,7 @@ import {
   parseQuantity,
   quantityLabel,
   quantityProblem,
+  stockLeft,
   quantityRule,
   stepQuantity,
   unitName,
@@ -202,4 +203,15 @@ test('the approved puff and drop errors (#265)', () => {
   assert.equal(quantityProblem('0', 'inhaler'), 'Use 1 puff or more.')
   assert.equal(quantityProblem('1.5', 'drops'), 'Use whole drops.')
   assert.equal(quantityProblem('0', 'drops'), 'Use 1 drop or more.')
+})
+
+// Regression: zero reading "0 tablet left", or ml pluralizing.
+test('stock counts read "<number> <unit> left" with the plural at zero and above one', () => {
+  assert.equal(stockLeft(24, 'tablet'), '24 tablets left')
+  assert.equal(stockLeft(12.5, 'tablet'), '12½ tablets left')
+  assert.equal(stockLeft(0, 'tablet'), '0 tablets left')
+  assert.equal(stockLeft(1, 'capsule'), '1 capsule left')
+  assert.equal(stockLeft(0.5, 'tablet'), '½ tablet left')
+  assert.equal(stockLeft(150, 'liquid'), '150 ml left')
+  assert.equal(stockLeft(0, 'liquid'), '0 ml left')
 })

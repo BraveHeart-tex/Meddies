@@ -344,6 +344,47 @@ describe('with no cache', () => {
     expect(screen.queryByRole('link', { name: /Set schedule/ })).not.toBeInTheDocument()
   })
 
+  // Regression: the count missing from a tracked row, or a line added to an untracked one.
+  test('a tracked row shows its count under the facts; an untracked row is unchanged', async () => {
+    // Full records, as the API returns: only a parsed record keeps its stock.
+    const record = (details: Medicine, stock: Medicine['stock']): Medicine => {
+      const revisionId = `11111111-1111-4111-8111-${details.id.slice(-12)}`
+      return {
+        ...details,
+        stock,
+        revision: 1,
+        lastActionId: null,
+        currentStrengthRevisionId: revisionId,
+        strengthRevisions: [
+          {
+            id: revisionId,
+            effectiveAt: '2026-11-01T00:00:00.000Z',
+            previousValues: [],
+            label: details.label,
+            strength: details.strength,
+            unit: details.unit,
+          },
+        ],
+        everHadSchedule: false,
+        everHadDose: false,
+        latestTakenAt: null,
+        archivedAt: null,
+      }
+    }
+    const [tablets, liquid, untracked] = listOf(3)
+    medicinesApi([
+      record({ ...tablets, strength: '500 mg' }, { tracked: true, count: 12.5 }),
+      record({ ...liquid, unit: 'liquid' }, { tracked: true, count: 150 }),
+      record(untracked, { tracked: false }),
+    ])
+    renderList()
+    const group = await screen.findByRole('region', { name: 'No schedule' })
+    const [first, second, third] = within(group).getAllByRole('listitem')
+    expect(first).toHaveTextContent(/^Medicine 1500 mg · tablet12½ tablets leftView details$/)
+    expect(second).toHaveTextContent(/^Medicine 2liquid150 ml leftView details$/)
+    expect(third).toHaveTextContent(/^Medicine 3tabletView details$/)
+  })
+
   test('a failed schedules read shows the load error with its retry', async () => {
     medicinesApi(listOf(1))
     server.use(

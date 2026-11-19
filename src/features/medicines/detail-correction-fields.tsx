@@ -28,11 +28,11 @@ import {
   unitName,
 } from '@/lib/quantity-policy'
 import { TypeTile } from './type-tile'
-import type { MedicineFormValues, MedicineFormOutput } from './medicine-form-schema'
+import type { MedicineDetails, MedicineDetailsValues } from './medicine-form-schema'
 import type { MedicineRecord } from './contract'
 
-type RecordValues = MedicineFormValues & { expectedRevision: number; date: string; time: string }
-type RecordOutput = MedicineFormOutput & { expectedRevision: number; date: string; time: string }
+type RecordValues = MedicineDetailsValues & { expectedRevision: number; date: string; time: string }
+type RecordOutput = MedicineDetails & { expectedRevision: number; date: string; time: string }
 
 // Inset rows from Add medication: a 92px label column, 56px minimum height, the ring on the row.
 const textRow =

@@ -2,7 +2,7 @@ import type { Medicine } from '@/features/medicines/contract'
 import type { DailySchedule } from '@/features/schedules/contract'
 import { formatQuantity, unitName, type MedicineType } from '@/lib/quantity-policy'
 import type { QueryFixtures } from '../fixture-query'
-import { amoxicillin, iron, magnesium, magnesiumSchedule, routine, vitaminD } from '../lab-fixtures'
+import { magnesiumSchedule, routine } from '../lab-fixtures'
 
 /** A Capsule: 1000 mg, amounts in capsules, so the turn-on drawer can show 7.5 capsules. */
 export const omega3: Medicine = {
@@ -29,18 +29,6 @@ export const omega3Tracked: Medicine = { ...omega3, stock: { tracked: true, coun
 /** The rejected starting count the turn-on drawer shows: half capsules are off the grid. */
 export const offGridCount = '7.5'
 
-/**
- * The Medications list the row frames show: Magnesium at 24 tablets, Amoxicillin at 150 ml,
- * Omega-3 at 28 capsules and Vitamin D at 12½ tablets; Iron keeps stock off and stays unchanged.
- */
-export const listMedicines: Medicine[] = [
-  { ...magnesium, stock: { tracked: true, count: 24 } },
-  iron,
-  { ...amoxicillin, stock: { tracked: true, count: 150 } },
-  omega3Tracked,
-  { ...vitaminD, stock: { tracked: true, count: 12.5 } },
-]
-
 /** `routine` with Omega-3 added, as the detail frames read it. */
 export function stockFixtures(medicine: Medicine): QueryFixtures {
   return {
@@ -48,12 +36,6 @@ export function stockFixtures(medicine: Medicine): QueryFixtures {
     medicines: [...routine.medicines, medicine],
     snapshot: { ...routine.snapshot, schedules: [...routine.snapshot.schedules, omega3Schedule] },
   }
-}
-
-/** The list fixtures: only the medicines the row frames show. */
-export const listFixtures: QueryFixtures = {
-  ...stockFixtures(omega3Tracked),
-  medicines: listMedicines,
 }
 
 /**
@@ -65,12 +47,6 @@ export function stockParts(count: number, unit: MedicineType) {
     number: formatQuantity(count, unit),
     unit: unitName(count > 0 && count <= 1 ? 1 : null, unit),
   }
-}
-
-/** "28 capsules left", "12½ tablets left", "150 ml left". */
-export function stockLeft(count: number, unit: MedicineType) {
-  const parts = stockParts(count, unit)
-  return `${parts.number} ${parts.unit} left`
 }
 
 export const stockCopy = {
@@ -87,6 +63,4 @@ export const stockCopy = {
   confirmTitle: (label: string) => `Stop tracking ${label} stock?`,
   confirmBody: (label: string) =>
     `Meddies stops counting ${label}. To track again, you’ll enter a fresh count.`,
-  addLabel: 'Stock',
-  addHelp: (plural: string) => `How many ${plural} you have now. Leave empty to skip tracking.`,
 }

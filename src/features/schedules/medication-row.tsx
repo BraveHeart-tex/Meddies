@@ -7,11 +7,13 @@ import type { Medicine } from '@/features/medicines/contract'
 import { TypeTile } from '@/features/medicines/type-tile'
 import { MedicationsLink } from '@/features/medicines/medications-nav'
 import { medicationsHref } from '@/features/medicines/routes'
+import { stockLeft } from '@/lib/quantity-policy'
 import { PausedBadge } from './clock-schedule-card'
 
 /**
  * One Medications row. `scheduleSummary` is null when the medication has no schedule; a paused
- * one adds the Paused Badge and says so in the row link's name.
+ * one adds the Paused Badge and says so in the row link's name. A tracked medication adds its
+ * Stock count as a quiet line under the facts (#394).
  */
 export function MedicationRow({
   medicine,
@@ -40,6 +42,9 @@ export function MedicationRow({
         <ItemDescription>
           {[medicine.strength, medicine.unit].filter(Boolean).join(' · ')}
         </ItemDescription>
+        {medicine.stock?.tracked && (
+          <ItemDescription>{stockLeft(medicine.stock.count, medicine.unit)}</ItemDescription>
+        )}
         {/* No schedule is a complete record for occasional use, not unfinished setup (#275). */}
         {paused && <PausedBadge />}
         {(scheduleSummary !== null || !noScheduleInGroupHeading) && (

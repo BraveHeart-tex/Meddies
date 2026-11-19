@@ -457,3 +457,85 @@ test('a failed background refresh cannot undo a confirmed save', async () => {
   expect(readSessionDraft(client, 'medicine:add')).toBeUndefined()
   unsubscribe()
 })
+
+const stock = () => screen.getByRole('textbox', { name: 'Stock' })
+
+// Regression: a count dropped from the save (stock stays off), or an empty row turning stock on.
+test('a Stock count saves with stock on; an empty Stock row saves stock off', async () => {
+  const posted: Record<string, unknown>[] = []
+  server.use(
+    http.post('/api/medicines', async ({ request }) => {
+      const payload = (await request.json()) as Medicine & { startingCount?: number }
+      posted.push(payload)
+      const { startingCount, ...medicine } = payload
+      return HttpResponse.json({
+        medicines: [
+          {
+            ...medicine,
+            revision: 1,
+            lastActionId: null,
+            currentStrengthRevisionId: medicine.id,
+            strengthRevisions: [
+              { ...medicine, effectiveAt: '2026-11-19T09:00:00.000Z', previousValues: [] },
+            ],
+            everHadSchedule: false,
+            everHadDose: false,
+            latestTakenAt: null,
+            archivedAt: null,
+            stock:
+              startingCount === undefined
+                ? { tracked: false }
+                : { tracked: true, count: startingCount },
+          },
+        ],
+      })
+    }),
+  )
+  const { user, onSaved } = openAdd()
+  expect(stock()).toHaveAttribute('placeholder', 'Optional')
+  expect(stock()).toHaveAccessibleDescription(
+    'How many you have now. Leave empty to skip tracking.',
+  )
+  await fill(user)
+  expect(stock()).toHaveAccessibleDescription(
+    'capsules How many capsules you have now. Leave empty to skip tracking.',
+  )
+  await user.type(stock(), '28')
+  await user.click(button('Save medication'))
+  await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+  expect(posted[0]).toMatchObject({ unit: 'capsule', startingCount: 28 })
+  expect(onSaved.mock.calls[0][0]).toMatchObject({ stock: { tracked: true, count: 28 } })
+  expect(stock()).toHaveValue('')
+
+  await fill(user)
+  await user.click(button('Save medication'))
+  await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(2))
+  expect(posted[1]).not.toHaveProperty('startingCount')
+  expect(onSaved.mock.calls[1][0]).toMatchObject({ stock: { tracked: false } })
+})
+
+// Regression: a count checked against the Type chosen earlier instead of the one at save.
+test('the Stock row rejects 7.5 capsules and rechecks when the Type changes', async () => {
+  let posts = 0
+  server.use(
+    http.post('/api/medicines', () => {
+      posts++
+      return HttpResponse.error()
+    }),
+  )
+  const { user } = openAdd()
+  await fill(user)
+  await user.type(stock(), '7.5')
+  await user.click(button('Save medication'))
+  await waitFor(() => expect(stock()).toHaveFocus())
+  expect(stock()).toHaveAttribute('aria-invalid', 'true')
+  expect(stock()).toHaveAccessibleDescription(
+    'capsules Use whole capsules. How many capsules you have now. Leave empty to skip tracking.',
+  )
+  await chooseType(user, 'Tablet')
+  await waitFor(() => expect(stock()).toHaveAttribute('aria-invalid', 'false'))
+  expect(screen.queryByText('Use whole capsules.')).not.toBeInTheDocument()
+  await chooseType(user, 'Capsule')
+  expect(await screen.findByText('Use whole capsules.')).toBeVisible()
+  expect(posts).toBe(0)
+})

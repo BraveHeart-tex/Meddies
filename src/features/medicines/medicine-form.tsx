@@ -1,6 +1,6 @@
 'use client'
 
-import { medicineTypeOptions, strengthHelp } from '@/lib/quantity-policy'
+import { medicineTypeOptions, strengthHelp, unitName } from '@/lib/quantity-policy'
 
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -51,6 +51,10 @@ const rowInput =
 const rowError = 'col-span-full pb-3 font-extrabold'
 const rowHelp = 'col-span-full pb-3 text-caption'
 
+/** Stock help for the chosen Type's plural, or without a unit while none is chosen. */
+const stockHelp = (plural: string | null) =>
+  `How many ${plural ? `${plural} ` : ''}you have now. Leave empty to skip tracking.`
+
 /**
  * Add medicine form: the production reference for React Hook Form (docs/forms.md).
  * Editing values are kept as session drafts; `onSaved` runs only after the server confirms.
@@ -61,8 +65,9 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
     defaultValues: medicineFormDefaults,
   })
   const draft = useSessionFormDraft(medicineAddKey, form)
-  // Strength help follows the chosen Type.
+  // Strength help and the Stock unit follow the chosen Type.
   const unit = useWatch({ control: form.control, name: 'unit' })
+  const plural = unit ? unitName(null, unit) : null
   const offline = useKnownOffline()
   const saveState = useMedicineSave((saved) => {
     form.reset(medicineFormDefaults)
@@ -141,7 +146,11 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
                   <Select
                     items={UNITS}
                     value={field.value || null}
-                    onValueChange={(value) => field.onChange(value ?? '')}
+                    onValueChange={(value) => {
+                      field.onChange(value ?? '')
+                      // The Stock count validates against the Type; recheck a shown error.
+                      if (form.formState.isSubmitted) void form.trigger('stock')
+                    }}
                     disabled={field.disabled || locked}
                   >
                     {/* The whole row is the trigger, its label included. */}
@@ -200,7 +209,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
                     id="medicine-strength"
                     placeholder="Optional"
                     autoComplete="off"
-                    enterKeyHint="done"
+                    enterKeyHint="next"
                     aria-invalid={fieldState.invalid}
                     aria-describedby={
                       fieldState.invalid
@@ -216,6 +225,49 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
                   />
                   <FieldDescription id="medicine-strength-help" className={rowHelp}>
                     {strengthHelp(unit || null)}
+                  </FieldDescription>
+                </Field>
+              )}
+            />
+            <Controller
+              name="stock"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                // A plain count with the dose unit after it; empty keeps stock off (#394).
+                <Field
+                  data-invalid={fieldState.invalid}
+                  className="grid min-h-14 grid-cols-[5.75rem_minmax(0,1fr)_auto] items-center gap-0 px-4 not-first:border-t has-[input:focus-visible]:outline-2 has-[input:focus-visible]:-outline-offset-2 has-[input:focus-visible]:outline-ring"
+                >
+                  <FieldLabel htmlFor="medicine-stock">Stock</FieldLabel>
+                  <Input
+                    {...field}
+                    id="medicine-stock"
+                    placeholder="Optional"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    enterKeyHint="done"
+                    aria-invalid={fieldState.invalid}
+                    aria-describedby={[
+                      plural && 'medicine-stock-unit',
+                      fieldState.invalid && 'medicine-stock-error',
+                      'medicine-stock-help',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    className={rowInput}
+                  />
+                  {plural && (
+                    <span id="medicine-stock-unit" className="pl-2 font-bold text-muted-foreground">
+                      {plural}
+                    </span>
+                  )}
+                  <FieldError
+                    id="medicine-stock-error"
+                    className={rowError}
+                    errors={[fieldState.error]}
+                  />
+                  <FieldDescription id="medicine-stock-help" className={rowHelp}>
+                    {stockHelp(plural)}
                   </FieldDescription>
                 </Field>
               )}

@@ -4,18 +4,22 @@ import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { sessionSaves, requestSave } from '@/lib/session-saves'
 import { discardSessionFormDraft } from '@/lib/session-drafts'
-import { parseMedicineResponse, type Medicine } from './contract'
+import { parseMedicine, parseMedicineResponse, type Medicine, type MedicineInput } from './contract'
 import { medicineAddKey, type MedicineFormOutput } from './medicine-form-schema'
 import { confirmMedicine, medicinesQuery } from './queries'
 import { medicationsHref } from './routes'
 
-function matchingMedicine(value: unknown, attempted: Medicine): Medicine {
+function matchingMedicine(value: unknown, attempted: MedicineInput): Medicine {
   const saved = parseMedicineResponse(value)
   if (
     saved.id !== attempted.id ||
     saved.label !== attempted.label ||
     saved.strength !== attempted.strength ||
-    saved.unit !== attempted.unit
+    saved.unit !== attempted.unit ||
+    // A count in Add turns stock on at that count (#46); only a full record carries stock.
+    (attempted.startingCount !== undefined &&
+      saved.stock !== undefined &&
+      (!saved.stock.tracked || saved.stock.count !== attempted.startingCount))
   )
     throw new Error('Medicine confirmation does not match attempt')
   return saved
@@ -51,7 +55,7 @@ export function useMedicineSave(onSaved: (medicine: Medicine) => void) {
           href: medicationsHref({ mode: 'add' }),
         },
         async (payload, active) => {
-          const attempted = parseMedicineResponse(payload)
+          const attempted = parseMedicine(payload)
           let result = await requestSave('/api/medicines', payload, (data) => {
             const envelope = data as { medicines?: unknown[] } | null
             return matchingMedicine(envelope?.medicines?.[0], attempted)

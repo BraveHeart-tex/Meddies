@@ -27,7 +27,7 @@ import { MedicationIdentity } from './medication-sub-screen'
 import type { MedicineRecord } from './contract'
 import { detailPeriodSentence } from './detail-period'
 import { DetailCorrectionFields } from './detail-correction-fields'
-import { medicineFormSchema } from './medicine-form-schema'
+import { medicineDetailsSchema } from './medicine-form-schema'
 import { useMedicineRecordSave } from './use-medicine-record-save'
 
 /** Fix one period, or explicitly start another. Raw drafts and attempts outlive this form;
@@ -61,7 +61,7 @@ export function MedicineRecordForm({
   const period = medicine.strengthRevisions.find((r) => r.id === periodId)!
   const locked = medicine.everHadSchedule || medicine.everHadDose
   const save = useMedicineRecordSave(medicine, mode, periodId, onSaved)
-  const schema = medicineFormSchema
+  const schema = medicineDetailsSchema
     .extend({
       expectedRevision: z.number(),
       strength: strength
@@ -70,7 +70,7 @@ export function MedicineRecordForm({
             .trim()
             .min(1, 'Enter the new strength.')
             .max(120, 'Use 120 characters or fewer.')
-        : medicineFormSchema.shape.strength,
+        : medicineDetailsSchema.shape.strength,
       date: z.string().refine((value) => !strength || isScheduleDate(value), 'Choose a date.'),
       time: z.string().refine((value) => !strength || isTimeOfDay(value), 'Choose a time.'),
     })
