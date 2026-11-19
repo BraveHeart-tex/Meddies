@@ -7,6 +7,7 @@ import { saveDeviceRegistration } from '../worker/device-registrations'
 import { runDueReminders, type ReminderProvider } from '../worker/due-reminders'
 import { setQuietHours } from '../worker/quiet-hours'
 import { POST } from '../src/app/api/snoozes/route'
+import { schedules } from '../src/features/schedules/server'
 import {
   runtime,
   secret,
@@ -47,7 +48,7 @@ const provider: ReminderProvider = { submit: async () => ({ outcome: 'accepted' 
 const run = (at: string) => runDueReminders(drizzle(db), provider, () => new Date(at))
 
 /** One account with one Schedule taking a dose at `time` on `date` only. */
-async function dose(date: string, time = '09:00', { device = true } = {}) {
+async function dose(date: string, time = '09:00', { device = true, secondTime = '' } = {}) {
   const f = await versionFixture()
   f.setNow(`${date}T04:00:00.000Z`)
   const scheduleId = randomUUID()
@@ -56,7 +57,7 @@ async function dose(date: string, time = '09:00', { device = true } = {}) {
     medicineId: f.medicineId,
     startDate: date,
     endDate: date,
-    times: [{ time, quantity: 1 }],
+    times: [{ time, quantity: 1 }, ...(secondTime ? [{ time: secondTime, quantity: 1 }] : [])],
   })
   if (device)
     await saveDeviceRegistration(
@@ -213,4 +214,93 @@ test('While a 10:00 snooze is pending, a distinct request is rejected, a retry r
   assert.deepEqual(await stored(race.ownerId), [
     { reminder: 1, targetAt: ist('2027-02-11', '10:00'), state: 'pending' },
   ])
+})
+
+// Exercise the public read operations through server decoding and the Worker on real D1.
+async function readBoth(ownerId: string, date: string, at: string) {
+  session.id = ownerId
+  now = new Date(at)
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(now)
+  try {
+    const snapshot = await schedules.snapshot()
+    return {
+      doses: [snapshot.today.doses, (await schedules.historySnapshot(date)).doses],
+      snoozes: snapshot.snoozes,
+    }
+  } finally {
+    vi.useRealTimers()
+  }
+}
+
+test('Today and History expose a pending Snooze only on its owner and matching Occurrence', async () => {
+  const date = '2027-02-12'
+  const d = await dose(date, '09:00', { secondTime: '08:50' })
+  const other = await dose(date)
+  const at = ist(date, '09:20')
+  assert.deepEqual(await snooze(d, at), snoozed(ist(date, '10:00')))
+  for (const doses of (await readBoth(d.ownerId, date, at)).doses) {
+    assert.equal(doses.length, 2)
+    assert.deepEqual(doses.find((item) => item.dueAt === d.dueAt)?.snooze, {
+      outcome: 'pending',
+      targetAt: ist(date, '10:00'),
+    })
+    assert.equal(doses.find((item) => item.dueAt === ist(date, '08:50'))?.snooze, undefined)
+  }
+  const otherReads = await readBoth(other.ownerId, date, at)
+  assert.deepEqual(otherReads.snoozes, [])
+  for (const doses of otherReads.doses) {
+    assert.equal(doses.length, 1)
+    assert.equal(doses[0].snooze, undefined)
+    assert.equal(doses[0].scheduleId, other.scheduleId)
+  }
+})
+
+test('Submitted and later-dropped Snoozes disappear from Today and History without a Quiet hours result', async () => {
+  for (const [date, due, accepted, settled, state, quietHours] of [
+    ['2027-02-13', '09:00', '09:20', '10:00', 'submitted', false],
+    ['2027-02-14', '09:00', '09:20', '10:05:01', 'dropped', false],
+    ['2027-02-15', '22:00', '22:19', '23:01', 'dropped', true],
+  ] as const) {
+    const d = await dose(date, due)
+    if (quietHours)
+      await setQuietHours(
+        drizzle(db),
+        d.ownerId,
+        { actionId: randomUUID(), quietHours },
+        new Date(ist(date, accepted)),
+      )
+    assert.equal((await snooze(d, ist(date, accepted))).body.outcome, 'snoozed')
+    for (const doses of (await readBoth(d.ownerId, date, ist(date, accepted))).doses)
+      assert.equal(doses[0].snooze?.outcome, 'pending')
+    await run(ist(date, settled))
+    assert.equal((await stored(d.ownerId))[0].state, state)
+    for (const doses of (await readBoth(d.ownerId, date, ist(date, settled))).doses) {
+      assert.equal(doses.length, 1)
+      assert.equal(doses[0].snooze, undefined)
+    }
+  }
+})
+
+test('A Snooze accepted inside Quiet hours retains its no-reminder target on repeated Today and History reads', async () => {
+  const date = '2027-02-16'
+  const d = await dose(date, '22:00')
+  await setQuietHours(
+    drizzle(db),
+    d.ownerId,
+    { actionId: randomUUID(), quietHours: true },
+    new Date(ist(date, '22:00')),
+  )
+  const targetAt = ist(date, '23:10')
+  assert.deepEqual(await snooze(d, ist(date, '22:30')), {
+    status: 200,
+    body: { outcome: 'dropped', targetAt },
+  })
+  // Repeat after reopening and across Today's day rollover (yesterday's unresolved dose).
+  for (const at of [ist(date, '22:30'), ist(date, '22:31'), ist('2027-02-17', '00:10')])
+    for (const doses of (await readBoth(d.ownerId, date, at)).doses) {
+      assert.equal(doses.length, 1)
+      assert.deepEqual(doses[0].snooze, { outcome: 'quietHours', targetAt })
+    }
+  assert.deepEqual(await stored(d.ownerId), [{ reminder: 1, targetAt, state: 'dropped' }])
 })

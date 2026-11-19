@@ -1,3 +1,4 @@
+import type { DoseSnooze } from '../snoozes/contract'
 import { shiftDate } from '../../lib/calendar-date'
 import {
   istanbulDate,
@@ -93,17 +94,20 @@ function occurrenceFor(
   slot: DailySchedule['times'][number],
   now: number,
   outcomes: Map<string, DoseOutcomeRecord>,
+  snoozes: Map<string, DoseSnooze>,
 ): DoseOccurrence | null {
   if (dueAt <= schedule.confirmedAt) return null
   const id = `${schedule.id}:${dueAt}`
   const record = outcomes.get(id)
   if (schedule.replacedAt && dueAt > schedule.replacedAt && !record) return null
+  const snooze = snoozes.get(id)
   const base = {
     id,
     scheduleId: schedule.id,
     medicineId: schedule.medicineId,
     dueAt,
     quantity: slot.quantity,
+    ...(snooze ? { snooze: { outcome: snooze.outcome, targetAt: snooze.targetAt } } : {}),
   }
   if (!record) return { ...base, status: unresolvedStatus(dueAt, now) }
   return record.outcome === 'Taken'
@@ -115,7 +119,9 @@ export function scheduleToday(
   schedules: DailySchedule[],
   now: Date,
   records: DoseOutcomeRecord[],
+  snoozeRecords: DoseSnooze[] = [],
 ): Today {
+  const snoozes = new Map(snoozeRecords.map((item) => [`${item.scheduleId}:${item.dueAt}`, item]))
   const outcomes = new Map(
     records.map((record) => [`${record.scheduleId}:${record.dueAt}`, record]),
   )
@@ -128,7 +134,7 @@ export function scheduleToday(
     // Yesterday's doses stay only while unresolved and due in the 24 hours before now (#275).
     for (const { dueAt, slot } of scheduleSlotsOn(schedule, yesterday)) {
       if (now.getTime() - Date.parse(dueAt) >= TO_LOG_BACKLOG_MS) continue
-      const occurrence = occurrenceFor(schedule, dueAt, slot, now.getTime(), outcomes)
+      const occurrence = occurrenceFor(schedule, dueAt, slot, now.getTime(), outcomes, snoozes)
       if (occurrence?.status === 'Not logged' || occurrence?.status === 'Due now')
         occurrences.push(occurrence)
     }
@@ -140,7 +146,7 @@ export function scheduleToday(
       const dateString = localDate.toISOString().slice(0, 10)
       if (!scheduleRunsOn(schedule, dateString)) continue
       for (const { dueAt, slot } of scheduleSlotsOn(schedule, dateString)) {
-        const occurrence = occurrenceFor(schedule, dueAt, slot, now.getTime(), outcomes)
+        const occurrence = occurrenceFor(schedule, dueAt, slot, now.getTime(), outcomes, snoozes)
         if (occurrence) occurrences.push(occurrence)
       }
       if (dateString > date) break
@@ -161,7 +167,9 @@ export function scheduleHistoryDay(
   date: string,
   now: Date,
   records: DoseOutcomeRecord[],
+  snoozeRecords: DoseSnooze[] = [],
 ): DoseOccurrence[] {
+  const snoozes = new Map(snoozeRecords.map((item) => [`${item.scheduleId}:${item.dueAt}`, item]))
   const outcomes = new Map(
     records.map((record) => [`${record.scheduleId}:${record.dueAt}`, record]),
   )
@@ -171,7 +179,7 @@ export function scheduleHistoryDay(
     if (!scheduleRunsOn(schedule, date)) continue
     for (const { dueAt, slot } of scheduleSlotsOn(schedule, date)) {
       if (dueAt > nowIso) continue
-      const occurrence = occurrenceFor(schedule, dueAt, slot, now.getTime(), outcomes)
+      const occurrence = occurrenceFor(schedule, dueAt, slot, now.getTime(), outcomes, snoozes)
       if (occurrence) doses.push(occurrence)
     }
   }

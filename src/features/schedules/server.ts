@@ -1,3 +1,4 @@
+import { parseDoseSnooze, type DoseSnooze } from '../snoozes/contract'
 import { parseStrengthSnapshot } from '../../lib/strength-snapshot'
 import { parseUnscheduledDoseRecord } from '../unscheduled-doses/contract'
 import 'server-only'
@@ -27,6 +28,7 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
   const data = (await sendStorage('/schedules', command)) as {
     schedules?: unknown
     records?: unknown
+    snoozes?: unknown
     unscheduledDoses?: unknown
   }
   try {
@@ -37,6 +39,7 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
     }
     const result: {
       unscheduledDoses?: ReturnType<typeof parseUnscheduledDoseRecord>[]
+      snoozes?: DoseSnooze[]
       schedules?: DailySchedule[]
       records?: DoseOutcomeRecord[]
     } = {}
@@ -94,6 +97,10 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
       )
     }
     if (command.operation === 'listOutcomes') {
+      if (data.snoozes !== undefined) {
+        if (!Array.isArray(data.snoozes)) throw new Error('contract')
+        result.snoozes = data.snoozes.map(parseDoseSnooze)
+      }
       const doses = data.unscheduledDoses === undefined ? [] : data.unscheduledDoses
       if (!Array.isArray(doses)) throw new Error('contract')
       result.unscheduledDoses = doses.map(parseUnscheduledDoseRecord)

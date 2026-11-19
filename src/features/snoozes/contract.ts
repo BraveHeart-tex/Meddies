@@ -55,3 +55,17 @@ export function parseSnoozeResult(value: unknown): SnoozeResult {
     return { outcome: 'rejected', reason: input.reason as SnoozeRejection }
   throw new Error('snooze contract')
 }
+
+/** Current read result, distinct from the immutable Snooze command receipt. */
+export type DoseSnooze = DoseOccurrenceKey & {
+  outcome: 'pending' | 'quietHours'
+  targetAt: string
+}
+
+export function parseDoseSnooze(value: unknown): DoseSnooze {
+  const occurrence = parseOccurrenceKey(value)
+  const { outcome, targetAt } = value as Record<string, unknown>
+  if ((outcome !== 'pending' && outcome !== 'quietHours') || !isInstant(targetAt))
+    throw new Error('snooze read contract')
+  return { ...occurrence, outcome, targetAt }
+}

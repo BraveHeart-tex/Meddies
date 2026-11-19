@@ -204,8 +204,8 @@ export function createScheduleOperations(dependencies: {
       // Today's To log also lists yesterday's unresolved doses (#275), so it needs that date's
       // records too. A second read keeps the Worker command unchanged across deploys.
       const [
-        { schedules, records: todayRecords, unscheduledDoses = [] },
-        { records: yesterdayRecords },
+        { schedules, records: todayRecords, unscheduledDoses = [], snoozes: todaySnoozes = [] },
+        { records: yesterdayRecords, snoozes: yesterdaySnoozes = [] },
       ] = await Promise.all([
         dependencies.send({ operation: 'listOutcomes', ownerId: user.id, date }),
         dependencies.send({
@@ -217,12 +217,14 @@ export function createScheduleOperations(dependencies: {
       if (!schedules || !todayRecords || !yesterdayRecords)
         throw new ApplicationError('unavailable', 503)
       const records = [...yesterdayRecords, ...todayRecords]
+      const snoozes = [...yesterdaySnoozes, ...todaySnoozes]
       return {
         schedules: schedules.filter((schedule) => !schedule.replacedAt),
         earlierSchedules: schedules.filter((schedule) => schedule.replacedAt),
         records,
+        snoozes,
         unscheduledDoses,
-        today: scheduleToday(schedules, now, records),
+        today: scheduleToday(schedules, now, records, snoozes),
       }
     },
     async history(date: unknown) {
@@ -237,13 +239,14 @@ export function createScheduleOperations(dependencies: {
         schedules,
         records,
         unscheduledDoses = [],
+        snoozes = [],
       } = await dependencies.send({
         operation: 'listOutcomes',
         ownerId: user.id,
         date,
       })
       if (!schedules || !records) throw new ApplicationError('unavailable', 503)
-      return { doses: scheduleHistoryDay(schedules, date, now, records), unscheduledDoses }
+      return { doses: scheduleHistoryDay(schedules, date, now, records, snoozes), unscheduledDoses }
     },
   }
   return operations

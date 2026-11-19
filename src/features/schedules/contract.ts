@@ -1,3 +1,4 @@
+import type { DoseSnooze } from '../snoozes/contract'
 import { parseStrengthSnapshot, type StrengthSnapshot } from '../../lib/strength-snapshot'
 import type {
   UnscheduledDose,
@@ -104,6 +105,7 @@ export type ScheduleResponses = {
     schedules: DailySchedule[]
     records: DoseOutcomeRecord[]
     unscheduledDoses?: UnscheduledDose[]
+    snoozes?: DoseSnooze[]
   }
   save: { schedules: DailySchedule[] }
   edit: { schedules: DailySchedule[] }
@@ -124,6 +126,7 @@ export type DoseOccurrence = {
   medicineId: string
   dueAt: string
   quantity: number
+  snooze?: Pick<DoseSnooze, 'outcome' | 'targetAt'>
 } & (
   | { status: 'Not logged' | 'Due now' | 'Upcoming' }
   | { status: 'Taken'; record: DoseRecord }

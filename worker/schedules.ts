@@ -32,7 +32,7 @@ import {
 } from '../src/features/schedules/contract'
 import { ApplicationError } from '../src/lib/application-error'
 import { dailySchedules, userMedications } from './schema'
-import { listDoseOutcomes, listDoseRecords } from './doses/queries'
+import { listDoseOutcomes, listDoseRecords, listDoseSnoozes } from './doses/queries'
 
 const scheduleColumns = {
   id: dailySchedules.id,
@@ -83,6 +83,7 @@ export async function listOutcomeSnapshot(db: DrizzleD1Database, ownerId: string
     records,
     schedules: await listSchedules(db, ownerId),
     unscheduledDoses: await listUnscheduledDoses(db, ownerId, date),
+    snoozes: await listDoseSnoozes(db, ownerId, date),
   }
 }
 

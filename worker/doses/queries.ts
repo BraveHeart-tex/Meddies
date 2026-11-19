@@ -1,3 +1,4 @@
+import type { DoseSnooze } from '../../src/features/snoozes/contract'
 import { and, eq, gte, lt, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import { parseDoseOutcomeRecord, type DoseRecord } from '../../src/features/schedules/contract'
@@ -102,4 +103,27 @@ export async function listDoseOutcomes(db: DrizzleD1Database, ownerId: string, d
     revision: row.revision,
     actionId: row.actionId,
   }))
+}
+
+// Reads never settle reminders. Only the latest reservation can describe the current result;
+// a drop at acceptance is the Quiet hours receipt, never a later scheduler drop (#396).
+export async function listDoseSnoozes(
+  db: DrizzleD1Database,
+  ownerId: string,
+  date: string,
+): Promise<DoseSnooze[]> {
+  const start = scheduledInstant(date, '00:00')
+  const end = new Date(Date.parse(start) + 86_400_000).toISOString()
+  return db.all<DoseSnooze>(sql`
+    SELECT s.schedule_id AS scheduleId, s.due_at AS dueAt, s.target_at AS targetAt,
+      CASE WHEN s.state = 'pending' THEN 'pending' ELSE 'quietHours' END AS outcome
+    FROM snoozes s
+    WHERE s.owner_id = ${ownerId} AND s.due_at >= ${start} AND s.due_at < ${end}
+      AND (s.state = 'pending' OR (s.state = 'dropped' AND s.settled_at = s.accepted_at))
+      AND NOT EXISTS (
+        SELECT 1 FROM snoozes newer WHERE newer.owner_id = s.owner_id
+          AND newer.schedule_id = s.schedule_id AND newer.due_at = s.due_at
+          AND newer.reminder > s.reminder
+      )
+  `)
 }
