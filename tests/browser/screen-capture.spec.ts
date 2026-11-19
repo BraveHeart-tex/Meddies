@@ -486,6 +486,30 @@ test('capture save recovery copy', { tag: '@visual' }, async ({ page }) => {
   })
   await page.unroute('**/api/medicines')
 
+  await page.route('**/api/medicines', async (route) =>
+    route.request().method() === 'POST'
+      ? route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          body: '{"error":"conflict"}',
+        })
+      : route.fallback(),
+  )
+  await page.goto('/medications?add')
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Conflicting medicine')
+  await page.getByRole('textbox', { name: /^Strength/ }).fill('5 mg')
+  await page.getByRole('combobox', { name: 'Type' }).click()
+  await page.getByRole('option', { name: 'Capsule' }).click()
+  await page.getByRole('button', { name: 'Save medication' }).click()
+  await expect(page.getByRole('alert')).toContainText('A different version of this medication')
+  await expect(page.getByRole('link', { name: "See what's saved" })).toBeVisible()
+  expect(await scrollsHorizontally(page)).toBe(false)
+  await captureSettled(page, {
+    path: resolve(out!, 'add-conflict-402.png'),
+  })
+  await page.unroute('**/api/medicines')
+
   await page.goto('/')
   await page.getByRole('button', { name: /^Record dose for Capture Fixture Medicine/ }).click()
   await page.getByRole('button', { name: 'I took it', exact: true }).click()

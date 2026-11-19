@@ -39,7 +39,6 @@ export function MedicationsHeader() {
           // The empty state's Add medication is the view's one primary action.
           className={buttonVariants({
             variant: medicines?.length === 0 ? 'soft' : 'default',
-            className: 'rounded-full',
           })}
         >
           <Plus aria-hidden="true" data-icon="inline-start" />
