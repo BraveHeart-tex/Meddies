@@ -46,12 +46,41 @@ import { ArchivedMedicationDetail } from '@/features/medicines/archived-medicati
 import { MedicineStock } from '@/features/medicines/medicine-stock'
 
 /**
+ * A failed refresh of the medication, its schedules or both: one notice naming the medication, and
+ * one Try again that retries both reads, so the two never stack (#406).
+ */
+function MedicationRefreshAlert({
+  name,
+  failed,
+  refreshing,
+  onRetry,
+}: {
+  name: string
+  failed: boolean
+  refreshing: boolean
+  onRetry: () => void
+}) {
+  if (!failed) return null
+  return (
+    <Alert role="status">
+      <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
+        <p>{`Couldn’t update ${name}. Showing previously loaded details.`}</p>
+        <Button variant="outline" className="min-h-11" disabled={refreshing} onClick={onRetry}>
+          {refreshing ? 'Retrying…' : 'Try again'}
+        </Button>
+      </AlertDescription>
+    </Alert>
+  )
+}
+
+/**
  * The `?medicine=ID` page (238·A3): a summary. The Back row and identity header above the
  * read-only schedule card, Resume under it while paused, then Log a dose (241·A1, A2),
  * the Stock section (#392) and Dose history, then Manage medication. A running schedule shows its
  * Last day, a paused one the day it paused, an Ended one the day it ended (227·A13, A14, A17;
  * 233·A4, A5). `manage` shows the Manage sub-screen (403·B14) instead, where every other change
- * lives.
+ * lives. Loading holds the Back row, the identity and one card-height placeholder; a failed
+ * schedule read replaces only the card; names and strengths wrap at word boundaries (#406).
  */
 export function MedicationDetail({
   medicineId,
@@ -121,19 +150,15 @@ export function MedicationDetail({
   // Only a loaded read can say there is no schedule.
   const unscheduled = !loading && !loadError && !schedule
   const refreshAlerts = (
-    <>
-      <MedicinesRefreshAlert medicinesRead={medicinesRead} />
-      {refreshFailed && (
-        <Alert role="status">
-          <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
-            <p>Couldn’t update schedules. Showing previously loaded details.</p>
-            <Button variant="outline" className="min-h-11" disabled={refreshing} onClick={retry}>
-              {refreshing ? 'Retrying…' : 'Try again'}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-    </>
+    <MedicationRefreshAlert
+      name={medicine.label}
+      failed={medicinesRead.refreshFailed || refreshFailed}
+      refreshing={medicinesRead.refreshing || refreshing}
+      onRetry={() => {
+        medicinesRead.retry()
+        retry()
+      }}
+    />
   )
   if (manage)
     return (
@@ -153,12 +178,12 @@ export function MedicationDetail({
       />
     )
   return (
-    <div className="flex flex-col gap-5 [overflow-wrap:anywhere]">
+    <div className="flex flex-col gap-5 [overflow-wrap:break-word]">
       <MedicationBackRow href={medicationsListHref}>Medications</MedicationBackRow>
       <MedicationIdentity medicine={medicine} headingRef={headingRef} />
       {refreshAlerts}
       {/* The card's own title names the schedule, so no heading repeats it. */}
-      <div className="flex flex-col gap-3 [overflow-wrap:anywhere]">
+      <div className="flex flex-col gap-3">
         {loading ? (
           <LoadingSection label="Loading schedule">
             <ScheduleCardSkeleton />

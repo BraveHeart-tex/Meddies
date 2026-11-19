@@ -208,7 +208,9 @@ describe('the medication page', () => {
     expect(backRow('Medications')).toBeVisible()
     expect(screen.getAllByRole('status')).toHaveLength(1)
     expect(screen.getByRole('status')).toHaveTextContent('Loading medication')
-    expect(placeholders().length).toBeGreaterThan(0)
+    // The tile, two identity lines and one schedule card, never a placeholder per section.
+    expect(placeholders()).toHaveLength(4)
+    expect(backRow('Medications')).toHaveAttribute('href', '/medications')
     for (const placeholder of placeholders())
       expect(placeholder).toHaveAttribute('aria-hidden', 'true')
     held.release()
@@ -293,6 +295,12 @@ describe('the medication page', () => {
     await identity('Magnesium')
     expect(setSchedule()).not.toBeInTheDocument()
     expect(screen.queryByText('No schedule', { exact: true })).not.toBeInTheDocument()
+    // Only the card is replaced; everything that doesn't need the schedule stays.
+    expect(screen.queryByRole('group', { name: 'Schedule' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Log a dose' })).toBeVisible()
+    expect(screen.getByRole('region', { name: 'Stock' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Dose history' })).toBeVisible()
+    expect(screen.getByRole('link', { name: /^Manage medication/ })).toBeVisible()
 
     await user.click(within(alert).getByRole('button', { name: 'Try again' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(unchecked)
@@ -439,6 +447,38 @@ describe('refreshes', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Magnesium' })).toBeVisible()
     expect(setSchedule()).toBeVisible()
   })
+})
+
+describe('a failed refresh of the medication or its schedule', () => {
+  const notice = 'Couldn’t update Magnesium. Showing previously loaded details.'
+  test.each([
+    { failMedicines: true, failSchedules: false },
+    { failMedicines: false, failSchedules: true },
+    { failMedicines: true, failSchedules: true },
+  ])(
+    'medicines $failMedicines, schedules $failSchedules: one notice, and Try again retries both',
+    async ({ failMedicines, failSchedules }) => {
+      const reads = api()
+      Object.assign(reads, { failMedicines, failSchedules })
+      seedCache([magnesium], stale)
+      const user = renderDetail()
+      expect(await screen.findByText(notice)).toBeVisible()
+      // Both settled, so a second notice would be on screen by now.
+      await waitFor(() => expect(reads.medicineReads + reads.scheduleReads).toBe(2))
+      expect(screen.getAllByText(/Couldn’t update/)).toHaveLength(1)
+      expect(screen.getAllByRole('button', { name: 'Try again' })).toHaveLength(1)
+      await identity('Magnesium')
+      expect(screen.getByText('No schedule', { exact: true })).toBeVisible()
+
+      Object.assign(reads, { failMedicines: false, failSchedules: false })
+      await user.click(screen.getByRole('button', { name: 'Try again' }))
+      await waitFor(() => expect(screen.queryByText(notice)).not.toBeInTheDocument())
+      expect(reads.medicineReads).toBe(2)
+      expect(reads.scheduleReads).toBe(2)
+      expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 1, name: 'Magnesium' })).toBeVisible()
+    },
+  )
 })
 
 describe('the mounted screen', () => {

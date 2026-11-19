@@ -8,19 +8,7 @@ import { amoxicillin, amoxicillinSchedule, routine } from '../lab-fixtures'
  * Nov at 10:00, with Ibuprofen for the never-scheduled, never-dosed record that can be deleted.
  */
 export type DetailState =
-  | 'clock'
-  | 'interval'
-  | 'future'
-  | 'paused'
-  | 'ended'
-  | 'none'
-  | 'saved'
-  | 'archived'
-  | 'loading'
-  | 'error'
-  | 'refresh'
-  | 'long'
-  | 'slots'
+  'clock' | 'interval' | 'future' | 'paused' | 'ended' | 'none' | 'saved' | 'archived' | 'slots'
 
 const amox: Medicine = {
   ...amoxicillin,
@@ -47,12 +35,6 @@ const ibuprofen: Medicine = {
   stock: { tracked: false },
 }
 
-const longAmox: Medicine = {
-  ...amoxTracked,
-  label: 'Amoxicillin and clavulanic acid oral suspension',
-  strength: '400 mg/57 mg per 5 ml, reconstituted with water',
-}
-
 const archived: Medicine = { ...amoxTracked, archivedAt: '2026-11-08T09:00:00.000Z' }
 
 /** Every day at 08:00 (5 ml) and 20:00 (2.5 ml) since Mon 2 Nov, Last day Sat 14 Nov. */
@@ -72,9 +54,6 @@ const ended: DailySchedule = { ...amoxicillinSchedule, endDate: '2026-11-06' }
 export type StateData = {
   medicine: Medicine
   schedule: DailySchedule | null
-  loading?: boolean
-  scheduleError?: boolean
-  refreshFailed?: boolean
   saved?: boolean
 }
 
@@ -96,14 +75,6 @@ export function stateData(state: DetailState): StateData {
       return { medicine: { ...ibuprofen, label: 'Ibuprofen' }, schedule: null, saved: true }
     case 'archived':
       return { medicine: archived, schedule: null }
-    case 'loading':
-      return { medicine: amox, schedule: null, loading: true }
-    case 'error':
-      return { medicine: amoxTracked, schedule: null, scheduleError: true }
-    case 'refresh':
-      return { medicine: amoxTracked, schedule: clock, refreshFailed: true }
-    case 'long':
-      return { medicine: longAmox, schedule: clock }
     case 'slots':
       return { medicine: amoxTracked, schedule: clock }
   }
@@ -126,7 +97,6 @@ export function detailFixtures({ medicine, schedule }: StateData): QueryFixtures
 
 /** New labels approved with Direction B (#403 approval comment). */
 export const detailCopy = {
-  refresh: (label: string) => `Couldn’t update ${label}. Showing previously loaded details.`,
   archivedTitle: 'Archived',
   archivedBody:
     'Kept in History. The schedule has stopped, reminders are cancelled and stock is unchanged.',

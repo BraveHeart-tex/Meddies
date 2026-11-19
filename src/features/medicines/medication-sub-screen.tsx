@@ -36,7 +36,10 @@ export function MedicationBackRow({ href, children }: { href: string; children: 
 
 export const medicationsListHref = medicationsHref({ mode: 'list' })
 
-/** Tile, name and "strength · unit". The name is the page heading on these views. */
+/**
+ * Tile, name and "strength · unit". The name is the page heading on these views. Long names and
+ * strengths wrap at word boundaries and are never truncated.
+ */
 export function MedicationIdentity({
   medicine,
   eyebrow,
@@ -49,7 +52,7 @@ export function MedicationIdentity({
   headingRef?: Ref<HTMLHeadingElement>
 }) {
   return (
-    <div className="flex flex-wrap items-start gap-3 [overflow-wrap:anywhere]">
+    <div className="flex flex-wrap items-start gap-3 [overflow-wrap:break-word]">
       <TypeTile type={medicine.unit} size="md" />
       <div className="flex min-w-[min(100%,12rem)] flex-1 flex-col gap-0.5">
         {eyebrow && (

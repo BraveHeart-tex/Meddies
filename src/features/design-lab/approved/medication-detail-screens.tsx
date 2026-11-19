@@ -21,9 +21,6 @@ import {
   DrawerTitle,
 } from '@/components/ui/drawer'
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
-import { LoadingSection, Skeleton } from '@/components/ui/skeleton'
-import type { Medicine } from '@/features/medicines/contract'
-import { MedicationBackRow, ScheduleUnchecked } from '@/features/medicines/medication-sub-screen'
 import { MedicationsLink } from '@/features/medicines/medications-nav'
 import {
   medicationManageHref,
@@ -34,23 +31,20 @@ import { detailCopy, stateData, type DetailState, type StateData } from './medic
 import {
   DetailFrame,
   DetailTop,
-  IdentitySkeleton,
   InsetGroup,
   InsetRow,
   LogDoseButton,
-  RefreshAlert,
   ScheduleFacts,
   ScheduleSummary,
   SlotNote,
-  noop,
   scheduleView,
   stockValue,
 } from './medication-detail-parts'
 
 /** Log a dose: berry with no schedule, outline while Resume leads, soft otherwise (Ended too). */
 function leadVariant(data: StateData) {
-  if (!data.schedule && !data.scheduleError) return 'default' as const
-  if (data.schedule && scheduleView(data.schedule).paused) return 'outline' as const
+  if (!data.schedule) return 'default' as const
+  if (scheduleView(data.schedule).paused) return 'outline' as const
   return 'soft' as const
 }
 
@@ -69,7 +63,6 @@ function ArchivedNotice() {
    on the summary. */
 function ScheduleRead({ data }: { data: StateData }) {
   const { medicine, schedule } = data
-  if (data.scheduleError) return <ScheduleUnchecked name={medicine.label} onRetry={noop} />
   if (!schedule)
     return (
       <Item variant="card">
@@ -128,24 +121,13 @@ export function DetailB({ state }: { state: DetailState }) {
         </InsetGroup>
       </DetailFrame>
     )
-  if (data.loading)
-    return (
-      <DetailFrame data={data}>
-        <LoadingSection label="Loading medication" className="flex flex-col gap-5">
-          <MedicationBackRow href="/medications">Medications</MedicationBackRow>
-          <IdentitySkeleton />
-          <Skeleton className="h-[268px] rounded-2xl" />
-        </LoadingSection>
-      </DetailFrame>
-    )
   const slots = state === 'slots'
   return (
     <DetailFrame data={data}>
       <DetailTop medicine={medicine} />
-      {data.refreshFailed && <RefreshAlert label={medicine.label} />}
       <ScheduleRead data={data} />
       <LogDoseButton variant={leadVariant(data)} />
-      {!data.schedule && !data.scheduleError && (
+      {!data.schedule && (
         <MedicationsLink
           href={medicationSetupHref(medicine.id)}
           className={buttonVariants({ size: 'lg', variant: 'outline', className: 'w-full' })}

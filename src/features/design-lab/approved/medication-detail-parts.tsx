@@ -4,10 +4,8 @@ import { Clock3, Plus } from 'lucide-react'
 import { useEffect, useRef, type ComponentProps, type ReactNode } from 'react'
 import { AppShell } from '@/components/layout/app-shell'
 import { ScreenStack } from '@/components/layout/screen-stack'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
 import type { Medicine } from '@/features/medicines/contract'
 import {
   MedicationInsetGroup,
@@ -85,23 +83,6 @@ export function DetailTop({
   )
 }
 
-/** The identity header's placeholders in their final positions. */
-export function IdentitySkeleton() {
-  return (
-    <div className="flex items-start gap-3">
-      <Skeleton className="size-11.5 shrink-0 rounded-md" />
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <div className="flex h-[1lh] items-center text-title">
-          <Skeleton className="h-5.5 w-full rounded-lg" />
-        </div>
-        <div className="flex h-[1lh] items-center text-body-sm">
-          <Skeleton className="h-3.5 w-3/5 rounded-lg" />
-        </div>
-      </div>
-    </div>
-  )
-}
-
 /** Production's inset group (#405). */
 export const InsetGroup = MedicationInsetGroup
 
@@ -147,20 +128,6 @@ export function LogDoseButton({ variant }: { variant: 'default' | 'soft' | 'outl
       <Plus aria-hidden="true" data-icon="inline-start" />
       Log a dose
     </Button>
-  )
-}
-
-/** One refresh-failed notice for the medication and its schedule together. */
-export function RefreshAlert({ label }: { label: string }) {
-  return (
-    <Alert role="status">
-      <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
-        <p>{detailCopy.refresh(label)}</p>
-        <Button variant="outline" className="min-h-11">
-          Try again
-        </Button>
-      </AlertDescription>
-    </Alert>
   )
 }
 

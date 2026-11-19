@@ -40,9 +40,9 @@ function IdentitySkeleton({ eyebrow = false }: { eyebrow?: boolean }) {
   )
 }
 
-/** The medication page's schedule card. */
+/** The medication page's schedule card, at the loaded summary card's height (#403). */
 export function ScheduleCardSkeleton() {
-  return <Skeleton className="h-[150px] rounded-2xl" />
+  return <Skeleton className="h-[268px] rounded-2xl" />
 }
 
 /** The setup form's area, below the identity header. */
