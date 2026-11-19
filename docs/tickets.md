@@ -77,7 +77,10 @@ Migrations 0 · New screens 1 · Owned frames 2 · Journeys 0 · Proofs 3
   linked rule. Omit the section when nothing narrows.
 - **Ownership** follows [Ownership](#ownership). Out of scope names an issue for each item.
 - **Current state** lists missing infrastructure the triage agent verified in the code,
-  such as "No reminder storage or sender exists". Omit it when nothing relevant is missing.
+  such as "No reminder storage or sender exists". A ticket that moves, renames or removes
+  controls also lists every test and browser spec that drives them, found by searching
+  `tests/` for their labels; each counts toward Proofs. Omit the section when nothing
+  relevant is missing.
 - The parent is a native sub-issue link and blockers are native blocked-by relationships,
   not body sections. Add a "Blocked by" section only when a blocker cannot be linked.
 

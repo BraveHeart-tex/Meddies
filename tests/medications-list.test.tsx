@@ -7,8 +7,6 @@ import {
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { RouterContext } from 'next/dist/shared/lib/router-context.shared-runtime'
-import type { NextRouter } from 'next/router'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Medicine } from '../src/features/medicines/contract'
 import { MedicinePanel } from '../src/features/medicines/medicine-panel'
@@ -22,6 +20,7 @@ import { createQueryClient } from '../src/lib/session-query-client'
 import { Toaster } from '../src/components/ui/toast'
 import { findConfirmation } from './helpers/toasts'
 import { server } from './helpers/msw-server'
+import { WithRouter } from './helpers/router'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
@@ -471,19 +470,17 @@ describe('a medication detail', () => {
 })
 
 describe('Done for now', () => {
-  // Outside Next's bundler, next/link is the Pages version; it ignores clicks without a router.
-  const router = { prefetch: async () => {} } as unknown as NextRouter
   afterEach(() => window.history.replaceState(null, '', '/'))
 
   test('the empty state Add medication opens the add Drawer', async () => {
     medicinesApi([])
     window.history.replaceState(null, '', '/medications')
     const medicationsScreen = () => (
-      <RouterContext.Provider value={router}>
+      <WithRouter>
         <QueryClientProvider client={client}>
           <MedicationsScreen initialNow="2026-11-14T08:00:00.000Z" />
         </QueryClientProvider>
-      </RouterContext.Provider>
+      </WithRouter>
     )
     const { rerender } = render(medicationsScreen())
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
@@ -506,13 +503,13 @@ describe('Done for now', () => {
     window.history.replaceState(null, '', '/medications?add')
     // A new element each time: the mocked search params only update when the screen re-renders.
     const medicationsScreen = () => (
-      <RouterContext.Provider value={router}>
+      <WithRouter>
         <QueryClientProvider client={client}>
           <Toaster>
             <MedicationsScreen initialNow="2026-11-14T08:00:00.000Z" />
           </Toaster>
         </QueryClientProvider>
-      </RouterContext.Provider>
+      </WithRouter>
     )
     const { rerender } = render(medicationsScreen())
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync })
@@ -540,7 +537,6 @@ describe('Done for now', () => {
 })
 
 describe('Archived medications', () => {
-  const router = { prefetch: async () => {} } as unknown as NextRouter
   afterEach(() => window.history.replaceState(null, '', '/'))
   // A full record, as the API returns: only a parsed record keeps its archivedAt.
   const archived = (n: number): Medicine => {
@@ -564,12 +560,12 @@ describe('Archived medications', () => {
   const mixed = [medicine(1), archived(2)]
   // A new element each time: the mocked search params only update when the screen re-renders.
   const medicationsScreen = () => (
-    <RouterContext.Provider value={router}>
+    <WithRouter>
       <QueryClientProvider client={client}>
         <MedicationsHeader />
         <MedicationsScreen initialNow="2026-11-14T08:00:00.000Z" />
       </QueryClientProvider>
-    </RouterContext.Provider>
+    </WithRouter>
   )
   function renderAt(search: string) {
     window.history.replaceState(null, '', `/medications${search}`)

@@ -2,8 +2,6 @@ import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { RouterContext } from 'next/dist/shared/lib/router-context.shared-runtime'
-import type { NextRouter } from 'next/router'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Medicine } from '../src/features/medicines/contract'
 import { MedicationsScreen } from '../src/features/medicines/medications-screen'
@@ -16,6 +14,7 @@ import { createQueryClient } from '../src/lib/session-query-client'
 import { Toaster } from '../src/components/ui/toast'
 import { findConfirmation } from './helpers/toasts'
 import { server } from './helpers/msw-server'
+import { WithRouter } from './helpers/router'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
@@ -123,16 +122,15 @@ function api(initial: DailySchedule[], respond?: Respond) {
   return { saves }
 }
 
-const router = { prefetch: async () => {} } as unknown as NextRouter
 // A new element each time: the mocked search params only update when the screen re-renders.
 const screenAt = () => (
-  <RouterContext.Provider value={router}>
+  <WithRouter>
     <QueryClientProvider client={client}>
       <Toaster>
         <MedicationsScreen initialNow={initialNow} />
       </Toaster>
     </QueryClientProvider>
-  </RouterContext.Provider>
+  </WithRouter>
 )
 
 type User = ReturnType<typeof userEvent.setup>

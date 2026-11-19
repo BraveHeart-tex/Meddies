@@ -38,7 +38,8 @@ the reference.
   the test.
 - **Query:** each test creates a client with `createQueryClient()` (the session client
   stays out of tests) and seeds cached data with `setQueryData` and `updatedAt`.
-- **Next.js:** mock `next/navigation` with `vi.mock`.
+- **Next.js:** mock `next/navigation` with `vi.mock`. Link clicks change the view only inside
+  `WithRouter` (`helpers/router.tsx`); without it, `next/link` ignores them.
 - **Time:** `vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 1 })`; wrap
   `vi.advanceTimersByTimeAsync` in `act` and pass it to `userEvent.setup({ advanceTimers })`.
   The 1ms tick matters: with the 20ms default, React's scheduler and MSW's zero-delay timers

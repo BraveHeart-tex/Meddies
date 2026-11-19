@@ -99,7 +99,8 @@ route.
   component, such as `ScreenStack` and `SettingsScreen`. Production code takes props for its own
   callers only.
 - A design's build ticket moves its frames for design-critical screens to `built/` and deletes
-  the rest. A redesign's build ticket replaces the built frame in place.
+  the rest. Deleting a frame retargets every citation of it to the built frame that
+  replaces it; `tests/design-citations.test.ts` fails on a citation to a deleted frame. A redesign's build ticket replaces the built frame in place.
 
 ## Outlines
 
