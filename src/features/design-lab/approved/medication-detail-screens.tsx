@@ -80,7 +80,7 @@ function ScheduleRead({ data }: { data: StateData }) {
           <ScheduleSummary schedule={schedule} title />
         </CardHeader>
         <CardContent>
-          <ScheduleFacts medicine={medicine} schedule={schedule} showNext />
+          <ScheduleFacts medicine={medicine} schedule={schedule} />
         </CardContent>
       </Card>
       {paused && (

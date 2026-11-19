@@ -75,7 +75,7 @@ function MedicationRefreshAlert({
 
 /**
  * The `?medicine=ID` page (238·A3): a summary. The Back row and identity header above the
- * read-only schedule card, Resume under it while paused, then Log a dose (241·A1, A2),
+ * read-only schedule card with a running Clock schedule's next dose (#410), Resume under it while paused, then Log a dose (241·A1, A2),
  * the Stock section (#392) and Dose history, then Manage medication. A running schedule shows its
  * Last day, a paused one the day it paused, an Ended one the day it ended (227·A13, A14, A17;
  * 233·A4, A5). `manage` shows the Manage sub-screen (403·B14) instead, where every other change
@@ -203,7 +203,7 @@ export function MedicationDetail({
               paused={paused}
             />
           ) : (
-            <ClockScheduleCard schedule={schedule} unit={medicine.unit} today={liveToday} />
+            <ClockScheduleCard schedule={schedule} unit={medicine.unit} now={liveNow} />
           )
         ) : (
           // A complete record for occasional use, not unfinished setup (#275 record rules).

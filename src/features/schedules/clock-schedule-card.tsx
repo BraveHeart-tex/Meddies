@@ -1,8 +1,9 @@
-import { PauseIcon } from 'lucide-react'
+import { Clock3, PauseIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatShortDay } from '@/lib/calendar-date'
 import { quantityLabel, type MedicineType } from '@/lib/quantity-policy'
+import { nextClockDose } from './clock-preview'
 import { istanbulDate, type DailySchedule } from './contract'
 import { endedOn, pausedOn } from './last-day'
 import { weekdaySummary } from './weekdays'
@@ -68,21 +69,47 @@ export const scheduleCardName = (paused: boolean) => (paused ? 'Schedule, Paused
 export const pausedSinceLine = (pausedDay: string, today: string) =>
   `Paused since ${formatShortDay(pausedDay, today)}`
 
+type ClockSchedule = Pick<DailySchedule, 'weekdays' | 'times' | 'startDate'> &
+  Partial<Pick<DailySchedule, 'basedOnId' | 'confirmedAt' | 'endDate' | 'stoppedAt' | 'pausedAt'>>
+
 /**
- * A medication's Clock schedule: its days, each time with its quantity, and its start,
- * or, for a changed Schedule version, the day it changed, or "Paused since" (233·A4), then its
- * Last day or Ended day.
+ * A running Clock schedule's next dose, "Next at 20:00 · 2.5 ml", bold with the clock icon
+ * (238·A3). Nothing before its start day, while paused, once Ended or with no dose left.
+ */
+export function NextClockDoseLine({
+  schedule,
+  unit,
+  now,
+}: {
+  schedule: ClockSchedule
+  unit: MedicineType
+  now: string
+}) {
+  const dose = nextClockDose({ endDate: null, stoppedAt: null, pausedAt: null, ...schedule }, now)
+  if (!dose) return null
+  return (
+    <p className="flex items-center gap-1.5 text-body-sm font-extrabold text-foreground [&>svg]:size-4">
+      <Clock3 aria-hidden="true" />
+      {`Next at ${dose.time} · ${quantityLabel(dose.quantity, unit)}`}
+    </p>
+  )
+}
+
+/**
+ * A medication's Clock schedule: its next dose on the scheduling clock `now`, its days, each time
+ * with its quantity, and its start, or, for a changed Schedule version, the day it changed, or
+ * "Paused since" (233·A4), then its Last day or Ended day.
  */
 export function ClockScheduleCard({
   schedule,
   unit,
-  today,
+  now,
 }: {
-  schedule: Pick<DailySchedule, 'weekdays' | 'times' | 'startDate'> &
-    Partial<Pick<DailySchedule, 'basedOnId' | 'confirmedAt' | 'endDate' | 'stoppedAt' | 'pausedAt'>>
+  schedule: ClockSchedule
   unit: MedicineType
-  today: string
+  now: string
 }) {
+  const today = istanbulDate(new Date(now))
   const paused = pausedOn({ endDate: null, stoppedAt: null, pausedAt: null, ...schedule }, today)
   return (
     <Card role="group" aria-label={scheduleCardName(Boolean(paused))}>
@@ -91,6 +118,7 @@ export function ClockScheduleCard({
         <CardDescription>{weekdaySummary(schedule.weekdays, 'long')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
+        <NextClockDoseLine schedule={schedule} unit={unit} now={now} />
         <ul className="divide-y">
           {schedule.times.map((slot) => (
             <li key={slot.time} className="flex flex-wrap justify-between gap-2 py-3">

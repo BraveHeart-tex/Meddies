@@ -8,7 +8,7 @@ import { amoxicillin, amoxicillinSchedule, routine } from '../lab-fixtures'
  * Nov at 10:00, with Ibuprofen for the never-scheduled, never-dosed record that can be deleted.
  */
 export type DetailState =
-  'clock' | 'interval' | 'future' | 'paused' | 'ended' | 'none' | 'saved' | 'archived' | 'slots'
+  'clock' | 'interval' | 'paused' | 'ended' | 'none' | 'saved' | 'archived' | 'slots'
 
 const amox: Medicine = {
   ...amoxicillin,
@@ -47,7 +47,6 @@ const interval: DailySchedule = {
   times: [{ time: '08:00', quantity: 5 }],
 }
 
-const future: DailySchedule = { ...amoxicillinSchedule, startDate: '2026-11-16' }
 const paused: DailySchedule = { ...amoxicillinSchedule, pausedAt: '2026-11-07T09:00:00.000Z' }
 const ended: DailySchedule = { ...amoxicillinSchedule, endDate: '2026-11-06' }
 
@@ -63,8 +62,6 @@ export function stateData(state: DetailState): StateData {
       return { medicine: amox, schedule: clock }
     case 'interval':
       return { medicine: amoxTracked, schedule: interval }
-    case 'future':
-      return { medicine: amox, schedule: future }
     case 'paused':
       return { medicine: amoxTracked, schedule: paused }
     case 'ended':
@@ -100,7 +97,6 @@ export const detailCopy = {
   archivedTitle: 'Archived',
   archivedBody:
     'Kept in History. The schedule has stopped, reminders are cancelled and stock is unchanged.',
-  next: (time: string, amount: string) => `Next at ${time} · ${amount}`,
   manage: 'Manage medication',
   manageHint: 'Schedule and details',
 }

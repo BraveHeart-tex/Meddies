@@ -1,6 +1,6 @@
 'use client'
 
-import { Clock3, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useEffect, useRef, type ComponentProps, type ReactNode } from 'react'
 import { AppShell } from '@/components/layout/app-shell'
 import { ScreenStack } from '@/components/layout/screen-stack'
@@ -13,6 +13,7 @@ import {
 } from '@/features/medicines/medication-inset-list'
 import { MedicationBackRow, MedicationIdentity } from '@/features/medicines/medication-sub-screen'
 import {
+  NextClockDoseLine,
   PausedBadge,
   ScheduleDateLines,
   pausedSinceLine,
@@ -32,7 +33,7 @@ import { formatQuantity, quantityLabel, unitName } from '@/lib/quantity-policy'
 import { cn } from '@/lib/utils'
 import { FixtureQuery } from '../fixture-query'
 import { NOW, TODAY } from '../lab-fixtures'
-import { detailCopy, detailFixtures, type StateData } from './medication-detail-model'
+import { detailFixtures, type StateData } from './medication-detail-model'
 
 export const noop = () => {}
 
@@ -144,25 +145,17 @@ export function scheduleView(schedule: DailySchedule): ScheduleView {
   return { ended, paused, running: !ended && !paused, interval: schedule.intervalHours != null }
 }
 
-/** The next Clock dose today or later, for the one direction that shows it. */
-function nextClockDose(schedule: DailySchedule, medicine: Medicine) {
-  const nowTime = formatTime(NOW)
-  const slot = schedule.times.find((item) => item.time > nowTime) ?? schedule.times[0]
-  return detailCopy.next(slot.time, quantityLabel(slot.quantity, medicine.unit))
-}
-
 /**
- * The schedule's facts as the production cards show them (Clock times or Interval next doses,
- * then date lines), without the Card, so a direction can add a title, actions or a footer.
+ * The schedule's facts as the production cards show them (Clock next dose and times, or Interval
+ * next doses, then date lines), without the Card, so a direction can add a title, actions or a
+ * footer.
  */
 export function ScheduleFacts({
   medicine,
   schedule,
-  showNext = false,
 }: {
   medicine: Medicine
   schedule: DailySchedule
-  showNext?: boolean
 }) {
   const { paused, ended } = scheduleView(schedule)
   if (schedule.intervalHours != null) {
@@ -201,12 +194,7 @@ export function ScheduleFacts({
   const upcoming = schedule.startDate > TODAY
   return (
     <div className="flex flex-col gap-3">
-      {showNext && !paused && !ended && !upcoming && (
-        <p className="flex items-center gap-1.5 text-body-sm font-extrabold text-foreground [&>svg]:size-4">
-          <Clock3 aria-hidden="true" />
-          {nextClockDose(schedule, medicine)}
-        </p>
-      )}
+      <NextClockDoseLine schedule={schedule} unit={medicine.unit} now={NOW} />
       <ul className="divide-y">
         {schedule.times.map((slot) => (
           <li key={slot.time} className="flex flex-wrap justify-between gap-2 py-3">
