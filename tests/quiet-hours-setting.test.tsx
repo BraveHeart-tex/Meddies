@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { SettingsGroup } from '../src/app/settings/settings-list'
 import { DeviceNotifications } from '../src/features/device-registrations/device-notifications'
 import {
   NotificationDeviceProvider,
@@ -23,13 +24,17 @@ afterEach(() => client.clear())
 function renderQuietHours() {
   render(
     <QueryClientProvider client={client}>
-      <QuietHoursSetting />
+      <SettingsGroup title="Notifications">
+        <QuietHoursSetting />
+      </SettingsGroup>
     </QueryClientProvider>,
   )
   return userEvent.setup()
 }
 
-const group = () => screen.getByRole('heading', { name: 'Quiet hours' }).closest('section')!
+/** Quiet hours' row, which holds its own save alert. */
+const group = () =>
+  screen.getByText('Quiet hours · 23:00-08:00').closest<HTMLElement>('[role="listitem"]')!
 const toggle = () => screen.getByRole('switch', { name: 'Quiet hours on all your devices' })
 
 /** Answers every read with the saved value. */
@@ -49,18 +54,16 @@ function saves(...respond: (() => Promise<Response> | Response)[]) {
   return bodies
 }
 
-test('an account that never turned them on shows the window, Off, the line and the note', async () => {
+test('an account that never turned them on shows the window, Off and the line', async () => {
   savedValue(false)
   renderQuietHours()
   expect(screen.queryByRole('switch')).not.toBeInTheDocument()
   expect(await within(group()).findByText('Off')).toBeVisible()
-  expect(within(group()).getByText('23:00-08:00')).toBeVisible()
   expect(
     within(group()).getByText(
       'Dose reminders still go out on time. Follow-ups are skipped, not sent later.',
     ),
   ).toBeVisible()
-  expect(within(group()).getByText('Applies to all your devices.')).toBeVisible()
   expect(toggle()).not.toBeChecked()
   expect(toggle()).not.toHaveAttribute('aria-disabled', 'true')
 })

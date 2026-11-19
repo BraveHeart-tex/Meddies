@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Settings' Notifications group for this device (#354). The case comes from the device, and On
+ * Settings' This device row (#354). The case comes from the device, and On
  * only from the server: a read of this installation's registration, or a confirmed Turn on save.
  * Nothing is optimistic. Turn on asks for permission from the switch's tap, gets the FCM token
  * and saves the Device registration. A denied prompt is Blocked and a dismissed one stays Off,
@@ -24,7 +24,7 @@ import { useSyncExternalStore } from 'react'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import type { DeviceInstallation, DeviceRegistration } from './contract'
 import { useNotificationDevice, type NotificationDevice } from './notification-device'
-import { NotificationsGroup, type NotificationState } from './notifications-group'
+import { DeviceNotificationsRow, type NotificationState } from './device-notifications-row'
 import {
   deviceRegistrationKeys,
   fetchDeviceRegistration,
@@ -174,7 +174,7 @@ export function DeviceNotifications() {
   })()
 
   return (
-    <NotificationsGroup
+    <DeviceNotificationsRow
       state={state}
       offline={offline}
       onTurnOn={turnOnTapped}

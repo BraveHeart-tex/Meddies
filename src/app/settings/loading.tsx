@@ -1,7 +1,8 @@
 import { Hourglass, UserRound } from 'lucide-react'
 import { LoadingSection, Skeleton } from '@/components/ui/skeleton'
-import { NotificationsGroup } from '@/features/device-registrations/notifications-group'
-import { QuietHoursGroup } from '@/features/quiet-hours/quiet-hours-group'
+import { DeviceNotificationsRow } from '@/features/device-registrations/device-notifications-row'
+import { MedicationNamesRow } from '@/features/medication-names/medication-names-row'
+import { QuietHoursRow } from '@/features/quiet-hours/quiet-hours-row'
 import { SettingsFrame } from './settings-frame'
 import { SettingsRow } from './settings-list'
 
@@ -22,8 +23,9 @@ function Bar({ width }: { width: string }) {
 export default function Loading() {
   return (
     <SettingsFrame
-      notifications={<NotificationsGroup state="checking" />}
-      quietHours={<QuietHoursGroup state="loading" />}
+      device={<DeviceNotificationsRow state="checking" />}
+      quietHours={<QuietHoursRow state="loading" />}
+      medicationNames={<MedicationNamesRow state="loading" />}
       account={
         <>
           <SettingsRow icon={UserRound} label={<Bar width="w-29.5" />}>

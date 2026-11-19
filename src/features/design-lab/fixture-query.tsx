@@ -2,6 +2,8 @@
 
 import { useState, type ReactNode } from 'react'
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
+import type { MedicationNames } from '@/features/medication-names/contract'
+import { medicationNamesKeys } from '@/features/medication-names/queries'
 import type { Medicine } from '@/features/medicines/contract'
 import { medicineKeys } from '@/features/medicines/queries'
 import type { QuietHours } from '@/features/quiet-hours/contract'
@@ -19,6 +21,8 @@ export type QueryFixtures = {
   history?: Record<string, DoseOccurrence[]>
   /** The account's saved Quiet hours. */
   quietHours?: QuietHours
+  /** The account's saved Medication names. */
+  medicationNames?: MedicationNames
 }
 
 /**
@@ -32,6 +36,7 @@ export function fixtureQueryClient({
   snapshot,
   history = {},
   quietHours,
+  medicationNames,
 }: QueryFixtures) {
   const client = createQueryClient()
   const defaults = client.defaultQueryOptions.bind(client)
@@ -44,6 +49,8 @@ export function fixtureQueryClient({
   if (medicines) client.setQueryData(medicineKeys.list(), medicines, { updatedAt })
   if (snapshot) client.setQueryData(scheduleKeys.snapshot(), snapshot, { updatedAt })
   if (quietHours) client.setQueryData(quietHoursKeys.status(), quietHours, { updatedAt })
+  if (medicationNames)
+    client.setQueryData(medicationNamesKeys.status(), medicationNames, { updatedAt })
   for (const [date, doses] of Object.entries(history))
     client.setQueryData(scheduleKeys.history(date), doses, { updatedAt })
   return client

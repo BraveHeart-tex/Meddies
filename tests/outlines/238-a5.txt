@@ -9,16 +9,20 @@
       - switch "Notifications on this device"
       - paragraph
         - text: Asks permission first.
-  - heading "Quiet hours" [level=2]
-  - list
     - listitem
-      - text: 23:00-08:00
+      - text: Quiet hours · 23:00-08:00
       - text: Off
       - switch "Quiet hours on all your devices"
       - paragraph
         - text: Dose reminders still go out on time. Follow-ups are skipped, not sent later.
+    - listitem
+      - text: Names in reminders
+      - text: Off
+      - switch "Medication names in reminders on all your devices"
+      - paragraph
+        - text: On, reminders name your medications, so they can show on your lock screen.
   - paragraph
-    - text: Applies to all your devices.
+    - text: Quiet hours and medication names apply to all your devices.
   - heading "Account" [level=2]
   - list
     - listitem

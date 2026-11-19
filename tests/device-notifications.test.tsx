@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { SettingsGroup } from '../src/app/settings/settings-list'
 import { DeviceNotifications } from '../src/features/device-registrations/device-notifications'
 import {
   NotificationDeviceProvider,
@@ -43,7 +44,9 @@ function renderSettingsGroup(device: NotificationDevice) {
   render(
     <QueryClientProvider client={client}>
       <NotificationDeviceProvider value={device}>
-        <DeviceNotifications />
+        <SettingsGroup title="Notifications">
+          <DeviceNotifications />
+        </SettingsGroup>
       </NotificationDeviceProvider>
     </QueryClientProvider>,
   )
@@ -197,6 +200,8 @@ test('a save that might not have saved keeps Off, and the next tap resends the s
   expect(alert).toHaveTextContent(
     "Check your connection, then retry. Retrying won't save it twice.",
   )
+  // The alert sits inside This device's row, so it is never read as another switch's.
+  expect(alert.closest('[role="listitem"]')).toHaveTextContent('This device')
   expect(step('Off')).toBeVisible()
   expect(toggle()).not.toBeChecked()
 

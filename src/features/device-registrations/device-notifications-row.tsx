@@ -1,12 +1,13 @@
 'use client'
 
 /**
- * This device's notifications on Settings (#351 Direction D, built by #354): one row with the
- * status (icon and word, so it never rests on color), at most one short line, and a switch at the
- * end only when Meddies can change the state. Steps follow as numbered rows in the same card and
- * a save alert sits right under it. The switch never moves ahead of the server: while Turn on
- * saves it stays off and disabled, and while Turn off (#355) saves it stays on and disabled.
- * Wording follows docs/copy.md and the #29 device registration rules.
+ * This device's notifications on Settings (#351 Direction D, built by #354; first row of the
+ * Notifications group since #389): one row with the status (icon and word, so it never rests on
+ * color), at most one short line, a switch at the end only when Meddies can change the state, and
+ * a save alert inside the row. Steps follow right under it as numbered rows in the same card.
+ * The switch never moves ahead of the server: while Turn on saves it stays off and disabled, and
+ * while Turn off (#355) saves it stays on and disabled. Wording follows docs/copy.md and the #29
+ * device registration rules.
  */
 import {
   Ban,
@@ -15,18 +16,20 @@ import {
   BellRing,
   CircleSlash,
   SquarePlus,
-  TriangleAlert,
   type LucideIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { SettingsHeading } from '@/components/layout/settings-heading'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Card } from '@/components/ui/card'
-import { Item, ItemContent, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item'
+import {
+  SaveAlert,
+  SettingsSwitchRow,
+  StatusPlaceholder,
+  SwitchLine,
+  SwitchStatus,
+} from '@/components/layout/settings-switch-row'
+import { Item, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { saveMessages } from '@/lib/save-messages'
-import { cn } from '@/lib/utils'
 
 /**
  * The device cases plus the Turn on and Turn off saves' moments. `checking` is the row before this device's
@@ -131,37 +134,12 @@ function StepRow({ number, children }: { number: number; children: ReactNode }) 
 }
 
 /**
- * The status word with its icon. While this device's case is unknown, a placeholder holds its
- * line unannounced: the Settings fallback's one status covers the route, and the device check
- * after it is brief.
+ * Renders one state as the row and its steps. `offline` disables the switch and says why;
+ * `onTurnOn` runs from the switch's tap, so a permission prompt it opens comes from that tap, and
+ * `onTurnOff` from the tap on On's switch. While this device's case is unknown, placeholders hold
+ * the status word and Off's line: the device check after the Settings fallback is brief.
  */
-function Status({ state }: { state: NotificationState }) {
-  if (state === 'checking')
-    return (
-      <div className="flex h-lh items-center text-body-sm">
-        <Skeleton className="h-3 w-7 rounded-md" />
-      </div>
-    )
-  const { label, icon: Icon } = status[state]
-  return (
-    <span
-      className={cn(
-        'flex items-center gap-1 text-body-sm font-bold text-muted-foreground [&>svg]:size-4',
-        isOn(state) && 'text-dose-taken-foreground',
-      )}
-    >
-      <Icon aria-hidden="true" />
-      {label}
-    </span>
-  )
-}
-
-/**
- * Renders one state. `offline` disables the switch and says why; `onTurnOn` runs from the
- * switch's tap, so a permission prompt it opens comes from that tap, and `onTurnOff` from the
- * tap on On's switch.
- */
-export function NotificationsGroup({
+export function DeviceNotificationsRow({
   state,
   offline = false,
   onTurnOn,
@@ -182,55 +160,45 @@ export function NotificationsGroup({
   const toggle = turnsOn(state) ? onTurnOn : onTurnOff
   const alert = shown && alerts[shown]
   return (
-    <section className="flex flex-col gap-2">
-      <SettingsHeading>Notifications</SettingsHeading>
-      <Card className="gap-0 py-0">
-        <ItemGroup className="gap-0">
-          <Item role="listitem" className="gap-3 rounded-none border-0 px-3.5 py-3">
-            <ItemMedia className="size-9 self-start rounded-sm bg-secondary text-secondary-foreground [&>svg]:size-4.5">
-              <Bell aria-hidden="true" />
-            </ItemMedia>
-            <ItemContent className="min-w-0 gap-1">
-              <div className="flex min-h-9 flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                <div className="flex min-w-0 flex-col">
-                  <ItemTitle>This device</ItemTitle>
-                  <Status state={state} />
-                </div>
-                {(turnsOn(state) || turnsOff(state)) && (
-                  <Switch
-                    checked={isOn(state)}
-                    disabled={
-                      state === 'turning-on' || state === 'turning-off' || offline || !toggle
-                    }
-                    onCheckedChange={(checked) => checked !== isOn(state) && toggle?.()}
-                    aria-label="Notifications on this device"
-                  />
-                )}
-              </div>
-              {line && <p className="text-caption text-muted-foreground">{line}</p>}
-              {/* Holds Off's line, the case most devices resolve to. */}
-              {state === 'checking' && (
-                <div className="flex h-lh items-center text-caption">
-                  <Skeleton className="h-2.5 w-28 rounded-md" />
-                </div>
-              )}
-            </ItemContent>
-          </Item>
-          {shown &&
-            steps[shown]?.map((step, index) => (
-              <StepRow key={step} number={index + 1}>
-                {step}
-              </StepRow>
-            ))}
-        </ItemGroup>
-      </Card>
-      {alert && (
-        <Alert variant="destructive" className="mt-1">
-          <TriangleAlert aria-hidden="true" />
-          <AlertTitle>{alert.title}</AlertTitle>
-          <AlertDescription>{alert.body}</AlertDescription>
-        </Alert>
-      )}
-    </section>
+    <>
+      <SettingsSwitchRow
+        icon={Bell}
+        title="This device"
+        status={
+          shown ? (
+            <SwitchStatus icon={status[shown].icon} on={isOn(shown)}>
+              {status[shown].label}
+            </SwitchStatus>
+          ) : (
+            <StatusPlaceholder />
+          )
+        }
+        control={
+          (turnsOn(state) || turnsOff(state)) && (
+            <Switch
+              checked={isOn(state)}
+              disabled={state === 'turning-on' || state === 'turning-off' || offline || !toggle}
+              onCheckedChange={(checked) => checked !== isOn(state) && toggle?.()}
+              aria-label="Notifications on this device"
+            />
+          )
+        }
+      >
+        {line && <SwitchLine>{line}</SwitchLine>}
+        {/* Holds Off's line, the case most devices resolve to. */}
+        {state === 'checking' && (
+          <div className="flex h-lh items-center text-caption">
+            <Skeleton className="h-2.5 w-28 rounded-md" />
+          </div>
+        )}
+        {alert && <SaveAlert {...alert} />}
+      </SettingsSwitchRow>
+      {shown &&
+        steps[shown]?.map((step, index) => (
+          <StepRow key={step} number={index + 1}>
+            {step}
+          </StepRow>
+        ))}
+    </>
   )
 }

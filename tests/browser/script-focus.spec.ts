@@ -115,9 +115,13 @@ test.describe('script focus', () => {
   test('a Reminder link opens its dose drawer once', async ({ page, app }) => {
     const dialog = drawer(page)
     await page.goto('/settings')
-    // Settings reads Quiet hours in the browser (#381); count only after that read lands.
+    // Settings reads Quiet hours (#381) and Medication names (#389) in the browser; count only
+    // after both reads land.
     await expect(
       page.getByRole('switch', { name: 'Quiet hours on all your devices' }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('switch', { name: 'Medication names in reminders on all your devices' }),
     ).toBeVisible()
     const api = countApiRequests(page, app.origin)
     await page.goto(reminderLink({ scheduleId, dueAt: `${today}T09:01:00+03:00` }))
