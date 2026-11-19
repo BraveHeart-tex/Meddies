@@ -3,6 +3,7 @@ import { useCallback } from 'react'
 import { queryOptions, replaceEqualDeep, useQuery, type QueryClient } from '@tanstack/react-query'
 import type { UnscheduledDose } from '../unscheduled-doses/contract'
 import { seedUnscheduledDay } from '../unscheduled-doses/queries'
+import { doseHistoryKeys } from '../dose-history/queries'
 import { shiftDate } from '@/lib/calendar-date'
 import {
   istanbulDate,
@@ -268,6 +269,8 @@ export function writeRecord(client: QueryClient, record: DoseOutcomeRecord) {
 
 /** A confirmed outcome replaces that occurrence's record, then fresh reads reconcile its keys. */
 export function applyRecord(client: QueryClient, record: DoseOutcomeRecord) {
+  // Dose history has no record to write; its pages reread.
+  void client.invalidateQueries({ queryKey: doseHistoryKeys.all }).catch(() => {})
   const keys = writeRecord(client, record)
   // Cancels older in-flight reads so they cannot overwrite the confirmed record.
   return Promise.all(

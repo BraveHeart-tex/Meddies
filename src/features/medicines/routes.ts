@@ -1,3 +1,12 @@
+/** A medication's record subview: Detail correction, Change strength, Strength or Dose history. */
+export type MedicationRecord = 'fix' | 'strength' | 'history' | 'doses'
+const records: readonly unknown[] = [
+  'fix',
+  'strength',
+  'history',
+  'doses',
+] satisfies MedicationRecord[]
+
 /** One `/medications` URL state. Every view shares the one mounted Medications panel. */
 export type MedicationsView =
   | { mode: 'list' }
@@ -6,7 +15,7 @@ export type MedicationsView =
   | {
       mode: 'detail'
       medicineId: string
-      record?: 'fix' | 'strength' | 'history'
+      record?: MedicationRecord
       periodId?: string
     }
   | { mode: 'setup'; medicineId: string }
@@ -43,7 +52,7 @@ export function parseMedicationsView(params: SearchParams): MedicationsView {
     return {
       mode: 'detail',
       medicineId: detail,
-      ...(record === 'fix' || record === 'strength' || record === 'history' ? { record } : {}),
+      ...(records.includes(record) ? { record: record as MedicationRecord } : {}),
       ...(periodId ? { periodId } : {}),
     }
   }
@@ -89,6 +98,6 @@ export function isMedicationsReturnTo(value: string) {
 /** Medication record subviews share the medication's URL and session cache. */
 export const medicationRecordHref = (
   medicineId: string,
-  record?: 'fix' | 'strength' | 'history',
+  record?: MedicationRecord,
   periodId?: string,
 ) => medicationsHref({ mode: 'detail', medicineId, record, periodId })

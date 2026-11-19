@@ -15,6 +15,8 @@ export type AttemptForm = Readonly<{ values: unknown; now: string }>
 /** One occurrence's save, owned by the session so leaving Today or closing the drawer keeps it. */
 export type DoseSave = {
   doseId: string
+  /** The dose's medication, so Dose history can show its pending saves. */
+  medicineId: string
   /** The exact request a retry resends; null once the attempt is discarded. */
   attempt: Readonly<DoseAttempt> | null
   correction: PinnedCorrection | null

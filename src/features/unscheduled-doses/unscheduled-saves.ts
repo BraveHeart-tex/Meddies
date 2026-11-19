@@ -11,7 +11,8 @@ import { saveMessages } from '@/lib/save-messages'
 import { confirmSessionEnd } from '@/lib/session-check'
 import { discardSessionFormDraft } from '@/lib/session-drafts'
 import { sessionSaves, type OutstandingSave } from '@/lib/session-saves'
-import type { AttemptForm, SaveProblem } from '../schedules/dose-save-state'
+import { doseHistoryKeys } from '../dose-history/queries'
+import type { AttemptForm, PendingDose, SaveProblem } from '../schedules/dose-save-state'
 import { readFreshHistoryDay, readFreshSnapshot, scheduleKeys } from '../schedules/queries'
 import { parseUnscheduledDoseRecord, takenDate, type UnscheduledDose } from './contract'
 import { removedMessage, savedMessage } from './messages'
@@ -46,6 +47,17 @@ export type UnscheduledSaveRequest = {
   form?: AttemptForm
   medicine: UnscheduledSave['medicine']
   today: () => string
+}
+
+/**
+ * A medication's pending or unconfirmed Unscheduled save, as Dose history shows it: `dose` is the
+ * saved dose it changes or removes, `taken` the attempted intake (absent for a removal).
+ */
+export type PendingUnscheduledIntake = {
+  id: string
+  dose: UnscheduledDose | null
+  taken?: { takenAt: string; quantity: number }
+  pending: PendingDose
 }
 
 /** One save per Log a dose drawer and per saved dose. */
@@ -177,6 +189,28 @@ class UnscheduledSaves {
     )
   }
 
+  /** One medication's pending and unconfirmed attempts, for Dose history. */
+  pendingIntakes(medicineId: string): PendingUnscheduledIntake[] {
+    return [...this.entries.values()].flatMap((save) => {
+      const attempt = save.attempt
+      if (!attempt || (!save.pending && !isUnconfirmed(save))) return []
+      const { command } = attempt
+      const dose = command.kind === 'log' ? null : command.dose
+      if ((dose?.medicineId ?? (command.kind === 'log' && command.medicineId)) !== medicineId)
+        return []
+      return [
+        {
+          id: dose?.id ?? attempt.id,
+          dose,
+          ...(command.kind === 'remove'
+            ? {}
+            : { taken: { takenAt: command.takenAt, quantity: command.quantity } }),
+          pending: { id: attempt.id, outcome: 'Taken' as const, unconfirmed: !save.pending },
+        },
+      ]
+    })
+  }
+
   /** Resolves true once the server confirmed this attempt. */
   async submit(key: string, request: UnscheduledSaveRequest): Promise<boolean> {
     const previous = this.entries.get(key)
@@ -263,6 +297,7 @@ class UnscheduledSaves {
           exact: true,
         })
         .catch(() => {})
+    void this.client.invalidateQueries({ queryKey: doseHistoryKeys.all }).catch(() => {})
     this.set(key, undefined)
     this.finish(key)
     const title =

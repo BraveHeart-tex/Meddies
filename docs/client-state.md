@@ -40,11 +40,17 @@ browser storage is used. Losing it on reload, app closure or browser eviction is
   date read carry their date's Unscheduled doses and seed `['schedules', 'unscheduled', date]`.
   A confirmed change or removal stays cached at its new revision, so a stale read never
   restores it.
-- **Optimistic doses.** The pending badge on Today and History rows is the only optimistic
-  state; nothing is written to the cache before the server confirms. A confirmed record,
+- **Optimistic doses.** The pending badge on Today and History rows, and Dose history's
+  overlay below, are the only optimistic state; nothing is written to the cache before the
+  server confirms. A confirmed record,
   from either view, is written into Today's snapshot when the dose is due today and into
   the dose's cached History date, then those exact query keys reconcile. Merges never move
   a revision back, so stale reads and late hydration cannot undo it.
+- **Dose history** lays the medication's pending and unconfirmed dose and Unscheduled saves
+  over its read (`dose-history/view.ts`): an attempted intake shows in place of the dose it
+  changes, or as a new dose, marked as saving and counted in its totals; a pending skip or
+  removal keeps the dose, marked. Any confirmed dose record or Unscheduled save rereads every
+  Dose history.
 - **Detail correction receipts** amend loaded dose snapshots only for the selected Strength
   revision, after cancelling older reads. Dose-edit revisions stay unchanged; equal-revision
   reads and hydration keep those confirmed facts. Strength changes leave earlier snapshots alone.

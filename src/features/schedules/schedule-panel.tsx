@@ -14,6 +14,8 @@ import { MedicationDetail } from './medication-detail'
 import { MedicationsList } from './medications-list'
 import { ArchivedMedications } from '@/features/medicines/archived-medications'
 import { ScheduleResumeScreen } from './schedule-resume-screen'
+import type { MedicationRecord } from '@/features/medicines/routes'
+import { DoseHistoryScreen } from '@/features/dose-history/dose-history-screen'
 
 export function SchedulePanel({
   mode = 'setup',
@@ -43,7 +45,7 @@ export function SchedulePanel({
   focusMedicineId?: string | null
   onMedicineFocused?: () => void
   detailActions?: ReactNode
-  record?: 'fix' | 'strength' | 'history'
+  record?: MedicationRecord
   periodId?: string
   onArchiveRequested?: (medicine: Medicine) => void
   onRestoreRequested?: (medicine: Medicine) => void
@@ -71,7 +73,14 @@ export function SchedulePanel({
           />
         )}
         {mode === 'archived' && <ArchivedMedications medicinesRead={medicinesRead} />}
-        {mode === 'detail' && record && (
+        {mode === 'detail' && record === 'doses' && (
+          <DoseHistoryScreen
+            medicinesRead={medicinesRead}
+            medicineId={initialMedicineId}
+            today={istanbulDate(new Date(now))}
+          />
+        )}
+        {mode === 'detail' && record && record !== 'doses' && (
           <MedicineRecordScreen
             medicinesRead={medicinesRead}
             medicineId={initialMedicineId}

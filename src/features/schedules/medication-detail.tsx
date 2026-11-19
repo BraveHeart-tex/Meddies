@@ -1,6 +1,6 @@
 'use client'
 
-import { Archive, Clock, History, Pencil } from 'lucide-react'
+import { Archive, CalendarDays, Clock, History, Pencil } from 'lucide-react'
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
 import type { ReactNode, Ref } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -213,6 +213,20 @@ export function MedicationDetail({
               <ItemDescription>Earlier doses keep their saved strength.</ItemDescription>
             </ItemContent>
             <Clock aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
+          </Item>
+          <Item
+            variant="card"
+            render={
+              <MedicationsLink
+                aria-label="Dose history"
+                href={medicationRecordHref(medicine.id, 'doses')}
+              />
+            }
+          >
+            <ItemContent>
+              <ItemTitle>Dose history</ItemTitle>
+            </ItemContent>
+            <CalendarDays aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
           </Item>
           <Item
             variant="card"

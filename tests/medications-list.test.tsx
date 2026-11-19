@@ -396,7 +396,7 @@ describe('a medication detail', () => {
       within(groups[1] as HTMLElement)
         .getAllByRole('link')
         .map((link) => link.getAttribute('aria-label')),
-    ).toEqual(['Change strength', 'Strength history'])
+    ).toEqual(['Change strength', 'Dose history', 'Strength history'])
     expect(screen.queryByRole('link', { name: /Fix a mistake/ })).not.toBeInTheDocument()
   })
 

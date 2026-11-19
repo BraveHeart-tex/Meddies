@@ -123,6 +123,8 @@ class DoseSaves {
   get(key: string): Readonly<DoseSave> | undefined {
     return this.entries.get(key)
   }
+  /** Every occurrence key with a save. */
+  keys = () => [...this.entries.keys()]
   present(key: string, callback: NonNullable<DoseSaveRequest['onRecorded']>) {
     this.presentations.set(key, callback)
   }
@@ -254,6 +256,7 @@ class DoseSaves {
     const sent = attempt
     this.set(key, {
       doseId: dose.id,
+      medicineId: dose.medicineId,
       attempt,
       correction,
       form: request.form,

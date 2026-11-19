@@ -14,7 +14,7 @@ import { MedicineDeleteDrawer } from './medicine-delete-drawer'
 import { MedicineAddDrawer } from './medicine-add-drawer'
 import type { Medicine } from './contract'
 import { MedicationsLink, returnToMedicationPage, showMedicationsView } from './medications-nav'
-import { medicationsHref } from './routes'
+import { medicationsHref, type MedicationRecord } from './routes'
 
 export function MedicinePanel({
   scheduleMode = 'list',
@@ -33,7 +33,7 @@ export function MedicinePanel({
   /** Holds only the data view while the server streams; the Add Drawer stays mounted. */
   loading?: ReactNode
   /** This render's server read already refreshed both queries, so views don't read again. */
-  record?: 'fix' | 'strength' | 'history'
+  record?: MedicationRecord
   periodId?: string
   /** This render's server read already refreshed both queries. */
   serverEntry?: boolean

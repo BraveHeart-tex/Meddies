@@ -30,6 +30,7 @@
     - list
       - link "Change strength"
         - paragraph
+      - link "Dose history"
       - link "Strength history"
   - button "Archive medication"
 - navigation "Primary"

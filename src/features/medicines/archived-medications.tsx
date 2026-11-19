@@ -1,7 +1,7 @@
 'use client'
 
 import type { Ref } from 'react'
-import { Archive, History, Info } from 'lucide-react'
+import { Archive, CalendarDays, History, Info } from 'lucide-react'
 import { AppHeader } from '@/components/layout/app-header'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -126,6 +126,21 @@ export function ArchivedMedicationDetail({
         </Button>
       )}
       <ItemGroup>
+        <Item
+          variant="card"
+          render={
+            <MedicationsLink
+              aria-label="Dose history"
+              href={medicationRecordHref(medicine.id, 'doses')}
+            />
+          }
+        >
+          <ItemContent>
+            <ItemTitle>Dose history</ItemTitle>
+            <ItemDescription>See when it was taken and how much.</ItemDescription>
+          </ItemContent>
+          <CalendarDays aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
+        </Item>
         <Item
           variant="card"
           render={
