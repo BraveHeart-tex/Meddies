@@ -9,6 +9,7 @@ import {
   parseMedicineDeleteReceipt,
   type MedicineDelete,
   type StockOn,
+  type StockCorrection,
   type StockOff,
   type MedicineInput,
   type MedicineRecord,
@@ -230,13 +231,13 @@ export async function deleteMedicine(
   return saved
 }
 
-// One action insert (0025) validates revision/state/unit, records a reconciliation
+// One action insert validates revision/state/unit, records a reconciliation
 // movement, updates the count and saves the exact receipt atomically. Replay comes first.
 export async function setMedicineStock(
   db: DrizzleD1Database,
   ownerId: string,
-  kind: 'stockOn' | 'stockOff',
-  input: StockOn | StockOff,
+  kind: 'stockOn' | 'stockOff' | 'stockCorrection',
+  input: StockOn | StockOff | StockCorrection,
   now: Date,
 ) {
   const request = JSON.stringify({ kind, ...input })
@@ -254,9 +255,11 @@ export async function setMedicineStock(
     sql`SELECT id FROM user_medications WHERE owner_id=${ownerId} AND id=${input.medicineId}`,
   )
   if (!owned) throw new ApplicationError('not_found', 404)
+  const count =
+    'count' in input ? input.count : 'startingCount' in input ? input.startingCount : null
   await db.run(sql`INSERT INTO medicine_stock_actions
     (owner_id,action_id,medicine_id,expected_revision,kind,count,unit,confirmed_at,request)
-    VALUES(${ownerId},${input.actionId},${input.medicineId},${input.expectedRevision},${kind},${'startingCount' in input ? input.startingCount : null},${'unit' in input ? input.unit : null},${now.toISOString()},${request}) ON CONFLICT DO NOTHING`)
+    VALUES(${ownerId},${input.actionId},${input.medicineId},${input.expectedRevision},${kind},${count},${'unit' in input ? input.unit : null},${now.toISOString()},${request}) ON CONFLICT DO NOTHING`)
   const saved = await replay()
   if (!saved) throw new ApplicationError('conflict', 409)
   return saved

@@ -99,6 +99,7 @@ export function createWorker(
               return json(await archiveMedicine(db, command.ownerId, command.archive, clock()))
             case 'stockOn':
             case 'stockOff':
+            case 'stockCorrection':
               return json(
                 await setMedicineStock(
                   db,

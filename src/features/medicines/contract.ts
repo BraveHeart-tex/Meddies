@@ -53,11 +53,13 @@ export type MedicineResponses = {
   restore: { medicines: MedicineRecord[] }
   stockOn: { medicines: MedicineRecord[] }
   stockOff: { medicines: MedicineRecord[] }
+  stockCorrection: { medicines: MedicineRecord[] }
   delete: { deletion: MedicineDeleteReceipt }
 }
 export type MedicineCommand =
   | { operation: 'stockOn'; ownerId: string; stock: StockOn }
   | { operation: 'stockOff'; ownerId: string; stock: StockOff }
+  | { operation: 'stockCorrection'; ownerId: string; stock: StockCorrection }
   | { operation: 'list'; ownerId: string }
   | { operation: 'save'; ownerId: string; medicine: MedicineInput }
   | { operation: 'correctDetails'; ownerId: string; correction: DetailCorrection }
@@ -261,6 +263,14 @@ export function parseMedicineDeleteReceipt(value: unknown): MedicineDeleteReceip
 
 export type StockOn = MedicineArchive & { unit: WritableMedicineType; startingCount: number }
 export type StockOff = MedicineArchive
+export type StockCorrection = MedicineArchive & { unit: WritableMedicineType; count: number }
+export function parseStockCorrection(value: unknown): StockCorrection {
+  const key = parseEditKey(value)
+  const input = value as Record<string, unknown>
+  if (!isWritableMedicineType(input.unit) || !isStockCount(input.count, input.unit))
+    throw new ApplicationError('validation', 400)
+  return { ...key, unit: input.unit, count: input.count }
+}
 export function parseStockOn(value: unknown): StockOn {
   const key = parseEditKey(value)
   const input = value as Record<string, unknown>

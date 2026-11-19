@@ -5,6 +5,7 @@ import {
 import {
   parseMedicine,
   parseStockOn,
+  parseStockCorrection,
   parseStockOff,
   parseDetailCorrection,
   parseStrengthChange,
@@ -165,6 +166,15 @@ export function decodeCommand(path: CommandPath, value: unknown): WorkerCommand 
         return {
           path,
           command: { operation: 'stockOff', ownerId, stock: parseStockOff(input.stock) },
+        }
+      case 'stockCorrection':
+        return {
+          path,
+          command: {
+            operation: 'stockCorrection',
+            ownerId,
+            stock: parseStockCorrection(input.stock),
+          },
         }
       case 'restore':
         return {

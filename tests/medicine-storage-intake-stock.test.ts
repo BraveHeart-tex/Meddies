@@ -103,6 +103,9 @@ async function fixture(unit: 'tablet' | 'liquid' = 'tablet', startingCount = 30)
     ownerId,
     medicineId,
     post,
+    setNow: (at: string) => {
+      now = new Date(at)
+    },
     medicines,
     operations,
     occurrence,
@@ -114,6 +117,88 @@ async function fixture(unit: 'tablet' | 'liquid' = 'tablet', startingCount = 30)
     stockAt,
   }
 }
+
+test('a count correction reconciles Stock once without rewriting intake history', async () => {
+  const f = await fixture('tablet', 1)
+  await f.taken(11, 2)
+  assert.deepEqual(await f.stock(), { tracked: true, count: 0, intakePastCount: true })
+  f.setNow('2026-11-19T12:00:40.000Z')
+  const before = await f.medicines()
+  const { revision } = before
+  const correction = (expectedRevision: number, count: number) => ({
+    operation: 'stockCorrection',
+    stock: {
+      actionId: randomUUID(),
+      medicineId: f.medicineId,
+      expectedRevision,
+      unit: 'tablet',
+      count,
+    },
+  })
+  const command = correction(revision, 0)
+  const correct = (input: object) => f.post('medicines', input)
+  assert.equal((await correct(correction(revision - 1, 4))).status, 409)
+  assert.equal((await correct({ ...command, ownerId: `google:${randomUUID()}` })).status, 404)
+  assert.equal((await correct({ ...command, stock: { ...command.stock, count: -1 } })).status, 400)
+  assert.equal(
+    (await correct({ ...command, stock: { ...command.stock, unit: 'capsule' } })).status,
+    409,
+  )
+  assert.deepEqual(await f.medicines(), before)
+  const saved = await correct(command)
+  assert.equal(saved.status, 200)
+  assert.deepEqual(await f.stock(), { tracked: true, count: 0 })
+  assert.deepEqual(await f.movements(), [-2])
+
+  f.setNow('2026-11-19T13:00:40.000Z')
+  assert.equal((await correct(correction(revision + 1, 0))).status, 200)
+  assert.deepEqual(await correct(command), saved)
+  await f.taken(12)
+  await f.operations.correctOutcome({
+    ...f.occurrence(11),
+    actionId: randomUUID(),
+    expectedRevision: 0,
+    expectedOutcome: 'Taken',
+    outcome: 'Taken',
+    takenAt: due(11),
+    quantity: 3,
+  })
+  assert.deepEqual(await f.movements(), [-2])
+  await f.taken(13)
+  assert.deepEqual(await f.movements(), [-2, -1])
+  assert.equal(await f.stored(), -1)
+  await f.stockAt(null, '2026-11-19T14:00:00.000Z')
+  assert.equal((await correct(correction(revision + 3, 4))).status, 409)
+  assert.equal((await f.medicines()).revision, revision + 3)
+  await f.stockAt(1, '2026-11-19T14:01:00.000Z')
+  assert.equal(
+    (
+      await correct({
+        operation: 'archive',
+        archive: {
+          actionId: randomUUID(),
+          medicineId: f.medicineId,
+          expectedRevision: revision + 4,
+        },
+      })
+    ).status,
+    200,
+  )
+  assert.equal((await correct(correction(revision + 5, 4))).status, 409)
+  assert.equal((await f.medicines()).revision, revision + 5)
+  assert.deepEqual(await correct(command), saved)
+  const { results } = await f.db
+    .prepare(
+      'SELECT count,unit,occurred_at FROM stock_movements WHERE owner_id=? AND kind=? ORDER BY occurred_at',
+    )
+    .bind(f.ownerId, 'countCorrection')
+    .all()
+  assert.deepEqual(results, [
+    { count: 0, unit: 'tablet', occurred_at: '2026-11-19T12:00:40.000Z' },
+    { count: 0, unit: 'tablet', occurred_at: '2026-11-19T13:00:40.000Z' },
+  ])
+  assert.deepEqual(await f.stock(), { tracked: true, count: 1 })
+})
 
 test('Taken first logs lower Stock by their quantity, including Unscheduled and Archived; Skipped changes nothing', async () => {
   const f = await fixture()

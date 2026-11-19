@@ -109,9 +109,12 @@ owner.
   Owner-scoped deletion receipts outlive the record and block creation replay, including
   inserts from an older Worker. The response contains a `deletion` receipt with the action,
   Medicine, expected revision and server-confirmed `deletedAt`; refused attempts write nothing.
-- **Stock:** `PATCH /api/medicines` accepts `stockOn` and `stockOff` with an action
-  UUID and expected Medicine revision. Turn-on also supplies the Medicine type and a
-  starting count; the atomic write compares that type against the owned active Medicine.
+- **Stock:** `PATCH /api/medicines` accepts `stockOn`, `stockOff` and `stockCorrection` with an
+  action UUID and expected Medicine revision. `stockOn` supplies the Medicine type and
+  `startingCount`; `stockCorrection` supplies the Medicine type and `count`. The atomic
+  write compares that type against the owned active Medicine. A correction requires tracking
+  to be on and atomically replaces the count and reconciliation point, recording a
+  `countCorrection` movement even when the count is unchanged. It does not rewrite intake.
   Stock uses the shared quantity grid and safe bound with zero allowed. Starting counts
   are reconciliation movements with their server time and Quantity unit, retained when
   tracking turns off. Stock locks the Type while on; archive preserves it read-only.

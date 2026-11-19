@@ -2,6 +2,7 @@ import { ApplicationError } from '../../lib/application-error'
 import {
   parseMedicine,
   parseStockOn,
+  parseStockCorrection,
   parseStockOff,
   parseDetailCorrection,
   parseStrengthChange,
@@ -37,6 +38,23 @@ export function createMedicineOperations(dependencies: {
         !records[0].stock.tracked ||
         records[0].stock.count !== stock.startingCount ||
         records[0].unit !== stock.unit
+      )
+        throw new ApplicationError('unavailable', 503)
+      return records
+    },
+    async stockCorrection(input: unknown) {
+      const user = await dependencies.requireUser()
+      const stock = parseStockCorrection(input)
+      const records = confirmedEdit(
+        await sendRows({ operation: 'stockCorrection', ownerId: user.id, stock }),
+        stock,
+      )
+      const confirmed = records[0]
+      if (
+        !confirmed.stock.tracked ||
+        confirmed.stock.count !== stock.count ||
+        confirmed.stock.intakePastCount ||
+        confirmed.unit !== stock.unit
       )
         throw new ApplicationError('unavailable', 503)
       return records

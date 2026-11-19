@@ -1,5 +1,9 @@
 import { expect, test } from 'vitest'
-import { parseMedicine, parseStockOn } from '../src/features/medicines/contract'
+import {
+  parseMedicine,
+  parseStockCorrection,
+  parseStockOn,
+} from '../src/features/medicines/contract'
 
 const key = {
   actionId: '10000000-0000-4000-8000-000000000001',
@@ -13,6 +17,7 @@ test('starting counts follow the Quantity unit grid and safe bound, allowing zer
     ['tablet', 0],
   ] as const) {
     expect(parseStockOn({ ...key, unit, startingCount }).startingCount).toBe(startingCount)
+    expect(parseStockCorrection({ ...key, unit, count: startingCount }).count).toBe(startingCount)
     expect(
       parseMedicine({ id: key.medicineId, label: 'Example', unit, startingCount }).startingCount,
     ).toBe(startingCount)
@@ -25,6 +30,7 @@ test('starting counts follow the Quantity unit grid and safe bound, allowing zer
     ['tablet', null],
   ] as const) {
     expect(() => parseStockOn({ ...key, unit, startingCount })).toThrow('validation')
+    expect(() => parseStockCorrection({ ...key, unit, count: startingCount })).toThrow('validation')
     expect(() =>
       parseMedicine({ id: key.medicineId, label: 'Example', unit, startingCount }),
     ).toThrow('validation')

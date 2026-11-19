@@ -467,7 +467,7 @@ export const stockMovements = sqliteTable(
     count: real('count').notNull(),
     unit: text('unit', { enum: writableMedicineTypes }).notNull(),
     occurredAt: text('occurred_at').notNull(),
-    kind: text('kind', { enum: ['startingCount'] }).notNull(),
+    kind: text('kind', { enum: ['startingCount', 'countCorrection'] }).notNull(),
   },
   (table) => [
     primaryKey({ columns: [table.ownerId, table.id] }),
@@ -485,7 +485,7 @@ export const medicineStockActions = sqliteTable(
     actionId: text('action_id').notNull(),
     medicineId: text('medicine_id').notNull(),
     expectedRevision: integer('expected_revision').notNull(),
-    kind: text('kind', { enum: ['stockOn', 'stockOff'] }).notNull(),
+    kind: text('kind', { enum: ['stockOn', 'stockOff', 'stockCorrection'] }).notNull(),
     count: real('count'),
     unit: text('unit'),
     confirmedAt: text('confirmed_at').notNull(),
