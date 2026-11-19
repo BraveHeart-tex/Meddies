@@ -65,7 +65,7 @@ export function AppShell({
                       }
                       aria-current={active ? 'page' : undefined}
                       className={cn(
-                        'relative isolate flex min-h-14 flex-col items-center justify-center gap-1 rounded-full px-1 [&>svg]:size-5 text-center text-micro [overflow-wrap:anywhere] transition-colors duration-220 ease-calm motion-reduce:transition-none',
+                        'control-link relative isolate flex min-h-14 flex-col items-center justify-center gap-1 rounded-full px-1 [&>svg]:size-5 text-center text-micro [overflow-wrap:anywhere] transition-colors duration-220 ease-calm motion-reduce:transition-none',
                         active
                           ? 'font-extrabold text-accent-foreground'
                           : 'font-bold text-muted-foreground',

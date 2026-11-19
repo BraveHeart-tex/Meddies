@@ -35,7 +35,7 @@ export function MedicationRow({
       className="p-3.5 [&>svg]:size-5 has-[[data-row-link]:active]:scale-[0.98] has-[[data-row-link]:active]:bg-muted motion-reduce:has-[[data-row-link]:active]:scale-100"
     >
       <TypeTile type={medicine.unit} size="md" />
-      <ItemContent className="gap-0.75">
+      <ItemContent className="control-link gap-0.75">
         <ItemTitle>
           <h4>{medicine.label}</h4>
         </ItemTitle>

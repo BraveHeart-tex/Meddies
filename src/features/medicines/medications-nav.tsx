@@ -9,6 +9,7 @@ import {
 } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { cn } from '@/lib/utils'
 import { medicationManageHref, medicationsHref, parseMedicationsView } from './routes'
 
 const viewChanged = 'medications:viewchange'
@@ -130,6 +131,7 @@ export function MedicationsLink({
   onShow,
   routerNavigation = false,
   keepScroll = false,
+  className,
   ...props
 }: Omit<ComponentProps<typeof Link>, 'href' | 'prefetch' | 'onNavigate'> & {
   href: string
@@ -144,6 +146,7 @@ export function MedicationsLink({
   return (
     <Link
       {...props}
+      className={cn('control-link', className)}
       href={href}
       prefetch={false}
       onNavigate={(event) => {
