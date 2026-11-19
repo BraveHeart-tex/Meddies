@@ -72,9 +72,11 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
 8. **Review.** Read `git diff $base` against the
    [lab rules](../../../docs/design/README.md#rules),
    [citations](../../../docs/design/README.md#citations), DESIGN.md and docs/copy.md, and
-   against each criterion. Fix what you accept.
-   _Done when_ every criterion maps to an approved frame, and every finding is fixed or
-   rejected with a one-line reason.
+   against each criterion. Review lab markup semantics: links and buttons retain their
+   native roles; no explicit `role` replaces either. Fix what you accept before posting
+   approval.
+   _Done when_ every criterion maps to an approved frame, native link and button roles are
+   preserved, and every finding is fixed or rejected with a one-line reason.
 
 9. **Verify, commit and push.** With every change made, run `pnpm verify:local >"$log" 2>&1`
    once and read the summary. On failure, fix the cause, rerun only the failed cases until
@@ -110,12 +112,20 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
     criterion citing frame IDs as `215·A3`. Each build ticket owns at most 4 frames
     ([size](../../../docs/tickets.md#size)); split more by screen into several build
     tickets, created with `node scripts/create-issue.mjs` and linked as blockers where one
-    waits on another. Rewriting an existing build ticket follows
+    waits on another. Map every owned frame to its proving built frame or named production
+    state, with navigation steps or fixture setup for non-default states. Keep exactly one
+    built frame per design-critical screen; other states can use temporary production-backed
+    captures ([built frames](../../../docs/design/README.md#built-frames)). Link each owned
+    frame's capture from the design approval comment directly as a capture review reference
+    image. Keep the existing built-frame before/after
+    [capture review](../../../docs/design/README.md#capture).
+    Rewriting an existing build ticket follows
     [changing scope](../../../docs/tickets.md#changing-scope): rewrite the whole description,
     then comment what changed and why. Check each body with
     `node scripts/ticket-lint.mjs <file>` before `gh issue edit`.
     _Done when_ every approved frame is owned by exactly one build ticket, every body passes
-    ticket-lint, every read-back has no criterion without a frame ID and no reference to "the
+    ticket-lint, every read-back includes the complete frame-to-proof mapping and direct
+    reference-capture links, has no criterion without a frame ID and no reference to "the
     approved frames" without IDs, and every rewritten ticket has its scope comment.
 
 14. **Close the design ticket.** The approval comment is its evidence; build work is
