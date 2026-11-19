@@ -169,6 +169,50 @@ See **Dose history**, **Taken** and **Unscheduled dose** (GLOSSARY.md).
 | Skipped         | Nov 4 08:00 Skipped, 20:00 Taken                               | Nov 4 lists only the 20:00 dose.                                  |
 | Never taken     | New medication with no Taken dose                              | Empty message and Log a dose; no summary totals.                  |
 
+### #46 - Approved stock tracking rules (November 19, 2026)
+
+See **Stock** and **Quantity unit** (GLOSSARY.md).
+
+- Stock tracking is optional per Medicine and off by default. A Medicine without it works as
+  before: Today, History, reminders and Dose history never depend on it.
+- The user turns it on with a starting count, from the Stock section on Medication detail or
+  with the optional count in Add medicine. Left empty in Add, stock stays off.
+- The starting count is required to turn tracking on. It counts in the Medicine's Quantity unit
+  and follows that unit's step: halves of a tablet, tenths of a ml, whole capsules, puffs and
+  drops. Zero is allowed and negative counts are rejected. Numeric bounds keep arithmetic safe;
+  there is no medical maximum. Strength never enters the count: 30 tablets of 500 mg is 30
+  tablets.
+- The starting count is a reconciliation point, like a count correction: a Taken dose whose
+  Taken time is before it never changes stock, and turning tracking on never deducts earlier
+  doses.
+- Medication detail and the Medications list show the current count, such as "24 tablets left",
+  never below zero. Only a server-confirmed count shows as the count; a save in flight shows as
+  saving.
+- Turning tracking off asks first. While off, Meddies does not count. Turning it back on asks
+  for a fresh count with the field empty. Earlier counts stay on the server for export (#55).
+- While tracking is on, the Medicine type and Quantity unit cannot change. Turning tracking off
+  lifts this lock; the schedule-or-dose lock still applies.
+- An Archived medicine keeps its stock unchanged and shows its count read-only; tracking cannot
+  be turned on or off until it is restored. Deleting a Medicine deletes its stock.
+- Each on or off save has its own action ID and follows the
+  [session contract](./ux-journeys.md#session-contract); a retry applies once.
+- Taken doses lower stock (#47); refills (#48) and count corrections (#49) change it. Low-stock
+  thresholds follow #10 (#52). Stock gives no estimate of days left.
+
+| Example           | Setup                                                    | Expected                                             |
+| ----------------- | -------------------------------------------------------- | ---------------------------------------------------- |
+| Turn on           | Tablets, stock off; Track stock with 30                  | "30 tablets left" on Medication detail and the list. |
+| Half tablet       | Starting count 12.5 tablets                              | Accepted; shows "12½ tablets left".                  |
+| Half capsule      | Starting count 7.5 capsules                              | Rejected with a field error.                         |
+| Liquid            | Starting count 150 ml                                    | Accepted; shows "150 ml left".                       |
+| Zero              | Starting count 0 tablets                                 | Accepted; shows "0 tablets left".                    |
+| Add with count    | Add a Capsule medication with count 28                   | Saved with stock on at 28 capsules.                  |
+| Add without count | Add a medication with the count empty                    | Saved with stock off.                                |
+| Late dose         | Turn on at 10:00 with 30; log the 08:00 dose Taken 08:00 | Stock stays 30.                                      |
+| Off and on again  | Stock 24; turn off; later turn on                        | The count field starts empty; the new count stands.  |
+| Retry             | Turn-on save retried with the same action ID             | One starting count.                                  |
+| Type lock         | Stock on; Edit details                                   | Type cannot change until stock is turned off.        |
+
 ## Required product behavior
 
 1. Manual medication creation must work without a barcode catalog.

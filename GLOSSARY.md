@@ -33,6 +33,12 @@ A Medicine the user no longer takes, kept out of the Medications list, with its 
 and reminders cancelled. Its doses and outcomes stay in History and export.
 _Avoid_: deleted, removed, inactive medicine
 
+**Stock**:
+How much of a Medicine the user has, counted in its Quantity unit. Optional per Medicine: it is
+tracked only after the user turns stock tracking on with a starting count, and never shows below
+zero.
+_Avoid_: inventory, supply, pills left
+
 ## Schedules
 
 **Clock schedule**:
