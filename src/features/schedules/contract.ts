@@ -126,7 +126,8 @@ export type DoseOccurrence = {
   medicineId: string
   dueAt: string
   quantity: number
-  snooze?: Pick<DoseSnooze, 'outcome' | 'targetAt'>
+  /** confirmedVersion is browser-only receipt ordering, never a server revision. */
+  snooze?: Pick<DoseSnooze, 'outcome' | 'targetAt'> & { confirmedVersion?: number }
 } & (
   | { status: 'Not logged' | 'Due now' | 'Upcoming' }
   | { status: 'Taken'; record: DoseRecord }

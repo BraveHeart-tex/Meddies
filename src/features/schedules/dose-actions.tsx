@@ -20,6 +20,13 @@ import type { AttemptForm, DoseCommand } from './dose-saves'
 import { useDoseDrawerDraft } from './use-dose-drawer-draft'
 import { useDoseOutcomeMutation } from './use-dose-outcome-mutation'
 import { useSchedulingClock } from './scheduling-clock'
+import {
+  SnoozeButton,
+  SnoozeFeedback,
+  SnoozeResultLine,
+  snoozeNeedsReview,
+} from '@/features/snoozes/dose-snooze'
+import { useSnooze } from '@/features/snoozes/use-snooze'
 import { useReminderLinkOpen } from './reminder-link-provider'
 
 type Outcome = DoseOutcomeRecord['outcome']
@@ -118,9 +125,14 @@ export function DoseActions({
     clearFeedback()
   }
 
+  const snooze = useSnooze(dose, medicine.label)
+  const snoozeResult = dose.snooze
+  const snoozeSaving = snooze.attempt?.pending ?? false
   const recorded = dose.status === 'Taken' || dose.status === 'Skipped'
   const outcomeBlocked = (outcome: Outcome) =>
     saving ||
+    snoozeSaving ||
+    snoozeNeedsReview(snooze.attempt?.reason) ||
     needsReview ||
     (recorded && !openedWithoutOutcome && (!correcting || dose.status === outcome))
 
@@ -178,6 +190,14 @@ export function DoseActions({
   const dueDate = istanbulDate(new Date(dose.dueAt))
   const dueDay = dueDate === reference ? '' : ` on ${formatShortDay(dueDate, reference)}`
   const triggerLabel = `${verb} dose for ${medicine.label} scheduled at ${formatTime(dose.dueAt)}${dueDay}`
+  const canSnooze =
+    !recorded &&
+    !snoozeResult &&
+    (!snooze.attempt?.reason || snooze.attempt.reason === 'notificationsOff') &&
+    (snoozeSaving ||
+      snooze.attempt?.uncertain ||
+      (clock.now().getTime() >= Date.parse(dose.dueAt) &&
+        clock.now().getTime() <= Date.parse(dose.dueAt) + 80 * 60_000))
   const choosing = !recorded || correcting || (openedWithoutOutcome && editor !== null)
 
   return (
@@ -239,7 +259,7 @@ export function DoseActions({
         )}
       <DoseDrawer
         open={drawerOpen}
-        saving={saving}
+        saving={saving || snoozeSaving}
         triggerId={`dose-actions-${dose.id}`}
         type={medicine.unit}
         title={medicine.label}
@@ -255,12 +275,15 @@ export function DoseActions({
           setOpenedWithoutOutcome(false)
         }}
       >
-        <ScheduledChip
-          dose={dose}
-          today={todayDate}
-          savingOutcome={saving ? savingOutcome : null}
-          unconfirmed={problem?.kind === 'uncertain'}
-        />
+        <div className="flex flex-col gap-1.5">
+          <ScheduledChip
+            dose={dose}
+            today={todayDate}
+            savingOutcome={saving ? savingOutcome : null}
+            unconfirmed={problem?.kind === 'uncertain'}
+          />
+          {!recorded && snoozeResult && <SnoozeResultLine snooze={snoozeResult} />}
+        </div>
         {needsReview && drawerOpen && (
           <Alert>
             <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
@@ -368,18 +391,28 @@ export function DoseActions({
         )}
         {choosing && editor === null && (
           <div className="flex flex-col gap-4.5">
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2.5">
+              {(canSnooze || snooze.attempt?.reason) && <SnoozeFeedback state={snooze} />}
               <Button type="button" size="drawer" className="w-full" disabled>
                 Choose what happened
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={() => closeEditor(false)}
-              >
-                Cancel
-              </Button>
+              <div className={canSnooze ? 'grid grid-cols-2 gap-2.5' : 'contents'}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  disabled={snoozeSaving}
+                  onClick={() => closeEditor(false)}
+                >
+                  Cancel
+                </Button>
+                {canSnooze && (
+                  <SnoozeButton
+                    state={snooze}
+                    context={`${medicine.label} scheduled at ${formatTime(dose.dueAt)}${dueDay}`}
+                  />
+                )}
+              </div>
             </div>
           </div>
         )}

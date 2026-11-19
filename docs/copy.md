@@ -115,6 +115,27 @@ Medicines covered, in label order, as "Aspirin, Metformin and Vitamin D":
 - **Several follow-up reminders at once:** generic title / "{names} not logged yet. Open Meddies
   when you're ready to log them."
 
+## Snooze wording
+
+The dose drawer offers "Snooze 40 min" beside "Cancel". While saving it reads
+"Snoozing...". Only server confirmation adds the status "Reminder at {time}", or
+"No reminder" / "{time} is in quiet hours." Snooze never creates a Toast or implies intake
+or guaranteed delivery.
+
+A rejection uses "Not saved." with its reason:
+
+- Notifications off: "Turn on notifications to snooze." and "Open Settings".
+- No slots: "No reminders are left for this dose."
+- Expired: "It's too late to snooze this dose."
+- Already pending: "This dose is already snoozed." Refresh to show its reminder time.
+- Remaining slot in Quiet hours: "No reminder is left outside quiet hours."
+- Changed dose: "This dose has changed. Check what's saved now." and "Check what's saved".
+
+An Unconfirmed save uses "That might not have saved." / "Check your connection and try
+again with the same details." and "Try snoozing again". Offline uses "You're offline.
+Reconnect to snooze." and disabled "Connect to snooze". Accessible Snooze, offline and
+retry names include the medication, scheduled time, optional day, and "40 min".
+
 ## Errors
 
 Say what happened, what is safe, and what to do next.

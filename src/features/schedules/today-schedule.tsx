@@ -67,7 +67,7 @@ export function TodaySchedule({
   // waits for its own read instead of inventing coverage.
   const today = useMemo(() => {
     if (!snapshot || istanbulDate(new Date(now)) !== snapshot.date) return null
-    return scheduleToday(snapshot.schedules, new Date(now), snapshot.records)
+    return scheduleToday(snapshot.schedules, new Date(now), snapshot.records, snapshot.snoozes)
   }, [snapshot, now])
   // Never the next dose and never To log: Unscheduled doses sit in Logged (241·A5, A6).
   const unscheduled = useUnscheduledDoses(today?.date ?? '')

@@ -1,3 +1,5 @@
+import { mergeSnooze, snoozeReadVersion, markSnoozeRead, snoozeVersionOf } from '../snoozes/cache'
+import type { DoseSnooze } from '../snoozes/contract'
 import { PrivateReadError } from '@/lib/session-check'
 import { useCallback } from 'react'
 import { queryOptions, replaceEqualDeep, useQuery, type QueryClient } from '@tanstack/react-query'
@@ -16,6 +18,7 @@ import {
 
 /** The owner's schedules and the server's Today records, at the server scheduling time `now`. */
 export type ScheduleSnapshot = {
+  snoozes?: (DoseSnooze & { confirmedVersion?: number })[]
   schedules: DailySchedule[]
   records: DoseOutcomeRecord[]
   /** Server scheduling time of the read; re-anchors the scheduling clock. */
@@ -41,6 +44,7 @@ export async function fetchHistoryDay(
   signal?: AbortSignal,
   client?: QueryClient,
 ): Promise<DoseOccurrence[]> {
+  const readVersion = snoozeReadVersion()
   const timeout = AbortSignal.timeout(12000)
   const response = await fetch(`/api/schedules/history?date=${encodeURIComponent(date)}`, {
     cache: 'no-store',
@@ -50,7 +54,7 @@ export async function fetchHistoryDay(
   const data: { doses: DoseOccurrence[]; unscheduledDoses?: UnscheduledDose[] } =
     await response.json()
   if (client) seedUnscheduledDay(client, date, data.unscheduledDoses ?? [])
-  return data.doses
+  return data.doses.map((dose) => markSnoozeRead(dose, readVersion))
 }
 
 /**
@@ -74,6 +78,7 @@ export async function fetchScheduleSnapshot(
   signal?: AbortSignal,
   client?: QueryClient,
 ): Promise<ScheduleSnapshot> {
+  const readVersion = snoozeReadVersion()
   const timeout = AbortSignal.timeout(12000)
   const response = await fetch('/api/schedules', {
     cache: 'no-store',
@@ -82,7 +87,7 @@ export async function fetchScheduleSnapshot(
   if (!response.ok) throw new PrivateReadError(response.status)
   const data = await response.json()
   if (client) seedUnscheduledDay(client, data.today.date, data.unscheduledDoses ?? [])
-  return toScheduleSnapshot(data)
+  return markSnoozeRead(toScheduleSnapshot(data), readVersion)
 }
 
 /**
@@ -103,12 +108,14 @@ export const scheduleSnapshotQuery = () =>
 export function toScheduleSnapshot(data: {
   schedules: DailySchedule[]
   records: DoseOutcomeRecord[]
+  snoozes?: DoseSnooze[]
   earlierSchedules?: DailySchedule[]
   today: Pick<Today, 'now' | 'date'>
 }): ScheduleSnapshot {
   return {
     schedules: [...data.schedules, ...(data.earlierSchedules ?? [])],
     records: data.records,
+    ...(data.snoozes ? { snoozes: data.snoozes } : {}),
     now: data.today.now,
     date: data.today.date,
   }
@@ -179,7 +186,19 @@ export function mergeSnapshot(
     if (index < 0) records.push(previous)
     else if ((records[index].revision ?? 0) <= (previous.revision ?? 0)) records[index] = previous
   }
-  return replaceEqualDeep(current, { ...incoming, schedules, records })
+  const snoozes = [...(incoming.snoozes ?? [])]
+  for (const previous of current.snoozes ?? []) {
+    const index = snoozes.findIndex((item) => sameDose(item, previous))
+    const merged = mergeSnooze(previous, snoozes[index], snoozeVersionOf(incoming))
+    if (merged && index < 0) snoozes.push({ ...previous, ...merged })
+    else if (merged) snoozes[index] = { ...previous, ...merged }
+  }
+  return replaceEqualDeep(current, {
+    ...incoming,
+    schedules,
+    records,
+    ...(current.snoozes || incoming.snoozes ? { snoozes } : {}),
+  })
 }
 
 /** Current confirmed outcome, used to distinguish an old receipt from the latest outcome. */
@@ -222,12 +241,18 @@ export function mergeHistoryDay(
   incoming: DoseOccurrence[],
 ): DoseOccurrence[] {
   if (!current) return incoming
-  const doses = incoming.map((dose) => {
-    const previous = current.find((item) => sameDose(item, dose))
+  const doses = incoming.map((item) => {
+    const previous = current.find((old) => sameDose(old, item))
+    const snooze = mergeSnooze(previous?.snooze, item.snooze, snoozeVersionOf(item))
+    const dose = snooze ? { ...item, snooze } : item
     if (!previous || !('record' in previous)) return dose
     if ('record' in dose && (dose.record.revision ?? 0) > (previous.record.revision ?? 0))
       return dose
-    return { ...dose, status: previous.status, record: previous.record } as DoseOccurrence
+    return {
+      ...dose,
+      status: previous.status,
+      record: previous.record,
+    } as DoseOccurrence
   })
   return replaceEqualDeep(current, doses)
 }

@@ -24,6 +24,13 @@ browser storage is used. Losing it on reload, app closure or browser eviction is
   drawer watching arrives as a Toast. Unscheduled dose saves (log, change, remove) work the
   same way in `unscheduled-saves.ts`; a removal has no read evidence, so only its retry
   confirms it.
+- **Snooze saves** live above routes in `snoozes/saves.ts`, with the same action ID and
+  payload retained for an Unconfirmed retry. Snooze uses inline drawer feedback, with no
+  Toast. A receipt publishes to Today and the cached History date; browser reads take an
+  ordering version before starting, so a pre-confirmation read or untagged hydration cannot
+  erase a confirmed result. A later browser read can clear a sent or dropped pending Snooze.
+  A `pending` rejection refreshes the loaded dose reads and never clears an existing Snooze.
+  Session end clears attempts and prevents late responses from publishing.
 - **Medicine deletion** confirms only from its matching command receipt, never absence from a list.
   Confirmed deletion IDs stay in memory for the session, beyond list garbage collection; reads,
   hydration and replayed creation receipts cannot restore them.
