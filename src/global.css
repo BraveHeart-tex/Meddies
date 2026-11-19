@@ -212,6 +212,15 @@
   }
 }
 
+@utility control-link {
+  -webkit-user-select: none;
+  user-select: none;
+
+  &:is(a) {
+    -webkit-touch-callout: none;
+  }
+}
+
 @layer components {
   .meddies-field {
     @apply min-h-11 min-w-0 w-full rounded-md border border-input bg-card px-3 py-2 text-base;
