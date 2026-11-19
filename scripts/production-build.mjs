@@ -2,6 +2,7 @@ import { readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import net from 'node:net'
 import { staleBuildReason } from '../tests/helpers/journey-build.mjs'
+import { withNextOutputLock } from './next-output-lock.mjs'
 
 export async function canOpenPort() {
   return new Promise((resolve) => {
@@ -16,9 +17,12 @@ export async function productionBuild({ root = process.cwd(), env = process.env,
   const stale = await staleBuildReason(root)
   if (!env.CI && !stale) return 'Next.js build fresh, skipped'
   const marker = join(root, '.next/meddies-build-success')
-  await rm(marker, { force: true })
   const args = ['build', ...((await canOpenPort()) ? [] : ['--webpack'])]
-  await run('pnpm', args)
-  await writeFile(marker, await readFile(join(root, '.next/BUILD_ID')))
+  // The build wipes and rewrites `.next/types`; hold the generated Next.js files lock.
+  await withNextOutputLock({ root, owner: `pnpm ${args.join(' ')}`, env }, async () => {
+    await rm(marker, { force: true })
+    await run('pnpm', args)
+    await writeFile(marker, await readFile(join(root, '.next/BUILD_ID')))
+  })
   return `Next.js ${args.join(' ')}`
 }

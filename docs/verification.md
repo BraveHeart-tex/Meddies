@@ -11,7 +11,9 @@ tests, the build and the integration tests: run alongside, the build and integra
 the component tests of CPU. A static-check failure stops before the second stage; second-stage
 checks all run and report even when an earlier one fails, except that a failed build skips
 integration. A warning names dev-stack tests skipped because fixed ports were busy.
-It runs alongside `pnpm dev`.
+It runs alongside `pnpm dev`. Its typecheck and build stages fail fast while a dev-mode journey,
+`pnpm lab:capture` or another build holds the
+[generated Next.js files lock](../tests/browser/README.md#running).
 
 Each stage prints `START <stage>` immediately before its action, then `PASS` or `FAIL`
 with its elapsed seconds and diagnostic-log path. Static starts may overlap; later stages

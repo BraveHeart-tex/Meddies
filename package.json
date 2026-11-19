@@ -31,7 +31,7 @@
     "build": "next build",
     "verify:local": "node scripts/verify.mjs",
     "start": "next start",
-    "typecheck": "next typegen && tsc --noEmit && pnpm worker:typecheck",
+    "typecheck": "node scripts/typecheck.mjs",
     "prepare": "husky",
     "worker:build": "wrangler deploy --config worker/wrangler.jsonc --dry-run --outdir \"$PWD/.worker-build\"",
     "worker:typecheck": "tsc -p worker/tsconfig.json",

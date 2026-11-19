@@ -22,6 +22,12 @@ global setup fails fast when a build input is newer than the wrapper success mar
 the matching success marker, `.next/BUILD_ID` or `.worker-build/index.js` is missing; rerun
 through the wrapper. Run builds and journeys sequentially when they share `.next` or `.worker-build`.
 
+Steps that create or delete generated Next.js files hold `.cache/next-output.lock` for one
+checkout: `pnpm typecheck` (typegen and tsc), production builds, dev-mode journeys (global
+setup to teardown) and `pnpm lab:capture`. A second holder fails before starting and names
+the running one; rerun it after that finishes. Holders release on failure, a killed holder's
+lock is replaced on the next run, and nested wrappers re-enter. `pnpm dev` holds nothing.
+
 **Dev mode** for iterating on one journey: `MEDDIES_BROWSER_DEV=1 pnpm test:browser <spec>`
 starts `next dev --webpack` per test with no production build. Stop any running
 `pnpm dev` or `pnpm dev:stack` first (they share the `.next/dev` lock). StrictMode double
