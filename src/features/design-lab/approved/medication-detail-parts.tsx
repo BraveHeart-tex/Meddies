@@ -29,8 +29,7 @@ import { endedOn, nextDosesLabel, pausedOn, untilLastDay } from '@/features/sche
 import { SchedulingClockProvider } from '@/features/schedules/scheduling-clock'
 import { weekdaySummary } from '@/features/schedules/weekdays'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
-import { formatQuantity, quantityLabel, unitName } from '@/lib/quantity-policy'
-import { cn } from '@/lib/utils'
+import { quantityLabel } from '@/lib/quantity-policy'
 import { FixtureQuery } from '../fixture-query'
 import { NOW, TODAY } from '../lab-fixtures'
 import { detailFixtures, type StateData } from './medication-detail-model'
@@ -97,29 +96,6 @@ export function InsetRow({
   ...props
 }: Omit<ComponentProps<typeof MedicationInsetRow>, 'onClick' | 'ref'> & { readOnly?: boolean }) {
   return <MedicationInsetRow {...props} href={href} onClick={href || readOnly ? undefined : noop} />
-}
-
-/** A future feature's place, drawn dashed with the issue that will fill it. */
-export function SlotNote({
-  issue,
-  label,
-  inset = false,
-}: {
-  issue: number
-  label: string
-  inset?: boolean
-}) {
-  return (
-    <div
-      className={cn(
-        'flex min-h-11 items-center justify-between gap-3 rounded-xl border-[1.5px] border-dashed border-border-strong px-3.5 py-2 text-body-sm font-bold text-muted-foreground',
-        inset && 'm-2',
-      )}
-    >
-      <span>{label}</span>
-      <span className="text-caption">#{issue}</span>
-    </div>
-  )
 }
 
 /** Log a dose in the weight a state gives it: berry, soft or outline. */
@@ -246,11 +222,4 @@ export function ScheduleSummary({
       {paused && <PausedBadge />}
     </div>
   )
-}
-
-/** The stock count as a row value: "120 ml left", never in display type. */
-export function stockValue(medicine: Medicine) {
-  if (!medicine.stock?.tracked) return 'Not tracking'
-  const { count } = medicine.stock
-  return `${formatQuantity(count, medicine.unit)} ${unitName(count, medicine.unit)} left`
 }

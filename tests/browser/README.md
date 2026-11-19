@@ -260,6 +260,13 @@ focus and swipe dismissal, plus Log a dose before Set schedule:
 MEDDIES_RESTORE_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-restore pnpm test:browser:visual screen-capture --grep "medication restore"
 ```
 
+The Stock row with a count, the stock Drawer, its Stop tracking confirm and the row after the
+confirmed stop (4 screenshots named `stock-…-402.png`) also check focus returns to the row:
+
+```sh
+MEDDIES_STOCK_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-stock pnpm test:browser:visual screen-capture --grep "Stock row and stock Drawer"
+```
+
 Schedule Amount inputs (#265) add a second Clock time row with a plural amount, then open the
 Interval Amount sheet on the seeded medicine's Change schedule (2 screenshots named
 `amount-…-402.png`); singular and plural rows must share one input width:

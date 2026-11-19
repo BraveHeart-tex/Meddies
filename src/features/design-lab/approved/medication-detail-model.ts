@@ -7,8 +7,7 @@ import { amoxicillin, amoxicillinSchedule, routine } from '../lab-fixtures'
  * #403 Medication detail hierarchy, approved Direction B: the states it draws, as Amoxicillin on Mon 9
  * Nov at 10:00, with Ibuprofen for the never-scheduled, never-dosed record that can be deleted.
  */
-export type DetailState =
-  'clock' | 'interval' | 'paused' | 'ended' | 'none' | 'saved' | 'archived' | 'slots'
+export type DetailState = 'clock' | 'paused' | 'ended' | 'none' | 'saved' | 'archived'
 
 const amox: Medicine = {
   ...amoxicillin,
@@ -40,13 +39,6 @@ const archived: Medicine = { ...amoxTracked, archivedAt: '2026-11-08T09:00:00.00
 /** Every day at 08:00 (5 ml) and 20:00 (2.5 ml) since Mon 2 Nov, Last day Sat 14 Nov. */
 const clock: DailySchedule = { ...amoxicillinSchedule, endDate: '2026-11-14' }
 
-/** Every 8 hours from Mon 2 Nov at 08:00, 5 ml each time. */
-const interval: DailySchedule = {
-  ...amoxicillinSchedule,
-  intervalHours: 8,
-  times: [{ time: '08:00', quantity: 5 }],
-}
-
 const paused: DailySchedule = { ...amoxicillinSchedule, pausedAt: '2026-11-07T09:00:00.000Z' }
 const ended: DailySchedule = { ...amoxicillinSchedule, endDate: '2026-11-06' }
 
@@ -60,8 +52,6 @@ export function stateData(state: DetailState): StateData {
   switch (state) {
     case 'clock':
       return { medicine: amox, schedule: clock }
-    case 'interval':
-      return { medicine: amoxTracked, schedule: interval }
     case 'paused':
       return { medicine: amoxTracked, schedule: paused }
     case 'ended':
@@ -72,8 +62,6 @@ export function stateData(state: DetailState): StateData {
       return { medicine: { ...ibuprofen, label: 'Ibuprofen' }, schedule: null, saved: true }
     case 'archived':
       return { medicine: archived, schedule: null }
-    case 'slots':
-      return { medicine: amoxTracked, schedule: clock }
   }
 }
 

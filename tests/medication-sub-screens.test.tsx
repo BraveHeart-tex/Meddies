@@ -298,7 +298,7 @@ describe('the medication page', () => {
     // Only the card is replaced; everything that doesn't need the schedule stays.
     expect(screen.queryByRole('group', { name: 'Schedule' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Log a dose' })).toBeVisible()
-    expect(screen.getByRole('region', { name: 'Stock' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Stock' })).toBeVisible()
     expect(screen.getByRole('link', { name: 'Dose history' })).toBeVisible()
     expect(screen.getByRole('link', { name: /^Manage medication/ })).toBeVisible()
 

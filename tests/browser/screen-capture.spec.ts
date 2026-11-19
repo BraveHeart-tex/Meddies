@@ -1023,3 +1023,44 @@ test('capture Add medicine row focus', { tag: '@visual' }, async ({ page }) => {
   await expect(stock).toHaveAttribute('aria-invalid', 'true')
   await captureRows('error')
 })
+
+// Opt-in #409 evidence: the Stock row with a count, the stock Drawer it opens, its Stop tracking
+// confirm, and focus back on the row reading "Not tracking" after the confirmed stop.
+test('capture the Stock row and stock Drawer', { tag: '@visual' }, async ({ page, app }) => {
+  // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
+  test.skip(!out || process.env.MEDDIES_STOCK_CAPTURE !== '1', 'Set MEDDIES_STOCK_CAPTURE=1')
+  await mkdir(resolve(out!), { recursive: true })
+  await page.setViewportSize(captureCases.phone.viewport)
+  const id = '00000000-0000-4000-8000-0000000d0409'
+  await app.api('POST', '/api/medicines', {
+    id,
+    label: 'Amoxicillin',
+    strength: '250 mg/5 ml',
+    unit: 'liquid',
+    startingCount: 120,
+  })
+  await page.goto(`/medications?medicine=${id}`)
+  const row = page.getByRole('button', { name: 'Stock' })
+  await expect(row).toHaveAccessibleDescription('120 ml left')
+  await expect.poll(() => scrollsHorizontally(page)).toBe(false)
+  await captureSettled(page, { path: resolve(out!, 'stock-row-402.png') })
+
+  await row.click()
+  const options = page.getByRole('dialog', { name: 'Amoxicillin stock', exact: true })
+  await expect(options).toHaveAccessibleDescription('120 ml left')
+  await captureSettled(page, { path: resolve(out!, 'stock-drawer-402.png') })
+
+  await options.getByRole('button', { name: 'Stop tracking' }).click()
+  const confirm = page.getByRole('dialog', { name: 'Stop tracking Amoxicillin stock?' })
+  await expect(
+    page.getByRole('heading', { name: 'Stop tracking Amoxicillin stock?' }),
+  ).toBeFocused()
+  await expect(options).toBeHidden()
+  await captureSettled(page, { path: resolve(out!, 'stock-stop-confirm-402.png') })
+
+  await confirm.getByRole('button', { name: 'Stop tracking' }).click()
+  await expect(confirm).toBeHidden()
+  await expect(row).toHaveAccessibleDescription('Not tracking')
+  await expect(row).toBeFocused()
+  await captureSettled(page, { path: resolve(out!, 'stock-stopped-402.png') })
+})

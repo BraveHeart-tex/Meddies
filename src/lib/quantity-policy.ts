@@ -255,7 +255,7 @@ export function quantityProblem(text: string, quantity: Quantity): string | null
 /**
  * A Stock count in words: "24 tablets left", "12½ tablets left", "150 ml left". Zero and
  * counts above one take the plural; ml never changes. Shared by the Medications list and the
- * Medication detail Stock section.
+ * Medication detail Stock row.
  */
 export function stockLeft(count: number, quantity: Quantity): string {
   return `${formatQuantity(count, quantity)} ${unitName(count, quantity)} left`

@@ -43,7 +43,7 @@ import { useScheduleNow } from './use-schedule-now'
 import { LogDose } from '../unscheduled-doses/log-dose'
 import { isArchived } from '@/features/medicines/contract'
 import { ArchivedMedicationDetail } from '@/features/medicines/archived-medications'
-import { MedicineStock } from '@/features/medicines/medicine-stock'
+import { MedicineStockRow } from '@/features/medicines/medicine-stock'
 
 /**
  * A failed refresh of the medication, its schedules or both: one notice naming the medication, and
@@ -75,8 +75,9 @@ function MedicationRefreshAlert({
 
 /**
  * The `?medicine=ID` page (238·A3): a summary. The Back row and identity header above the
- * read-only schedule card with a running Clock schedule's next dose (#410), Resume under it while paused, then Log a dose (241·A1, A2),
- * the Stock section (#392) and Dose history, then Manage medication. A running schedule shows its
+ * read-only schedule card with a running Clock schedule's next dose (#410), Resume under it while
+ * paused, then Log a dose (241·A1, A2), one inset group of the Stock row (#409) and Dose history,
+ * then Manage medication. A running schedule shows its
  * Last day, a paused one the day it paused, an Ended one the day it ended (227·A13, A14, A17;
  * 233·A4, A5). `manage` shows the Manage sub-screen (403·B14) instead, where every other change
  * lives. Loading holds the Back row, the identity and one card-height placeholder; a failed
@@ -233,8 +234,8 @@ export function MedicationDetail({
           {actions}
         </>
       )}
-      <MedicineStock medicine={medicine} />
       <MedicationInsetGroup>
+        <MedicineStockRow medicine={medicine} />
         <MedicationInsetRow
           icon={CalendarDays}
           label="Dose history"

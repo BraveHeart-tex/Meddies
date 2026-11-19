@@ -47,7 +47,7 @@ const dividerClass =
 /**
  * One inset row. `href` makes it a Medications link ending in a chevron; `onClick` a button with
  * no chevron, such as one that opens a confirm; neither, a fact with no action. The row is named
- * by its label and described by its consequence line.
+ * by its label and described by its consequence line and its value.
  */
 export function MedicationInsetRow({
   icon: Icon,
@@ -72,9 +72,12 @@ export function MedicationInsetRow({
 }) {
   const id = useId()
   const destructive = tone === 'destructive'
+  const describedBy = [description && `${id}-description`, value && `${id}-value`]
+    .filter(Boolean)
+    .join(' ')
   const named = {
     'aria-labelledby': `${id}-label`,
-    'aria-describedby': description ? `${id}-description` : undefined,
+    'aria-describedby': describedBy || undefined,
   }
   // The list item wraps the row, so a link or button keeps its own role.
   return (
@@ -107,7 +110,11 @@ export function MedicationInsetRow({
               <ItemDescription id={`${id}-description`}>{description}</ItemDescription>
             )}
           </div>
-          {value && <div className="text-body-sm font-bold text-muted-foreground">{value}</div>}
+          {value && (
+            <div id={`${id}-value`} className="text-body-sm font-bold text-muted-foreground">
+              {value}
+            </div>
+          )}
         </ItemContent>
         {href && (
           <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />

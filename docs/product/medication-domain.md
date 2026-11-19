@@ -175,7 +175,7 @@ See **Stock** and **Quantity unit** (GLOSSARY.md).
 
 - Stock tracking is optional per Medicine and off by default. A Medicine without it works as
   before: Today, History, reminders and Dose history never depend on it.
-- The user turns it on with a starting count, from the Stock section on Medication detail or
+- The user turns it on with a starting count, from the Stock row on Medication detail or
   with the optional count in Add medicine. Left empty in Add, stock stays off.
 - The starting count is required to turn tracking on. It counts in the Medicine's Quantity unit
   and follows that unit's step: halves of a tablet, tenths of a ml, whole capsules, puffs and

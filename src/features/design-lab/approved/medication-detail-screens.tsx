@@ -1,26 +1,11 @@
 'use client'
 
-import {
-  CalendarDays,
-  Info,
-  Package,
-  PackageX,
-  ScrollText,
-  SlidersHorizontal,
-  X,
-} from 'lucide-react'
+import { CalendarDays, Info, Package, ScrollText, SlidersHorizontal } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from '@/components/ui/drawer'
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
+import { stockRowValue } from '@/features/medicines/medicine-stock'
 import { MedicationsLink } from '@/features/medicines/medications-nav'
 import {
   medicationManageHref,
@@ -36,9 +21,7 @@ import {
   LogDoseButton,
   ScheduleFacts,
   ScheduleSummary,
-  SlotNote,
   scheduleView,
-  stockValue,
 } from './medication-detail-parts'
 
 /** Log a dose: berry with no schedule, outline while Resume leads, soft otherwise (Ended too). */
@@ -94,8 +77,8 @@ function ScheduleRead({ data }: { data: StateData }) {
 
 /**
  * 403 Direction B, Summary and Manage: the page reads the schedule, logs a dose and shows stock
- * and Dose history. The Stock row opens the stock Drawer (403·S1), or Track stock's turn-on
- * drawer while off; every other change is one row away on Manage (403·B14).
+ * and Dose history. The Stock row opens the stock Drawer, or Track stock's turn-on drawer while
+ * off (both built in 238·A3); every other change is one row away on Manage (403·B14).
  */
 export function DetailB({ state }: { state: DetailState }) {
   const data = stateData(state)
@@ -107,7 +90,7 @@ export function DetailB({ state }: { state: DetailState }) {
         <ArchivedNotice />
         <Button size="lg">Restore medication</Button>
         <InsetGroup>
-          <InsetRow icon={Package} label="Stock" value={stockValue(medicine)} readOnly />
+          <InsetRow icon={Package} label="Stock" value={stockRowValue(medicine)} readOnly />
           <InsetRow
             icon={CalendarDays}
             label="Dose history"
@@ -121,7 +104,6 @@ export function DetailB({ state }: { state: DetailState }) {
         </InsetGroup>
       </DetailFrame>
     )
-  const slots = state === 'slots'
   return (
     <DetailFrame data={data}>
       <DetailTop medicine={medicine} />
@@ -143,14 +125,8 @@ export function DetailB({ state }: { state: DetailState }) {
           Done for now
         </MedicationsLink>
       )}
-      <InsetGroup
-        note={
-          slots ? 'Record a refill (#48) and Change the count (#49) open from Stock.' : undefined
-        }
-      >
-        <InsetRow icon={Package} label="Stock" value={stockValue(medicine)} />
-        {slots && <SlotNote inset issue={395} label="Days of stock left" />}
-        {slots && <SlotNote inset issue={52} label="Low-stock warning" />}
+      <InsetGroup>
+        <InsetRow icon={Package} label="Stock" value={stockRowValue(medicine)} />
         <InsetRow
           icon={CalendarDays}
           label="Dose history"
@@ -166,39 +142,5 @@ export function DetailB({ state }: { state: DetailState }) {
         />
       </InsetGroup>
     </DetailFrame>
-  )
-}
-
-/* 403·S1 The stock Drawer the Stock row opens while stock is on: the count as its description,
-   the places for Record a refill (#48) and Change the count (#49), and Stop tracking, which opens
-   its existing confirm (392·S2). */
-export function StockDrawerScreen() {
-  const { medicine } = stateData('slots')
-  return (
-    <>
-      <DetailB state="slots" />
-      <Drawer open>
-        <DrawerContent>
-          <DrawerHeader>
-            <div className="flex items-start justify-between gap-3">
-              <DrawerTitle tabIndex={-1} className="outline-none">
-                {`${medicine.label} stock`}
-              </DrawerTitle>
-              <DrawerClose render={<Button size="icon" variant="ghost" />} aria-label="Close">
-                <X aria-hidden="true" />
-              </DrawerClose>
-            </div>
-            <DrawerDescription>{stockValue(medicine)}</DrawerDescription>
-          </DrawerHeader>
-          <div className="flex flex-col gap-3 pb-2">
-            <SlotNote issue={48} label="Record a refill" />
-            <SlotNote issue={49} label="Change the count" />
-            <InsetGroup>
-              <InsetRow icon={PackageX} label="Stop tracking" />
-            </InsetGroup>
-          </div>
-        </DrawerContent>
-      </Drawer>
-    </>
   )
 }

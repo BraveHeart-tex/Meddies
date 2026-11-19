@@ -15,7 +15,7 @@ import {
   medicationsListHref,
   MedicinesRefreshAlert,
 } from './medication-sub-screen'
-import { MedicineStock } from './medicine-stock'
+import { MedicineStockCard } from './medicine-stock-card'
 import { MedicationsLink } from './medications-nav'
 import { MedicationsListSkeleton } from './medications-skeleton'
 import type { MedicinesRead } from './queries'
@@ -126,7 +126,7 @@ export function ArchivedMedicationDetail({
           Restore medication
         </Button>
       )}
-      <MedicineStock medicine={medicine} readOnly />
+      <MedicineStockCard medicine={medicine} />
       <ItemGroup>
         <Item
           variant="card"
