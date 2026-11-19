@@ -981,3 +981,45 @@ test(
     await page.screenshot({ path: resolve(out!, 'restore-result-402.png'), fullPage: true })
   },
 )
+
+// Opt-in #402 visual evidence, never a CI journey.
+test('capture Add medicine row focus', { tag: '@visual' }, async ({ page }) => {
+  // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
+  test.skip(
+    process.env.MEDDIES_FOCUS_CAPTURE !== '1' || !out,
+    'Set MEDDIES_FOCUS_CAPTURE and MEDDIES_VISUAL_OUT',
+  )
+  test.setTimeout(120_000)
+  await mkdir(resolve(out!), { recursive: true })
+  await page.goto('/medications?add')
+  const name = page.getByRole('textbox', { name: 'Name', exact: true })
+  const strength = page.getByRole('textbox', { name: 'Strength', exact: true })
+  const stock = page.getByRole('textbox', { name: 'Stock', exact: true })
+  await expect(name).toBeVisible()
+  await expect(loadingStatus(page)).toHaveCount(0)
+  await page.addStyleTag({ content: 'nextjs-portal { display: none; }' })
+  await page.getByRole('combobox', { name: 'Type', exact: true }).click()
+  await page.getByRole('option', { name: 'Tablet', exact: true }).click()
+  const captureRows = async (state: string) => {
+    for (const [label, control] of [
+      ['name', name],
+      ['strength', strength],
+      ['stock', stock],
+    ] as const) {
+      await control.press('Tab')
+      await page.keyboard.press('Shift+Tab')
+      await expect(control).toBeFocused()
+      await captureSettled(page, { path: resolve(out!, `add-focus-${state}-${label}-402.png`) })
+      expect(await scrollsHorizontally(page)).toBe(false)
+    }
+  }
+  await captureRows('help')
+  await strength.fill('x'.repeat(121))
+  await stock.fill('-1')
+  await page.getByRole('button', { name: 'Save medication', exact: true }).click()
+  await expect(name).toBeFocused()
+  await expect(page.getByText('Enter the medication name.', { exact: true })).toBeVisible()
+  await expect(page.getByText('Use 120 characters or fewer.', { exact: true })).toBeVisible()
+  await expect(stock).toHaveAttribute('aria-invalid', 'true')
+  await captureRows('error')
+})

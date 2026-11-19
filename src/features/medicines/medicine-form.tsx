@@ -236,7 +236,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
                 // A plain count with the dose unit after it; empty keeps stock off (#394).
                 <Field
                   data-invalid={fieldState.invalid}
-                  className="grid min-h-14 grid-cols-[5.75rem_minmax(0,1fr)_auto] items-center gap-0 px-4 not-first:border-t has-[input:focus-visible]:outline-2 has-[input:focus-visible]:-outline-offset-2 has-[input:focus-visible]:outline-ring"
+                  className="grid min-h-14 grid-cols-[5.75rem_minmax(0,1fr)_auto] items-center gap-0 rounded-b-2xl px-4 not-first:border-t has-[input:focus-visible]:outline-2 has-[input:focus-visible]:-outline-offset-2 has-[input:focus-visible]:outline-ring"
                 >
                   <FieldLabel htmlFor="medicine-stock">Stock</FieldLabel>
                   <Input
