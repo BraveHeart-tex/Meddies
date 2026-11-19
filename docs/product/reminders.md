@@ -209,13 +209,17 @@ eligibility; all doses remain unconfirmed unless specified.
 
 ## #36 - Approved snooze rules (November 17, 2026)
 
-- A **Snooze** is requested from the dose drawer of a Not logged dose; reminders carry no
-  snooze action.
+- A **Snooze** is requested from the dose drawer of an Occurrence without a Dose outcome,
+  from its due instant through due +80 minutes inclusive (Due now and Not logged).
+  Reminders carry no snooze action.
 - The server accepts it under [#9](#approved-decisions) and targets it 40 minutes after
   accepting, in whole seconds. It is rejected while the account has no Device registration.
 - Snooze is server-confirmed only ([saves](../client-state.md#saves)): nothing shows it as
   applied before the server accepts it, and offline it is unavailable.
 - Today and History dose reads carry a pending snooze's target, so every device shows it until
   it is submitted or dropped.
+- A Snooze accepted already dropped because its target is inside Quiet hours also carries
+  that no-reminder result and target in Today and History reads, so reopening shows
+  "No reminder" instead of Snooze. A later scheduler drop is not this result.
 - A snooze reminder covers only its Occurrence, with its Reminder link, never grouped with other
   doses, and uses the Follow-up reminder wording ([copy](../copy.md#reminder-wording)).
