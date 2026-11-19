@@ -1,54 +1,59 @@
 'use client'
 
-import { useEffect, useRef, useState, type Ref } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { InfoIcon } from 'lucide-react'
+import { CalendarCog, CircleStop, InfoIcon, Pause } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
 import type { Medicine } from '@/features/medicines/contract'
+import { MedicationInsetRow } from '@/features/medicines/medication-inset-list'
 import { MedicationsLink } from '@/features/medicines/medications-nav'
 import { medicationResumeHref, medicationSetupHref } from '@/features/medicines/routes'
 import { saveMessages } from '@/lib/save-messages'
-import type { SaveProblem } from '@/lib/session-saves'
 import { useKnownOffline } from '@/lib/use-known-offline'
-import { cn } from '@/lib/utils'
 import type { DailySchedule } from './contract'
 import { confirmPaused, confirmResumed, confirmStopped } from './medication-confirmations'
 import { scheduleKeys } from './queries'
 import { ScheduleConfirmDrawer, type ScheduleConfirmKind } from './schedule-confirm-drawer'
-import { useScheduleCommand, type ScheduleCommandKind } from './use-schedule-command'
+import { useScheduleCommand } from './use-schedule-command'
 
 /**
- * A paused card's actions (233·A4, A5): Resume (primary) beside a ghost Stop schedule. A Clock
- * schedule resumes in one tap; while it saves Resume reads "Resuming…" and Stop schedule holds, an
- * unknown result offers Retry of the same resume and a stale one the 215·S2 recovery (233·S3, S4).
- * An Interval schedule's Resume opens the Resume schedule screen. Known offline: Connect to save.
+ * A paused schedule's Resume on the summary (238·A3): berry, full width under the card. A Clock
+ * schedule resumes in one tap; while it saves Resume reads "Resuming…", an unknown result offers
+ * Retry of the same resume and a stale one the 215·S2 recovery (233·S3, S4). An Interval
+ * schedule's Resume opens the Resume schedule screen. Known offline: Connect to save. A confirmed
+ * resume shows its Toast (#377) and hands focus to Log a dose, which takes Resume's place. Stays
+ * mounted once resumed so that focus can follow.
  */
-export function PausedScheduleActions({
-  interval,
-  resumeHref,
-  routerNavigation,
-  pending,
-  problem,
-  offline,
-  onResume,
-  onStop,
-  onReview,
-  stopRef,
+export function ResumeScheduleAction({
+  medicine,
+  schedule,
+  paused,
 }: {
-  interval: boolean
-  resumeHref: string
-  /** For the lab, whose frames are routes. */
-  routerNavigation?: boolean
-  pending: boolean
-  problem?: SaveProblem
-  offline: boolean
-  onResume: () => void
-  onStop: () => void
-  onReview: () => void
-  stopRef?: Ref<HTMLButtonElement>
+  medicine: Medicine
+  schedule: DailySchedule
+  paused: boolean
 }) {
-  const stale = problem === 'conflict' || problem === 'rejected'
+  const client = useQueryClient()
+  const offline = useKnownOffline()
+  const [confirmed, setConfirmed] = useState(false)
+  const focused = useRef(false)
+  const resume = useScheduleCommand('resume', medicine, schedule, (saved) => {
+    setConfirmed(true)
+    confirmResumed(medicine.label, saved)
+  })
+  useEffect(() => {
+    if (!confirmed || paused || focused.current) return
+    focused.current = true
+    document.getElementById(`log-dose-${medicine.id}`)?.focus()
+  }, [confirmed, paused, medicine.id])
+  if (!paused) return null
+  const interval = schedule.intervalHours != null
+  // An Interval schedule's resume problems belong to its Resume schedule screen.
+  const problem = interval ? undefined : resume.problem
+  const pending = resume.pending
+  // The command reports a rejection as a conflict.
+  const stale = problem === 'conflict'
   const described = !pending && (offline || problem === 'unconfirmed')
   const label = pending
     ? 'Resuming…'
@@ -65,7 +70,15 @@ export function PausedScheduleActions({
             <AlertTitle>This schedule changed elsewhere.</AlertTitle>
             <AlertDescription>Your changes weren&apos;t saved.</AlertDescription>
           </Alert>
-          <Button type="button" size="lg" className="w-full whitespace-normal" onClick={onReview}>
+          <Button
+            type="button"
+            size="lg"
+            className="w-full whitespace-normal"
+            onClick={() => {
+              resume.clear()
+              void client.invalidateQueries({ queryKey: scheduleKeys.all })
+            }}
+          >
             Review current schedule
           </Button>
         </>
@@ -83,40 +96,30 @@ export function PausedScheduleActions({
           </Alert>
         )
       )}
-      <div className="grid grid-cols-2 gap-2.5 *:px-3">
-        {!stale &&
-          (interval && !pending && !offline ? (
-            <MedicationsLink
-              className={buttonVariants({ size: 'lg' })}
-              href={resumeHref}
-              routerNavigation={routerNavigation}
-            >
-              Resume
-            </MedicationsLink>
-          ) : (
-            <Button
-              type="button"
-              size="lg"
-              className="whitespace-normal"
-              disabled={pending || offline}
-              aria-describedby={described ? RESUME_PROBLEM : undefined}
-              onClick={onResume}
-            >
-              {label}
-            </Button>
-          ))}
-        <Button
-          ref={stopRef}
-          type="button"
-          variant="ghost"
-          size="lg"
-          className={cn(stale && 'col-span-full')}
-          disabled={pending}
-          onClick={onStop}
-        >
-          Stop schedule
-        </Button>
-      </div>
+      {!stale &&
+        (interval && !pending && !offline ? (
+          <MedicationsLink
+            className={buttonVariants({ size: 'lg', className: 'w-full' })}
+            href={medicationResumeHref(medicine.id)}
+          >
+            Resume
+          </MedicationsLink>
+        ) : (
+          <Button
+            type="button"
+            size="lg"
+            className="w-full whitespace-normal"
+            disabled={pending || offline}
+            aria-describedby={described ? RESUME_PROBLEM : undefined}
+            onClick={() => {
+              focused.current = false
+              setConfirmed(false)
+              void resume.save()
+            }}
+          >
+            {label}
+          </Button>
+        ))}
     </div>
   )
 }
@@ -124,12 +127,13 @@ export function PausedScheduleActions({
 const RESUME_PROBLEM = 'resume-schedule-problem'
 
 /**
- * The actions under the schedule card. A running or not-yet-started schedule has an outline Change
- * schedule full width, then ghost Pause beside ghost Stop schedule (233·A1, A2); a paused one
- * Resume beside Stop schedule (233·A4, A5); an Ended one only Change schedule (227·A16, A17). Only
- * the Stop confirm is destructive (#286). A confirmed save shows its Toast (#377).
+ * Manage's Schedule rows (403·B14): Change schedule, then Pause while running or starting later,
+ * then Stop schedule in destructive text until it ends; paused leaves Stop schedule alone, Ended
+ * Change schedule alone. Pause and Stop open their confirms, and only Stop's is destructive
+ * (#286). A confirmed save shows its Toast (#377); a pause then focuses Stop schedule, a stop
+ * Change schedule.
  */
-export function ScheduleActions({
+export function ManageScheduleRows({
   medicine,
   schedule,
   ended,
@@ -142,16 +146,14 @@ export function ScheduleActions({
 }) {
   const client = useQueryClient()
   const [open, setOpen] = useState<ScheduleConfirmKind | null>(null)
-  // The opening button goes once a save confirms: a stop leaves Change schedule, a pause Stop
-  // schedule, a resume Change schedule. Either may mount only with the confirmed schedule,
-  // after the drawer closes.
-  const [confirmed, setConfirmed] = useState<ScheduleCommandKind | null>(null)
-  const changeLink = useRef<HTMLAnchorElement>(null)
-  const stopButton = useRef<HTMLButtonElement>(null)
-  const focused = useRef<ScheduleCommandKind | null>(null)
+  // The opening row goes once a save confirms; its target mounts only with the confirmed
+  // schedule, after the drawer closes.
+  const [confirmed, setConfirmed] = useState<ScheduleConfirmKind | null>(null)
+  const changeLink = useRef<HTMLAnchorElement & HTMLButtonElement>(null)
+  const stopButton = useRef<HTMLAnchorElement & HTMLButtonElement>(null)
+  const focused = useRef<ScheduleConfirmKind | null>(null)
   const offline = useKnownOffline()
   useEffect(() => {
-    // Paused and running actions are separate trees, so wait for the confirmed one to mount.
     const ready = confirmed === 'pause' ? paused : !paused
     const target = confirmed === 'pause' ? stopButton.current : changeLink.current
     if (!confirmed || !ready || focused.current === confirmed || !target) return
@@ -159,7 +161,7 @@ export function ScheduleActions({
     target.focus()
   }, [confirmed, ended, paused])
   const confirm =
-    (kind: ScheduleCommandKind, onSaved: (label: string, saved: DailySchedule) => void) =>
+    (kind: ScheduleConfirmKind, onSaved: (label: string, saved: DailySchedule) => void) =>
     (saved: DailySchedule) => {
       setConfirmed(kind)
       setOpen(null)
@@ -169,64 +171,31 @@ export function ScheduleActions({
     stop: useScheduleCommand('stop', medicine, schedule, confirm('stop', confirmStopped)),
     pause: useScheduleCommand('pause', medicine, schedule, confirm('pause', confirmPaused)),
   }
-  const resume = useScheduleCommand('resume', medicine, schedule, confirm('resume', confirmResumed))
   const begin = (kind: ScheduleConfirmKind) => {
     focused.current = null
     setConfirmed(null)
     setOpen(kind)
   }
-  const review = (clear: () => void) => () => {
-    clear()
-    setOpen(null)
-    void client.invalidateQueries({ queryKey: scheduleKeys.all })
-  }
   const running = !ended && !paused
-  const interval = schedule.intervalHours != null
   return (
     <>
-      {paused ? (
-        <PausedScheduleActions
-          interval={interval}
-          resumeHref={medicationResumeHref(medicine.id)}
-          pending={resume.pending}
-          // An Interval schedule's resume problems belong to its Resume schedule screen.
-          problem={interval ? undefined : resume.problem}
-          offline={offline}
-          onResume={() => {
-            focused.current = null
-            setConfirmed(null)
-            void resume.save()
-          }}
-          onStop={() => begin('stop')}
-          onReview={review(resume.clear)}
-          stopRef={stopButton}
+      {!paused && (
+        <MedicationInsetRow
+          ref={changeLink}
+          icon={CalendarCog}
+          label="Change schedule"
+          href={medicationSetupHref(medicine.id)}
         />
-      ) : (
-        <div className={cn('grid gap-2.5 *:px-3', running && 'grid-cols-2')}>
-          <MedicationsLink
-            ref={changeLink}
-            className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'col-span-full')}
-            href={medicationSetupHref(medicine.id)}
-          >
-            Change schedule
-          </MedicationsLink>
-          {running && (
-            <Button type="button" variant="ghost" size="lg" onClick={() => begin('pause')}>
-              Pause
-            </Button>
-          )}
-          {running && (
-            <Button
-              ref={stopButton}
-              type="button"
-              variant="ghost"
-              size="lg"
-              onClick={() => begin('stop')}
-            >
-              Stop schedule
-            </Button>
-          )}
-        </div>
+      )}
+      {running && <MedicationInsetRow icon={Pause} label="Pause" onClick={() => begin('pause')} />}
+      {!ended && (
+        <MedicationInsetRow
+          ref={stopButton}
+          icon={CircleStop}
+          label="Stop schedule"
+          tone="destructive"
+          onClick={() => begin('stop')}
+        />
       )}
       {(['stop', 'pause'] as const).map((kind) => (
         <ScheduleConfirmDrawer
@@ -239,7 +208,11 @@ export function ScheduleActions({
           finalFocus={!confirmed}
           onConfirm={() => void saves[kind].save()}
           onKeep={() => setOpen(null)}
-          onReview={review(saves[kind].clear)}
+          onReview={() => {
+            saves[kind].clear()
+            setOpen(null)
+            void client.invalidateQueries({ queryKey: scheduleKeys.all })
+          }}
         />
       ))}
     </>

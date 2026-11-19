@@ -156,6 +156,6 @@ test.each([
   )
   expect(await screen.findByRole('heading', { name: med.label, level: 1 })).toBeVisible()
   expect(screen.getByText(line)).toBeVisible()
-  const region = screen.getByRole('region', { name: 'Schedule' })
+  const region = screen.getByRole('group', { name: 'Schedule' })
   expect(within(region).getByText(amount)).toBeVisible()
 })

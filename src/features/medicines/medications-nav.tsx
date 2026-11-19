@@ -9,7 +9,7 @@ import {
 } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { medicationsHref, parseMedicationsView } from './routes'
+import { medicationManageHref, medicationsHref, parseMedicationsView } from './routes'
 
 const viewChanged = 'medications:viewchange'
 function subscribeView(listener: () => void) {
@@ -61,31 +61,49 @@ export function showMedicationsView(
     before.medicineId === after.medicineId
   ) {
     scrollRequested = !keepScroll
-    window.history.replaceState({ [fromKey]: window.history.state?.[fromKey] }, '', href)
+    const { [fromKey]: entryFrom, [fromBeforeKey]: entryFromBefore } = window.history.state ?? {}
+    window.history.replaceState(
+      { [fromKey]: entryFrom, [fromBeforeKey]: entryFromBefore },
+      '',
+      href,
+    )
     window.dispatchEvent(new Event(viewChanged))
     return
   }
   // The Add drawer opens and closes over the list without moving it.
   scrollRequested = !keepScroll
-  // A pushed entry remembers the view it came from; history.state survives reload, and Next.js
-  // copies its own state in beside it.
-  if (method === 'push') window.history.pushState({ [fromKey]: from }, '', href)
+  // A pushed entry remembers the view it came from, and where that one came from; history.state
+  // survives reload, and Next.js copies its own state in beside it.
+  if (method === 'push')
+    window.history.pushState(
+      { [fromKey]: from, [fromBeforeKey]: window.history.state?.[fromKey] },
+      '',
+      href,
+    )
   else window.history.replaceState(null, '', href)
   window.dispatchEvent(new Event(viewChanged))
 }
 
 const fromKey = 'medicationsFrom'
+const fromBeforeKey = 'medicationsFromBefore'
 
 /**
  * Returns from a schedule form after saving or an explicit unsaved exit (DESIGN.md "Components").
- * A form pushed from its medication's page goes back to that entry, so one Back then leaves it;
- * any other form (a direct link, a router navigation) replaces its own URL with the page.
+ * A form pushed from its medication's page, or from the Manage view pushed from that page, goes
+ * back to the page's entry, so one Back then leaves it; any other form (a direct link, a router
+ * navigation) replaces its own URL with the page.
  */
 export function returnToMedicationPage(medicineId: string) {
   const href = medicationsHref({ mode: 'detail', medicineId })
   const state: unknown = window.history.state
-  const from = state && typeof state === 'object' && fromKey in state ? state[fromKey] : null
+  const read = (key: string) =>
+    state && typeof state === 'object' && key in state
+      ? (state as Record<string, unknown>)[key]
+      : null
+  const from = read(fromKey)
   if (from === href) window.history.back()
+  else if (from === medicationManageHref(medicineId) && read(fromBeforeKey) === href)
+    window.history.go(-2)
   else showMedicationsView(href, 'replace')
 }
 

@@ -101,11 +101,16 @@ function api(medicines: Medicine[], initial: DailySchedule[], respond?: Respond)
   return { stops }
 }
 
-function renderPanel(mode: 'list' | 'detail' | 'setup' | 'today') {
+function renderPanel(mode: 'list' | 'detail' | 'setup' | 'today', manage = false) {
   return render(
     <QueryClientProvider client={client}>
       <Toaster>
-        <SchedulePanel mode={mode} initialMedicineId={magnesium.id} initialNow={initialNow} />
+        <SchedulePanel
+          mode={mode}
+          initialMedicineId={magnesium.id}
+          initialNow={initialNow}
+          manage={manage}
+        />
       </Toaster>
     </QueryClientProvider>,
   )
@@ -177,10 +182,11 @@ describe('Stop schedule', () => {
       expect(screen.queryByRole('dialog', { name: 'Stop this schedule?' })).not.toBeInTheDocument(),
     )
 
+  // Stop schedule lives on Manage (403·B14).
   async function openDetail(schedules: DailySchedule[], respond?: Respond) {
-    window.history.replaceState(null, '', `/medications?medicine=${magnesium.id}`)
+    window.history.replaceState(null, '', `/medications?medicine=${magnesium.id}&manage`)
     const { stops } = api([magnesium], schedules, respond)
-    const view = renderPanel('detail')
+    const view = renderPanel('detail', true)
     await screen.findByRole('link', { name: 'Change schedule' })
     return { ...view, stops, user: userEvent.setup() }
   }
@@ -188,7 +194,7 @@ describe('Stop schedule', () => {
   test('227·A13, A14 sits beside Change schedule on a running or not-yet-started schedule', async () => {
     await openDetail([version(1, magnesium.id, { startDate: '2026-11-12' })])
     const stop = button('Stop schedule')
-    expect(stop.parentElement).toContainElement(
+    expect(stop.closest('[role="list"]')).toContainElement(
       screen.getByRole('link', { name: 'Change schedule' }),
     )
   })
@@ -215,7 +221,7 @@ describe('Stop schedule', () => {
     expect(stops).toEqual([])
   })
 
-  test('227·S1, A16 holds while stopping, then reads Ended today with only Change schedule', async () => {
+  test('227·S1, A16 holds while stopping, then leaves only Change schedule', async () => {
     let release = () => {}
     const held = new Promise<void>((resolve) => (release = resolve))
     const { user, stops } = await openDetail([running], async () => {
@@ -236,10 +242,8 @@ describe('Stop schedule', () => {
       'none',
       'No more doses after 10:00 today.',
     )
-    expect(screen.getByText('Ended Mon 9 Nov')).toBeVisible()
-    expect(screen.queryByText(/^Last day/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Stop schedule' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Change schedule' })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole('link', { name: 'Change schedule' })).toHaveFocus())
     expect(stops).toEqual([{ id: expect.any(String), basedOnId: running.id }])
   })
 
@@ -276,7 +280,7 @@ describe('Stop schedule', () => {
     expect(
       screen.queryByRole('dialog', { name: 'Schedule stopped for Magnesium.' }),
     ).not.toBeInTheDocument()
-    expect(screen.getByText('Last day Tue 10 Nov')).toBeVisible()
+    expect(button('Stop schedule')).toBeVisible()
   })
 
   test('227·A20 a stopped schedule sits in the Ended group on its stop day', async () => {

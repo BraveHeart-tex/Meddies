@@ -19,11 +19,18 @@ const labels = { save: 'Save as taken', retry: 'Try saving as taken again' }
 
 /**
  * Log a dose on Medication detail (241·A1 to A4): a button under the schedule for any medication,
- * opening the dose drawer without a scheduled time. It is the page's primary when the medication
- * has no schedule (#275), else outline. Unsaved details reopen the drawer after navigation;
+ * opening the dose drawer without a scheduled time. Its caller picks the weight (238·A3): the
+ * page's primary when the medication has no schedule (#275), outline while Resume leads, else
+ * soft. Unsaved details reopen the drawer after navigation;
  * dismissing it is its Clear form.
  */
-export function LogDose({ medicine, primary = false }: { medicine: Medicine; primary?: boolean }) {
+export function LogDose({
+  medicine,
+  variant = 'outline',
+}: {
+  medicine: Medicine
+  variant?: 'default' | 'soft' | 'outline'
+}) {
   const client = useQueryClient()
   const clock = useSchedulingClock()
   const draftKey = logDraftKey(medicine.id)
@@ -45,7 +52,7 @@ export function LogDose({ medicine, primary = false }: { medicine: Medicine; pri
         ref={trigger}
         id={triggerId}
         type="button"
-        variant={primary ? 'default' : 'outline'}
+        variant={variant}
         size="lg"
         className="w-full"
         aria-haspopup="dialog"

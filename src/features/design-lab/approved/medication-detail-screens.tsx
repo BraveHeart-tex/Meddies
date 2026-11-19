@@ -1,19 +1,12 @@
 'use client'
 
 import {
-  Archive,
-  CalendarCog,
   CalendarDays,
-  CircleStop,
   Info,
   Package,
   PackageX,
-  Pause,
-  Pencil,
   ScrollText,
   SlidersHorizontal,
-  Trash2,
-  Weight,
   X,
 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -32,7 +25,11 @@ import { LoadingSection, Skeleton } from '@/components/ui/skeleton'
 import type { Medicine } from '@/features/medicines/contract'
 import { MedicationBackRow, ScheduleUnchecked } from '@/features/medicines/medication-sub-screen'
 import { MedicationsLink } from '@/features/medicines/medications-nav'
-import { medicationRecordHref, medicationSetupHref } from '@/features/medicines/routes'
+import {
+  medicationManageHref,
+  medicationRecordHref,
+  medicationSetupHref,
+} from '@/features/medicines/routes'
 import { detailCopy, stateData, type DetailState, type StateData } from './medication-detail-model'
 import {
   DetailFrame,
@@ -49,11 +46,6 @@ import {
   scheduleView,
   stockValue,
 } from './medication-detail-parts'
-
-const canDelete = (medicine: Medicine) =>
-  medicine.everHadSchedule === false && medicine.everHadDose === false
-
-const manageHref = (medicine: Medicine) => `${medicationRecordHref(medicine.id)}&manage`
 
 /** Log a dose: berry with no schedule, outline while Resume leads, soft otherwise (Ended too). */
 function leadVariant(data: StateData) {
@@ -188,69 +180,9 @@ export function DetailB({ state }: { state: DetailState }) {
           icon={SlidersHorizontal}
           label={detailCopy.manage}
           description={detailCopy.manageHint}
-          href={manageHref(medicine)}
+          href={medicationManageHref(medicine.id)}
         />
       </InsetGroup>
-    </DetailFrame>
-  )
-}
-
-/**
- * B's Manage sub-screen: Back names the medication; Schedule and Details groups, then Archive
- * and, when allowed, Delete at its end. Pause and Stop open their existing confirms here.
- */
-export function ManageB({ state }: { state: DetailState }) {
-  const data = stateData(state)
-  const { medicine, schedule } = data
-  const view = schedule ? scheduleView(schedule) : null
-  return (
-    <DetailFrame data={data}>
-      <DetailTop medicine={medicine} back={medicine.label} eyebrow="Manage" />
-      <InsetGroup title="Schedule">
-        {!view?.paused && (
-          <InsetRow
-            icon={CalendarCog}
-            label={schedule ? 'Change schedule' : 'Set schedule'}
-            href={medicationSetupHref(medicine.id)}
-          />
-        )}
-        {view?.running && <InsetRow icon={Pause} label="Pause" />}
-        {view && !view.ended && (
-          <InsetRow icon={CircleStop} label="Stop schedule" tone="destructive" />
-        )}
-        {state === 'slots' && <SlotNote inset issue={38} label="Food reminder" />}
-      </InsetGroup>
-      <InsetGroup title="Details">
-        <InsetRow
-          icon={Pencil}
-          label="Edit details"
-          description="Updates doses logged at the current strength."
-          href={medicationRecordHref(medicine.id, 'fix', 'lab')}
-        />
-        <InsetRow
-          icon={Weight}
-          label="Change strength"
-          description="Earlier doses keep their saved strength."
-          href={medicationRecordHref(medicine.id, 'strength')}
-        />
-        <InsetRow
-          icon={ScrollText}
-          label="Strength history"
-          href={medicationRecordHref(medicine.id, 'history')}
-        />
-      </InsetGroup>
-      <div className="flex flex-col gap-2.5">
-        <Button variant="ghost" size="lg">
-          <Archive data-icon="inline-start" />
-          Archive medication
-        </Button>
-        {canDelete(medicine) && (
-          <Button variant="destructive" size="lg">
-            <Trash2 data-icon="inline-start" />
-            Delete medication
-          </Button>
-        )}
-      </div>
     </DetailFrame>
   )
 }

@@ -103,11 +103,14 @@ test('detail correction retains its draft and pending save across navigation, th
   await expect.poll(() => hydrated(page)).toBe(true)
   await page.getByRole('link', { name: 'View details for Cached Medicine' }).click()
   const detail = page.url()
+  // Record edits live on Manage (403·B14).
+  await page.getByRole('link', { name: 'Manage medication' }).click()
+  const manage = page.url()
   await page.getByRole('link', { name: 'Edit details', exact: true }).click()
   const edit = page.url()
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Fixed Medicine')
   await page.goBack()
-  await expect(page).toHaveURL(detail)
+  await expect(page).toHaveURL(manage)
   await page.goForward()
   await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue(
     'Fixed Medicine',
@@ -129,7 +132,7 @@ test('detail correction retains its draft and pending save across navigation, th
   await page.getByRole('button', { name: 'Save details' }).click()
   await expect(page.getByRole('button', { name: 'Saving...' })).toBeDisabled()
   await page.goBack()
-  await expect(page).toHaveURL(detail)
+  await expect(page).toHaveURL(manage)
   await page.goForward()
   await expect(page).toHaveURL(edit)
   await expect(page.getByRole('button', { name: 'Saving...' })).toBeDisabled()
@@ -144,6 +147,7 @@ test('detail correction retains its draft and pending save across navigation, th
   await page.getByRole('link', { name: 'View details for Fixed Medicine' }).click()
   await expect(page).toHaveURL(detail)
   await expect(page.getByRole('heading', { name: 'Fixed Medicine', exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Manage medication' }).click()
   await page.getByRole('link', { name: 'Change strength', exact: true }).click()
   await page.getByRole('textbox', { name: 'New strength' }).fill('600 mg')
   await pickDate(page, 'Started on', '2035-06-15')
@@ -152,6 +156,7 @@ test('detail correction retains its draft and pending save across navigation, th
   await expect(page).toHaveURL(detail)
   await expect(page.getByText('Strength change saved', { exact: true })).toBeVisible()
   await expect(page.getByText('600 mg · tablet', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Manage medication' }).click()
   await page.getByRole('link', { name: 'Strength history', exact: true }).click()
   await expect(page.getByText('Current', { exact: true })).toBeVisible()
   await page.getByRole('link', { name: 'Edit details for this period' }).last().click()
@@ -171,6 +176,7 @@ test('detail correction retains its draft and pending save across navigation, th
     const detail = page.url()
     const deletion = { method: 'POST', path: '/medicines', operation: 'delete' }
     app.worker.hold(deletion)
+    await page.getByRole('link', { name: 'Manage medication' }).click()
     await page.getByRole('button', { name: 'Delete medication' }).click()
     await page.getByRole('button', { name: 'Delete medication' }).click()
     await expect(page.getByRole('button', { name: 'Deleting...' })).toBeDisabled()
@@ -224,6 +230,7 @@ test('detail correction retains its draft and pending save across navigation, th
     await page.getByRole('link', { name: 'View details for Magnesium' }).click()
     const archive = { method: 'POST', path: '/medicines', operation: 'archive' }
     app.worker.hold(archive)
+    await page.getByRole('link', { name: 'Manage medication' }).click()
     await page.getByRole('button', { name: 'Archive medication' }).click()
     await page
       .getByRole('dialog', { name: 'Archive Magnesium?' })

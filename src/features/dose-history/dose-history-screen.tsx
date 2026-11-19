@@ -138,7 +138,9 @@ function DoseHistoryBody({ medicine, today }: { medicine: Medicine; today: strin
           icon={CalendarDays}
           title="No doses taken yet"
           body="Doses you log as taken show here, with how much you took."
-          action={isArchived(medicine) ? undefined : <LogDose medicine={medicine} primary />}
+          action={
+            isArchived(medicine) ? undefined : <LogDose medicine={medicine} variant="default" />
+          }
         />
       </>
     )

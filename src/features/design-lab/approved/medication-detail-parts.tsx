@@ -1,25 +1,19 @@
 'use client'
 
-import { ChevronRight, Clock3, Plus, type LucideIcon } from 'lucide-react'
-import { useEffect, useRef, type ReactNode } from 'react'
+import { Clock3, Plus } from 'lucide-react'
+import { useEffect, useRef, type ComponentProps, type ReactNode } from 'react'
 import { AppShell } from '@/components/layout/app-shell'
 import { ScreenStack } from '@/components/layout/screen-stack'
-import { SettingsHeading } from '@/components/layout/settings-heading'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/card'
-import {
-  Item,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemMedia,
-  ItemTitle,
-} from '@/components/ui/item'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Medicine } from '@/features/medicines/contract'
+import {
+  MedicationInsetGroup,
+  MedicationInsetRow,
+} from '@/features/medicines/medication-inset-list'
 import { MedicationBackRow, MedicationIdentity } from '@/features/medicines/medication-sub-screen'
-import { MedicationsLink } from '@/features/medicines/medications-nav'
 import {
   PausedBadge,
   ScheduleDateLines,
@@ -108,85 +102,19 @@ export function IdentitySkeleton() {
   )
 }
 
-/** A Settings-style group: optional muted heading over one white card of divided rows. */
-export function InsetGroup({
-  title,
-  note,
-  children,
-}: {
-  title?: string
-  note?: string
-  children: ReactNode
-}) {
-  return (
-    <section className="flex flex-col gap-2">
-      {title && <SettingsHeading>{title}</SettingsHeading>}
-      <Card className="gap-0 py-0">
-        <ItemGroup className="gap-0">{children}</ItemGroup>
-      </Card>
-      {note && <p className="px-1 text-caption text-muted-foreground">{note}</p>}
-    </section>
-  )
-}
-
-const rowClass =
-  'min-h-14 gap-3 rounded-none border-0 px-3.5 py-2.5 text-left not-first:before:absolute not-first:before:top-0 not-first:before:right-0 not-first:before:left-15.5 not-first:before:h-px not-first:before:bg-border'
+/** Production's inset group (#405). */
+export const InsetGroup = MedicationInsetGroup
 
 /**
- * One inset-list row. `href` makes it a route link ending in a chevron; otherwise it is a button
- * that opens a Drawer, with no chevron. `value` sits at the end, Settings-style.
+ * Production's inset row (#405). `href` makes it a route link ending in a chevron; otherwise it
+ * is a button that opens a Drawer, or with `readOnly` a fact with no action.
  */
 export function InsetRow({
-  icon: Icon,
-  label,
-  description,
-  value,
-  href,
-  tone,
   readOnly = false,
-}: {
-  icon: LucideIcon
-  label: string
-  description?: ReactNode
-  value?: ReactNode
-  href?: string
-  tone?: 'destructive'
-  /** A fact row with no action, such as Archived stock. */
-  readOnly?: boolean
-}) {
-  const destructive = tone === 'destructive'
-  return (
-    <Item
-      role="listitem"
-      className={rowClass}
-      render={
-        href ? (
-          <MedicationsLink href={href} />
-        ) : readOnly ? undefined : (
-          <button type="button" onClick={noop} />
-        )
-      }
-    >
-      <ItemMedia
-        className={cn(
-          'size-9 rounded-sm bg-secondary text-secondary-foreground [&>svg]:size-4.5',
-          destructive && 'bg-destructive/10 text-destructive',
-        )}
-      >
-        <Icon aria-hidden="true" />
-      </ItemMedia>
-      <ItemContent className="min-w-0 flex-row flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <ItemTitle className={cn(destructive && 'text-destructive')}>{label}</ItemTitle>
-          {description && <ItemDescription>{description}</ItemDescription>}
-        </div>
-        {value && <div className="text-body-sm font-bold text-muted-foreground">{value}</div>}
-      </ItemContent>
-      {href && (
-        <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
-      )}
-    </Item>
-  )
+  href,
+  ...props
+}: Omit<ComponentProps<typeof MedicationInsetRow>, 'onClick' | 'ref'> & { readOnly?: boolean }) {
+  return <MedicationInsetRow {...props} href={href} onClick={href || readOnly ? undefined : noop} />
 }
 
 /** A future feature's place, drawn dashed with the issue that will fill it. */

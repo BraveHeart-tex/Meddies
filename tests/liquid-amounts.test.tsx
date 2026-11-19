@@ -118,7 +118,7 @@ test('Medication detail names the Type in lower case and lists ml amounts', asyn
   )
   expect(await screen.findByRole('heading', { name: 'Amoxicillin', level: 1 })).toBeVisible()
   expect(screen.getByText('250 mg/5 ml · liquid')).toBeVisible()
-  const rows = within(screen.getByRole('region', { name: 'Schedule' })).getAllByRole('listitem')
+  const rows = within(screen.getByRole('group', { name: 'Schedule' })).getAllByRole('listitem')
   expect(rows).toHaveLength(2)
   expect(within(rows[0]).getByText('5 ml')).toBeVisible()
   expect(within(rows[1]).getByText('2.5 ml')).toBeVisible()

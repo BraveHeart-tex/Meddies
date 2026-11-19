@@ -124,7 +124,7 @@ function api(initial: DailySchedule[], respond?: Respond, medicine: Medicine = m
   return { edits }
 }
 
-function panel(mode: 'setup' | 'detail', onSaved = vi.fn()) {
+function panel(mode: 'setup' | 'detail', onSaved = vi.fn(), manage = false) {
   return (
     <QueryClientProvider client={client}>
       <Toaster>
@@ -133,6 +133,7 @@ function panel(mode: 'setup' | 'detail', onSaved = vi.fn()) {
           initialMedicineId={magnesium.id}
           initialNow={initialNow}
           onScheduleSaved={onSaved}
+          manage={manage}
         />
       </Toaster>
     </QueryClientProvider>
@@ -203,11 +204,12 @@ describe('Medication detail', () => {
     render(panel('detail'))
   }
 
-  test('215·A1 offers Change schedule under the schedule card', async () => {
-    renderDetail([clockVersion])
+  test('215·A1 offers Change schedule on Manage (403·B14)', async () => {
+    window.history.replaceState(null, '', `/medications${detailSearch}&manage`)
+    api([clockVersion])
+    render(panel('detail', vi.fn(), true))
     const change = await screen.findByRole('link', { name: 'Change schedule' })
     expect(change).toHaveAttribute('href', `/medications${setupSearch}#schedule-heading`)
-    expect(screen.getByText('Started Mon 2 Nov')).toBeVisible()
     expect(screen.getByRole('link', { name: 'Edit details' })).toBeVisible()
     expect(screen.getByRole('link', { name: /^Change strength/ })).toBeVisible()
     expect(screen.getByRole('link', { name: /^Strength history/ })).toBeVisible()
@@ -659,7 +661,6 @@ describe('Medication detail with a Last day', () => {
     renderDetail([{ ...clockVersion, endDate: '2026-11-10' }])
     expect(await screen.findByText('Started Mon 2 Nov')).toBeVisible()
     expect(screen.getByText('Last day Tue 10 Nov')).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Change schedule' })).toBeVisible()
   })
 
   test('227·A14 an Interval schedule lists only the doses up to its Last day', async () => {
@@ -670,13 +671,12 @@ describe('Medication detail with a Last day', () => {
     expect(screen.getByText('Last day Mon 9 Nov')).toBeVisible()
   })
 
-  test('227·A17 an Ended schedule keeps its times with one Ended line and Change schedule', async () => {
+  test('227·A17 an Ended schedule keeps its times with one Ended line', async () => {
     renderDetail([{ ...clockVersion, endDate: '2026-11-03' }])
     expect(await screen.findByText('Ended Tue 3 Nov')).toBeVisible()
     expect(screen.getByText('08:00')).toBeVisible()
     expect(screen.queryByText(/^Started/)).not.toBeInTheDocument()
     expect(screen.queryByText(/^Last day/)).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Change schedule' })).toBeVisible()
   })
 
   test('227·A17 an Ended Interval schedule lists no next doses', async () => {

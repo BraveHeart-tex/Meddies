@@ -80,21 +80,22 @@ what ships. Each design-critical screen has exactly one built frame, titled by t
 (`designCriticalScreens` in the registry `frames.tsx`). The Scanner joins the list once it has a
 route.
 
-| Screen            | Frame    | Route                        |
-| ----------------- | -------- | ---------------------------- |
-| Today             | `238·A1` | `/`                          |
-| Medications       | `238·A2` | `/medications`               |
-| Medication detail | `238·A3` | `/medications?medicine=<id>` |
-| History           | `238·A4` | `/history`                   |
-| Settings          | `238·A5` | `/settings`                  |
-| Cold launch       | `109·L1` | `/`                          |
+| Screen            | Frame     | Route                               |
+| ----------------- | --------- | ----------------------------------- |
+| Today             | `238·A1`  | `/`                                 |
+| Medications       | `238·A2`  | `/medications`                      |
+| Medication detail | `238·A3`  | `/medications?medicine=<id>`        |
+| Manage            | `403·B14` | `/medications?medicine=<id>&manage` |
+| History           | `238·A4`  | `/history`                          |
+| Settings          | `238·A5`  | `/settings`                         |
+| Cold launch       | `109·L1`  | `/`                                 |
 
 - A built frame composes what its page renders, with the page's server reads replaced by
   fixtures seeded into `FixtureQuery` (`fixture-query.tsx`). Seeded data never goes stale and
   nothing reads the network. The shared data is `routine` in `lab-fixtures.ts`.
 - When a page can't render from seeded data alone, the frame renders the production child its
-  view selects: Medication detail renders `MedicinePanel`, because the lab URL carries no
-  Medications view. Styled markup a frame needs moves out of the page into a production
+  view selects: Medication detail and Manage render `MedicinePanel`, because the lab URL carries
+  no Medications view. Styled markup a frame needs moves out of the page into a production
   component, such as `ScreenStack` and `SettingsScreen`. Production code takes props for its own
   callers only.
 - A design's build ticket moves its frames for design-critical screens to `built/` and deletes

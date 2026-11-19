@@ -4,23 +4,18 @@
   - heading "Amoxicillin" [level=1]
   - paragraph
     - text: 250 mg/5 ml · liquid
-  - region "Schedule"
-    - heading "Schedule" [level=2]
-    - group "Schedule"
-      - text: Schedule
-      - text: Every day
-      - list
-        - listitem
-          - text: 08:00
-          - text: 5 ml
-        - listitem
-          - text: 20:00
-          - text: 2.5 ml
-      - paragraph
-        - text: Started Mon 2 Nov
-    - link "Change schedule"
-    - button "Pause"
-    - button "Stop schedule"
+  - group "Schedule"
+    - text: Schedule
+    - text: Every day
+    - list
+      - listitem
+        - text: 08:00
+        - text: 5 ml
+      - listitem
+        - text: 20:00
+        - text: 2.5 ml
+    - paragraph
+      - text: Started Mon 2 Nov
   - button "Log a dose"
   - region "Stock"
     - heading "Stock" [level=2]
@@ -28,17 +23,13 @@
     - paragraph
       - text: Add how many ml you have to see the count here.
     - button "Track stock"
-  - region "Medication details"
-    - heading "Medication details" [level=2]
-    - list
-      - link "Edit details"
-        - paragraph
-    - list
-      - link "Change strength"
-        - paragraph
+  - list
+    - listitem
       - link "Dose history"
-      - link "Strength history"
-  - button "Archive medication"
+  - list
+    - listitem
+      - link "Manage medication"
+        - paragraph
 - navigation "Primary"
   - list
     - listitem

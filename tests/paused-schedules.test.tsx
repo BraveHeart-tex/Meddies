@@ -114,11 +114,16 @@ function api(initial: DailySchedule[], respond?: Respond) {
   return { saves }
 }
 
-function renderPanel(mode: 'list' | 'detail' | 'today') {
+function renderPanel(mode: 'list' | 'detail' | 'today', manage = false) {
   return render(
     <QueryClientProvider client={client}>
       <Toaster>
-        <SchedulePanel mode={mode} initialMedicineId={magnesium.id} initialNow={initialNow} />
+        <SchedulePanel
+          mode={mode}
+          initialMedicineId={magnesium.id}
+          initialNow={initialNow}
+          manage={manage}
+        />
       </Toaster>
     </QueryClientProvider>,
   )
@@ -142,36 +147,35 @@ async function openDetail(schedules: DailySchedule[], respond?: Respond) {
   return { ...view, saves, user: userEvent.setup() }
 }
 
+/** Medication detail's Manage sub-screen, where Pause and Stop schedule live (403·B14). */
+async function openManage(schedules: DailySchedule[], respond?: Respond) {
+  const { saves } = api(schedules, respond)
+  const view = renderPanel('detail', true)
+  await screen.findByRole('region', { name: 'Schedule' })
+  return { ...view, saves, user: userEvent.setup() }
+}
+
+const scheduleRows = () =>
+  within(screen.getByRole('region', { name: 'Schedule' }))
+    .getAllByRole('listitem')
+    .map((item) => item.textContent)
+
 async function pause(user: ReturnType<typeof userEvent.setup>) {
   await user.click(button('Pause'))
   await user.click(within(await drawer()).getByRole('button', { name: 'Pause schedule' }))
 }
 
-/* eslint-disable meddies/no-cosmetic-class-assertions -- #286: a button's emphasis (ghost, never
+/* eslint-disable meddies/no-cosmetic-class-assertions -- #286: a button's emphasis (berry, never
    destructive on the page) has no accessible signal; the variant class is it. */
-const expectGhost = (element: HTMLElement) => {
-  expect(element).toHaveClass('hover:bg-muted')
-  expect(element).not.toHaveClass('border-border-strong', 'bg-destructive/10')
-}
-
 describe('#286 quiet actions and the Paused Badge', () => {
-  test('a running schedule puts ghost Pause and Stop schedule under the outline Change schedule', async () => {
-    await openDetail([running])
-    expect(screen.getByRole('link', { name: 'Change schedule' })).toHaveClass(
-      'border-border-strong',
-    )
-    expectGhost(button('Pause'))
-    expectGhost(button('Stop schedule'))
-  })
-
-  test('a paused schedule keeps Resume primary beside a ghost Stop schedule', async () => {
+  test('a paused summary leads with Resume and leaves Stop schedule to Manage (238·A3)', async () => {
     await openDetail([paused(running)])
     expect(button('Resume')).toHaveClass('bg-primary')
-    expectGhost(button('Stop schedule'))
+    expect(screen.queryByRole('button', { name: 'Stop schedule' })).not.toBeInTheDocument()
   })
 
   test('the destructive tint appears only on the Stop confirm', async () => {
-    const { user } = await openDetail([running])
+    const { user } = await openManage([running])
     await user.click(button('Stop schedule'))
     const dialog = await screen.findByRole('dialog', { name: 'Stop this schedule?' })
     expect(within(dialog).getByRole('button', { name: 'Stop schedule' })).toHaveClass(
@@ -205,24 +209,21 @@ describe('#286 quiet actions and the Paused Badge', () => {
 /* eslint-enable meddies/no-cosmetic-class-assertions */
 
 describe('Pause', () => {
-  test('233·A1, A2 sits beside Stop schedule under Change schedule', async () => {
-    await openDetail([version(1, { startDate: '2026-11-12' })])
-    const pauseButton = button('Pause')
-    const change = screen.getByRole('link', { name: 'Change schedule' })
-    expect(pauseButton.nextElementSibling).toBe(button('Stop schedule'))
-    expect(change.nextElementSibling).toBe(pauseButton)
+  test('233·A1, A2 sits between Change schedule and Stop schedule on Manage, starting later too', async () => {
+    await openManage([version(1, { startDate: '2026-11-12' })])
+    expect(scheduleRows()).toEqual(['Change schedule', 'Pause', 'Stop schedule'])
   })
 
   test.each([
     ['paused', paused(running)],
     ['Ended', version(1, { endDate: '2026-11-03' })],
   ])('233·A1 is hidden on a %s schedule', async (_, schedule) => {
-    await openDetail([schedule])
+    await openManage([schedule])
     expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument()
   })
 
   test('233·A3 the confirm step saves nothing, and Keep schedule or Escape dismiss it', async () => {
-    const { user, saves } = await openDetail([running])
+    const { user, saves } = await openManage([running])
     await user.click(button('Pause'))
     const dialog = await drawer()
     for (const line of [
@@ -243,10 +244,10 @@ describe('Pause', () => {
     expect(saves).toEqual([])
   })
 
-  test('233·S1, A4 holds while pausing, then reads Paused since with Stop schedule only', async () => {
+  test('233·S1, A4 holds while pausing, then leaves Stop schedule focused alone on Manage', async () => {
     let release = () => {}
     const held = new Promise<void>((resolve) => (release = resolve))
-    const { user, saves } = await openDetail([running], async () => {
+    const { user, saves } = await openManage([running], async () => {
       await held
       return undefined
     })
@@ -263,12 +264,8 @@ describe('Pause', () => {
       'none',
       'No doses expected until you resume.',
     )
-    expect(screen.getByText('Paused since Mon 9 Nov')).toBeVisible()
-    expect(screen.queryByText(/^(Started|Changed)/)).not.toBeInTheDocument()
-    expect(screen.getByText('Last day Tue 10 Nov')).toBeVisible()
-    expect(screen.getByText('20:00')).toBeVisible()
-    expect(screen.queryByRole('link', { name: 'Change schedule' })).not.toBeInTheDocument()
-    expect(button('Stop schedule')).toHaveFocus()
+    expect(scheduleRows()).toEqual(['Stop schedule'])
+    await waitFor(() => expect(button('Stop schedule')).toHaveFocus())
     expect(saves).toEqual([{ id: expect.any(String), basedOnId: running.id }])
   })
 
@@ -283,7 +280,7 @@ describe('Pause', () => {
 
   test('233·S2 an unknown result offers Retry of the same pause', async () => {
     let fail = true
-    const { user, saves } = await openDetail([running], () =>
+    const { user, saves } = await openManage([running], () =>
       fail ? new HttpResponse(null, { status: 503 }) : undefined,
     )
     await pause(user)
@@ -301,7 +298,7 @@ describe('Pause', () => {
   })
 
   test('233·S2 a stale pause shows the 215·S2 recovery and saves nothing', async () => {
-    const { user } = await openDetail([running], () =>
+    const { user } = await openManage([running], () =>
       HttpResponse.json({ error: 'conflict' }, { status: 409 }),
     )
     await pause(user)
@@ -317,7 +314,7 @@ describe('Pause', () => {
 
   test('233·S2 known offline shows Connect to save, disabled', async () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
-    const { user, saves } = await openDetail([running])
+    const { user, saves } = await openManage([running])
     await user.click(button('Pause'))
     const dialog = await drawer()
     const save = within(dialog).getByRole('button', { name: 'Connect to save' })
@@ -326,13 +323,26 @@ describe('Pause', () => {
     expect(saves).toEqual([])
   })
 
-  test('Stop schedule on a paused schedule ends it and focuses Change schedule', async () => {
-    const { user } = await openDetail([paused(running)])
+  test('Stop schedule on a paused schedule ends it and focuses Change schedule on Manage', async () => {
+    const { user } = await openManage([paused(running)])
     await user.click(button('Stop schedule'))
     const dialog = await screen.findByRole('dialog', { name: 'Stop this schedule?' })
     await user.click(within(dialog).getByRole('button', { name: 'Stop schedule' }))
     await findConfirmation('Schedule stopped for Magnesium.', 'none')
-    expect(screen.getByText('Ended Mon 9 Nov')).toBeVisible()
+    expect(scheduleRows()).toEqual(['Change schedule'])
+    await waitFor(() => expect(screen.getByRole('link', { name: 'Change schedule' })).toHaveFocus())
+  })
+
+  // #405: one confirmed sequence on Manage, each save's Toast and focus in turn.
+  test('Manage: a confirmed Pause focuses Stop schedule, then a confirmed Stop Change schedule', async () => {
+    const { user } = await openManage([running])
+    await pause(user)
+    await findConfirmation('Schedule paused for Magnesium.', 'none')
+    await waitFor(() => expect(button('Stop schedule')).toHaveFocus())
+    await user.keyboard('{Enter}')
+    const dialog = await screen.findByRole('dialog', { name: 'Stop this schedule?' })
+    await user.click(within(dialog).getByRole('button', { name: 'Stop schedule' }))
+    await findConfirmation('Schedule stopped for Magnesium.', 'none')
     await waitFor(() => expect(screen.getByRole('link', { name: 'Change schedule' })).toHaveFocus())
   })
 })

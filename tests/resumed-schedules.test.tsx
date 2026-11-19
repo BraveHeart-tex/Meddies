@@ -180,21 +180,20 @@ async function openResume(view: { rerender: (ui: React.ReactElement) => void }, 
 }
 
 describe('Resume a Clock schedule', () => {
-  test('233·A4 Resume replaces Change schedule beside Stop schedule', async () => {
+  test("233·A4, 238·A3 Resume is the summary's only schedule action while paused", async () => {
     await openDetail([clockPaused])
-    expect(resumeButton().nextElementSibling).toBe(button('Stop schedule'))
+    expect(resumeButton()).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Stop schedule' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Change schedule' })).not.toBeInTheDocument()
   })
 
-  test('233·A7 resumes in one tap, names the next dose and gives the actions back', async () => {
+  test('233·A7 resumes in one tap, names the next dose and hands focus to Log a dose', async () => {
     const { user, saves } = await openDetail([clockPaused])
     resumeButton().focus()
     await user.keyboard('{Enter}')
     await findConfirmation('Schedule resumed for Magnesium.', 'check', 'Next dose: today at 20:00.')
     expect(screen.getByText('Changed Mon 9 Nov')).toBeVisible()
-    expect(button('Pause')).toBeVisible()
-    expect(button('Stop schedule')).toBeVisible()
-    await waitFor(() => expect(screen.getByRole('link', { name: 'Change schedule' })).toHaveFocus())
+    await waitFor(() => expect(button('Log a dose')).toHaveFocus())
     expect(screen.queryByRole('button', { name: 'Resume' })).not.toBeInTheDocument()
     expect(saves).toEqual([{ id: expect.any(String), basedOnId: clockPaused.id }])
   })
@@ -234,14 +233,12 @@ describe('Resume a Clock schedule', () => {
     })
     await user.click(resumeButton())
     expect(await screen.findByRole('button', { name: 'Resuming…' })).toBeDisabled()
-    expect(button('Stop schedule')).toBeDisabled()
     release()
     expect(
       await screen.findByText('That might not have saved. Check your connection, then retry.'),
     ).toBeVisible()
     const retry = button('Retry')
     expect(retry).toHaveAccessibleDescription(/might not have saved/)
-    expect(button('Stop schedule')).toBeEnabled()
     await user.click(retry)
     expect(await findConfirmation('Schedule resumed for Magnesium.', 'check')).toBeVisible()
     expect(saves).toHaveLength(2)
@@ -274,7 +271,6 @@ describe('Resume a Clock schedule', () => {
   ])('233·A5 Resume is hidden on a schedule %s', async (_, schedule) => {
     await openDetail([schedule])
     expect(screen.queryByRole('button', { name: 'Resume' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Change schedule' })).toBeVisible()
   })
 })
 
@@ -314,7 +310,7 @@ describe('Resume an Interval schedule', () => {
     await findConfirmation('Schedule resumed for Magnesium.', 'check', 'Next dose: today at 14:00.')
     // The running Interval card counts from the new Anchor.
     expect(screen.getByText(/^Starts .* at 14:00$/)).toBeVisible()
-    expect(button('Pause')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Resume' })).not.toBeInTheDocument()
     expect(saves).toEqual([
       {
         id: expect.any(String),

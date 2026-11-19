@@ -90,7 +90,8 @@ function open(existingClient?: QueryClient) {
     client.setQueryData(medicineKeys.list(), [medicine])
     client.setQueryData(scheduleKeys.snapshot(), snapshot)
   }
-  window.history.replaceState(null, '', `/medications?medicine=${medicine.id}`)
+  // Archive medication lives on Manage (403·B14).
+  window.history.replaceState(null, '', `/medications?medicine=${medicine.id}&manage`)
   const view = render(
     <QueryClientProvider client={client}>
       <MedicationsScreen initialNow={now} serverEntry />
@@ -195,7 +196,7 @@ test('known offline blocks, rejection keeps the Drawer, and a pending archive re
   })
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   // Same URL, now the read-only archived detail.
-  expect(window.location.search).toBe(`?medicine=${medicine.id}`)
+  expect(window.location.search).toBe(`?medicine=${medicine.id}&manage`)
   expect(screen.getByRole('link', { name: /Archived medications/ })).toBeVisible()
   expect(screen.getByText('Kept in History')).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Archive medication' })).not.toBeInTheDocument()

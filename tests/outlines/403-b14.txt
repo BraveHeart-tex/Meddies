@@ -1,0 +1,39 @@
+- main
+  - banner
+    - link "Amoxicillin"
+  - paragraph
+    - text: Manage
+  - heading "Amoxicillin" [level=1]
+  - paragraph
+    - text: 250 mg/5 ml · liquid
+  - region "Schedule"
+    - heading "Schedule" [level=2]
+    - list
+      - listitem
+        - link "Change schedule"
+      - listitem
+        - button "Pause"
+      - listitem
+        - button "Stop schedule"
+  - region "Details"
+    - heading "Details" [level=2]
+    - list
+      - listitem
+        - link "Edit details"
+          - paragraph
+      - listitem
+        - link "Change strength"
+          - paragraph
+      - listitem
+        - link "Strength history"
+  - button "Archive medication"
+- navigation "Primary"
+  - list
+    - listitem
+      - link "Today"
+    - listitem
+      - link "Medications" [current=page]
+    - listitem
+      - link "History"
+    - listitem
+      - link "Settings"

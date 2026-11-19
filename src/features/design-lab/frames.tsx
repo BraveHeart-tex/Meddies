@@ -24,6 +24,7 @@ export const designCriticalScreens = [
   'Today',
   'Medications',
   'Medication detail',
+  'Manage',
   'History',
   'Settings',
   'Cold launch',

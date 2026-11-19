@@ -29,6 +29,7 @@ export function SchedulePanel({
   detailHeadingRef,
   record,
   periodId,
+  manage = false,
   onRecordSaved,
   onArchiveRequested,
   onRestoreRequested,
@@ -47,6 +48,8 @@ export function SchedulePanel({
   detailActions?: ReactNode
   record?: MedicationRecord
   periodId?: string
+  /** The Medication detail view is its Manage sub-screen. */
+  manage?: boolean
   onArchiveRequested?: (medicine: Medicine) => void
   onRestoreRequested?: (medicine: Medicine) => void
   onDeleteRequested?: (medicine: Medicine) => void
@@ -101,6 +104,7 @@ export function SchedulePanel({
             onRestoreRequested={onRestoreRequested}
             onDeleteRequested={onDeleteRequested}
             headingRef={detailHeadingRef}
+            manage={manage}
           />
         )}
         {mode === 'resume' && (

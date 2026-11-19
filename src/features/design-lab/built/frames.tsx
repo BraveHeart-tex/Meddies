@@ -20,8 +20,8 @@ import { LabNotificationsOff } from '../lab-notifications'
  * Design-critical screens rendered from production code, one frame each
  * (docs/design/README.md#built-frames). Each composes what its page renders, with the page's
  * server reads replaced by `routine` seeded into a FixtureQuery. The lab URL selects no tab and
- * carries no Medications view, so frames name the tab, and Medication detail renders the panel
- * its view selects.
+ * carries no Medications view, so frames name the tab, and Medication detail and Manage render
+ * the panel their view selects.
  */
 export const builtFrames = [
   {
@@ -68,6 +68,27 @@ export const builtFrames = [
             <MedicinePanel
               scheduleMode="detail"
               detailMedicineId={amoxicillin.id}
+              initialNow={NOW}
+              serverEntry
+            />
+          </ScreenStack>
+        </AppShell>
+      </FixtureQuery>
+    ),
+  },
+  {
+    slug: '403-b14',
+    title: 'Manage',
+    citation: '403·B14',
+    route: '/medications?medicine=<id>&manage',
+    render: () => (
+      <FixtureQuery {...routine}>
+        <AppShell current="/medications">
+          <ScreenStack>
+            <MedicinePanel
+              scheduleMode="detail"
+              detailMedicineId={amoxicillin.id}
+              manage
               initialNow={NOW}
               serverEntry
             />

@@ -24,6 +24,7 @@ export function MedicinePanel({
   serverEntry = false,
   record,
   periodId,
+  manage = false,
   loading,
 }: {
   scheduleMode?: 'add' | 'setup' | 'resume' | 'list' | 'detail' | 'archived'
@@ -35,6 +36,8 @@ export function MedicinePanel({
   /** This render's server read already refreshed both queries, so views don't read again. */
   record?: MedicationRecord
   periodId?: string
+  /** Medication detail shows its Manage sub-screen. */
+  manage?: boolean
   /** This render's server read already refreshed both queries. */
   serverEntry?: boolean
 }) {
@@ -112,6 +115,7 @@ export function MedicinePanel({
           onDeleteRequested={(medicine) => setDeletion({ medicine, open: true })}
           record={record}
           periodId={periodId}
+          manage={manage}
           onRecordSaved={(medicine, kind) => {
             confirmRecordSaved(kind)
             focusAfterRecord.current = true
@@ -143,10 +147,11 @@ export function MedicinePanel({
         <MedicineArchiveDrawer
           key={archive.medicine.id}
           medicine={archive.medicine}
+          // Opened from Manage, so leaving Manage closes it.
           open={
             archive.open &&
             scheduleMode === 'detail' &&
-            !record &&
+            manage &&
             detailMedicineId === archive.medicine.id
           }
           onClose={() => setArchive({ ...archive, open: false })}
@@ -179,10 +184,11 @@ export function MedicinePanel({
         <MedicineDeleteDrawer
           key={deletion.medicine.id}
           medicine={deletion.medicine}
+          // Opened from Manage, so leaving Manage closes it.
           open={
             deletion.open &&
             scheduleMode === 'detail' &&
-            !record &&
+            manage &&
             detailMedicineId === deletion.medicine.id
           }
           onClose={() => setDeletion({ ...deletion, open: false })}

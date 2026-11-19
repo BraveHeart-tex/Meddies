@@ -185,18 +185,23 @@ const windowTotal = (name: string) =>
 const dayCard = (name: string) => screen.getByRole('region', { name })
 
 describe('the Dose history row (387·S1)', () => {
+  const archived = { ...ibuprofen, archivedAt: '2035-06-01T06:00:00.000Z' }
   // Regression: the row missing, or opening another record view.
   test.each([
     { name: 'Medication detail', medicine: ibuprofen },
-    {
-      name: 'Archived medication detail',
-      medicine: { ...ibuprofen, archivedAt: '2035-06-01T06:00:00.000Z' },
-    },
-  ])('$name opens Dose history from the row above Strength history', async ({ medicine }) => {
+    { name: 'Archived medication detail', medicine: archived },
+  ])('$name opens Dose history from its row', async ({ medicine }) => {
     api({ medicines: [medicine], reply: () => empty })
     renderPanel()
     const row = await screen.findByRole('link', { name: 'Dose history' })
     expect(row).toHaveAttribute('href', doseHistoryHref)
+  })
+
+  // The live summary keeps Strength history on Manage (238·A3).
+  test('Archived medication detail lists Dose history right above Strength history', async () => {
+    api({ medicines: [archived], reply: () => empty })
+    renderPanel()
+    const row = await screen.findByRole('link', { name: 'Dose history' })
     const rows = within(row.closest('[data-slot="item-group"]')!).getAllByRole('link')
     expect(rows.map((link) => link.getAttribute('aria-label'))).toEqual(
       expect.arrayContaining(['Dose history', 'Strength history']),

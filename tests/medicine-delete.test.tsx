@@ -62,6 +62,7 @@ const medicine = {
 function open(
   record: typeof medicine | Omit<typeof medicine, 'everHadSchedule' | 'everHadDose'> = medicine,
   existingClient?: QueryClient,
+  view = '&manage',
 ) {
   server.use(
     http.get('/api/schedules', () =>
@@ -76,15 +77,16 @@ function open(
     date: '2035-06-15',
     now,
   })
-  window.history.replaceState(null, '', `/medications?medicine=${medicine.id}`)
-  const view = render(
+  // Delete medication lives on Manage (403·B14).
+  window.history.replaceState(null, '', `/medications?medicine=${medicine.id}${view}`)
+  const screenView = render(
     <QueryClientProvider client={client}>
       <Toaster>
         <MedicationsScreen initialNow={now} serverEntry />
       </Toaster>
     </QueryClientProvider>,
   )
-  return { ...view, client, user: userEvent.setup() }
+  return { ...screenView, client, user: userEvent.setup() }
 }
 const drawer = () => screen.getByRole('dialog', { name: 'Delete Vitamin D?' })
 const deleteAction = () => screen.getByRole('button', { name: 'Delete medication' })
@@ -100,17 +102,27 @@ test('Delete confirmation mounts closed so its first open can animate', async ()
   client.clear()
 })
 
-test('only explicitly unused Medicines offer Delete; dismissal discards confirmation and keyboard focus returns', async () => {
+test('only explicitly unused Medicines offer Delete, through Manage; dismissal discards confirmation and keyboard focus returns', async () => {
   for (const flags of [
     { everHadSchedule: true },
     { everHadDose: true },
     { everHadSchedule: undefined, everHadDose: undefined },
   ]) {
     const { unmount, client } = open({ ...medicine, ...flags })
+    expect(screen.getByRole('button', { name: 'Archive medication' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Delete medication' })).not.toBeInTheDocument()
     unmount()
     client.clear()
   }
+  // #405: the summary offers no Delete, only the Manage medication row leading to it.
+  const summary = open(medicine, undefined, '')
+  expect(screen.queryByRole('button', { name: 'Delete medication' })).not.toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Manage medication' })).toHaveAttribute(
+    'href',
+    `/medications?medicine=${medicine.id}&manage`,
+  )
+  summary.unmount()
+  summary.client.clear()
   const { client, user, unmount } = open()
   for (const dismiss of [
     () => user.click(screen.getByRole('button', { name: 'Close' })),

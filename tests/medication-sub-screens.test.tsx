@@ -172,7 +172,7 @@ test('the schedule card separates product strength from each time and dose quant
     ],
   })
   renderDetail()
-  const card = await screen.findByRole('region', { name: 'Schedule' })
+  const card = await screen.findByRole('group', { name: 'Schedule' })
   expect(within(card).getByText('08:00').parentElement).toHaveTextContent('1 tablet')
   expect(within(card).getByText('20:00').parentElement).toHaveTextContent('½ tablet')
   expect(card).not.toHaveTextContent('200 mg')
@@ -265,12 +265,12 @@ describe('the medication page', () => {
     expect(logDose.compareDocumentPosition(set!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  test('a scheduled medication keeps Log a dose outline', async () => {
+  test('a scheduled medication keeps Log a dose soft (238·A3)', async () => {
     api({ schedules: [schedule] })
     renderDetail()
-    await screen.findByRole('link', { name: 'Change schedule' })
+    await screen.findByRole('group', { name: 'Schedule' })
     const logDose = screen.getByRole('button', { name: 'Log a dose' })
-    expect(logDose).toHaveClass('border-border-strong')
+    expect(logDose).toHaveClass('bg-accent')
     expect(logDose).not.toHaveClass('bg-primary')
     expect(setSchedule()).not.toBeInTheDocument()
   })

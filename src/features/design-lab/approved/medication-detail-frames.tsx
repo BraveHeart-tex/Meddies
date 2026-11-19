@@ -1,17 +1,12 @@
 import type { LabFrame } from '../frames'
-import { DetailB, ManageB, StockDrawerScreen } from './medication-detail-screens'
+import { DetailB, StockDrawerScreen } from './medication-detail-screens'
 
 /**
- * #403 Medication detail hierarchy: approved Direction B, Summary and Manage. B1 to B13 are the
- * page's states, B14 and B15 the Manage sub-screen, and S1 the stock Drawer the Stock row opens.
+ * #403 Medication detail hierarchy: approved Direction B, Summary and Manage. B2 to B13 are the
+ * page's states waiting for their build tickets, and S1 the stock Drawer the Stock row opens. B1
+ * and B4 are built in 238·A3, B14 and B15 in the Manage built frame (#405).
  */
 export const medicationDetailFrames = [
-  {
-    slug: '403-b1',
-    citation: '403·B1',
-    title: 'Medication detail - Clock running, Last day, stock off',
-    render: () => <DetailB state="clock" />,
-  },
   {
     slug: '403-b2',
     citation: '403·B2',
@@ -23,12 +18,6 @@ export const medicationDetailFrames = [
     citation: '403·B3',
     title: 'Medication detail - Starts in the future',
     render: () => <DetailB state="future" />,
-  },
-  {
-    slug: '403-b4',
-    citation: '403·B4',
-    title: 'Medication detail - Paused',
-    render: () => <DetailB state="paused" />,
   },
   {
     slug: '403-b5',
@@ -83,18 +72,6 @@ export const medicationDetailFrames = [
     citation: '403·B13',
     title: 'Medication detail - Future feature places',
     render: () => <DetailB state="slots" />,
-  },
-  {
-    slug: '403-b14',
-    citation: '403·B14',
-    title: 'Medication detail - Manage, running',
-    render: () => <ManageB state="slots" />,
-  },
-  {
-    slug: '403-b15',
-    citation: '403·B15',
-    title: 'Medication detail - Manage, Delete available',
-    render: () => <ManageB state="none" />,
   },
   {
     slug: '403-s1',

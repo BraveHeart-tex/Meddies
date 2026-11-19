@@ -17,6 +17,8 @@ export type MedicationsView =
       medicineId: string
       record?: MedicationRecord
       periodId?: string
+      /** The Manage sub-screen (403·B14); a record subview wins over it. */
+      manage?: true
     }
   | { mode: 'setup'; medicineId: string }
   | { mode: 'resume'; medicineId: string }
@@ -49,11 +51,18 @@ export function parseMedicationsView(params: SearchParams): MedicationsView {
   if (detail) {
     const record = params instanceof URLSearchParams ? params.get('record') : params.record
     const periodId = medicineId(params, 'period')
+    if (records.includes(record))
+      return {
+        mode: 'detail',
+        medicineId: detail,
+        record: record as MedicationRecord,
+        ...(periodId ? { periodId } : {}),
+      }
     return {
       mode: 'detail',
       medicineId: detail,
-      ...(records.includes(record) ? { record: record as MedicationRecord } : {}),
       ...(periodId ? { periodId } : {}),
+      ...(includes(params, 'manage') ? { manage: true as const } : {}),
     }
   }
   if (includes(params, 'archived')) return { mode: 'archived' }
@@ -69,7 +78,7 @@ export function medicationsHref(view: MedicationsView) {
     case 'archived':
       return '/medications?archived'
     case 'detail':
-      return `/medications?medicine=${encodeURIComponent(view.medicineId)}${view.record ? `&record=${view.record}` : ''}${view.periodId ? `&period=${encodeURIComponent(view.periodId)}` : ''}`
+      return `/medications?medicine=${encodeURIComponent(view.medicineId)}${view.record ? `&record=${view.record}` : ''}${view.periodId ? `&period=${encodeURIComponent(view.periodId)}` : ''}${view.manage ? '&manage' : ''}`
     case 'setup':
       return `/medications?schedule=${encodeURIComponent(view.medicineId)}`
     case 'resume':
@@ -94,6 +103,10 @@ export function isMedicationsReturnTo(value: string) {
   const { searchParams } = new URL(value, 'http://return-to.invalid')
   return value === medicationsHref(parseMedicationsView(searchParams))
 }
+
+/** A medication's Manage sub-screen (403·B14). */
+export const medicationManageHref = (medicineId: string) =>
+  medicationsHref({ mode: 'detail', medicineId, manage: true })
 
 /** Medication record subviews share the medication's URL and session cache. */
 export const medicationRecordHref = (

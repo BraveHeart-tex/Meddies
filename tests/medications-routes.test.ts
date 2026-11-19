@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { safeReturnTo } from '../src/features/auth/return-to'
 import {
+  medicationManageHref,
   medicationsHref,
   medicationResumeHref,
   medicationSetupHref,
@@ -19,6 +20,10 @@ describe('parseMedicationsView', () => {
     [`?archived&medicine=${a}`, { mode: 'detail', medicineId: a }],
     ['?add&archived', { mode: 'archived' }],
     [`?medicine=${a}`, { mode: 'detail', medicineId: a }],
+    [`?medicine=${a}&manage`, { mode: 'detail', medicineId: a, manage: true }],
+    // A record subview wins over Manage, and Manage alone names no medicine.
+    [`?medicine=${a}&manage&record=history`, { mode: 'detail', medicineId: a, record: 'history' }],
+    ['?manage', { mode: 'list' }],
     [`?schedule=${a}`, { mode: 'setup', medicineId: a }],
     [`?resume=${a}`, { mode: 'resume', medicineId: a }],
     // Precedence: setup, then resume, then detail, then Add.
@@ -45,6 +50,11 @@ describe('parseMedicationsView', () => {
       medicineId: a,
     })
     expect(parseMedicationsView({ medicine: [a, b] })).toEqual({ mode: 'list' })
+    expect(parseMedicationsView({ medicine: a, manage: '' })).toEqual({
+      mode: 'detail',
+      medicineId: a,
+      manage: true,
+    })
   })
 })
 
@@ -54,10 +64,19 @@ describe('medicationsHref', () => {
     [{ mode: 'add' } as const, '/medications?add'],
     [{ mode: 'archived' } as const, '/medications?archived'],
     [{ mode: 'detail', medicineId: a } as const, `/medications?medicine=${a}`],
+    [{ mode: 'detail', medicineId: a, manage: true } as const, `/medications?medicine=${a}&manage`],
     [{ mode: 'setup', medicineId: a } as const, `/medications?schedule=${a}`],
     [{ mode: 'resume', medicineId: a } as const, `/medications?resume=${a}`],
   ])('links %j', (view, href) => {
     expect(medicationsHref(view)).toBe(href)
+  })
+
+  test('Manage links round-trip through the view parser', () => {
+    const href = medicationManageHref(a)
+    expect(href).toBe(`/medications?medicine=${a}&manage`)
+    expect(
+      medicationsHref(parseMedicationsView(new URL(href, 'http://x.invalid').searchParams)),
+    ).toBe(href)
   })
 
   test('setup links land on the schedule heading', () => {
@@ -72,6 +91,7 @@ describe('allowed sign-in return destinations', () => {
     '/medications?add',
     '/medications?archived',
     `/medications?medicine=${a}`,
+    `/medications?medicine=${a}&manage`,
     `/medications?schedule=${a}`,
     `/medications?resume=${a}`,
   ])('keeps %s', (value) => expect(safeReturnTo(value)).toBe(value))

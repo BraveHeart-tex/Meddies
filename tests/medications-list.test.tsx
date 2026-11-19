@@ -404,40 +404,44 @@ describe('with no cache', () => {
 })
 
 describe('a medication detail', () => {
-  function renderDetail(id: string) {
-    render(
+  function renderDetail(id: string, manage = false) {
+    return render(
       <QueryClientProvider client={client}>
         <MedicinePanel
           scheduleMode="detail"
           detailMedicineId={id}
+          manage={manage}
           initialNow="2026-11-14T08:00:00.000Z"
         />
       </QueryClientProvider>,
     )
   }
 
-  test('shows its details and that no schedule is set', async () => {
+  test('shows that no schedule is set, and its details on Manage', async () => {
     const period = '00000000-0000-4000-8000-0000000000c1'
     const list = [{ ...medicine(1), currentStrengthRevisionId: period }]
     medicinesApi(list)
     cache(list)
-    renderDetail(medicine(1).id)
+    const summary = renderDetail(medicine(1).id)
     expect(await screen.findByText('No schedule', { exact: true })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Schedule', level: 2 })).toBeVisible()
     expect(screen.getByText('tablet')).toBeVisible()
-    // 346·C1: Edit details alone with its effect, then the two strength rows together.
-    const details = screen.getByRole('region', { name: 'Medication details' })
-    const edit = within(details).getByRole('link', { name: 'Edit details' })
+    expect(screen.queryByRole('link', { name: 'Edit details' })).not.toBeInTheDocument()
+    summary.unmount()
+    // 403·B14: the Details group, each row with its consequence line as its description.
+    renderDetail(medicine(1).id, true)
+    const details = await screen.findByRole('region', { name: 'Details' })
+    const rows = within(details).getAllByRole('link')
+    expect(rows.map((row) => row.textContent)).toEqual([
+      'Edit detailsUpdates doses logged at the current strength.',
+      'Change strengthEarlier doses keep their saved strength.',
+      'Strength history',
+    ])
+    const [edit, strength] = rows
+    expect(edit).toHaveAccessibleName('Edit details')
+    expect(edit).toHaveAccessibleDescription('Updates doses logged at the current strength.')
     expect(edit).toHaveAttribute('href', medicationRecordHref(medicine(1).id, 'fix', period))
-    expect(within(edit).getByText('Updates doses logged at the current strength.')).toBeVisible()
-    const groups = details.querySelectorAll('[data-slot="item-group"]')
-    expect(groups).toHaveLength(2)
-    expect(within(groups[0] as HTMLElement).getAllByRole('link')).toEqual([edit])
-    expect(
-      within(groups[1] as HTMLElement)
-        .getAllByRole('link')
-        .map((link) => link.getAttribute('aria-label')),
-    ).toEqual(['Change strength', 'Dose history', 'Strength history'])
+    expect(strength).toHaveAccessibleName('Change strength')
+    expect(strength).toHaveAccessibleDescription('Earlier doses keep their saved strength.')
     expect(screen.queryByRole('link', { name: /Fix a mistake/ })).not.toBeInTheDocument()
   })
 

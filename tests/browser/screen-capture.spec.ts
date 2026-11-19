@@ -744,7 +744,7 @@ test(
       strength: '',
       unit: 'tablet',
     })
-    await page.goto(`/medications?medicine=${id}`)
+    await page.goto(`/medications?medicine=${id}&manage`)
     const action = page.getByRole('button', { name: 'Delete medication' })
     const confirmation = page.getByRole('dialog', { name: 'Delete Vitamin D?' })
     await openConfirmationWithMotion(page, action)
@@ -794,7 +794,7 @@ test(
     const id = '00000000-0000-4000-8000-0000000d0377'
     const label = 'Amoxicillin with clavulanic acid oral suspension'
     await app.api('POST', '/api/medicines', { id, label, strength: '', unit: 'tablet' })
-    await page.goto(`/medications?medicine=${id}`)
+    await page.goto(`/medications?medicine=${id}&manage`)
     await page.getByRole('button', { name: 'Delete medication' }).click()
     await page
       .getByRole('dialog', { name: `Delete ${label}?` })
@@ -876,7 +876,7 @@ test(
       startDate: today,
       times: [{ time: '20:00', quantity: 1 }],
     })
-    await page.goto(`/medications?medicine=${id}`)
+    await page.goto(`/medications?medicine=${id}&manage`)
     const action = page.getByRole('button', { name: 'Archive medication' })
     const confirmation = page.getByRole('dialog', { name: 'Archive Magnesium?' })
     await openConfirmationWithMotion(page, action)

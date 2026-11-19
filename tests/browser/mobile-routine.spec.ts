@@ -121,7 +121,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await expect(page.getByRole('button', { name: 'Save schedule' })).toHaveCount(0)
     await page.goForward()
     await page.reload()
-    const scheduleCard = page.getByRole('region', { name: 'Schedule', exact: true })
+    const scheduleCard = page.getByRole('group', { name: 'Schedule', exact: true })
     await expect(scheduleCard.getByText(time, { exact: true })).toBeVisible()
     await expect(scheduleCard.getByText('1 tablet', { exact: true })).toBeVisible()
     await expect(scheduleCard).not.toContainText('5 mg')
@@ -177,9 +177,7 @@ test('set up, record, correct and recover a routine on a phone', async ({ page, 
     await expect(page).toHaveURL(/\/medications$/)
     await page.getByRole('link', { name: 'View details for Evening Vitamin' }).click()
     await expect(page.getByRole('heading', { name: 'Evening Vitamin' })).toBeVisible()
-    await expect(page.getByRole('region', { name: 'Schedule', exact: true })).toContainText(
-      'No schedule',
-    )
+    await expect(page.getByText('No schedule', { exact: true })).toBeVisible()
   })
 
   await test.step('recover from session expiry on Settings', async () => {

@@ -122,6 +122,6 @@ test('schedule confirmation follows navigation to Today', async ({ page, app }) 
   await page.getByRole('button', { name: 'Open', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Magnesium', exact: true })).toBeVisible()
   await expect(
-    page.getByRole('region', { name: 'Schedule', exact: true }).getByText('12:00', { exact: true }),
+    page.getByRole('group', { name: 'Schedule', exact: true }).getByText('12:00', { exact: true }),
   ).toBeVisible()
 })

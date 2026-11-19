@@ -21,7 +21,7 @@ export function MedicationsScreen({
   const view = useMedicationsView()
   const medicineId = 'medicineId' in view ? view.medicineId : ''
   useMedicationsViewScroll(
-    `${view.mode}:${medicineId}:${view.mode === 'detail' ? `${view.record ?? ''}:${view.periodId ?? ''}` : ''}`,
+    `${view.mode}:${medicineId}:${view.mode === 'detail' ? `${view.record ?? ''}:${view.periodId ?? ''}:${view.manage ? 'manage' : ''}` : ''}`,
   )
   return (
     <MedicinePanel
@@ -41,6 +41,7 @@ export function MedicationsScreen({
       detailMedicineId={view.mode === 'detail' ? medicineId : ''}
       record={view.mode === 'detail' ? view.record : undefined}
       periodId={view.mode === 'detail' ? view.periodId : undefined}
+      manage={view.mode === 'detail' && Boolean(view.manage)}
       initialNow={initialNow}
       serverEntry={serverEntry}
     />
