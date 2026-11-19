@@ -22,6 +22,12 @@
     - button "Pause"
     - button "Stop schedule"
   - button "Log a dose"
+  - region "Stock"
+    - heading "Stock" [level=2]
+    - text: Not tracking stock
+    - paragraph
+      - text: Add how many ml you have to see the count here.
+    - button "Track stock"
   - region "Medication details"
     - heading "Medication details" [level=2]
     - list

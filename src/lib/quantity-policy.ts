@@ -204,10 +204,11 @@ export function formatQuantity(value: number, quantity: Quantity): string {
   return entry(quantity).format(value)
 }
 
-/** Singular up to one, plural above one and while the amount is unknown; 'ml' never changes. */
+/** Singular above zero up to one; plural for zero, above one and while the amount is unknown;
+ * 'ml' never changes. */
 export function unitName(value: number | null, quantity: Quantity): string {
   const { unit, plural } = entry(quantity)
-  return value !== null && value <= 1 ? unit : plural
+  return value !== null && value > 0 && value <= 1 ? unit : plural
 }
 
 /** '½ tablet', '2 capsules', '1.5 ml', joined by a no-break space. */
@@ -215,8 +216,14 @@ export function quantityLabel(value: number, quantity: Quantity): string {
   return `${formatQuantity(value, quantity)}\u00a0${unitName(value, quantity)}`
 }
 
-/** The text after one stepper press: snaps to the unit's grid, never below its minimum. */
-export function stepQuantity(text: string, quantity: Quantity, direction: 1 | -1): string {
+/** The text after one stepper press: snaps to the unit's grid, never below its minimum, or below
+ * zero with `zero` (a stock count). */
+export function stepQuantity(
+  text: string,
+  quantity: Quantity,
+  direction: 1 | -1,
+  zero = false,
+): string {
   const { scale } = entry(quantity)
   const value = parseQuantity(text)
   if (value === null || Number.isNaN(value)) return formatQuantity(1 / scale, quantity)
@@ -231,7 +238,7 @@ export function stepQuantity(text: string, quantity: Quantity, direction: 1 | -1
       : onGrid
         ? nearest - 1
         : Math.floor(units)
-  return formatQuantity(Math.max(1, next) / scale, quantity)
+  return formatQuantity(Math.max(zero ? 0 : 1, next) / scale, quantity)
 }
 
 /** The inline error for quantity text, or null when it is a valid dose for the unit. */
@@ -251,7 +258,7 @@ export function quantityProblem(text: string, quantity: Quantity): string | null
  * Medication detail Stock section.
  */
 export function stockLeft(count: number, quantity: Quantity): string {
-  return `${formatQuantity(count, quantity)} ${unitName(count > 0 ? count : null, quantity)} left`
+  return `${formatQuantity(count, quantity)} ${unitName(count, quantity)} left`
 }
 
 /**

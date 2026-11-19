@@ -30,6 +30,7 @@ export function QuantityStepper({
   onBlur,
   disabled,
   grow = false,
+  zero = false,
   'aria-describedby': describedBy,
   'aria-invalid': invalid,
 }: {
@@ -44,11 +45,13 @@ export function QuantityStepper({
   disabled?: boolean
   /** Fill the row instead of the compact input. */
   grow?: boolean
+  /** Step down to zero, as a stock count does; doses stop at the unit's minimum. */
+  zero?: boolean
   'aria-describedby'?: string
   'aria-invalid'?: boolean
 }) {
   const number = parseQuantity(value)
-  const atMinimum = number !== null && number <= quantityRule(unit).min
+  const atMinimum = number !== null && number <= (zero ? 0 : quantityRule(unit).min)
   return (
     <div className="flex min-w-0 items-center gap-2">
       <Button
@@ -58,7 +61,7 @@ export function QuantityStepper({
         aria-label={`Fewer: ${label}`}
         aria-controls={id}
         disabled={disabled || atMinimum}
-        onClick={() => onValueChange(stepQuantity(value, unit, -1))}
+        onClick={() => onValueChange(stepQuantity(value, unit, -1, zero))}
       >
         <Minus aria-hidden="true" data-icon="inline-start" />
       </Button>
@@ -83,7 +86,7 @@ export function QuantityStepper({
         aria-label={`More: ${label}`}
         aria-controls={id}
         disabled={disabled}
-        onClick={() => onValueChange(stepQuantity(value, unit, 1))}
+        onClick={() => onValueChange(stepQuantity(value, unit, 1, zero))}
       >
         <Plus aria-hidden="true" data-icon="inline-start" />
       </Button>

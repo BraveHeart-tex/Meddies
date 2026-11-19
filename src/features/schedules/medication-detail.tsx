@@ -34,13 +34,15 @@ import { useScheduleNow } from './use-schedule-now'
 import { LogDose } from '../unscheduled-doses/log-dose'
 import { isArchived } from '@/features/medicines/contract'
 import { ArchivedMedicationDetail } from '@/features/medicines/archived-medications'
+import { MedicineStock } from '@/features/medicines/medicine-stock'
 
 /**
  * The `?medicine=ID` page (238·A3): the Back row and identity header above the schedule, and Change
  * schedule, Pause and Stop schedule under it, or Resume and Stop schedule once paused (215·A1,
  * S3, S4; 227·A13 to A16; 233·A1 to A8, S3, S4). A running schedule shows its Last day, a paused
  * one the day it paused, an Ended one the day it ended (227·A13, A14, A17; 233·A4, A5). Log a
- * dose sits under the schedule for any medication (241·A1, A2).
+ * dose sits under the schedule for any medication (241·A1, A2), and the Stock section under it
+ * (#392, built here in 238·A3).
  */
 export function MedicationDetail({
   medicineId,
@@ -179,6 +181,7 @@ export function MedicationDetail({
           {actions}
         </>
       )}
+      <MedicineStock medicine={medicine} />
       <section className="flex flex-col gap-3" aria-label="Medication details">
         <h2 className="text-heading">Medication details</h2>
         <ItemGroup>
