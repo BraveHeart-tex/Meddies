@@ -24,7 +24,8 @@ function useDrawer() {
 }
 
 // Bottom drawers hold form fields, so every drawer keeps focused fields above the software
-// keyboard through Base UI's VirtualKeyboardProvider.
+// keyboard through Base UI's VirtualKeyboardProvider, and DrawerContent rests on the keyboard
+// through Base UI's `--drawer-keyboard-inset`, so the primary action stays reachable.
 function Drawer({
   modal = true,
   showSwipeHandle = true,
@@ -124,7 +125,11 @@ function DrawerContent({ className, children, ...props }: DrawerPrimitive.Popup.
             // Bleed: fills the gap below the drawer when it is pulled past its resting edge.
             'after:pointer-events-none after:absolute after:bg-(--drawer-bleed-background,var(--color-background)) data-[swipe-axis=x]:after:inset-y-0 data-[swipe-axis=x]:after:w-(--bleed) data-[swipe-axis=y]:after:inset-x-0 data-[swipe-axis=y]:after:h-(--bleed) data-[swipe-direction=down]:after:top-full data-[swipe-direction=left]:after:right-full data-[swipe-direction=right]:after:left-full data-[swipe-direction=up]:after:bottom-full',
             // Sizing: content height, capped below the top of the viewport and at a readable width.
-            '[--drawer-content-height:var(--drawer-height,auto)] data-[swipe-axis=x]:[--drawer-content-width:75%] data-[swipe-axis=y]:[--drawer-content-max-height:calc(100dvh-6rem)] data-[swipe-axis=y]:data-snap-points:[--drawer-content-height:100dvh] data-[swipe-axis=x]:sm:[--drawer-content-width:24rem]',
+            // A bottom drawer sits on the software keyboard and its cap shrinks by the keyboard inset,
+            // so content that fits above the keyboard shows whole, footer included, and taller
+            // content scrolls to its end above it. The inset is not animated: Base UI measures the
+            // lifted frame in the same pass that sets it.
+            '[--drawer-content-height:var(--drawer-height,auto)] data-[swipe-axis=x]:[--drawer-content-width:75%] data-[swipe-axis=y]:[--drawer-content-max-height:calc(100dvh-6rem-var(--drawer-keyboard-inset,0px))] data-[swipe-axis=y]:data-snap-points:[--drawer-content-height:100dvh] data-[swipe-axis=x]:sm:[--drawer-content-width:24rem]',
             // Stack.
             '[--bleed:3rem] [--peek:1rem] [--stack-height:var(--drawer-frontmost-height,var(--drawer-height,0px))] [--stack-peek-offset:max(0px,calc((var(--nested-drawers)-var(--stack-progress))*var(--peek)))] [--stack-progress:clamp(0,var(--drawer-swipe-progress),1)] [--stack-scale-base:max(0,calc(1-(var(--nested-drawers)*var(--stack-step))))] [--stack-scale:clamp(0,calc(var(--stack-scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--stack-shrink:calc(1-var(--stack-scale))] [--stack-step:0.05]',
             // Transitions: release speed follows the swipe strength.
@@ -134,7 +139,7 @@ function DrawerContent({ className, children, ...props }: DrawerPrimitive.Popup.
             // Axis: x.
             'data-[swipe-axis=x]:inset-y-0 data-[swipe-axis=x]:flex-row',
             // Direction: down.
-            'data-[swipe-direction=down]:bottom-0 data-[swipe-direction=down]:origin-bottom data-[swipe-direction=down]:[--closed-transform:translate3d(0,calc(100%+var(--drawer-inset,0px)+2px),0)] data-[swipe-direction=down]:[--translate-y:calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y)-var(--stack-peek-offset)-(var(--stack-shrink)*var(--stack-height)))]',
+            'data-[swipe-direction=down]:bottom-(--drawer-keyboard-inset,0px) data-[swipe-direction=down]:origin-bottom data-[swipe-direction=down]:[--closed-transform:translate3d(0,calc(100%+var(--drawer-inset,0px)+2px),0)] data-[swipe-direction=down]:[--translate-y:calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y)-var(--stack-peek-offset)-(var(--stack-shrink)*var(--stack-height)))]',
             // Direction: up.
             'data-[swipe-direction=up]:top-0 data-[swipe-direction=up]:origin-top data-[swipe-direction=up]:[--closed-transform:translate3d(0,calc(-100%-var(--drawer-inset,0px)-2px),0)] data-[swipe-direction=up]:[--translate-y:calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y)+var(--stack-peek-offset)+(var(--stack-shrink)*var(--stack-height)))]',
             // Direction: left.
@@ -146,10 +151,11 @@ function DrawerContent({ className, children, ...props }: DrawerPrimitive.Popup.
           {...props}
         >
           {showSwipeHandle && <DrawerSwipeHandle />}
-          {/* The scroll body. Touch drags swipe the drawer only once it is scrolled to the top. */}
+          {/* The scroll body. Touch drags swipe the drawer only once it is scrolled to the top.
+              The keyboard covers the bottom safe area, so its padding shrinks while it is open. */}
           <DrawerPrimitive.Content
             data-slot="drawer-content"
-            className="flex min-h-0 flex-1 flex-col gap-4.5 overflow-y-auto overscroll-contain rounded-[inherit] px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] transition-opacity duration-320 ease-calm select-text group-data-nested-drawer-open/drawer-popup:opacity-0 group-data-nested-drawer-swiping/drawer-popup:opacity-100 group-data-swiping/drawer-popup:select-none group-data-[swipe-direction=down]/drawer-popup:pt-4.5 motion-reduce:transition-none"
+            className="flex min-h-0 flex-1 flex-col gap-4.5 overflow-y-auto overscroll-contain rounded-[inherit] px-5 pb-[max(1.5rem,calc(1.5rem+env(safe-area-inset-bottom,0px)-var(--drawer-keyboard-inset,0px)))] transition-opacity duration-320 ease-calm select-text group-data-nested-drawer-open/drawer-popup:opacity-0 group-data-nested-drawer-swiping/drawer-popup:opacity-100 group-data-swiping/drawer-popup:select-none group-data-[swipe-direction=down]/drawer-popup:pt-4.5 motion-reduce:transition-none"
           >
             {children}
           </DrawerPrimitive.Content>
