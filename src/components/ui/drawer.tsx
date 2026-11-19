@@ -100,9 +100,45 @@ function DrawerSwipeHandle({ className, ...props }: React.ComponentProps<'div'>)
   )
 }
 
+// iOS WebKit cannot transition intrinsic height. Observe the natural body inside the
+// scroller so its measurement is independent of the popup's animated height.
+function observeDrawerHeight(body: HTMLDivElement | null) {
+  if (!body || typeof ResizeObserver !== 'function' || getComputedStyle(body).display !== 'flex') {
+    return
+  }
+
+  const scroller = body.parentElement
+  const popup = scroller?.parentElement
+  if (!scroller || !popup) return
+  const handle = popup.querySelector<HTMLElement>(':scope > [data-slot="drawer-swipe-handle"]')
+  const update = () => {
+    const { paddingTop, paddingBottom } = getComputedStyle(scroller)
+    const height =
+      body.offsetHeight +
+      (handle?.offsetHeight ?? 0) +
+      parseFloat(paddingTop) +
+      parseFloat(paddingBottom)
+    popup.style.setProperty(
+      '--drawer-intrinsic-height',
+      `min(${height}px, var(--drawer-content-max-height))`,
+    )
+  }
+
+  update()
+  const observer = new ResizeObserver(update)
+  observer.observe(body)
+  window.addEventListener('resize', update)
+  return () => {
+    observer.disconnect()
+    window.removeEventListener('resize', update)
+    popup.style.removeProperty('--drawer-intrinsic-height')
+  }
+}
+
 function DrawerContent({ className, children, ...props }: DrawerPrimitive.Popup.Props) {
   const { hasSnapPoints, modal, showSwipeHandle, swipeDirection } = useDrawer()
   const swipeAxis = swipeDirection === 'down' || swipeDirection === 'up' ? 'y' : 'x'
+  const hasIntrinsicHeight = swipeAxis === 'y' && !hasSnapPoints
 
   return (
     <DrawerPortal data-slot="drawer-portal">
@@ -124,7 +160,7 @@ function DrawerContent({ className, children, ...props }: DrawerPrimitive.Popup.
             // Bleed: fills the gap below the drawer when it is pulled past its resting edge.
             'after:pointer-events-none after:absolute after:bg-(--drawer-bleed-background,var(--color-background)) data-[swipe-axis=x]:after:inset-y-0 data-[swipe-axis=x]:after:w-(--bleed) data-[swipe-axis=y]:after:inset-x-0 data-[swipe-axis=y]:after:h-(--bleed) data-[swipe-direction=down]:after:top-full data-[swipe-direction=left]:after:right-full data-[swipe-direction=right]:after:left-full data-[swipe-direction=up]:after:bottom-full',
             // Sizing: content height, capped below the top of the viewport and at a readable width.
-            '[--drawer-content-height:var(--drawer-height,auto)] data-[swipe-axis=x]:[--drawer-content-width:75%] data-[swipe-axis=y]:[--drawer-content-max-height:calc(100dvh-6rem)] data-[swipe-axis=y]:data-snap-points:[--drawer-content-height:100dvh] data-[swipe-axis=x]:sm:[--drawer-content-width:24rem]',
+            '[--drawer-content-height:var(--drawer-height,var(--drawer-intrinsic-height,auto))] data-[swipe-axis=x]:[--drawer-content-width:75%] data-[swipe-axis=y]:[--drawer-content-max-height:calc(100dvh-6rem)] data-[swipe-axis=y]:data-snap-points:[--drawer-content-height:100dvh] data-[swipe-axis=x]:sm:[--drawer-content-width:24rem]',
             // Stack.
             '[--bleed:3rem] [--peek:1rem] [--stack-height:var(--drawer-frontmost-height,var(--drawer-height,0px))] [--stack-peek-offset:max(0px,calc((var(--nested-drawers)-var(--stack-progress))*var(--peek)))] [--stack-progress:clamp(0,var(--drawer-swipe-progress),1)] [--stack-scale-base:max(0,calc(1-(var(--nested-drawers)*var(--stack-step))))] [--stack-scale:clamp(0,calc(var(--stack-scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--stack-shrink:calc(1-var(--stack-scale))] [--stack-step:0.05]',
             // Transitions: release speed follows the swipe strength.
@@ -151,7 +187,13 @@ function DrawerContent({ className, children, ...props }: DrawerPrimitive.Popup.
             data-slot="drawer-content"
             className="flex min-h-0 flex-1 flex-col gap-4.5 overflow-y-auto overscroll-contain rounded-[inherit] px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] transition-opacity duration-320 ease-calm select-text group-data-nested-drawer-open/drawer-popup:opacity-0 group-data-nested-drawer-swiping/drawer-popup:opacity-100 group-data-swiping/drawer-popup:select-none group-data-[swipe-direction=down]/drawer-popup:pt-4.5 motion-reduce:transition-none"
           >
-            {children}
+            {hasIntrinsicHeight ? (
+              <div ref={observeDrawerHeight} className="drawer-intrinsic-body">
+                {children}
+              </div>
+            ) : (
+              children
+            )}
           </DrawerPrimitive.Content>
         </DrawerPrimitive.Popup>
       </DrawerPrimitive.Viewport>

@@ -221,6 +221,14 @@
   }
 }
 
+@utility drawer-intrinsic-body {
+  display: contents;
+
+  @supports (-webkit-touch-callout: none) and (not (interpolate-size: allow-keywords)) {
+    @apply flex shrink-0 flex-col gap-4.5;
+  }
+}
+
 @layer components {
   .meddies-field {
     @apply min-h-11 min-w-0 w-full rounded-md border border-input bg-card px-3 py-2 text-base;
