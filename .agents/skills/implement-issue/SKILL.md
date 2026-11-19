@@ -61,7 +61,8 @@ Work **lean** throughout:
    that matches the cited spec and name it in the evidence.
    _Done when_ every criterion names its evidence.
 
-5. **Build.** Test-first only for the new tests step 4 requires (use the `tdd` skill).
+5. **Build.** For UI work, first follow [UI build routing](#ui-build-routing).
+   Test-first only for the new tests step 4 requires (use the `tdd` skill).
    While iterating, run `pnpm test:related <changed files>`, `pnpm typecheck` and
    `pnpm exec eslint <changed JS/TS files>` as relevant; check changed-file lint before
    broad verification. Work that touches a design-critical screen follows
@@ -99,5 +100,24 @@ Work **lean** throughout:
    Close without waiting for Release.
    _Done when_ the read-back shows every box ticked, the evidence comment cites the pushed
    commit and includes any required screenshot attachments, and the issue is closed.
+
+## UI build routing
+
+- **Approved frames:** build the cited frame IDs, exact copy and acceptance criteria from
+  the existing production components and approved lab parts. Use those as the brief for
+  supporting skills and review; keep exploration within the implementation needed to meet
+  them. Select supporting references for the actual surface and change; keep optional
+  redesign and alternative-direction exploration outside a prescribed build.
+- **Unresolved design:** if the frames and rules leave a design decision open, stop the
+  affected build and ask, proposing a design ticket through
+  [design-ticket](../design-ticket/SKILL.md). Resume when its approved hand-off resolves the
+  decision; the build does not choose a new direction itself.
+- **Supporting guidance:** apply the available skills' triggers and mandatory instructions.
+  For UI implementation, use `impeccable` with the approved brief and target surface; for
+  shadcn components, use `shadcn` for the relevant component APIs and composition rules.
+  Read each applicable skill once, then reach only references required by that skill or
+  the concrete implementation question. Reuse loaded project context and references;
+  complete any mandatory setup, context loading and reference reads even when they overlap
+  repo docs. This routing narrows optional exploration, never higher-priority requirements.
 
 Report: what changed, what failed, what's next.
