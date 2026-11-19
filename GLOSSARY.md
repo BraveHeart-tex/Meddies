@@ -39,6 +39,12 @@ tracked only after the user turns stock tracking on with a starting count, and n
 zero.
 _Avoid_: inventory, supply, pills left
 
+**Count correction**:
+A count the user enters for a Medicine's Stock to replace the tracked count. It is a
+reconciliation point: doses taken before it no longer change Stock. UI copy calls it "Change the
+count".
+_Avoid_: adjustment, recount, stock edit
+
 ## Schedules
 
 **Clock schedule**:

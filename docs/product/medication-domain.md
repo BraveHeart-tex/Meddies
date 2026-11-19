@@ -248,6 +248,44 @@ See **Stock** (GLOSSARY.md).
 | Archived            | Archived at 30; late Taken 1 logged        | 29 tablets left, read-only |
 | Retry               | Taken save retried with the same action ID | 29 tablets left            |
 
+### #49 - Approved count correction rules (November 19, 2026)
+
+See **Count correction** and **Stock** (GLOSSARY.md). In UI copy it is "Change the count".
+
+- While stock tracking is on, the user can enter the count they have now, from Change the count
+  in the stock Drawer on Medication detail. The new count replaces the tracked count, including a
+  count below zero after intake past the count. The field starts empty.
+- The count follows the starting count rules (#46): the Medicine's Quantity unit and its step,
+  zero allowed, negative counts rejected, no medical maximum.
+- A count correction is a reconciliation point at its server time, replacing the previous one. A
+  dose counts against it by the #47 minute rule; corrections never rewrite doses or their intake
+  movements. Each correction is its own StockMovement with the entered count and its Quantity
+  unit, kept for export (#55).
+- Saving the current count is a recount: it saves and moves the reconciliation point.
+- An Archived medicine's count stays read-only, and a Medicine without stock tracking has no count
+  to change. Low-stock evaluation after a correction follows #10 D4 (#52).
+- While more was taken than counted (the stored count below zero), the Stock row on Medication
+  detail shows "0 {unit} left" with "More was taken than counted. Change the count to fix it.",
+  and the Medications list row adds "More was taken than counted". Exactly zero shows neither.
+  The line clears once the count is zero or above.
+- Each correction has its own action ID and follows the
+  [session contract](./ux-journeys.md#session-contract); a retry applies once.
+
+| Example            | Setup (start 30 tablets at 10:00:40)                | Expected                         |
+| ------------------ | --------------------------------------------------- | -------------------------------- |
+| Change             | Change the count to 24 at 12:00                     | 24 tablets left                  |
+| Half tablet        | Change the count to 12.5                            | 12½ tablets left                 |
+| Half capsule       | Capsules; change the count to 7.5                   | Rejected with a field error      |
+| Zero               | Change the count to 0                               | 0 tablets left, no line          |
+| Past the count     | Start 0.5; Taken 1                                  | 0 tablets left with the line     |
+| Fix past the count | Previous row; change the count to 10                | 10 tablets left, line gone       |
+| Late from History  | Change to 20 at 12:00:30; Taken 1 at 11:00 logged   | 20 tablets left                  |
+| Same minute        | Change to 20 at 12:00:30; Taken 1 at 12:00          | 19 tablets left                  |
+| Earlier dose fixed | Taken 1 at 11:00; change to 20 at 12:00; to Skipped | 20 tablets left                  |
+| Recount            | Count 20; change the count to 20                    | 20 tablets left; new point saved |
+| Archived           | Archived medicine with stock                        | No Change the count              |
+| Retry              | Correction retried with the same action ID          | One correction                   |
+
 ## Required product behavior
 
 1. Manual medication creation must work without a barcode catalog.
