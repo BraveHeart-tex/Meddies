@@ -166,6 +166,11 @@ export function isQuantityFor(value: unknown, quantity: Quantity): value is numb
   )
 }
 
+/** Stock shares the quantity grid and safe bound, with zero allowed. */
+export function isStockCount(value: unknown, quantity: Quantity): value is number {
+  return value === 0 || isQuantityFor(value, quantity)
+}
+
 /** The Worker's check once it has looked up the owned Medicine's Type. */
 export function isWritableQuantity(value: unknown, type: unknown): value is number {
   return isWritableMedicineType(type) && isQuantityFor(value, type)

@@ -24,6 +24,7 @@ const archived: MedicineRecord = {
   label: 'Magnesium',
   strength: '400 mg',
   unit: 'tablet',
+  stock: { tracked: false },
   revision: 2,
   lastActionId: stopId,
   currentStrengthRevisionId: '22222222-2222-4222-8222-222222222222',

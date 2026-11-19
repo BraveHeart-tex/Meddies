@@ -23,6 +23,7 @@ const id = '00000000-0000-4000-8000-000000000001'
 const actionId = '00000000-0000-4000-8000-000000000002'
 const liquid = { id, label: 'Amoxicillin', strength: '250 mg/5 ml', unit: 'liquid' }
 const record = {
+  stock: { tracked: false },
   ...liquid,
   revision: 1,
   lastActionId: actionId,

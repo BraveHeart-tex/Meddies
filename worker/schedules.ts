@@ -113,7 +113,7 @@ export async function saveSchedule(
     return { schedules: [existing] }
   }
   const medicine = await db
-    .select()
+    .select({ unit: userMedications.unit })
     .from(userMedications)
     .where(and(eq(userMedications.ownerId, ownerId), eq(userMedications.id, schedule.medicineId)))
     .get()

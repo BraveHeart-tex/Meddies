@@ -22,6 +22,7 @@ export const medicine: MedicineRecord = {
   label: 'Magnesium',
   strength: '400 mg',
   unit: 'tablet',
+  stock: { tracked: false },
   revision: 1,
   lastActionId: null,
   currentStrengthRevisionId: '22222222-2222-4222-8222-222222222222',

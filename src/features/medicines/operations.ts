@@ -1,6 +1,8 @@
 import { ApplicationError } from '../../lib/application-error'
 import {
   parseMedicine,
+  parseStockOn,
+  parseStockOff,
   parseDetailCorrection,
   parseStrengthChange,
   parseMedicineArchive,
@@ -24,6 +26,31 @@ export function createMedicineOperations(dependencies: {
     return rows
   }
   return {
+    async stockOn(input: unknown) {
+      const user = await dependencies.requireUser()
+      const stock = parseStockOn(input)
+      const records = confirmedEdit(
+        await sendRows({ operation: 'stockOn', ownerId: user.id, stock }),
+        stock,
+      )
+      if (
+        !records[0].stock.tracked ||
+        records[0].stock.count !== stock.startingCount ||
+        records[0].unit !== stock.unit
+      )
+        throw new ApplicationError('unavailable', 503)
+      return records
+    },
+    async stockOff(input: unknown) {
+      const user = await dependencies.requireUser()
+      const stock = parseStockOff(input)
+      const records = confirmedEdit(
+        await sendRows({ operation: 'stockOff', ownerId: user.id, stock }),
+        stock,
+      )
+      if (records[0].stock.tracked) throw new ApplicationError('unavailable', 503)
+      return records
+    },
     async delete(input: unknown) {
       const user = await dependencies.requireUser()
       const deletion = parseMedicineDelete(input)
@@ -84,7 +111,19 @@ export function createMedicineOperations(dependencies: {
     async save(input: unknown) {
       const user = await dependencies.requireUser()
       const medicine = parseMedicine(input)
-      return sendRows({ operation: 'save', ownerId: user.id, medicine })
+      const rows = await sendRows({ operation: 'save', ownerId: user.id, medicine })
+      if (medicine.startingCount !== undefined) {
+        const saved = rows[0]
+        if (
+          rows.length !== 1 ||
+          saved.id !== medicine.id ||
+          saved.unit !== medicine.unit ||
+          !saved.stock?.tracked ||
+          saved.stock.count !== medicine.startingCount
+        )
+          throw new ApplicationError('unavailable', 503)
+      }
+      return rows
     },
   }
 }

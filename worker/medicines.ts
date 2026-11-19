@@ -8,6 +8,8 @@ import {
   parseMedicineRecord,
   parseMedicineDeleteReceipt,
   type MedicineDelete,
+  type StockOn,
+  type StockOff,
   type MedicineInput,
   type MedicineRecord,
   type DetailCorrection,
@@ -32,11 +34,18 @@ export async function saveMedicine(
   db: DrizzleD1Database,
   ownerId: string,
   medicine: MedicineInput,
+  now: Date,
 ) {
-  await db
-    .insert(userMedications)
-    .values({ ...medicine, ownerId })
-    .onConflictDoNothing({ target: [userMedications.ownerId, userMedications.id] })
+  if (medicine.startingCount === undefined) {
+    // Stock-off creation retains its original insertion contract.
+    await db.run(sql`INSERT INTO user_medications(owner_id,id,label,strength,unit)
+      VALUES(${ownerId},${medicine.id},${medicine.label},${medicine.strength},${medicine.unit})
+      ON CONFLICT(owner_id,id) DO NOTHING`)
+  } else {
+    await db.run(sql`INSERT INTO user_medications(owner_id,id,label,strength,unit,starting_count,stock_started_at)
+      VALUES(${ownerId},${medicine.id},${medicine.label},${medicine.strength},${medicine.unit},${medicine.startingCount},${now.toISOString()})
+      ON CONFLICT(owner_id,id) DO NOTHING`)
+  }
   const row = await db
     .select({ request: userMedications.creationRequest, result: userMedications.creationResult })
     .from(userMedications)
@@ -47,7 +56,8 @@ export async function saveMedicine(
     !original ||
     original.label !== medicine.label ||
     original.strength !== medicine.strength ||
-    original.unit !== medicine.unit
+    original.unit !== medicine.unit ||
+    original.startingCount !== medicine.startingCount
   )
     throw new ApplicationError('conflict', 409)
   return { medicines: [parseMedicineRecord(JSON.parse(row!.result!))] }
@@ -74,7 +84,7 @@ export async function editMedicine(
   const prior = await replay()
   if (prior) return prior
   const row = await db
-    .select()
+    .select({ label: userMedications.label, unit: userMedications.unit })
     .from(userMedications)
     .where(and(eq(userMedications.ownerId, ownerId), eq(userMedications.id, input.medicineId)))
     .get()
@@ -215,6 +225,38 @@ export async function deleteMedicine(
     (owner_id,action_id,medicine_id,expected_revision,deleted_at,request)
     VALUES(${ownerId},${input.actionId},${input.medicineId},${input.expectedRevision},${now.toISOString()},${request})
     ON CONFLICT DO NOTHING`)
+  const saved = await replay()
+  if (!saved) throw new ApplicationError('conflict', 409)
+  return saved
+}
+
+// One action insert (0025) validates revision/state/unit, records a reconciliation
+// movement, updates the count and saves the exact receipt atomically. Replay comes first.
+export async function setMedicineStock(
+  db: DrizzleD1Database,
+  ownerId: string,
+  kind: 'stockOn' | 'stockOff',
+  input: StockOn | StockOff,
+  now: Date,
+) {
+  const request = JSON.stringify({ kind, ...input })
+  const replay = async () => {
+    const row = await db.get<{ request: string; result: string }>(
+      sql`SELECT request,result FROM medicine_stock_actions WHERE owner_id=${ownerId} AND action_id=${input.actionId}`,
+    )
+    if (!row) return null
+    if (row.request !== request) throw new ApplicationError('conflict', 409)
+    return { medicines: [parseMedicineRecord(JSON.parse(row.result))] }
+  }
+  const prior = await replay()
+  if (prior) return prior
+  const owned = await db.get(
+    sql`SELECT id FROM user_medications WHERE owner_id=${ownerId} AND id=${input.medicineId}`,
+  )
+  if (!owned) throw new ApplicationError('not_found', 404)
+  await db.run(sql`INSERT INTO medicine_stock_actions
+    (owner_id,action_id,medicine_id,expected_revision,kind,count,unit,confirmed_at,request)
+    VALUES(${ownerId},${input.actionId},${input.medicineId},${input.expectedRevision},${kind},${'startingCount' in input ? input.startingCount : null},${'unit' in input ? input.unit : null},${now.toISOString()},${request}) ON CONFLICT DO NOTHING`)
   const saved = await replay()
   if (!saved) throw new ApplicationError('conflict', 409)
   return saved

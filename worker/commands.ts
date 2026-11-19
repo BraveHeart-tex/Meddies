@@ -4,6 +4,8 @@ import {
 } from '../src/features/unscheduled-doses/contract'
 import {
   parseMedicine,
+  parseStockOn,
+  parseStockOff,
   parseDetailCorrection,
   parseStrengthChange,
   parseMedicineArchive,
@@ -153,6 +155,16 @@ export function decodeCommand(path: CommandPath, value: unknown): WorkerCommand 
         return {
           path,
           command: { operation: 'archive', ownerId, archive: parseMedicineArchive(input.archive) },
+        }
+      case 'stockOn':
+        return {
+          path,
+          command: { operation: 'stockOn', ownerId, stock: parseStockOn(input.stock) },
+        }
+      case 'stockOff':
+        return {
+          path,
+          command: { operation: 'stockOff', ownerId, stock: parseStockOff(input.stock) },
         }
       case 'restore':
         return {

@@ -87,7 +87,7 @@ export async function writeUnscheduledDose(
   }
   const medicineId = 'medicineId' in input ? input.medicineId : latest!.medicineId
   const medicine = await db
-    .select()
+    .select({ unit: userMedications.unit })
     .from(userMedications)
     .where(and(eq(userMedications.ownerId, ownerId), eq(userMedications.id, medicineId)))
     .get()

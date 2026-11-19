@@ -16,6 +16,7 @@ const medicine: MedicineRecord = {
   label: 'Example',
   strength: '400 mg',
   unit: 'tablet',
+  stock: { tracked: false },
   revision: 1,
   lastActionId: actionId,
   currentStrengthRevisionId: actionId,

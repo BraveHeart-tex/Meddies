@@ -109,6 +109,15 @@ owner.
   Owner-scoped deletion receipts outlive the record and block creation replay, including
   inserts from an older Worker. The response contains a `deletion` receipt with the action,
   Medicine, expected revision and server-confirmed `deletedAt`; refused attempts write nothing.
+- **Stock:** `PATCH /api/medicines` accepts `stockOn` and `stockOff` with an action
+  UUID and expected Medicine revision. Turn-on also supplies the Medicine type and a
+  starting count; the atomic write compares that type against the owned active Medicine.
+  Stock uses the shared quantity grid and safe bound with zero allowed. Starting counts
+  are reconciliation movements with their server time and Quantity unit, retained when
+  tracking turns off. Stock locks the Type while on; archive preserves it read-only.
+  Add medicine accepts an optional `startingCount`; the Medicine, movement and immutable
+  creation receipt commit together. Stock action receipts replay exactly before state
+  validation. Medicine deletion cascades to stock movements and action receipts.
 - **Dose strength:** scheduled doses resolve by Taken time, or due time for Skipped;
   Unscheduled doses resolve by Taken time. Database insertion triggers save period identity,
   strength, label and Quantity unit, including writes from an older Worker during rollout.

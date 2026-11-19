@@ -28,6 +28,10 @@ export async function PATCH(request: Request) {
   if (rejected) return rejected
   try {
     const input = (await readJsonRequest(request)) as Record<string, unknown>
+    if (input?.operation === 'stockOn')
+      return json({ medicines: await medicines.stockOn(input.stock) })
+    if (input?.operation === 'stockOff')
+      return json({ medicines: await medicines.stockOff(input.stock) })
     if (input?.operation === 'delete')
       return json({ deletion: await medicines.delete(input.deletion) })
     if (input?.operation === 'correctDetails')

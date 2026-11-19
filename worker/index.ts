@@ -10,6 +10,7 @@ import {
 } from './http'
 import {
   listMedicines,
+  setMedicineStock,
   saveMedicine,
   editMedicine,
   archiveMedicine,
@@ -96,6 +97,17 @@ export function createWorker(
               return json(await editMedicine(db, command.ownerId, command.change, clock()))
             case 'archive':
               return json(await archiveMedicine(db, command.ownerId, command.archive, clock()))
+            case 'stockOn':
+            case 'stockOff':
+              return json(
+                await setMedicineStock(
+                  db,
+                  command.ownerId,
+                  command.operation,
+                  command.stock,
+                  clock(),
+                ),
+              )
             case 'restore':
               return json(await restoreMedicine(db, command.ownerId, command.restore, clock()))
             case 'delete':
@@ -103,7 +115,7 @@ export function createWorker(
             case 'list':
               return json(await listMedicines(db, command.ownerId))
             case 'save':
-              return json(await saveMedicine(db, command.ownerId, command.medicine))
+              return json(await saveMedicine(db, command.ownerId, command.medicine, clock()))
           }
         }
         if (decoded.path === '/device-registrations') {

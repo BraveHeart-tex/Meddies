@@ -1,5 +1,6 @@
 import {
   isMedicineType,
+  isStockCount,
   isWritableMedicineType,
   type Access,
   type MedicineType,
@@ -32,11 +33,12 @@ type MedicineMetadata = {
   latestTakenAt: string | null
   /** The archive's Edit time; null while active. Reads before #322 omit it (active). */
   archivedAt: string | null
+  stock: { tracked: false } | { tracked: true; count: number }
 }
 
 export type MedicineRecord = Medicine & MedicineMetadata
 /** A Medicine as saves send it: only writable Types. */
-export type MedicineInput = Medicine & { unit: WritableMedicineType }
+export type MedicineInput = Medicine & { unit: WritableMedicineType; startingCount?: number }
 
 /** An Archived medicine: kept out of Medications and every view that offers it for new doses. */
 export const isArchived = (medicine: Medicine) => Boolean(medicine.archivedAt)
@@ -48,9 +50,13 @@ export type MedicineResponses = {
   changeStrength: { medicines: MedicineRecord[] }
   archive: { medicines: MedicineRecord[] }
   restore: { medicines: MedicineRecord[] }
+  stockOn: { medicines: MedicineRecord[] }
+  stockOff: { medicines: MedicineRecord[] }
   delete: { deletion: MedicineDeleteReceipt }
 }
 export type MedicineCommand =
+  | { operation: 'stockOn'; ownerId: string; stock: StockOn }
+  | { operation: 'stockOff'; ownerId: string; stock: StockOff }
   | { operation: 'list'; ownerId: string }
   | { operation: 'save'; ownerId: string; medicine: MedicineInput }
   | { operation: 'correctDetails'; ownerId: string; correction: DetailCorrection }
@@ -64,7 +70,14 @@ export type MedicineResponse<C extends MedicineCommand = MedicineCommand> =
 
 /** A save's Medicine: only writable Types (quantity policy). */
 export function parseMedicine(value: unknown): MedicineInput {
-  return parseMedicineDetails(value, 'write') as MedicineInput
+  const medicine = parseMedicineDetails(value, 'write') as MedicineInput
+  const input = value as Record<string, unknown>
+  if (input.startingCount !== undefined) {
+    if (!isStockCount(input.startingCount, medicine.unit))
+      throw new ApplicationError('validation', 400)
+    medicine.startingCount = input.startingCount
+  }
+  return medicine
 }
 
 function parseMedicineDetails(value: unknown, access: Access): Medicine {
@@ -132,6 +145,7 @@ export function parseMedicineRecord(value: unknown): MedicineRecord {
     throw new ApplicationError('validation', 400)
   return {
     ...medicine,
+    stock: parseStock(input.stock, medicine.unit),
     revision: input.revision as number,
     lastActionId: input.lastActionId as string | null,
     currentStrengthRevisionId: input.currentStrengthRevisionId,
@@ -242,4 +256,26 @@ export function parseMedicineDeleteReceipt(value: unknown): MedicineDeleteReceip
   const input = value as Record<string, unknown>
   if (!isInstant(input.deletedAt)) throw new ApplicationError('validation', 400)
   return { ...key, deletedAt: input.deletedAt }
+}
+
+export type StockOn = MedicineArchive & { unit: WritableMedicineType; startingCount: number }
+export type StockOff = MedicineArchive
+export function parseStockOn(value: unknown): StockOn {
+  const key = parseEditKey(value)
+  const input = value as Record<string, unknown>
+  if (!isWritableMedicineType(input.unit) || !isStockCount(input.startingCount, input.unit))
+    throw new ApplicationError('validation', 400)
+  return { ...key, unit: input.unit, startingCount: input.startingCount }
+}
+export const parseStockOff = parseMedicineArchive
+
+function parseStock(value: unknown, unit: MedicineType): MedicineRecord['stock'] {
+  // Older Worker reads and immutable pre-stock receipts omit stock.
+  if (value === undefined) return { tracked: false }
+  if (!value || typeof value !== 'object') throw new ApplicationError('validation', 400)
+  const stock = value as Record<string, unknown>
+  if (stock.tracked === false) return { tracked: false }
+  if (stock.tracked === true && isStockCount(stock.count, unit))
+    return { tracked: true, count: stock.count }
+  throw new ApplicationError('validation', 400)
 }

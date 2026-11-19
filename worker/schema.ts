@@ -24,6 +24,9 @@ export const userMedications = sqliteTable(
     archivedAt: text('archived_at'),
     everHadSchedule: integer('ever_had_schedule', { mode: 'boolean' }).notNull().default(false),
     everHadDose: integer('ever_had_dose', { mode: 'boolean' }).notNull().default(false),
+    startingCount: real('starting_count'),
+    stockCount: real('stock_count'),
+    stockStartedAt: text('stock_started_at'),
     creationRequest: text('creation_request'),
     creationResult: text('creation_result'),
     unit: text('unit', { enum: writableMedicineTypes }).notNull(),
@@ -451,5 +454,50 @@ export const medicationNamesReceipts = sqliteTable(
   (table) => [
     primaryKey({ columns: [table.ownerId, table.actionId] }),
     check('medication_names_receipts_medication_names', sql`${table.medicationNames} IN (0, 1)`),
+  ],
+)
+
+// Starting counts are retained independently of the current tracking state.
+export const stockMovements = sqliteTable(
+  'stock_movements',
+  {
+    ownerId: text('owner_id').notNull(),
+    id: text('id').notNull(),
+    medicineId: text('medicine_id').notNull(),
+    count: real('count').notNull(),
+    unit: text('unit', { enum: writableMedicineTypes }).notNull(),
+    occurredAt: text('occurred_at').notNull(),
+    kind: text('kind', { enum: ['startingCount'] }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.id] }),
+    foreignKey({
+      columns: [table.ownerId, table.medicineId],
+      foreignColumns: [userMedications.ownerId, userMedications.id],
+    }).onDelete('cascade'),
+  ],
+)
+
+export const medicineStockActions = sqliteTable(
+  'medicine_stock_actions',
+  {
+    ownerId: text('owner_id').notNull(),
+    actionId: text('action_id').notNull(),
+    medicineId: text('medicine_id').notNull(),
+    expectedRevision: integer('expected_revision').notNull(),
+    kind: text('kind', { enum: ['stockOn', 'stockOff'] }).notNull(),
+    count: real('count'),
+    unit: text('unit'),
+    confirmedAt: text('confirmed_at').notNull(),
+    request: text('request').notNull(),
+    result: text('result'),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.actionId] }),
+    unique().on(table.ownerId, table.medicineId, table.expectedRevision),
+    foreignKey({
+      columns: [table.ownerId, table.medicineId],
+      foreignColumns: [userMedications.ownerId, userMedications.id],
+    }).onDelete('cascade'),
   ],
 )

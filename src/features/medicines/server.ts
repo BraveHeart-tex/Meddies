@@ -14,6 +14,13 @@ export async function send(command: MedicineCommand) {
     if (command.operation === 'delete') return parseMedicineDeleteReceipt(data.deletion)
     if (!Array.isArray(data.medicines)) throw new Error('contract')
     try {
+      if (
+        (command.operation === 'stockOn' ||
+          command.operation === 'stockOff' ||
+          (command.operation === 'save' && command.medicine.startingCount !== undefined)) &&
+        data.medicines.some((row) => !row || typeof row !== 'object' || !('stock' in row))
+      )
+        throw new Error('stock confirmation contract')
       // Legacy reads may omit archivedAt, but a restore must explicitly confirm it.
       if (
         command.operation === 'restore' &&

@@ -450,7 +450,7 @@ test('restore HTTP operation parses its request and requires an explicit confirm
   }
   const saved = await patch({ ...restore, ownerId: 'google:other' })
   assert.equal(saved.status, 200)
-  assert.deepEqual(await saved.json(), { medicines: [record] })
+  assert.deepEqual(await saved.json(), { medicines: [{ ...record, stock: { tracked: false } }] })
   for (const invalid of [
     null,
     { ...restore, actionId: 'bad' },
@@ -470,5 +470,74 @@ test('restore HTTP operation parses its request and requires an explicit confirm
   ]) {
     globalThis.fetch = async () => Response.json({ medicines: rows })
     assert.equal((await patch(restore)).status, 503)
+  }
+})
+
+test('stock HTTP commands authenticate, use the session owner and require explicit stock receipts', async () => {
+  const stock = {
+    actionId: '10000000-0000-4000-8000-000000000001',
+    medicineId: '10000000-0000-4000-8000-000000000002',
+    expectedRevision: 0,
+    unit: 'tablet',
+    startingCount: 12.5,
+  }
+  const record = {
+    id: stock.medicineId,
+    label: 'Example',
+    strength: null,
+    unit: 'tablet',
+    revision: 1,
+    lastActionId: stock.actionId,
+    archivedAt: null,
+    currentStrengthRevisionId: stock.medicineId,
+    strengthRevisions: [
+      {
+        id: stock.medicineId,
+        label: 'Example',
+        strength: null,
+        unit: 'tablet',
+        effectiveAt: '0001-01-01T00:00:00.000Z',
+        previousValues: [],
+      },
+    ],
+    everHadSchedule: false,
+    everHadDose: false,
+    latestTakenAt: null,
+  }
+  for (const operation of ['stockOn', 'stockOff'] as const) {
+    const input =
+      operation === 'stockOn'
+        ? stock
+        : { actionId: stock.actionId, medicineId: stock.medicineId, expectedRevision: 0 }
+    const patch = () =>
+      medicinePatch(
+        new Request('https://meddies.test/api/medicines', {
+          method: 'PATCH',
+          headers: { origin: 'https://meddies.test', 'content-type': 'application/json' },
+          body: JSON.stringify({ operation, stock: { ...input, ownerId: 'google:other' } }),
+        }),
+      )
+    setAuthenticated(false)
+    globalThis.fetch = async () => assert.fail('signed-out stock command reached storage')
+    assert.equal((await patch()).status, 401)
+    setAuthenticated(true)
+    globalThis.fetch = async (_, options) => {
+      assert.deepEqual(JSON.parse(options!.body as string), {
+        operation,
+        ownerId: 'google:test',
+        stock: input,
+      })
+      return Response.json({
+        medicines: [
+          {
+            ...record,
+            stock: operation === 'stockOn' ? { tracked: true, count: 12.5 } : { tracked: false },
+          },
+        ],
+      })
+    }
+    assert.equal((await patch()).status, 200)
+    globalThis.fetch = async () => Response.json({ medicines: [record] })
+    assert.equal((await patch()).status, 503)
   }
 })
