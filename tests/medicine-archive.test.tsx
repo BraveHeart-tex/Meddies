@@ -198,7 +198,7 @@ test('known offline blocks, rejection keeps the Drawer, and a pending archive re
   // Same URL, now the read-only archived detail.
   expect(window.location.search).toBe(`?medicine=${medicine.id}&manage`)
   expect(screen.getByRole('link', { name: /Archived medications/ })).toBeVisible()
-  expect(screen.getByText('Kept in History')).toBeVisible()
+  expect(screen.getByText(/^Kept in History\./)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Archive medication' })).not.toBeInTheDocument()
   await waitFor(() => expect(screen.getByRole('heading', { name: 'Magnesium' })).toHaveFocus())
   expect(attempts).toHaveLength(2)
@@ -252,7 +252,7 @@ test('an Unconfirmed archive retries the same attempt, reconciles on its receipt
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(attempts[2]).toEqual(attempts[1])
   expect(attempts[1]).toMatchObject({ expectedRevision: 2 })
-  expect(screen.getByText('Kept in History')).toBeVisible()
+  expect(screen.getByText(/^Kept in History\./)).toBeVisible()
   unmount()
   client.clear()
 
@@ -275,7 +275,7 @@ test('an Unconfirmed archive retries the same attempt, reconciles on its receipt
   await again.user.click(confirmAction())
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(attempts).toHaveLength(1)
-  expect(screen.getByText('Kept in History')).toBeVisible()
+  expect(screen.getByText(/^Kept in History\./)).toBeVisible()
   const stopped = second.getQueryData<ScheduleSnapshot>(scheduleKeys.snapshot())!
   expect(scheduleToday(stopped.schedules, new Date(now), stopped.records).next).toBeNull()
   again.unmount()

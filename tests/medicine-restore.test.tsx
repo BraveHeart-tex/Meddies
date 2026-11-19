@@ -132,7 +132,7 @@ async function expectRestoredDetail() {
     'No schedule has restarted. Set one when you’re ready.',
   )
   expect(screen.getByText('No schedule', { exact: true })).toBeVisible()
-  expect(screen.queryByText('Kept in History')).not.toBeInTheDocument()
+  expect(screen.queryByText(/^Kept in History\./)).not.toBeInTheDocument()
   expect(screen.getByRole('link', { name: /^Medications$/ })).toBeVisible()
   const logDose = screen.getByRole('button', { name: 'Log a dose' })
   const set = screen.getByRole('link', { name: 'Set schedule' })
@@ -162,7 +162,7 @@ test('Restore medication opens the 292·S8 confirmation; Close, Escape, backdrop
     }),
   )
   const { client, user, unmount } = open()
-  expect(screen.getByText('Kept in History')).toBeVisible()
+  expect(screen.getByText(/^Kept in History\./)).toBeVisible()
   for (const dismiss of [
     () => user.click(screen.getByRole('button', { name: 'Close' })),
     () => user.keyboard('{Escape}'),

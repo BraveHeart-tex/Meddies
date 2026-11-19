@@ -264,7 +264,18 @@ describe('the medication page', () => {
     expect(set).toHaveClass('border-border-strong', 'min-h-13')
     expect(set).not.toHaveClass('bg-primary')
     expect(set).toHaveAttribute('href', `/medications?schedule=${magnesium.id}#schedule-heading`)
-    expect(logDose.compareDocumentPosition(set!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // 238·A3: then the Stock and Dose history group, then Manage medication in its own group.
+    const stock = screen.getByRole('button', { name: 'Stock' })
+    const doses = screen.getByRole('link', { name: 'Dose history' })
+    const manage = screen.getByRole('link', { name: /^Manage medication/ })
+    const order = [logDose, set!, stock, doses, manage]
+    for (const [index, item] of order.slice(1).entries())
+      expect(
+        order[index].compareDocumentPosition(item) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+    expect(stock.closest('section')).toContainElement(doses)
+    expect(stock.closest('section')).not.toContainElement(manage)
+    expect(screen.queryByRole('link', { name: 'Done for now' })).not.toBeInTheDocument()
   })
 
   test('a scheduled medication keeps Log a dose soft (238·A3)', async () => {

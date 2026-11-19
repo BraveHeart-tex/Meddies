@@ -295,19 +295,22 @@ test('Archived medication detail shows the count read-only with no stock actions
     archivedAt: now,
     stock: { tracked: true, count: 12.5 },
   }
+  // 238·A3: a read-only Stock row in the Archived inset group, never a stock action.
   const { client, unmount } = open(archived)
   expect(await screen.findByText('Archived')).toBeVisible()
-  expect(within(stock()).getByText('12½')).toBeVisible()
-  expect(within(stock()).getByText('tablets left')).toBeVisible()
+  const stockRow = () => within(screen.getByRole('list')).getAllByRole('listitem')[0]
+  expect(stockRow()).toHaveTextContent('Stock12½ tablets left')
+  expect(within(stockRow()).queryByRole('button')).toBeNull()
   expect(screen.queryByRole('button', { name: 'Stop tracking' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Stock' })).toBeNull()
   unmount()
   client.clear()
 
-  // Stock off on an Archived medicine shows no Stock section at all.
+  // Stock off on an Archived medicine reads Not tracking, still with no action.
   const untracked = open({ ...archived, stock: { tracked: false } })
   expect(await screen.findByText('Archived')).toBeVisible()
-  expect(screen.queryByRole('region', { name: 'Stock' })).toBeNull()
+  expect(stockRow()).toHaveTextContent('StockNot tracking')
+  expect(screen.queryByRole('button', { name: /stock|track/i })).toBeNull()
   untracked.unmount()
   untracked.client.clear()
 })

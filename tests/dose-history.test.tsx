@@ -202,12 +202,10 @@ describe('the Dose history row (387·S1)', () => {
     api({ medicines: [archived], reply: () => empty })
     renderPanel()
     const row = await screen.findByRole('link', { name: 'Dose history' })
-    const rows = within(row.closest('[data-slot="item-group"]')!).getAllByRole('link')
-    expect(rows.map((link) => link.getAttribute('aria-label'))).toEqual(
-      expect.arrayContaining(['Dose history', 'Strength history']),
-    )
-    expect(rows.indexOf(row)).toBe(
-      rows.findIndex((link) => link.getAttribute('aria-label') === 'Strength history') - 1,
+    const items = within(screen.getByRole('list')).getAllByRole('listitem')
+    const index = items.findIndex((item) => item.contains(row))
+    expect(items[index + 1]).toContainElement(
+      screen.getByRole('link', { name: 'Strength history' }),
     )
   })
 })

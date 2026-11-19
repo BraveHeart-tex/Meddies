@@ -1,10 +1,9 @@
 'use client'
 
 import type { Ref } from 'react'
-import { Archive, CalendarDays, History, Info } from 'lucide-react'
+import { Archive, CalendarDays, Info, Package, ScrollText } from 'lucide-react'
 import { AppHeader } from '@/components/layout/app-header'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
@@ -15,7 +14,8 @@ import {
   medicationsListHref,
   MedicinesRefreshAlert,
 } from './medication-sub-screen'
-import { MedicineStockCard } from './medicine-stock-card'
+import { MedicationInsetGroup, MedicationInsetRow } from './medication-inset-list'
+import { stockCopy, stockRowValue } from './medicine-stock'
 import { MedicationsLink } from './medications-nav'
 import { MedicationsListSkeleton } from './medications-skeleton'
 import type { MedicinesRead } from './queries'
@@ -86,9 +86,17 @@ export function ArchivedMedications({ medicinesRead }: { medicinesRead: Medicine
   )
 }
 
+/** Approved with #403 Direction B: one notice in place of the Archived badge. */
+const archivedCopy = {
+  title: 'Archived',
+  body: 'Kept in History. The schedule has stopped, reminders are cancelled and stock is unchanged.',
+}
+
 /**
- * An Archived medicine's read-only detail (#330): no edit, Archive or new-dose action. Restore
- * medication opens its confirmation (#328, 292·S8).
+ * An Archived medicine's read-only detail (#330; 238·A3, #407): Back to Archived
+ * medications, one Archived notice, Restore medication (#328, 292·S8), then one inset group of the
+ * read-only Stock row ("Not tracking" while off), Dose history and Strength history. No edit,
+ * Archive, stock or new-dose action.
  */
 export function ArchivedMedicationDetail({
   medicine,
@@ -102,20 +110,14 @@ export function ArchivedMedicationDetail({
   onRestoreRequested?: (medicine: Medicine) => void
 }) {
   return (
-    <div className="flex flex-col gap-5 [overflow-wrap:anywhere]">
+    <div className="flex flex-col gap-5 [overflow-wrap:break-word]">
       <MedicationBackRow href={archivedMedicationsHref}>Archived medications</MedicationBackRow>
       <MedicationIdentity medicine={medicine} headingRef={headingRef} />
       <MedicinesRefreshAlert medicinesRead={medicinesRead} />
-      <Badge variant="secondary">
-        <Archive aria-hidden="true" />
-        Archived
-      </Badge>
       <Alert>
         <Info aria-hidden="true" />
-        <AlertTitle>Kept in History</AlertTitle>
-        <AlertDescription>
-          The schedule has stopped. Reminders are cancelled. Stock is unchanged.
-        </AlertDescription>
+        <AlertTitle>{archivedCopy.title}</AlertTitle>
+        <AlertDescription>{archivedCopy.body}</AlertDescription>
       </Alert>
       {typeof medicine.revision === 'number' && onRestoreRequested && (
         <Button
@@ -126,39 +128,23 @@ export function ArchivedMedicationDetail({
           Restore medication
         </Button>
       )}
-      <MedicineStockCard medicine={medicine} />
-      <ItemGroup>
-        <Item
-          variant="card"
-          render={
-            <MedicationsLink
-              aria-label="Dose history"
-              href={medicationRecordHref(medicine.id, 'doses')}
-            />
-          }
-        >
-          <ItemContent>
-            <ItemTitle>Dose history</ItemTitle>
-            <ItemDescription>See when it was taken and how much.</ItemDescription>
-          </ItemContent>
-          <CalendarDays aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
-        </Item>
-        <Item
-          variant="card"
-          render={
-            <MedicationsLink
-              aria-label="Strength history"
-              href={medicationRecordHref(medicine.id, 'history')}
-            />
-          }
-        >
-          <ItemContent>
-            <ItemTitle>Strength history</ItemTitle>
-            <ItemDescription>See which strength each period uses.</ItemDescription>
-          </ItemContent>
-          <History aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
-        </Item>
-      </ItemGroup>
+      <MedicationInsetGroup>
+        <MedicationInsetRow
+          icon={Package}
+          label={stockCopy.heading}
+          value={stockRowValue(medicine)}
+        />
+        <MedicationInsetRow
+          icon={CalendarDays}
+          label="Dose history"
+          href={medicationRecordHref(medicine.id, 'doses')}
+        />
+        <MedicationInsetRow
+          icon={ScrollText}
+          label="Strength history"
+          href={medicationRecordHref(medicine.id, 'history')}
+        />
+      </MedicationInsetGroup>
     </div>
   )
 }

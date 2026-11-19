@@ -526,13 +526,29 @@ describe('Done for now', () => {
     expect(
       screen.queryByText('Today lists its doses once it has a schedule, or when you log one.'),
     ).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Set schedule' })).toBeVisible()
-    await user.click(screen.getByRole('link', { name: 'Done for now' }))
+    const setSchedule = screen.getByRole('link', { name: 'Set schedule' })
+    const done = screen.getByRole('link', { name: 'Done for now' })
+    // 238·A3: an outline action directly under Set schedule, above the Stock row.
+    // eslint-disable-next-line meddies/no-cosmetic-class-assertions -- outline is its only weight signal
+    expect(done).toHaveClass('border-border-strong')
+    expect(
+      setSchedule.compareDocumentPosition(done) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      done.compareDocumentPosition(screen.getByRole('button', { name: 'Stock' })) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    await user.click(done)
     expect(window.location.pathname + window.location.search).toBe('/medications')
     rerender(medicationsScreen())
-    expect(
-      await screen.findByRole('link', { name: `View details for ${saved.label}` }),
-    ).toHaveFocus()
+    const row = await screen.findByRole('link', { name: `View details for ${saved.label}` })
+    expect(row).toHaveFocus()
+    // Leaving the saved detail clears the handoff: reopening it offers no Done for now.
+    await user.click(row)
+    expect(window.location.search).toBe(`?medicine=${saved.id}`)
+    rerender(medicationsScreen())
+    expect(await screen.findByRole('link', { name: 'Set schedule' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'Done for now' })).not.toBeInTheDocument()
   })
 })
 
@@ -625,27 +641,56 @@ describe('Archived medications', () => {
     ).not.toBeInTheDocument()
   })
 
-  test('an Archived medicine opens read-only: Restore is its only action, with no edit, Archive or dose action', async () => {
-    medicinesApi(mixed)
-    cache(mixed)
+  // 238·A3: one Archived notice, Restore, then one inset group of read-only Stock and the histories.
+  async function openArchived(record: Medicine) {
+    medicinesApi([medicine(1), record])
+    cache([medicine(1), record])
     const { user, rerender } = renderAt('?archived')
     await user.click(await screen.findByRole('link', { name: /^Archived 2/ }))
-    expect(window.location.search).toBe(`?medicine=${archived(2).id}`)
+    expect(window.location.search).toBe(`?medicine=${record.id}`)
     rerender()
     expect(await screen.findByRole('heading', { level: 1, name: 'Archived 2' })).toBeVisible()
-    expect(screen.getByText('Archived', { exact: true })).toBeVisible()
-    expect(screen.getByText('Kept in History')).toBeVisible()
+  }
+
+  test('an Archived medicine opens read-only: Restore is its only action, with no edit, Archive or dose action', async () => {
+    await openArchived(archived(2))
     expect(screen.getByRole('link', { name: 'Archived medications' })).toHaveAttribute(
       'href',
       '/medications?archived',
     )
-    expect(screen.getByRole('link', { name: 'Strength history' })).toBeVisible()
+    const notice = screen.getByRole('alert')
+    expect(notice).toHaveTextContent(
+      'ArchivedKept in History. The schedule has stopped, reminders are cancelled and stock is unchanged.',
+    )
+    // No Archived badge beside the notice.
+    expect(screen.getAllByText('Archived', { exact: true })).toHaveLength(1)
+    const restore = screen.getByRole('button', { name: 'Restore medication' })
+    expect(notice.compareDocumentPosition(restore) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const group = screen.getByRole('list')
+    expect(
+      within(group)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['StockNot tracking', 'Dose history', 'Strength history'])
+    expect(within(group).getByRole('link', { name: 'Dose history' })).toBeVisible()
+    expect(within(group).getByRole('link', { name: 'Strength history' })).toBeVisible()
+    expect(restore.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     for (const name of [/restore/i, /fix a mistake/i, /change strength/i, /archive medication/i])
       expect(screen.queryByRole('link', { name })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Restore medication' })).toBeVisible()
-    for (const name of [/archive/i, /log a dose/i, /set schedule/i])
+    for (const name of [/archive/i, /log a dose/i, /set schedule/i, /stock/i, /track/i])
       expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Set schedule' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /Set schedule|Stock|Manage/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  test('an Archived medicine with stock on shows its count as a read-only Stock row', async () => {
+    await openArchived({ ...archived(2), stock: { tracked: true, count: 12 } })
+    const group = screen.getByRole('list')
+    expect(within(group).getAllByRole('listitem')[0]).toHaveTextContent('Stock12 tablets left')
+    expect(within(group).queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /stock|track/i })).not.toBeInTheDocument()
+    expect(screen.queryByText('Not tracking')).not.toBeInTheDocument()
   })
 
   test('schedule setup does not offer an Archived medicine', async () => {

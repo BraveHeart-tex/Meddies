@@ -679,6 +679,35 @@ describe('Medication detail with a Last day', () => {
     expect(screen.queryByText(/^Last day/)).not.toBeInTheDocument()
   })
 
+  /* eslint-disable meddies/no-cosmetic-class-assertions -- soft Log a dose is the Ended summary's
+     only lead (238·A3); the variant class is its only signal. */
+  test('238·A3 an Ended summary leads with a soft Log a dose and keeps Change schedule on Manage', async () => {
+    renderDetail([{ ...clockVersion, endDate: '2026-11-03' }])
+    expect(await screen.findByText('Ended Tue 3 Nov')).toBeVisible()
+    const logDose = button('Log a dose')
+    expect(logDose).toHaveClass('bg-accent')
+    expect(logDose).not.toHaveClass('bg-primary', 'border-border-strong')
+    expect(
+      screen.getAllByRole('button').filter((item) => item.classList.contains('bg-primary')),
+    ).toHaveLength(0)
+    for (const name of [/change schedule/i, /resume/i, /set schedule/i]) {
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name })).not.toBeInTheDocument()
+    }
+    expect(screen.getByRole('link', { name: /^Manage medication/ })).toHaveAttribute(
+      'href',
+      `/medications${detailSearch}&manage`,
+    )
+  })
+  /* eslint-enable meddies/no-cosmetic-class-assertions */
+
+  test('238·A3 an Ended schedule offers Change schedule on Manage', async () => {
+    window.history.replaceState(null, '', `/medications${detailSearch}&manage`)
+    api([{ ...clockVersion, endDate: '2026-11-03' }])
+    render(panel('detail', vi.fn(), true))
+    expect(await screen.findByRole('link', { name: /^Change schedule/ })).toBeVisible()
+  })
+
   test('227·A17 an Ended Interval schedule lists no next doses', async () => {
     renderDetail([{ ...intervalVersion, endDate: '2026-11-03' }])
     expect(await screen.findByText('Ended Tue 3 Nov')).toBeVisible()

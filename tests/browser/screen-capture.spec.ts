@@ -906,7 +906,8 @@ test(
     await expect(confirmation).toBeVisible()
     app.worker.release(archive)
     await expect(confirmation).toBeHidden()
-    await expect(page).toHaveURL(`${app.origin}/medications?medicine=${id}`)
+    // Archive is on Manage (#405); the confirmed record turns this same page Archived.
+    await expect(page).toHaveURL(`${app.origin}/medications?medicine=${id}&manage`)
     await expect(page.getByText('Kept in History')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Magnesium', exact: true })).toBeFocused()
     await expect.poll(() => scrollsHorizontally(page)).toBe(false)
