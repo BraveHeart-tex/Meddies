@@ -65,6 +65,10 @@ Each spec declares `test.use({ journey: { auth, storage, initialScheduleTime, se
 - **Auth** is a short-lived synthetic Auth.js session; no Google provider or real
   credentials. `app.api` and `page.request` act as the signed-in user; the `request`
   fixture stays anonymous.
+- **Device registration:** `registerDevice(app)` in
+  [`device-registration.ts`](device-registration.ts) registers a synthetic installation the
+  contract parser accepts; never hand-write installation IDs or tokens.
+  [`snooze-capture.spec.ts`](snooze-capture.spec.ts) is the example.
 - **Clock:** every journey that depends on the date or time declares
   `initialScheduleTime`, freezing the scheduling clock for Next.js, the Worker and the
   browser (`useSchedulingClock()`); `app.setScheduleTime` moves it. Auth stays real time so

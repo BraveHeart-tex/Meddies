@@ -2,6 +2,7 @@ import { mkdir } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { test, expect } from './fixtures'
 import { insertScheduledMedicine } from './seed'
+import { registerDevice } from './device-registration'
 import { drawer } from './locators'
 import { hydrated, scrollsHorizontally } from './actions'
 import { captureSettled } from './settled-capture'
@@ -67,12 +68,7 @@ test('capture Snooze drawer and keyboard recovery', { tag: '@visual' }, async ({
   await expect(drawer(page)).toBeHidden()
   await expect(trigger).toBeFocused()
 
-  // Register a synthetic installation through the same authenticated API the settings use.
-  const registration = await app.api('PUT', '/api/device-registration', {
-    installationId: 'c'.padEnd(22, 'a'),
-    token: 'snooze-visual-synthetic-token-1234567890',
-  })
-  expect(registration.ok()).toBe(true)
+  await registerDevice(app)
   await trigger.click()
   await snooze.click()
   await expect(page.getByText('Reminder at', { exact: false })).toHaveText('Reminder at 10:40')
