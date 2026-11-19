@@ -1064,4 +1064,58 @@ test('capture the Stock row and stock Drawer', { tag: '@visual' }, async ({ page
   await expect(row).toHaveAccessibleDescription('Not tracking')
   await expect(row).toBeFocused()
   await captureSettled(page, { path: resolve(out!, 'stock-stopped-402.png') })
+
+  await row.click()
+  await expect(page.getByRole('dialog', { name: 'Track Amoxicillin stock' })).toBeVisible()
+  await captureSettled(page, { path: resolve(out!, 'stock-start-shell-402.png') })
+
+  const tabletId = '00000000-0000-4000-8000-0000000d0413'
+  await app.api('POST', '/api/medicines', {
+    id: tabletId,
+    label: 'Magnesium',
+    strength: '400 mg',
+    unit: 'tablet',
+    startingCount: 0,
+  })
+  await page.goto(`/medications?medicine=${tabletId}`)
+  await page.getByRole('button', { name: 'Log a dose', exact: true }).click()
+  await page.getByRole('button', { name: 'Save as taken', exact: true }).click()
+  await expect(row).toHaveAccessibleDescription(/More was taken than counted.*0 tablets left/)
+  await expect.poll(() => scrollsHorizontally(page)).toBe(false)
+  await captureSettled(page, { path: resolve(out!, 'stock-past-count-402.png') })
+
+  await row.focus()
+  await page.keyboard.press('Enter')
+  const tabletOptions = page.getByRole('dialog', { name: 'Magnesium stock', exact: true })
+  await tabletOptions.getByRole('button', { name: 'Change the count' }).focus()
+  await page.keyboard.press('Enter')
+  const correction = page.getByRole('dialog', { name: 'Change Magnesium count' })
+  await expect(correction.getByRole('heading')).toBeFocused()
+  const currentCount = correction.getByRole('textbox', { name: 'Current count' })
+  await expect(currentCount).toHaveValue('')
+  await captureSettled(page, { path: resolve(out!, 'stock-correction-402.png') })
+
+  const submit = correction.getByRole('button', { name: 'Save count' })
+  await submit.click()
+  await expect(correction.getByText('Enter a count.')).toBeVisible()
+  await captureSettled(page, { path: resolve(out!, 'stock-correction-invalid-402.png') })
+  await currentCount.fill('10')
+  await page.route('**/api/medicines', async (route) => {
+    if (route.request().method() !== 'PATCH') return route.fallback()
+    return route.fulfill({ status: 503, json: {} })
+  })
+  await submit.click()
+  await expect(correction.getByText('That might not have saved.')).toBeVisible()
+  await captureSettled(page, { path: resolve(out!, 'stock-correction-recovery-402.png') })
+  await page.unroute('**/api/medicines')
+
+  const command = { method: 'POST', path: '/medicines', operation: 'stockCorrection' }
+  app.worker.hold(command)
+  await correction.getByRole('button', { name: 'Try saving count again' }).click()
+  await expect(correction.getByRole('button', { name: 'Saving count...' })).toBeDisabled()
+  await captureSettled(page, { path: resolve(out!, 'stock-correction-saving-402.png') })
+  app.worker.release(command)
+  await expect(correction).toBeHidden()
+  await expect(row).toHaveAccessibleDescription('10 tablets left')
+  await expect(row).toBeFocused()
 })

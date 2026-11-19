@@ -7,7 +7,7 @@ import { parseMedicineRecord, type Medicine, type MedicineRecord } from './contr
 import { medicineKeys, medicinesQuery, mergeClientMedicines } from './queries'
 import { medicationRecordHref } from './routes'
 
-export type MedicineStockAction = 'stockOn' | 'stockOff'
+export type MedicineStockAction = 'stockOn' | 'stockOff' | 'stockCorrection'
 
 /** #393: publishes a matching stock receipt only. After cancelling older reads the Medicine, at
  * revision + 1 with the new stock, replaces the cached one; revision merges keep a delayed read
@@ -26,10 +26,10 @@ export async function confirmMedicineStock(
   void client.invalidateQueries({ queryKey: medicineKeys.all })
 }
 
-/** Session-owned stock on or off (#393), shaped like the archive save (#327): only a record
+/** Session-owned stock on, off or Count correction: only a record
  * bearing this action, revision + 1 and the requested stock confirms it, so the count shows only
- * once the server has it. A retry after Unconfirmed reuses the action ID and payload; a changed
- * starting count is a new attempt. Navigation hides the observer; the shared feedback host takes
+ * once the server has it. Unconfirmed retries and rejected Count correction retries reuse the
+ * action ID and payload; a changed count is a new attempt. The shared feedback host takes
  * over without cancelling the save.
  */
 export function useMedicineStock(
@@ -53,6 +53,10 @@ export function useMedicineStock(
     onSaved()
     store.clear(key)
   }, [attempt, key, onSaved, open, store])
+  const correction = action === 'stockCorrection'
+  const retry =
+    attempt?.result?.problem === 'unconfirmed' ||
+    (correction && attempt?.result?.problem === 'rejected')
   return {
     pending: attempt?.status === 'pending',
     problem: attempt?.result?.problem,
@@ -61,7 +65,7 @@ export function useMedicineStock(
       await client.fetchQuery({ ...medicinesQuery(client), staleTime: 0 })
       store.clear(key)
     },
-    submit: (startingCount?: number) =>
+    submit: (count?: number) =>
       store.submit(
         key,
         {
@@ -69,10 +73,11 @@ export function useMedicineStock(
             medicineId: medicine.id,
             // A newer read after navigation must not silently rebase an Unconfirmed save.
             expectedRevision:
-              attempt?.result?.problem === 'unconfirmed'
+              retry && (!correction || attempt.payload.count === count)
                 ? attempt.payload.expectedRevision
                 : medicine.revision,
-            ...(action === 'stockOn' && { unit: medicine.unit, startingCount }),
+            ...(action === 'stockOn' && { unit: medicine.unit, startingCount: count }),
+            ...(correction && { unit: medicine.unit, count }),
           },
           label: medicine.label,
           kind: 'medicine',
@@ -81,7 +86,9 @@ export function useMedicineStock(
           savedTitle:
             action === 'stockOn'
               ? `Tracking ${medicine.label} stock`
-              : `Stopped tracking ${medicine.label} stock`,
+              : correction
+                ? `Saved ${medicine.label} count`
+                : `Stopped tracking ${medicine.label} stock`,
         },
         async (payload, active) => {
           const { id, ...rest } = payload
@@ -90,6 +97,8 @@ export function useMedicineStock(
             medicineId: string
             expectedRevision: number
             startingCount?: number
+            count?: number
+            unit?: Medicine['unit']
           }
           function match(value: unknown) {
             const saved = parseMedicineRecord(value)
@@ -97,9 +106,11 @@ export function useMedicineStock(
               saved.id !== edit.medicineId ||
               saved.lastActionId !== edit.actionId ||
               saved.revision !== edit.expectedRevision + 1 ||
-              (action === 'stockOn'
-                ? !saved.stock.tracked || saved.stock.count !== edit.startingCount
-                : saved.stock.tracked)
+              (action === 'stockOff'
+                ? saved.stock.tracked
+                : !saved.stock.tracked ||
+                  saved.stock.count !== (correction ? edit.count : edit.startingCount) ||
+                  (correction && (saved.stock.intakePastCount || saved.unit !== edit.unit)))
             )
               throw new Error('Medicine stock receipt does not match attempt')
             return saved
@@ -126,6 +137,7 @@ export function useMedicineStock(
           if (result.saved && active()) await confirmMedicineStock(client, result.saved, active)
           return result
         },
+        { retryRejected: correction },
       ),
   }
 }

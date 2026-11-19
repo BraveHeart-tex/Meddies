@@ -34,7 +34,7 @@ browser storage is used. Losing it on reload, app closure or browser eviction is
 - **Medicine deletion** confirms only from its matching command receipt, never absence from a list.
   Confirmed deletion IDs stay in memory for the session, beyond list garbage collection; reads,
   hydration and replayed creation receipts cannot restore them.
-- **Medicine stock** on and off confirm only from a record bearing their action ID, revision + 1
+- **Medicine stock** on, off and Count correction confirm only from a record bearing their action ID, revision + 1
   and the requested stock, so a count shows only once the server has it. After cancelling older
   medicine reads they publish that record; revision merges keep a delayed read from showing the
   old count. A confirmed dose save, Unscheduled log, change or removal changes Stock without a

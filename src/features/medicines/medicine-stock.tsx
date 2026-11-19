@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Package, PackageX, X } from 'lucide-react'
+import { Package, PackageCheck, PackageX, X } from 'lucide-react'
 import { z } from 'zod'
 import { QuantityStepper } from '@/components/quantity-stepper'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -28,36 +28,10 @@ import { saveMessages } from '@/lib/save-messages'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import type { Medicine } from './contract'
 import { MedicationInsetGroup, MedicationInsetRow } from './medication-inset-list'
+import { drawerCopy, stockCopy } from './stock-copy'
 import { useMedicineStock, type MedicineStockAction } from './use-medicine-stock'
 
-export const stockCopy = {
-  heading: 'Stock',
-  off: 'Not tracking',
-  optionsTitle: (label: string) => `${label} stock`,
-  stop: 'Stop tracking',
-  drawerTitle: (label: string) => `Track ${label} stock`,
-  drawerBody: (plural: string) => `How many ${plural} do you have now?`,
-  countLabel: 'Starting count',
-  countHelp: 'Shows on this page and in Medications.',
-  confirmTitle: (label: string) => `Stop tracking ${label} stock?`,
-  confirmBody: (label: string) =>
-    `Meddies stops counting ${label}. To track again, you’ll enter a fresh count.`,
-}
-
-const drawerCopy = {
-  stockOn: {
-    rejected: 'Count wasn’t saved.',
-    pending: 'Saving count...',
-    retry: 'Try saving count again',
-    submit: 'Start tracking',
-  },
-  stockOff: {
-    rejected: 'Stock tracking didn’t stop.',
-    pending: 'Stopping...',
-    retry: 'Retry stop',
-    submit: stockCopy.stop,
-  },
-} satisfies Record<MedicineStockAction, unknown>
+export { stockCopy } from './stock-copy'
 
 /** Client mirror of `isStockCount` for inline feedback: the unit's grid, zero allowed. */
 export function stockCountSchema(unit: MedicineType) {
@@ -90,10 +64,10 @@ type StockDrawerKind = MedicineStockAction | 'options'
  * The Stock row on the Medication detail summary (238·A3), first in the inset group above Dose
  * history: the package tile and a quiet value, "Not tracking" or the server-confirmed count such as
  * "120 ml left"; a save in flight never shows a count. Off, the row opens the turn-on drawer; on,
- * the stock Drawer, whose Stop tracking opens the turn-off confirm. Every stock drawer returns
+ * the stock Drawer with Change the count and Stop tracking. Every stock drawer returns
  * focus to the row when it closes, after a confirmed change too. Days of stock left (#395) and the
- * low-stock warning (#52) join as lines under this row; Record a refill (#48) and Change the count
- * (#49) as rows in the stock Drawer above Stop tracking.
+ * low-stock warning (#52) join the past-count line under this row; Record a refill (#48)
+ * joins the stock Drawer above Stop tracking.
  */
 export function MedicineStockRow({ medicine }: { medicine: Medicine }) {
   const [open, setOpen] = useState<StockDrawerKind | null>(null)
@@ -115,12 +89,25 @@ export function MedicineStockRow({ medicine }: { medicine: Medicine }) {
         ref={row}
         icon={Package}
         label={stockCopy.heading}
+        description={
+          medicine.stock?.tracked && medicine.stock.intakePastCount
+            ? stockCopy.pastCount
+            : undefined
+        }
         value={stockRowValue(medicine)}
         onClick={() => setOpen(count === null ? 'stockOn' : 'options')}
       />
-      <StockOnDrawer
+      <StockCountDrawer
+        action="stockOn"
         medicine={medicine}
         open={open === 'stockOn'}
+        onClose={close}
+        onClosed={closed}
+      />
+      <StockCountDrawer
+        action="stockCorrection"
+        medicine={medicine}
+        open={open === 'stockCorrection'}
         onClose={close}
         onClosed={closed}
       />
@@ -130,6 +117,7 @@ export function MedicineStockRow({ medicine }: { medicine: Medicine }) {
         open={open === 'options' && count !== null}
         onClose={close}
         onClosed={closed}
+        onChangeCount={() => setOpen('stockCorrection')}
         onStop={() => setOpen('stockOff')}
       />
       <StockDrawer
@@ -145,14 +133,14 @@ export function MedicineStockRow({ medicine }: { medicine: Medicine }) {
   )
 }
 
-/* The stock Drawer (238·A3) the Stock row opens while stock is on: the count as
-   its description and Stop tracking, which opens the turn-off confirm. It saves nothing itself. */
+/* The stock Drawer (238·A3) shows the count and opens the action drawers. It saves nothing itself. */
 function StockOptionsDrawer({
   medicine,
   count,
   open,
   onClose,
   onClosed,
+  onChangeCount,
   onStop,
 }: {
   medicine: Medicine
@@ -160,6 +148,7 @@ function StockOptionsDrawer({
   open: boolean
   onClose: () => void
   onClosed: () => void
+  onChangeCount: () => void
   onStop: () => void
 }) {
   const titleRef = useRef<HTMLHeadingElement>(null)
@@ -193,6 +182,11 @@ function StockOptionsDrawer({
           </DrawerHeader>
           <div className="pb-2">
             <MedicationInsetGroup>
+              <MedicationInsetRow
+                icon={PackageCheck}
+                label={stockCopy.change}
+                onClick={onChangeCount}
+              />
               <MedicationInsetRow icon={PackageX} label={stockCopy.stop} onClick={onStop} />
             </MedicationInsetGroup>
           </div>
@@ -202,14 +196,16 @@ function StockOptionsDrawer({
   )
 }
 
-/* The #392 turn-on drawer: the starting count in the Medicine's dose unit, typing allowed, zero allowed, empty on
+/* The #392 count drawer shell: a starting or current count in the Medicine's Quantity unit, zero allowed, empty on
    every open. The grid error sits under the control, above the help. */
-function StockOnDrawer({
+function StockCountDrawer({
+  action,
   medicine,
   open,
   onClose,
   onClosed,
 }: {
+  action: 'stockOn' | 'stockCorrection'
   medicine: Medicine
   open: boolean
   onClose: () => void
@@ -223,15 +219,19 @@ function StockOnDrawer({
   useEffect(() => {
     if (open) reset(stockCountDefaults)
   }, [open, reset])
-  const id = `stock-count-${medicine.id}`
+  const correction = action === 'stockCorrection'
+  const id = correction ? `current-count-${medicine.id}` : `stock-count-${medicine.id}`
+  const label = correction ? stockCopy.currentLabel : stockCopy.countLabel
   return (
     <StockDrawer
-      action="stockOn"
+      action={action}
       medicine={medicine}
       open={open}
       onClose={onClose}
       onClosed={onClosed}
-      title={stockCopy.drawerTitle(medicine.label)}
+      title={
+        correction ? stockCopy.changeTitle(medicine.label) : stockCopy.drawerTitle(medicine.label)
+      }
       description={stockCopy.drawerBody(unitName(null, medicine.unit))}
       validate={(submit) => form.handleSubmit(({ count }) => submit(count))()}
     >
@@ -241,12 +241,12 @@ function StockOnDrawer({
           control={form.control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor={id}>{stockCopy.countLabel}</FieldLabel>
+              <FieldLabel htmlFor={id}>{label}</FieldLabel>
               <div data-base-ui-swipe-ignore="y">
                 <QuantityStepper
                   ref={field.ref}
                   id={id}
-                  label={stockCopy.countLabel}
+                  label={label}
                   unit={medicine.unit}
                   value={field.value}
                   onValueChange={field.onChange}
@@ -259,7 +259,9 @@ function StockOnDrawer({
                 />
               </div>
               <FieldError id={`${id}-error`} errors={[fieldState.error]} />
-              <FieldDescription id={`${id}-help`}>{stockCopy.countHelp}</FieldDescription>
+              <FieldDescription id={`${id}-help`}>
+                {correction ? stockCopy.currentHelp : stockCopy.countHelp}
+              </FieldDescription>
             </Field>
           )}
         />
@@ -409,7 +411,8 @@ function StockDrawer({
                 ? text.pending
                 : offline
                   ? saveMessages.connectToSave
-                  : problem === 'unconfirmed'
+                  : problem === 'unconfirmed' ||
+                      (action === 'stockCorrection' && problem === 'rejected')
                     ? text.retry
                     : text.submit}
             </Button>

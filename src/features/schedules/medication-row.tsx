@@ -45,6 +45,9 @@ export function MedicationRow({
         {medicine.stock?.tracked && (
           <ItemDescription>{stockLeft(medicine.stock.count, medicine.unit)}</ItemDescription>
         )}
+        {medicine.stock?.tracked && medicine.stock.intakePastCount && (
+          <ItemDescription>More was taken than counted</ItemDescription>
+        )}
         {/* No schedule is a complete record for occasional use, not unfinished setup (#275). */}
         {paused && <PausedBadge />}
         {(scheduleSummary !== null || !noScheduleInGroupHeading) && (

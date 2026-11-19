@@ -134,6 +134,7 @@ class SessionSaves {
     key: string,
     details: Omit<SaveAttempt, 'id' | 'fingerprint' | 'status' | 'result'>,
     execute: (payload: Record<string, unknown>, active: () => boolean) => Promise<SaveResult<T>>,
+    { retryRejected = false } = {},
   ) {
     if (!this.active || (typeof navigator !== 'undefined' && !navigator.onLine)) return
     const previous = this.entries.get(key)
@@ -143,7 +144,9 @@ class SessionSaves {
     this.toasts.delete(key)
     const fingerprint = JSON.stringify(details.payload)
     const retry =
-      previous?.result?.problem === 'unconfirmed' && previous.fingerprint === fingerprint
+      (previous?.result?.problem === 'unconfirmed' ||
+        (retryRejected && previous?.result?.problem === 'rejected')) &&
+      previous.fingerprint === fingerprint
     const id = retry ? previous.id : crypto.randomUUID()
     const attempt: SaveAttempt = {
       ...details,

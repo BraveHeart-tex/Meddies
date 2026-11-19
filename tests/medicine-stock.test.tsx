@@ -49,8 +49,8 @@ const capsules: MedicineRecord = {
 const snapshot: ScheduleSnapshot = { schedules: [], records: [], date: '2035-06-15', now }
 
 type StockRequest = {
-  operation: 'stockOn' | 'stockOff'
-  stock: { actionId: string; expectedRevision: number; startingCount?: number }
+  operation: 'stockOn' | 'stockOff' | 'stockCorrection'
+  stock: { actionId: string; expectedRevision: number; startingCount?: number; count?: number }
 }
 /** The Worker's receipt: revision + 1, this action, the requested stock. */
 function receipt(medicine: MedicineRecord, body: StockRequest): MedicineRecord {
@@ -59,13 +59,13 @@ function receipt(medicine: MedicineRecord, body: StockRequest): MedicineRecord {
     revision: body.stock.expectedRevision + 1,
     lastActionId: body.stock.actionId,
     stock:
-      body.operation === 'stockOn'
-        ? { tracked: true, count: body.stock.startingCount! }
-        : { tracked: false },
+      body.operation === 'stockOff'
+        ? { tracked: false }
+        : { tracked: true, count: (body.stock.count ?? body.stock.startingCount)! },
   }
 }
 
-function open(medicine: MedicineRecord) {
+function open(medicine: MedicineRecord, detail = true) {
   server.use(
     http.get('/api/schedules', () =>
       HttpResponse.json({ schedules: [], records: [], today: { date: snapshot.date, now } }),
@@ -75,7 +75,11 @@ function open(medicine: MedicineRecord) {
   const client = createQueryClient()
   client.setQueryData(medicineKeys.list(), [medicine])
   client.setQueryData(scheduleKeys.snapshot(), snapshot)
-  window.history.replaceState(null, '', `/medications?medicine=${medicine.id}`)
+  window.history.replaceState(
+    null,
+    '',
+    detail ? `/medications?medicine=${medicine.id}` : '/medications',
+  )
   const view = render(
     <QueryClientProvider client={client}>
       <MedicationsScreen initialNow={now} serverEntry />
@@ -288,6 +292,143 @@ test('the count shows only after the server confirms; the primary reads its savi
 })
 
 const stock = () => screen.getByRole('region', { name: 'Stock', hidden: true })
+
+const pastCount: MedicineRecord = {
+  ...tablets,
+  stock: { tracked: true, count: 0, intakePastCount: true },
+}
+
+async function changeCount(user: ReturnType<typeof userEvent.setup>, medicine = tablets) {
+  await user.click(stockRow())
+  const options = within(optionsDrawer(medicine.label))
+  const change = options.getByRole('button', { name: 'Change the count' })
+  expect(options.getAllByRole('button').slice(-2)).toEqual([
+    change,
+    options.getByRole('button', { name: 'Stop tracking' }),
+  ])
+  await user.click(change)
+  const drawer = within(screen.getByRole('dialog', { name: `Change ${medicine.label} count` }))
+  const field = drawer.getByRole('textbox', { name: 'Current count' })
+  expect(field).toHaveValue('')
+  return { drawer, field }
+}
+
+test('correcting a count to zero clears the past-count line after a fresh read and restores focus', async () => {
+  const { client, user, unmount } = open(pastCount)
+  let current = pastCount
+  const requests = vi.fn()
+  const reads = vi.fn()
+  server.use(
+    http.get('/api/medicines', () => {
+      reads(current.revision)
+      return HttpResponse.json({ medicines: [current] })
+    }),
+    http.patch('/api/medicines', async ({ request }) => {
+      const body = (await request.json()) as StockRequest
+      requests(body)
+      current = receipt(current, body)
+      return HttpResponse.json({ medicines: [current] })
+    }),
+  )
+  expect(stockRow()).toHaveAccessibleDescription(
+    'More was taken than counted. Change the count to fix it. 0 tablets left',
+  )
+  const { drawer, field } = await changeCount(user)
+  await user.type(field, '0')
+  await user.click(drawer.getByRole('button', { name: 'Save count' }))
+  await noDrawer()
+  await waitFor(() => expect(reads).toHaveBeenCalledWith(2))
+  expect(stockRow()).toHaveAccessibleDescription('0 tablets left')
+  await waitFor(() => expect(stockRow()).toHaveFocus())
+  expect(requests).toHaveBeenCalledWith({
+    operation: 'stockCorrection',
+    stock: {
+      actionId: expect.any(String),
+      medicineId: tablets.id,
+      expectedRevision: 1,
+      unit: 'tablet',
+      count: 0,
+    },
+  })
+  unmount()
+  client.clear()
+})
+
+test('invalid correction counts stay in the drawer and never send a request', async () => {
+  const tracked: MedicineRecord = { ...capsules, stock: { tracked: true, count: 24 } }
+  const requests = confirmingServer(tracked)
+  const { user, client, unmount } = open(tracked)
+  const { drawer, field } = await changeCount(user, tracked)
+  const submit = drawer.getByRole('button', { name: 'Save count' })
+  for (const [value, error] of [
+    ['', 'Enter a count.'],
+    ['-1', 'Enter a number, like 30.'],
+    ['7.5', 'Use whole capsules.'],
+  ]) {
+    await user.clear(field)
+    if (value) await user.type(field, value)
+    await user.click(submit)
+    expect(await drawer.findByText(error)).toBeVisible()
+    expect(field).toBeInvalid()
+  }
+  expect(requests).toEqual([])
+  unmount()
+  client.clear()
+})
+
+test.each([
+  [400, 'Count wasn’t saved.'],
+  [500, 'That might not have saved.'],
+])(
+  'a failed correction (%s) preserves the confirmed count and retries the same attempt',
+  async (status, message) => {
+    const requests: StockRequest[] = []
+    server.use(
+      http.patch('/api/medicines', async ({ request }) => {
+        const body = (await request.json()) as StockRequest
+        requests.push(body)
+        if (requests.length === 1) return HttpResponse.json({}, { status })
+        return HttpResponse.json({ medicines: [receipt(pastCount, body)] })
+      }),
+    )
+    const { user, client, unmount } = open(pastCount)
+    const { drawer, field } = await changeCount(user)
+    await user.type(field, '10')
+    await user.click(drawer.getByRole('button', { name: 'Save count' }))
+    expect(await drawer.findByText(message)).toBeVisible()
+    expect(field).toHaveValue('10')
+    expect(stockRow()).toHaveTextContent('0 tablets left')
+    await user.click(drawer.getByRole('button', { name: 'Try saving count again' }))
+    await waitFor(() => expect(stockRow()).toHaveAccessibleDescription('10 tablets left'))
+    expect(requests).toEqual([requests[0], requests[0]])
+    unmount()
+    client.clear()
+  },
+)
+
+test('the Medications list clears the past-count line from the confirmed correction cache', async () => {
+  confirmingServer(pastCount)
+  const { user, client, unmount, rerender } = open(pastCount, false)
+  expect(screen.getByText('More was taken than counted')).toBeVisible()
+  const navigate = (href: string) => {
+    window.history.replaceState(null, '', href)
+    rerender(
+      <QueryClientProvider client={client}>
+        <MedicationsScreen initialNow={now} serverEntry />
+      </QueryClientProvider>,
+    )
+  }
+  navigate(`/medications?medicine=${tablets.id}`)
+  const { drawer, field } = await changeCount(user)
+  await user.type(field, '10')
+  await user.click(drawer.getByRole('button', { name: 'Save count' }))
+  await noDrawer()
+  navigate('/medications')
+  expect(screen.getByText('10 tablets left')).toBeVisible()
+  expect(screen.queryByText('More was taken than counted')).toBeNull()
+  unmount()
+  client.clear()
+})
 
 test('Archived medication detail shows the count read-only with no stock actions', async () => {
   const archived: MedicineRecord = {
