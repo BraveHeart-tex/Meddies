@@ -51,6 +51,11 @@ rather than replacing it; only a refill while more was taken than counted is a r
 point. UI copy calls it "Add a refill".
 _Avoid_: restock, top-up, purchase
 
+**Low-stock threshold**:
+An amount set per Medicine, in its Quantity unit; its Stock is low while the tracked count is below
+it. Optional: off until the user sets one. UI copy calls it "Low-stock alert".
+_Avoid_: reorder point, minimum stock, warning level
+
 ## Schedules
 
 **Clock schedule**:

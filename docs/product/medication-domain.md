@@ -14,7 +14,8 @@ The entities below are conceptual distinctions, not an approved database schema.
 - Stable occurrence IDs, schedule versions, client action IDs and revisions preserve history, prevent duplicate effects and support conflict resolution. Online stale revisions/conflicting outcomes require explicit recovery, not silent last-write-wins; preserve existing evidence, idempotency and server correctness. Stock is uncertain and affected reminders stop when a genuine unresolved conflict is known to the server. Offline queue and expanded multi-device UX delivery are deferred.
 - Unscheduled intake does not reschedule future expected doses. Server history remains until deliberate history/account deletion; deleting history does not reverse past inventory consumption. Full deletion and current online/session scope (including deferred offline capability) belong to [02 - UX & User Journeys](./ux-journeys.md).
 
-Low-stock thresholds, re-arming, uncertain stock and refill pushes follow #10 below.
+Low-stock thresholds follow [#52](#52---approved-low-stock-alert-rules-november-21-2026); re-arming,
+uncertain stock and refill pushes follow #10 below.
 
 ### Medicine types and quantity units
 
@@ -197,7 +198,7 @@ See **Stock** and **Quantity unit** (GLOSSARY.md).
 - Each on or off save has its own action ID and follows the
   [session contract](./ux-journeys.md#session-contract); a retry applies once.
 - Taken doses lower stock (#47); refills (#48) and count corrections (#49) change it. Low-stock
-  thresholds follow #10 (#52). Stock gives no estimate of days left.
+  thresholds follow #52 and #10. Stock gives no estimate of days left.
 
 | Example           | Setup                                                    | Expected                                             |
 | ----------------- | -------------------------------------------------------- | ---------------------------------------------------- |
@@ -324,6 +325,51 @@ See **Refill** and **Stock** (GLOSSARY.md). In UI copy it is "Add a refill".
 | Exactly zero       | Start 1; Taken 1 at 11:00; refill 30; dose to Skipped | 31 tablets left             |
 | Archived           | Archived medicine with stock                          | No Add a refill             |
 | Retry              | Refill retried with the same action ID                | One refill                  |
+
+### #52 - Approved low-stock alert rules (November 21, 2026)
+
+See **Low-stock threshold** and **Stock** (GLOSSARY.md). In UI copy it is "Low-stock alert".
+
+- A low-stock threshold is optional per Medicine and off until the user sets one. While stock
+  tracking is on, the user sets, changes or turns it off from Low-stock alert in the stock Drawer
+  on Medication detail. The field starts with the current threshold, or empty when off.
+- The threshold counts in the Medicine's Quantity unit and follows its step (#46). It must be above
+  zero; zero and negative amounts are rejected. There is no medical maximum; it stays within the
+  safe bound.
+- Stock is low while the tracked count is below the threshold (#10 D1), including a count below
+  zero after intake past the count. Equality is not low. The notice always follows the current
+  count and threshold, so threshold edits, dose saves, refills and count corrections show or clear
+  it at once (#10 D3, D4).
+- While low, the Stock row on Medication detail and the Medications list row show "Running low:
+  fewer than {threshold} left." with a warning icon; the text carries the meaning, not color. While
+  more was taken than counted, the low line comes first, then the past-the-count line (#49).
+- The Low-stock alert row's value reads "Below {threshold}", such as "Below 5 tablets", or "Off".
+  Its drawer has the title "{label} low-stock alert", the field "Alert below" with the help "Shows
+  when fewer than this are left.", the submit "Save alert", and "Turn off alert" while one is set.
+- Stopping stock tracking keeps the threshold; turning tracking back on evaluates the fresh count
+  against it (#10 D2). An Archived medicine keeps its threshold, shows no low notice and has no
+  Low-stock alert. Deleting a Medicine deletes its threshold.
+- Low-stock episodes and the refill push belong to #53 and #54; while stock is uncertain the notice
+  follows #51. The notice shows only on Medication detail and the Medications list, not on Today.
+- Each threshold save has its own action ID and follows the
+  [session contract](./ux-journeys.md#session-contract); a retry applies once.
+
+| Example          | Setup (tablets)                                | Expected                                  |
+| ---------------- | ---------------------------------------------- | ----------------------------------------- |
+| Set              | 30 left; set the alert to 5                    | Row "Below 5 tablets"; no notice          |
+| Half tablet      | Set the alert to 4.5                           | Accepted; row "Below 4½ tablets"          |
+| Half capsule     | Capsules; set the alert to 7.5                 | Rejected with a field error               |
+| Zero             | Set the alert to 0                             | Rejected with a field error               |
+| Equality         | 6 left, alert 5; Taken 1                       | 5 tablets left, no notice                 |
+| Below            | Previous row; Taken 0.5                        | 4½ tablets left with the notice           |
+| Raised           | 5 left; alert 5 to 6                           | Notice shows                              |
+| Lowered          | 4 left; alert 5 to 4                           | Notice clears                             |
+| Turned off       | 4 left, alert 5; Turn off alert                | Notice clears; row "Off"                  |
+| Refill           | 2 left, alert 5; refill 3                      | 5 tablets left, notice clears             |
+| Past the count   | Alert 5; start 0.5; Taken 1                    | 0 tablets left; low line, past-count line |
+| Stop and restart | Alert 5; stop tracking; start again with 4     | Notice shows                              |
+| Archived         | Archived with 2 left, alert 5                  | No notice and no Low-stock alert          |
+| Retry            | Threshold save retried with the same action ID | One threshold save                        |
 
 ## Required product behavior
 
