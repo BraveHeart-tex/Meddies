@@ -77,6 +77,20 @@ test('Worker rejects invalid owner, unsupported commands and invalid list dates'
   }
 })
 
+test('Worker refuses the legacy schedules list operation as validation', async () => {
+  for (const date of [undefined, '2026-11-05']) {
+    await failure(
+      new Request('http://worker/schedules', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${secret}` },
+        body: JSON.stringify({ operation: 'list', ownerId: 'google:http', date }),
+      }),
+      400,
+      'validation',
+    )
+  }
+})
+
 test('Worker bounds streamed UTF-8 input at 4096 bytes regardless of content length', async () => {
   await failure(request(undefined), 400, 'validation')
   await failure(request('{'), 400, 'validation')

@@ -218,15 +218,9 @@ export function decodeCommand(path: CommandPath, value: unknown): WorkerCommand 
           change: parseUnscheduledDoseChange(input.change),
         },
       }
-    case 'list':
     case 'listOutcomes': {
-      if (input.date !== undefined && !isScheduleDate(input.date))
-        throw new ApplicationError('validation', 400)
-      if (input.operation === 'listOutcomes') {
-        if (input.date === undefined) throw new ApplicationError('validation', 400)
-        return { path, command: { operation: 'listOutcomes', ownerId, date: input.date } }
-      }
-      return { path, command: { operation: 'list', ownerId, date: input.date } }
+      if (!isScheduleDate(input.date)) throw new ApplicationError('validation', 400)
+      return { path, command: { operation: 'listOutcomes', ownerId, date: input.date } }
     }
     case 'save':
       return {

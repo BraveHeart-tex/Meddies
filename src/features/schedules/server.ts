@@ -86,7 +86,7 @@ export async function send<C extends ScheduleCommand>(command: C): Promise<Sched
     ) {
       if (!Array.isArray(data.records)) throw new Error('contract')
       result.records = data.records.map((value: unknown) =>
-        command.operation === 'list' || command.operation === 'recordTaken'
+        command.operation === 'recordTaken'
           ? (() => {
               const record = parseTakenDose(value, 'read')
               const input = value as Record<string, unknown>

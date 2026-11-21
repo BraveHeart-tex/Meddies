@@ -197,10 +197,6 @@ test('Taken-only decoding retains strength snapshots while outcome decoding also
   }
   globalThis.fetch = async () => Response.json({ schedules: [], records: [record] })
   const { revision, actionId, ...legacy } = record
-  assert.deepEqual(await scheduleSend({ ...list, date: '2026-11-06' }), {
-    schedules: [],
-    records: [legacy],
-  })
   assert.deepEqual(
     await scheduleSend({ operation: 'recordTaken', ownerId: list.ownerId, record: legacy }),
     { records: [legacy] },

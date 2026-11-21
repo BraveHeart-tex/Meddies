@@ -260,6 +260,28 @@ export const medicineEdits = sqliteTable(
   ],
 )
 
+export const medicineArchives = sqliteTable(
+  'medicine_archives',
+  {
+    ownerId: text('owner_id').notNull(),
+    actionId: text('action_id').notNull(),
+    medicineId: text('medicine_id').notNull(),
+    expectedRevision: integer('expected_revision').notNull(),
+    confirmedAt: text('confirmed_at').notNull(),
+    request: text('request').notNull(),
+    stoppedScheduleId: text('stopped_schedule_id'),
+    result: text('result'),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.actionId] }),
+    unique().on(table.ownerId, table.medicineId, table.expectedRevision),
+    foreignKey({
+      columns: [table.ownerId, table.medicineId],
+      foreignColumns: [userMedications.ownerId, userMedications.id],
+    }),
+  ],
+)
+
 export const medicineRestores = sqliteTable(
   'medicine_restores',
   {

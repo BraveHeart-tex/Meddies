@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { test } from 'vitest'
+import { and, eq } from 'drizzle-orm'
+import { drizzle } from 'drizzle-orm/d1'
+import { medicineArchives } from '../worker/schema'
 import { createWorker } from '../worker/index'
 import { createMedicineOperations } from '../src/features/medicines/operations'
 import { createScheduleOperations } from '../src/features/schedules/operations'
@@ -93,6 +96,29 @@ async function fixture() {
 
 const doses = (snapshot: { today: { doses: { dueAt: string; status: string }[] } }) =>
   snapshot.today.doses.map((d) => [d.dueAt, d.status])
+
+test('Drizzle reads archive receipt columns from the migrated D1 table', async () => {
+  const f = await fixture()
+  const actionId = randomUUID()
+  const saved = await f.archive(actionId)
+  const [receipt] = await drizzle(f.db)
+    .select()
+    .from(medicineArchives)
+    .where(and(eq(medicineArchives.ownerId, f.ownerId), eq(medicineArchives.actionId, actionId)))
+  assert.deepEqual(
+    { ...receipt, result: JSON.parse(receipt.result!) },
+    {
+      ownerId: f.ownerId,
+      actionId,
+      medicineId: f.medicineId,
+      expectedRevision: 0,
+      confirmedAt: '2026-11-02T04:00:00.000Z',
+      request: JSON.stringify({ actionId, medicineId: f.medicineId, expectedRevision: 0 }),
+      stoppedScheduleId: null,
+      result: saved,
+    },
+  )
+})
 
 test('archive stops the schedule at the Edit time and keeps due and recorded doses', async () => {
   const f = await fixture()

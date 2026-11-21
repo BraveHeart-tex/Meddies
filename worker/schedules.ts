@@ -32,7 +32,7 @@ import {
 } from '../src/features/schedules/contract'
 import { ApplicationError } from '../src/lib/application-error'
 import { dailySchedules, userMedications } from './schema'
-import { listDoseOutcomes, listDoseRecords, listDoseSnoozes } from './doses/queries'
+import { listDoseOutcomes, listDoseSnoozes } from './doses/queries'
 
 const scheduleColumns = {
   id: dailySchedules.id,
@@ -65,16 +65,6 @@ async function listSchedules(db: DrizzleD1Database, ownerId: string): Promise<Da
     .where(eq(dailySchedules.ownerId, ownerId))
     .orderBy(asc(dailySchedules.id))
   return rows.map(({ archiveStop, ...row }) => (archiveStop ? { ...row, archiveStop: true } : row))
-}
-
-// Legacy reads deliberately return immutable Taken originals, including corrected ones.
-export async function listLegacySnapshot(
-  db: DrizzleD1Database,
-  ownerId: string,
-  date?: string,
-): Promise<ScheduleResponses['list']> {
-  const records = date === undefined ? undefined : await listDoseRecords(db, ownerId, date)
-  return { records, schedules: await listSchedules(db, ownerId) }
 }
 
 export async function listOutcomeSnapshot(db: DrizzleD1Database, ownerId: string, date: string) {

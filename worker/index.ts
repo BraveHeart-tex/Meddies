@@ -19,7 +19,7 @@ import {
   restoreMedicine,
   deleteMedicine,
 } from './medicines'
-import { listLegacySnapshot, listOutcomeSnapshot, saveSchedule, editSchedule } from './schedules'
+import { listOutcomeSnapshot, saveSchedule, editSchedule } from './schedules'
 import { correctDoseOutcome, recordSkipped, recordTaken } from './doses/mutations'
 import { writeUnscheduledDose } from './doses/unscheduled'
 import { readDoseHistory } from './doses/history'
@@ -271,8 +271,6 @@ export function createWorker(
               await writeUnscheduledDose(db, command.ownerId, command.change, clock()),
             ],
           })
-        case 'list':
-          return json(await listLegacySnapshot(db, command.ownerId, command.date))
         case 'listOutcomes':
           return json(await listOutcomeSnapshot(db, command.ownerId, command.date))
         case 'save':

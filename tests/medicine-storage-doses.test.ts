@@ -259,7 +259,11 @@ test('real D1 weekday schedules normalize retries, preserve confirmation and rej
       }),
     /validation/,
   )
-  const otherOwner = await send({ operation: 'list', ownerId: 'google:other-weekday-owner' })
+  const otherOwner = await send({
+    operation: 'listOutcomes',
+    ownerId: 'google:other-weekday-owner',
+    date: '2026-11-05',
+  })
   assert.deepEqual(otherOwner.schedules, [])
 })
 
@@ -364,19 +368,22 @@ test('late half-tablet intake persists once without moving the next dose', async
   assert.deepEqual(await operations.recordTaken(input), first)
 })
 
-test('0004 preserves pre-existing Taken rows, legacy list shape and identical Taken retries', async () => {
+test('0004 preserves pre-existing Taken rows and identical Taken retries', async () => {
   const response = await runtime.dispatchFetch('http://worker/schedules', {
     method: 'POST',
     headers: { authorization: `Bearer ${secret}`, 'content-type': 'application/json' },
     body: JSON.stringify({
-      operation: 'list',
+      operation: 'listOutcomes',
       ownerId: legacy.ownerId,
       date: legacy.date,
     }),
   })
   assert.equal(response.status, 200)
-  const body = (await response.json()) as ScheduleResponse<{ operation: 'list'; ownerId: string }>
-  assert.deepEqual(Object.keys(body).sort(), ['records', 'schedules'])
+  const body = (await response.json()) as ScheduleResponse<{
+    operation: 'listOutcomes'
+    ownerId: string
+    date: string
+  }>
   assert.equal(body.records![0].outcome, 'Taken')
   assert.equal(body.schedules[0].intervalHours, null)
   assert.equal(body.records![0].quantity, legacy.quantity)
@@ -687,18 +694,6 @@ test('D1 correction ledger flips outcomes, replays exact actions and rejects sta
   )
   assert.equal((await operations.snapshot()).schedules[0].times[0].quantity, 1)
   assert.deepEqual(await operations.correctOutcome(first), firstResults[0])
-  const legacyRead = await send({ operation: 'list', ownerId, date: '2026-11-04' })
-  assert.deepEqual(legacyRead.records, [
-    {
-      ...occurrence,
-      ...strengthSnapshot(tablet),
-      takenAt: '2026-11-04T06:10:00.000Z',
-      quantity: 1,
-      outcome: 'Taken',
-    },
-  ])
-  const undated = await send({ operation: 'list', ownerId })
-  assert.deepEqual(Object.keys(undated), ['schedules'])
   const effective = await send({ operation: 'listOutcomes', ownerId, date: '2026-11-04' })
   assert.deepEqual(effective.records, [
     {

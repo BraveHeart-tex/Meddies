@@ -66,7 +66,6 @@ export type ScheduleEditInput = {
 export type ScheduleCommand =
   | { operation: 'saveUnscheduled'; ownerId: string; dose: UnscheduledDoseInput }
   | { operation: 'changeUnscheduled'; ownerId: string; change: UnscheduledDoseChange }
-  | { operation: 'list'; ownerId: string; date?: string }
   | { operation: 'listOutcomes'; ownerId: string; date: string }
   | { operation: 'save'; ownerId: string; schedule: DailyScheduleInput }
   | { operation: 'resume'; ownerId: string; resume: ScheduleResumeInput }
@@ -100,7 +99,6 @@ export type DoseOutcomeRecord = DoseRecord | SkippedDoseRecord
 export type ScheduleResponses = {
   saveUnscheduled: { unscheduledDoses: UnscheduledDose[] }
   changeUnscheduled: { unscheduledDoses: UnscheduledDose[] }
-  list: { schedules: DailySchedule[]; records?: DoseRecord[] }
   listOutcomes: {
     schedules: DailySchedule[]
     records: DoseOutcomeRecord[]

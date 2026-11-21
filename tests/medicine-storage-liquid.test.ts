@@ -345,7 +345,7 @@ test('Liquid Clock and Interval Schedule versions keep tenths and reject off-gri
     const changed = await f.send('schedules', { operation: 'edit', edit })
     assert.deepEqual(changed.schedules[0].times, [{ time: '17:00', quantity: 0.1 }])
     assert.deepEqual(await f.send('schedules', { operation: 'edit', edit }), changed)
-    const read = await f.send('schedules', { operation: 'list', date: '2026-11-16' })
+    const read = await f.send('schedules', { operation: 'listOutcomes', date: '2026-11-16' })
     assert.deepEqual(read.schedules.find((s) => s.id === initial.id)?.times, [
       { time: '16:00', quantity: 0.3 },
     ])
@@ -401,8 +401,9 @@ test('Liquid scheduled Taken and correction revisions retain decimal amounts and
     correction: { ...correction, actionId: randomUUID(), expectedRevision: 1, quantity: 0.1 },
   })
   assert.equal(
-    (await f.send('schedules', { operation: 'list', date: '2026-11-16' })).records[0].quantity,
-    0.3,
+    (await f.send('schedules', { operation: 'listOutcomes', date: '2026-11-16' })).records[0]
+      .quantity,
+    0.1,
   )
   assert.deepEqual(await f.send('schedules', { operation: 'correctOutcome', correction }), changed)
   await assert.rejects(

@@ -1,7 +1,6 @@
 import type { DoseSnooze } from '../../src/features/snoozes/contract'
-import { and, eq, gte, lt, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
-import { parseDoseOutcomeRecord, type DoseRecord } from '../../src/features/schedules/contract'
 import { scheduledInstant } from '../../src/features/schedules/occurrences'
 import { doseRecords } from '../schema'
 
@@ -32,28 +31,6 @@ export const takenColumns = {
   strength: doseRecords.strength,
   medicineLabel: doseRecords.medicineLabel,
   unit: doseRecords.unit,
-}
-
-// Legacy read contract: Taken originals, including originals later corrected (the
-// snapshot omits `records` without a date). Worker refactors retain this wire form.
-export async function listDoseRecords(
-  db: DrizzleD1Database,
-  ownerId: string,
-  date: string,
-): Promise<DoseRecord[]> {
-  const start = scheduledInstant(date, '00:00')
-  const end = new Date(Date.parse(start) + 86_400_000).toISOString()
-  const rows = await db
-    .select(takenColumns)
-    .from(doseRecords)
-    .where(
-      and(
-        eq(doseRecords.ownerId, ownerId),
-        gte(doseRecords.dueAt, start),
-        lt(doseRecords.dueAt, end),
-      ),
-    )
-  return rows.map((row) => parseDoseOutcomeRecord(row) as DoseRecord)
 }
 
 // Effective latest outcome per occurrence; originals carry revision 0 and null

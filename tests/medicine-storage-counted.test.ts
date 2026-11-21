@@ -101,7 +101,7 @@ test.each(types)(
       const changed = await f.send('schedules', { operation: 'edit', edit })
       assert.deepEqual(changed.schedules[0].times, [{ time: '17:00', quantity: 3 }])
       assert.deepEqual(await f.send('schedules', { operation: 'edit', edit }), changed)
-      const read = await f.send('schedules', { operation: 'list', date: '2026-11-16' })
+      const read = await f.send('schedules', { operation: 'listOutcomes', date: '2026-11-16' })
       assert.deepEqual(read.schedules.find((s) => s.id === initial.id)?.times, [
         { time: '16:00', quantity: 2 },
       ])
