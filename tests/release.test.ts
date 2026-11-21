@@ -48,8 +48,28 @@ if [[ "$FAIL_STAGE" == http ]]; then exit 22; fi
 # The generated deployment is protected; only its public production alias works.
 if [[ "$*" == *synthetic.vercel.app* ]]; then printf 401; exit 22; fi
 case "$*" in
-  *worker.example.test*) printf 401 ;;
-  *) printf 200 ;;
+  *worker.example.test*)
+    [[ "$*" == *'CF-Access-Client-Id: synthetic-access-id'* ]] || exit 23
+    [[ "$*" == *'CF-Access-Client-Secret: synthetic-access-secret'* ]] || exit 23
+    [[ "$*" != *'Authorization:'* && "$*" != *'--location'* ]] || exit 23
+    while [[ "$#" -gt 0 ]]; do
+      if [[ "$1" == --output ]]; then
+        shift
+        if [[ "$FAIL_STAGE" == access-denied ]]; then
+          printf '%s' '{"error":"access_denied"}' > "$1"
+        else
+          printf '%s' '{"error":"unauthorized"}' > "$1"
+        fi
+        break
+      fi
+      shift
+    done
+    if [[ "$FAIL_STAGE" == access-redirect ]]; then printf 302; else printf 401; fi
+    ;;
+  *)
+    [[ "$*" != *'CF-Access-'* ]] || exit 23
+    printf 200
+    ;;
 esac
 `,
     { mode: 0o755 },
@@ -78,7 +98,7 @@ globalThis.fetch = async (input, options) => {
 `,
   )
   return {
-    run(fail = '') {
+    run(fail = '', overrides: Record<string, string> = {}) {
       return spawnSync('bash', [resolve('scripts/release.sh')], {
         encoding: 'utf8',
         env: {
@@ -97,6 +117,9 @@ globalThis.fetch = async (input, options) => {
           VERCEL_PROJECT_ID: 'synthetic',
           MEDICINES_WORKER_URL: 'https://worker.example.test',
           PRODUCTION_APP_URL: 'https://production.example.test',
+          WORKER_ACCESS_CLIENT_ID: 'synthetic-access-id',
+          WORKER_ACCESS_CLIENT_SECRET: 'synthetic-access-secret',
+          ...overrides,
         },
       })
     },
@@ -122,6 +145,7 @@ test('release records a safe bookmark before migrations, deploys Worker then app
   assert.match(summary, new RegExp(sha))
   assert.doesNotMatch(summary, /synthetic-secret/)
   assert.doesNotMatch(result.stdout, /synthetic-secret/)
+  assert.doesNotMatch(result.stdout + result.stderr + summary, /synthetic-access/)
   assert.match(commands[1], /wrangler d1 migrations apply meddies --remote/)
   assert.match(commands[2], new RegExp(`wrangler deploy .*--tag ${sha}`))
   assert.match(commands[3], new RegExp(`vercel deploy --prod .*githubCommitSha=${sha}`))
@@ -132,6 +156,19 @@ test('release records a safe bookmark before migrations, deploys Worker then app
   assert.match(commands[5], /curl .*https:\/\/production.example.test/)
   assert.match(commands[6], /curl .*https:\/\/worker.example.test/)
   assert.equal(commands.length, 7)
+})
+
+test('release requires both Access secrets before any production mutation and wires them from environment secrets', async (t) => {
+  const workflow = await readFile('.github/workflows/release.yml', 'utf8')
+  for (const name of ['WORKER_ACCESS_CLIENT_ID', 'WORKER_ACCESS_CLIENT_SECRET']) {
+    assert.ok(workflow.includes(`${name}: \u0024{{ secrets.${name} }}`))
+    const f = await fixture(t)
+    const result = f.run('', { [name]: '' })
+    assert.notEqual(result.status, 0)
+    assert.match(result.stderr, new RegExp(`Missing release configuration: ${name}`))
+    assert.match(result.stderr, /failed at preflight/)
+    await assert.rejects(f.commands(), { code: 'ENOENT' })
+  }
 })
 
 for (const [stage, commandCount] of [
@@ -202,6 +239,8 @@ for (const [failure, count] of [
   ['wrong-project', 5],
   ['wrong-commit', 5],
   ['http', 6],
+  ['access-denied', 7],
+  ['access-redirect', 7],
 ] as const) {
   test(`${failure} fails smoke instead of accepting an unverified production release`, async (t) => {
     const f = await fixture(t)

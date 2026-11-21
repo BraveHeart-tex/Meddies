@@ -45,7 +45,7 @@ HTTP 503; missing database configuration renders an explicit unavailable state.
   policy definition together with its first complete user path, any compatible persistence
   changes and focused evidence. Do not duplicate per-unit rules across layers.
 - **Feature `server.ts`** owns server-only wiring and Worker response decoding.
-  **`medicine-storage.ts`** owns the private capability, Worker URL, timeout, redirect
+  **`medicine-storage.ts`** owns the private capability, Access service-token headers, Worker URL, timeout, redirect
   policy and network and status mapping; domain envelopes are decoded in `server.ts`.
 - **Browser code** is every `src/features/**/*.tsx` file and feature `queries.ts`; it
   reaches data through API routes only. Server composition (prefetch, dehydrate) lives in

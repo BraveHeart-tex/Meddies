@@ -8,6 +8,9 @@ Releases, failed-run diagnosis and recovery. One-time production setup:
 The production D1 binding is `meddies` in `worker/wrangler.jsonc`. Set
 `MEDICINES_WORKER_SECRET` with `wrangler secret put`, and the matching secret and HTTPS
 Worker origin as Vercel Production variables; redeploy Vercel after changing them.
+The remote production gateway also requires the server-only Cloudflare Access service-token
+pair described in [Worker Access setup](deployment-setup.md#worker-access). Access does not
+replace the existing Worker bearer authentication.
 Cloudflare management credentials stay in the protected release environment or on the
 maintainer machine. Keep synthetic feasibility databases separate from production.
 Manual Wrangler commands are for [coordinated recovery](#failure-and-recovery) only.
@@ -160,7 +163,8 @@ A separate non-canceling concurrency group on the release job covers every mutat
 5. Deploy that checkout to Vercel Production with `githubCommitSha` metadata.
 6. Inspect the public production alias and require it to point to the ready
    immutable deployment just created. GET that alias (expect 200) and the
-   unauthenticated Worker medicine endpoint (expect 401). No medicine data is
+   Worker medicine endpoint with its Access service token but without a Worker bearer
+   (expect 401 and the Worker's `unauthorized` JSON). No medicine data is
    read or written. Generated deployment URLs may remain protected by Vercel.
 
 The Vercel CLI is locked in the root dependencies. Its optional `koffi` build is
@@ -172,6 +176,9 @@ Alias verification calls Vercel's read-only deployment API with an explicit
 the ready production deployment URL, project ID and commit SHA. This avoids the
 personal-user lookup performed by `vercel inspect`, which can fail with
 `User not found` for deployment credentials even after a successful deploy.
+The Worker probe rejects redirects and requires the expected JSON body, so an Access
+401 alone cannot pass the check. Release preflight requires both Access credentials
+before any production mutation. The public app probe receives neither credential.
 CLI output identifies the stage and SHA; the Actions summary records the result
 and deployment URL. These smoke probes establish reachability and the Worker auth
 gate, not Google callback correctness, authenticated D1 reads or medication behavior.
@@ -263,8 +270,8 @@ pnpm exec vercel deploy --prod --yes --token "$VERCEL_TOKEN" --meta "githubCommi
 ```
 
 Inspect the production alias to confirm it points to the returned deployment,
-then run the same public GET probes against `PRODUCTION_APP_URL` and the Worker
-origin. Keep credentials out of shell tracing, command logs, issue comments and
+then run the same GET probes against `PRODUCTION_APP_URL` and the Worker
+origin, with Access headers only on the Worker probe. Keep credentials out of shell tracing, command logs, issue comments and
 artifacts. Never use `set -x` with release commands.
 
 D1 migrations, Worker deployment and Vercel deployment are separate operations, so

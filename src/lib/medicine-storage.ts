@@ -19,15 +19,32 @@ export async function sendStorage(
   let status: number | null = null
   try {
     const url = new URL(configuredUrl)
-    if (
-      url.protocol !== 'https:' &&
-      !(url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))
-    )
+    const local = ['localhost', '127.0.0.1'].includes(url.hostname)
+    if (url.protocol !== 'https:' && !(url.protocol === 'http:' && local))
       throw new Error('configuration')
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${secret}`,
+      'Content-Type': 'application/json',
+    }
+    // Access authenticates the server; the existing bearer still guards Worker commands.
+    // Local workerd needs neither token, and must never receive inherited credentials.
+    if (!local) {
+      const id = process.env.WORKER_ACCESS_CLIENT_ID
+      const accessSecret = process.env.WORKER_ACCESS_CLIENT_SECRET
+      if (
+        (process.env.VERCEL_ENV === 'production' && (!id || !accessSecret)) ||
+        Boolean(id) !== Boolean(accessSecret)
+      )
+        throw new Error('configuration')
+      if (id && accessSecret) {
+        headers['CF-Access-Client-Id'] = id
+        headers['CF-Access-Client-Secret'] = accessSecret
+      }
+    }
     cause = 'network'
     const response = await fetch(new URL(path, url), {
       method: 'POST',
-      headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(command),
       cache: 'no-store',
       redirect: 'error',

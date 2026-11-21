@@ -23,6 +23,68 @@ uses `pnpm start`; Vercel uses its Next.js integration.
 
 Configure private authentication variables and callbacks using [Authentication](authentication.md).
 
+## Worker Access
+
+The production Worker custom domain is `api.meddies.borakaraca.dev`. Use one
+Worker-level Cloudflare Access application for `meddies-data`, scope **All traffic**,
+with a **Service Auth** policy including only the named server callers. This protects
+the Worker's custom domains, routes, `workers.dev` and previews. Check for more-specific
+hostname/path Access applications, which take precedence, and remove unintended bypasses.
+Do not apply an account-wide rule to unrelated Workers.
+
+Create separate service tokens named `meddies-vercel-production` and
+`meddies-github-release` in **Zero Trust > Access controls > Service credentials >
+Service Tokens**. Store each pair as `WORKER_ACCESS_CLIENT_ID` and
+`WORKER_ACCESS_CLIENT_SECRET`: Vercel's pair in Production-only server environment
+variables, GitHub's pair in the repository's `production` environment secrets.
+The workflow passes GitHub's pair to the release command. Never use `NEXT_PUBLIC_*`,
+copy production tokens into Preview, or record credential values in logs or issues.
+
+The gateway sends `CF-Access-Client-Id` and `CF-Access-Client-Secret` alongside its
+existing Worker bearer. With `VERCEL_ENV=production`, missing either Access credential
+rejects remote Worker calls before networking; a partial pair also rejects remote calls
+outside Production. Local `localhost`/`127.0.0.1` Workers omit both Access headers,
+even if credentials are inherited. `NODE_ENV=production` alone does not require Access,
+so the local production-build tests keep using local workerd.
+
+Activate in this order:
+
+1. Create the tokens and a reusable Service Auth policy, leaving it unattached.
+2. Store credentials, set both Vercel's Production and GitHub's `production`
+   `MEDICINES_WORKER_URL` to `https://api.meddies.borakaraca.dev`, then release the
+   caller code before attaching the policy. The app and smoke probe must succeed.
+3. In **Workers & Pages > meddies-data > Access**, select **Protect this Worker behind
+   Access > All traffic** and attach the Service Auth policy. Keep access limited to
+   the named service tokens rather than human Allow or Bypass policies.
+4. Check missing and invalid Access credentials are denied before invocation, using
+   Worker HTTP invocation metrics and Access events where available. No command log
+   alone does not prove no invocation. With valid Access credentials but no Worker
+   bearer, require 401 and the Worker's `{ "error": "unauthorized" }` JSON. Verify
+   authenticated app operations and continuing Cron events separately.
+5. Once cutover works, disable `workers.dev` and preview/version URLs in Wrangler
+   with `workers_dev: false` and `preview_urls: false` through an ordered release.
+   Inventory and probe all actual domain, version, alias, preview and deployment URLs;
+   each must be disabled or Access-protected. Dashboard-only URL disablement can be
+   reversed by a later Wrangler deployment.
+
+The direct Cron Trigger does not make an HTTP call through Access. If cron-job.org is
+enabled as an external scheduler, give it a separate service token and send both Access
+headers alongside its existing scheduler bearer before activating the policy. Outbound
+FCM and heartbeat traffic is unaffected. Access blocks direct unauthorized HTTP traffic;
+it does not limit app users whose requests Vercel forwards with valid credentials.
+
+Track token expiration and renew before expiry. For rotation, authorize a replacement
+token, update only that caller's private configuration, redeploy Vercel if applicable,
+verify the caller, then revoke the old token. A failed Access token or policy can leave
+the website reachable while data calls fail; inspect Access policy/token state and the
+gateway's safe HTTP failure event before changing Worker bearer credentials. Correct
+the affected token/policy and verify the caller again. Coordinate release recovery using
+[deployment recovery](deployment.md#failure-and-recovery); do not publish credentials or
+remove protection as a routine recovery step.
+
+References: [Worker-level Access](https://developers.cloudflare.com/workers/configuration/cloudflare-access/)
+and [service tokens](https://developers.cloudflare.com/cloudflare-one/access-controls/service-credentials/service-tokens/).
+
 ## Initial release setup
 
 As inspected on 2026-11-03, GitHub `BraveHeart-tex/Meddies` defaults to `main`;

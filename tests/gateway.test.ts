@@ -1,7 +1,7 @@
 import type { MedicineCommand } from '../src/features/medicines/contract'
 import type { DoseRecord } from '../src/features/schedules/contract'
 import assert from 'node:assert/strict'
-import { test, vi } from 'vitest'
+import { afterEach, describe, test, vi } from 'vitest'
 import { send as medicineSend } from '../src/features/medicines/server'
 import { send as scheduleSend } from '../src/features/schedules/server'
 import { PUT } from '../src/app/api/schedules/route'
@@ -581,4 +581,78 @@ test('stock HTTP commands authenticate, use the session owner and require explic
     globalThis.fetch = async () => Response.json({ medicines: [record] })
     assert.equal((await patch()).status, 503)
   }
+})
+
+describe('Access service credentials', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+  function configure() {
+    vi.stubEnv('VERCEL_ENV', 'production')
+    vi.stubEnv('MEDICINES_WORKER_URL', 'https://api.meddies.borakaraca.dev')
+    vi.stubEnv('MEDICINES_WORKER_SECRET', 'synthetic-worker-bearer')
+    vi.stubEnv('WORKER_ACCESS_CLIENT_ID', 'synthetic-access-id')
+    vi.stubEnv('WORKER_ACCESS_CLIENT_SECRET', 'synthetic-access-secret')
+  }
+
+  test('the gateway sends server Access credentials alongside the existing bearer without redirects', async () => {
+    configure()
+    const command = { operation: 'list' as const, ownerId: 'google:synthetic' }
+    const fetch = vi.fn(async (url: URL | RequestInfo, options?: RequestInit) => {
+      const headers = new Headers(options?.headers)
+      assert.equal(new URL(String(url)).origin, 'https://api.meddies.borakaraca.dev')
+      assert.equal(headers.get('CF-Access-Client-Id'), 'synthetic-access-id')
+      assert.equal(headers.get('CF-Access-Client-Secret'), 'synthetic-access-secret')
+      assert.equal(headers.get('Authorization'), 'Bearer synthetic-worker-bearer')
+      assert.equal(options?.redirect, 'error')
+      assert.equal(options?.cache, 'no-store')
+      assert.deepEqual(JSON.parse(options?.body as string), command)
+      return Response.json({ medicines: [] })
+    })
+    vi.stubGlobal('fetch', fetch)
+    assert.deepEqual(await medicineSend(command), [])
+    assert.equal(fetch.mock.calls.length, 1)
+  })
+
+  test('missing or partial production Access credentials stop before any network call and stay out of logs', async () => {
+    configure()
+    const fetch = vi.fn()
+    vi.stubGlobal('fetch', fetch)
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    for (const [id, secret] of [
+      ['', ''],
+      ['synthetic-access-id', ''],
+      ['', 'synthetic-access-secret'],
+    ]) {
+      vi.stubEnv('WORKER_ACCESS_CLIENT_ID', id)
+      vi.stubEnv('WORKER_ACCESS_CLIENT_SECRET', secret)
+      await assert.rejects(medicineSend({ operation: 'list', ownerId: 'google:synthetic' }), {
+        code: 'unavailable',
+        status: 503,
+      })
+    }
+    assert.equal(fetch.mock.calls.length, 0)
+    assert.doesNotMatch(JSON.stringify(log.mock.calls), /synthetic-access/)
+  })
+
+  test('local Worker development omits Access credentials even when inherited from the shell', async () => {
+    configure()
+    vi.stubEnv('VERCEL_ENV', '')
+    vi.stubEnv('WORKER_ACCESS_CLIENT_SECRET', '')
+    const fetch = vi.fn(async (_url: URL | RequestInfo, options?: RequestInit) => {
+      const headers = new Headers(options?.headers)
+      assert.equal(headers.get('CF-Access-Client-Id'), null)
+      assert.equal(headers.get('CF-Access-Client-Secret'), null)
+      assert.equal(headers.get('Authorization'), 'Bearer synthetic-worker-bearer')
+      return Response.json({ medicines: [] })
+    })
+    vi.stubGlobal('fetch', fetch)
+    for (const url of ['http://localhost:8787', 'http://127.0.0.1:8787']) {
+      vi.stubEnv('MEDICINES_WORKER_URL', url)
+      assert.deepEqual(await medicineSend({ operation: 'list', ownerId: 'google:synthetic' }), [])
+    }
+    assert.equal(fetch.mock.calls.length, 2)
+  })
 })

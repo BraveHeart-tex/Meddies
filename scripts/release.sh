@@ -9,7 +9,7 @@ report_failure() {
   fi
 }
 trap report_failure ERR
-for name in GITHUB_SHA CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID MEDICINES_WORKER_URL PRODUCTION_APP_URL; do
+for name in GITHUB_SHA CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID MEDICINES_WORKER_URL PRODUCTION_APP_URL WORKER_ACCESS_CLIENT_ID WORKER_ACCESS_CLIENT_SECRET; do
   if [[ -z "${!name:-}" ]]; then
     printf 'Missing release configuration: %s\n' "$name" >&2
     false
@@ -21,7 +21,8 @@ done
 [[ "$PRODUCTION_APP_URL" =~ ^https://[a-zA-Z0-9.-]+$ ]]
 
 deployment_file=$(mktemp)
-trap 'rm -f "$deployment_file"' EXIT
+worker_response_file=$(mktemp)
+trap 'rm -f "$deployment_file" "$worker_response_file"' EXIT
 run_stage() {
   stage=$1
   shift
@@ -86,13 +87,27 @@ if (
   process.exit(1)
 }
 JS
-# Public GETs only. No identity, capability, medicine reads or writes.
+# The app is public. The Worker probe passes Access but omits the Worker capability:
+# require its JSON 401, not an Access-generated 401. No medicine data is read or written.
 app_status=$(curl --silent --show-error --fail --retry 5 --retry-all-errors --retry-delay 2 \
   --connect-timeout 10 --max-time 30 --output /dev/null --write-out '%{http_code}' "$PRODUCTION_APP_URL/")
 [[ "$app_status" == 200 ]]
 worker_status=$(curl --silent --show-error --retry 5 --retry-connrefused --retry-delay 2 \
-  --connect-timeout 10 --max-time 30 --output /dev/null --write-out '%{http_code}' "${MEDICINES_WORKER_URL%/}/medicines")
+  --connect-timeout 10 --max-time 30 --output "$worker_response_file" --write-out '%{http_code}' \
+  --header "CF-Access-Client-Id: $WORKER_ACCESS_CLIENT_ID" \
+  --header "CF-Access-Client-Secret: $WORKER_ACCESS_CLIENT_SECRET" \
+  "${MEDICINES_WORKER_URL%/}/medicines")
 [[ "$worker_status" == 401 ]]
+node - "$worker_response_file" <<'JS'
+const fs = require('node:fs')
+try {
+  const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))
+  if (body?.error !== 'unauthorized') throw new Error()
+} catch {
+  console.error('Worker probe did not return the expected unauthorized JSON response.')
+  process.exit(1)
+}
+JS
 printf 'Release %s succeeded: %s\n' "$GITHUB_SHA" "$deployment_url"
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
   printf 'Release `%s`: migrations, Worker, Vercel and public smoke passed. Deployment: %s\n' "$GITHUB_SHA" "$deployment_url" >> "$GITHUB_STEP_SUMMARY"
