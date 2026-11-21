@@ -22,6 +22,15 @@ import {
 import { ApplicationError } from '../src/lib/application-error'
 import { medicineEdits, userMedications } from './schema'
 
+// Stored records and receipts are server data, so decoding cannot reject browser input.
+function parseStoredResult<T>(record: string, parse: (value: unknown) => T): T {
+  try {
+    return parse(JSON.parse(record))
+  } catch {
+    throw new ApplicationError('unavailable', 503)
+  }
+}
+
 export async function listMedicines(
   db: DrizzleD1Database,
   ownerId: string,
@@ -29,7 +38,7 @@ export async function listMedicines(
   const rows = await db.all<{ record: string }>(
     sql`SELECT record FROM medicine_records WHERE owner_id=${ownerId} ORDER BY label,id`,
   )
-  return { medicines: rows.map((row) => parseMedicineRecord(JSON.parse(row.record))) }
+  return { medicines: rows.map((row) => parseStoredResult(row.record, parseMedicineRecord)) }
 }
 
 export async function saveMedicine(
@@ -62,7 +71,7 @@ export async function saveMedicine(
     original.startingCount !== medicine.startingCount
   )
     throw new ApplicationError('conflict', 409)
-  return { medicines: [parseMedicineRecord(JSON.parse(row!.result!))] }
+  return { medicines: [parseStoredResult(row!.result!, parseMedicineRecord)] }
 }
 
 export async function editMedicine(
@@ -81,7 +90,7 @@ export async function editMedicine(
       .get()
     if (!row) return null
     if (row.request !== request) throw new ApplicationError('conflict', 409)
-    return { medicines: [parseMedicineRecord(JSON.parse(row.result!))] }
+    return { medicines: [parseStoredResult(row.result!, parseMedicineRecord)] }
   }
   const prior = await replay()
   if (prior) return prior
@@ -149,7 +158,7 @@ export async function archiveMedicine(
     )
     if (!row) return null
     if (row.request !== request) throw new ApplicationError('conflict', 409)
-    return { medicines: [parseMedicineRecord(JSON.parse(row.result!))] }
+    return { medicines: [parseStoredResult(row.result!, parseMedicineRecord)] }
   }
   const prior = await replay()
   if (prior) return prior
@@ -184,7 +193,7 @@ export async function restoreMedicine(
     )
     if (!row) return null
     if (row.request !== request) throw new ApplicationError('conflict', 409)
-    return { medicines: [parseMedicineRecord(JSON.parse(row.result!))] }
+    return { medicines: [parseStoredResult(row.result!, parseMedicineRecord)] }
   }
   const prior = await replay()
   if (prior) return prior
@@ -219,7 +228,7 @@ export async function deleteMedicine(
     )
     if (!row) return null
     if (row.request !== request) throw new ApplicationError('conflict', 409)
-    return { deletion: parseMedicineDeleteReceipt(JSON.parse(row.result!)) }
+    return { deletion: parseStoredResult(row.result!, parseMedicineDeleteReceipt) }
   }
   const prior = await replay()
   if (prior) return prior
@@ -248,7 +257,7 @@ export async function setMedicineStock(
     )
     if (!row) return null
     if (row.request !== request) throw new ApplicationError('conflict', 409)
-    return { medicines: [parseMedicineRecord(JSON.parse(row.result))] }
+    return { medicines: [parseStoredResult(row.result, parseMedicineRecord)] }
   }
   const prior = await replay()
   if (prior) return prior

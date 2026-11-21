@@ -67,11 +67,29 @@ test('gateway applies private capability, no-store, timeout and redirect rejecti
   }
   assert.deepEqual(await medicineSend(list), [])
 })
-test('feature decoders preserve malformed envelope and invalid field mappings', async () => {
-  for (const payload of [null, [], {}, { medicines: null }, { medicines: [{}] }] as const) {
-    globalThis.fetch = async () => Response.json(payload)
-    await assert.rejects(() => medicineSend(list), {
-      status: (payload as { medicines?: unknown[] } | null)?.medicines?.[0] ? 400 : 503,
+test('feature decoders answer unavailable for malformed medicine lists, actions and delete receipts', async () => {
+  const action = {
+    actionId: '10000000-0000-4000-8000-000000000001',
+    medicineId: '10000000-0000-4000-8000-000000000002',
+    expectedRevision: 0,
+  }
+  const commands: MedicineCommand[] = [
+    list,
+    { ...list, operation: 'archive', archive: action },
+    { ...list, operation: 'restore', restore: action },
+    { ...list, operation: 'stockOff', stock: action },
+  ]
+  for (const command of commands) {
+    for (const payload of [null, [], {}, { medicines: null }, { medicines: [{ stock: {} }] }]) {
+      globalThis.fetch = async () => Response.json(payload)
+      await assert.rejects(() => medicineSend(command), { status: 503, code: 'unavailable' })
+    }
+  }
+  for (const deletion of [null, {}, { ...action, deletedAt: 'invalid' }]) {
+    globalThis.fetch = async () => Response.json({ deletion })
+    await assert.rejects(() => medicineSend({ ...list, operation: 'delete', deletion: action }), {
+      status: 503,
+      code: 'unavailable',
     })
   }
   for (const payload of [
