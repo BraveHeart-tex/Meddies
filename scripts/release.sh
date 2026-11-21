@@ -29,6 +29,25 @@ run_stage() {
   "$@"
 }
 
+# Only the validated bookmark is logged; Wrangler's full response stays out of the summary.
+stage=bookmark
+printf 'Release %s: bookmark\n' "$GITHUB_SHA"
+bookmark=$(pnpm exec wrangler d1 time-travel info meddies --config worker/wrangler.jsonc --json | node -e '
+const fs = require("node:fs")
+try {
+  const { bookmark } = JSON.parse(fs.readFileSync(0, "utf8"))
+  if (typeof bookmark !== "string" || !/^[a-fA-F0-9]+(?:-[a-fA-F0-9]+)+$/.test(bookmark)) throw new Error()
+  process.stdout.write(bookmark)
+} catch {
+  console.error("Could not read a valid D1 Time Travel bookmark.")
+  process.exit(1)
+}
+')
+printf 'Release %s: pre-migration D1 Time Travel bookmark: %s\n' "$GITHUB_SHA" "$bookmark"
+if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+  printf 'Release `%s`: pre-migration D1 Time Travel bookmark: `%s`\n' "$GITHUB_SHA" "$bookmark" >> "$GITHUB_STEP_SUMMARY"
+fi
+
 # Wrangler records applied migrations in D1. Reapplying skips them, including no-op releases.
 run_stage migrations pnpm exec wrangler d1 migrations apply meddies --remote --config worker/wrangler.jsonc
 run_stage worker pnpm exec wrangler deploy --config worker/wrangler.jsonc --tag "$GITHUB_SHA"

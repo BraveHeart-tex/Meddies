@@ -145,10 +145,12 @@ A separate non-canceling concurrency group on the release job covers every mutat
    Allow newer main commits only when every intervening commit is non-runtime-only. Any
    runtime change (even if later reverted), missing history or comparison failure rejects
    the release.
-2. Apply pending remote D1 migrations with Wrangler's migration ledger.
-3. Deploy that SHA's Worker, tagged with the SHA.
-4. Deploy that checkout to Vercel Production with `githubCommitSha` metadata.
-5. Inspect the public production alias and require it to point to the ready
+2. Read the current D1 Time Travel bookmark and record it with the release SHA in the
+   log and Actions summary. A read or validation failure stops before migrations.
+3. Apply pending remote D1 migrations with Wrangler's migration ledger.
+4. Deploy that SHA's Worker, tagged with the SHA.
+5. Deploy that checkout to Vercel Production with `githubCommitSha` metadata.
+6. Inspect the public production alias and require it to point to the ready
    immutable deployment just created. GET that alias (expect 200) and the
    unauthenticated Worker medicine endpoint (expect 401). No medicine data is
    read or written. Generated deployment URLs may remain protected by Vercel.
@@ -188,7 +190,7 @@ gh run view <run-id> --log-failed
   `browser-artifacts-<attempt>` artifact (`gh run download <run-id> -n browser-artifacts-1`).
   For a failure the change did not cause, follow
   [unrelated CI failure](verification.md#running-journeys).
-- **Release job failed:** the log names the stage (`preflight`, `migrations`, `worker`,
+- **Release job failed:** the log names the stage (`preflight`, `bookmark`, `migrations`, `worker`,
   `app` or `smoke`); read what that stage leaves in production under Failure and recovery.
 
 Agents diagnose, fix code failures with a new commit and report a failed release stage in
@@ -197,8 +199,8 @@ the active issue. Re-runs, dispatches and manual recovery are the maintainer's.
 ### Failure and recovery
 
 Verify failing prevents the release job from starting. A missing setup variable or
-credential stops preflight. Migration failure stops Worker and app; Worker failure
-stops app; app or smoke failure leaves already completed stages in production.
+credential stops preflight. Bookmark failure prevents migrations and deployments.
+Migration failure stops Worker and app; Worker failure stops app; app or smoke failure leaves already completed stages in production.
 Inspect the run's SHA and stage before retrying. A smoke failure may mean the app
 is already live. Inspect Vercel deployment status and Worker version before acting.
 Do not infer rollback from a failed run.
@@ -222,6 +224,26 @@ export GITHUB_SHA="$(git rev-parse HEAD)"
 # RELEASE_SETUP_CONFIRMED=true asserts the same setup review for manual execution.
 bash scripts/release.sh
 ```
+
+For a bad migration, find the **pre-migration D1 Time Travel bookmark** for the
+intended release SHA in that run's log or Actions summary. Before restoring, coordinate
+with maintainers to stop production writes and reminder processing and prevent Actions
+releases or manual deployments from running. A restore replaces the **whole database**,
+including the migration ledger, and discards every write after that bookmark. It is not
+a selective migration rollback. Review that data loss before proceeding.
+
+[Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/) retains
+restore points for 7 days on Workers Free (30 days on Workers Paid). Recording a
+bookmark does not extend retention or create a separate backup. Within that window,
+use the same scoped Cloudflare credentials and the exact bookmark from the run:
+
+```sh
+pnpm exec wrangler d1 time-travel restore meddies --bookmark '<release-bookmark>' --config worker/wrangler.jsonc
+```
+
+Review Wrangler's confirmation before accepting the restore. Confirm the restored
+schema is compatible with the deployed Worker and app; restore a compatible reviewed
+version or repair forward before resuming writes, reminder processing and releases.
 
 Individual commands remain available when diagnosing a failed stage:
 

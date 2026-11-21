@@ -6,22 +6,32 @@ import { join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { test } from 'vitest'
 
+const bookmark = '00000001-00000002-00000003-00000004'
 const sha = spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim()
 async function fixture(t: TestContext) {
   const dir = await mkdtemp(join(tmpdir(), 'meddies-release-'))
   t.onTestFinished(() => rm(dir, { recursive: true, force: true }))
   const log = join(dir, 'commands')
+  const summary = join(dir, 'summary')
   await writeFile(
     join(dir, 'pnpm'),
     `#!/bin/bash
 printf '%s\\n' "$*" >> "$COMMAND_LOG"
 case "$*" in
+  *'time-travel info'*) stage=bookmark ;;
   *'migrations apply'*) stage=migrations ;;
   *'wrangler deploy'*) stage=worker ;;
   *'vercel deploy'*) stage=app ;;
   *'vercel inspect'*) stage=smoke ;;
 esac
 if [[ "$FAIL_STAGE" == "$stage" ]]; then exit 1; fi
+if [[ "$stage" == bookmark && "$FAIL_STAGE" == invalid-bookmark ]]; then
+  printf '%s\\n' '{"bookmark":"synthetic-secret"}'
+  exit 0
+fi
+if [[ "$stage" == bookmark ]]; then
+  printf '%s\\n' '{"bookmark":"${bookmark}","extra":"synthetic-secret"}'
+fi
 if [[ "$stage" == app ]]; then echo https://synthetic.vercel.app; fi
 if [[ "$stage" == smoke ]]; then
   echo 'Error: User not found.' >&2
@@ -78,8 +88,9 @@ globalThis.fetch = async (input, options) => {
           FAIL_STAGE: fail,
           NODE_OPTIONS: `--import ${apiStub}`,
           GITHUB_SHA: sha,
+          GITHUB_STEP_SUMMARY: summary,
           RELEASE_SETUP_CONFIRMED: 'true',
-          CLOUDFLARE_API_TOKEN: 'synthetic',
+          CLOUDFLARE_API_TOKEN: 'synthetic-secret',
           CLOUDFLARE_ACCOUNT_ID: 'synthetic',
           VERCEL_TOKEN: 'synthetic',
           VERCEL_ORG_ID: 'synthetic',
@@ -89,42 +100,61 @@ globalThis.fetch = async (input, options) => {
         },
       })
     },
+    summary: () => readFile(summary, 'utf8'),
     async commands() {
       return (await readFile(log, 'utf8')).trim().split('\n')
     },
   }
 }
 
-test('release migrates D1, deploys Worker then app, and smokes without mutations', async (t) => {
+test('release records a safe bookmark before migrations, deploys Worker then app, and smokes', async (t) => {
   const f = await fixture(t)
   const result = f.run()
   assert.equal(result.status, 0, result.stderr)
   const commands = await f.commands()
-  assert.match(commands[0], /wrangler d1 migrations apply meddies --remote/)
-  assert.match(commands[1], new RegExp(`wrangler deploy .*--tag ${sha}`))
-  assert.match(commands[2], new RegExp(`vercel deploy --prod .*githubCommitSha=${sha}`))
   assert.match(
-    commands[3],
+    commands[0],
+    /wrangler d1 time-travel info meddies --config worker\/wrangler.jsonc --json/,
+  )
+  assert.match(result.stdout, new RegExp(bookmark))
+  const summary = await f.summary()
+  assert.match(summary, new RegExp(bookmark))
+  assert.match(summary, new RegExp(sha))
+  assert.doesNotMatch(summary, /synthetic-secret/)
+  assert.doesNotMatch(result.stdout, /synthetic-secret/)
+  assert.match(commands[1], /wrangler d1 migrations apply meddies --remote/)
+  assert.match(commands[2], new RegExp(`wrangler deploy .*--tag ${sha}`))
+  assert.match(commands[3], new RegExp(`vercel deploy --prod .*githubCommitSha=${sha}`))
+  assert.match(
+    commands[4],
     /deployment-api https:\/\/api.vercel.com\/v13\/deployments\/production.example.test\?teamId=synthetic/,
   )
-  assert.match(commands[4], /curl .*https:\/\/production.example.test/)
-  assert.match(commands[5], /curl .*https:\/\/worker.example.test/)
-  assert.equal(commands.length, 6)
+  assert.match(commands[5], /curl .*https:\/\/production.example.test/)
+  assert.match(commands[6], /curl .*https:\/\/worker.example.test/)
+  assert.equal(commands.length, 7)
 })
 
 for (const [stage, commandCount] of [
-  ['migrations', 1],
-  ['worker', 2],
-  ['app', 3],
-  ['smoke', 4],
+  ['bookmark', 1],
+  ['invalid-bookmark', 1],
+  ['migrations', 2],
+  ['worker', 3],
+  ['app', 4],
+  ['smoke', 5],
 ] as const) {
   test(`${stage} failure stops later stages and identifies commit and recovery`, async (t) => {
     const f = await fixture(t)
     const result = f.run(stage)
     assert.notEqual(result.status, 0)
-    assert.match(result.stderr, new RegExp(`Release ${sha} failed at ${stage}`))
+    assert.match(
+      result.stderr,
+      new RegExp(`Release ${sha} failed at ${stage === 'invalid-bookmark' ? 'bookmark' : stage}`),
+    )
     assert.match(result.stderr, /docs\/deployment.md recovery/)
     assert.equal((await f.commands()).length, commandCount)
+    const summary = await f.summary()
+    assert.doesNotMatch(summary, /synthetic-secret/)
+    if (commandCount > 1) assert.match(summary, new RegExp(bookmark))
   })
 }
 
@@ -133,8 +163,8 @@ test('rerun after Worker failure reapplies pending migrations before deployment'
   assert.notEqual(f.run('worker').status, 0)
   assert.equal(f.run().status, 0)
   const commands = await f.commands()
-  assert.match(commands[2], /migrations apply meddies --remote/)
-  assert.match(commands[3], /wrangler deploy/)
+  assert.match(commands[4], /migrations apply meddies --remote/)
+  assert.match(commands[5], /wrangler deploy/)
 })
 
 test('failed verification stops before build and tests', async (t) => {
@@ -168,10 +198,10 @@ printf '%s\\n' "$*" >> "$COMMAND_LOG"
 })
 
 for (const [failure, count] of [
-  ['stale-alias', 4],
-  ['wrong-project', 4],
-  ['wrong-commit', 4],
-  ['http', 5],
+  ['stale-alias', 5],
+  ['wrong-project', 5],
+  ['wrong-commit', 5],
+  ['http', 6],
 ] as const) {
   test(`${failure} fails smoke instead of accepting an unverified production release`, async (t) => {
     const f = await fixture(t)
