@@ -55,6 +55,8 @@ test('Healthy runs ping once from cron and command without sending reminder or o
     const ping = new Request(input, init)
     assert.equal(ping.url, url)
     assert.equal(ping.method, 'GET')
+    // Workers rejects redirect 'error' with a TypeError, which the silent catch would hide.
+    assert.equal(ping.redirect, 'manual')
     assert.equal(await ping.text(), '')
     assert.deepEqual([...ping.headers], [])
   }

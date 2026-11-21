@@ -49,12 +49,13 @@ type RunContext = { waitUntil(promise: Promise<unknown>): void }
 
 // Keep the bare heartbeat outside the run lifetime. Bound even a fetch that never settles;
 // failures are deliberately silent so neither the secret nor provider text reaches logs.
+// Redirects are never followed; Workers supports only 'follow' and 'manual', and throws on 'error'.
 async function pingHeartbeat(url: string) {
   const controller = new AbortController()
   let timer: ReturnType<typeof setTimeout> | undefined
   try {
     await Promise.race([
-      fetch(url, { signal: controller.signal, redirect: 'error' }).then((response) =>
+      fetch(url, { signal: controller.signal, redirect: 'manual' }).then((response) =>
         response.body?.cancel(),
       ),
       new Promise<void>((resolve) => {
