@@ -79,10 +79,12 @@ browser storage is used. Losing it on reload, app closure or browser eviction is
   mutation cache; a retry of an unconfirmed save resends the same change and action ID, and an
   unconfirmed save rereads the saved value.
 - **Definite rejection** clears only that save's pending state and writes no cache, never
-  touching a newer unrelated save.
+  touching a newer unrelated save. HTTP 400, 403, 413 and 415 reject the save: validation,
+  origin, body-size and content-type refusals happen before any write.
 - **Unconfirmed save.** A timeout or lost response keeps the attempted details and action
-  ID, reconciles, and offers a retry of the same request. Unconfirmed dose saves stay on
-  their rows, are rechecked on focus and reconnect by reading Today (dose due today) or
+  ID, reconciles, and offers a retry of the same request. Network failures and HTTP 5xx
+  remain unconfirmed. Unconfirmed dose saves stay on their rows, are rechecked on focus
+  and reconnect by reading Today (dose due today) or
   the dose's History date, and confirm once any Today or History date read shows a
   matching record.
 - **Conflict** needs explicit user recovery; the server's current outcome is shown, never

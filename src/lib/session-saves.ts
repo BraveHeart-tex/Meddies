@@ -37,7 +37,13 @@ export async function requestSave<T>(
     // Stays pending through the check. If the session is not over, a 401 says nothing about the
     // write, so the attempt stays retryable; if it is, session end drops this result.
     if (response.status === 401) await confirmSessionEnd()
-    const problem = { 400: 'rejected', 409: 'conflict' } as const
+    const problem = {
+      400: 'rejected',
+      403: 'rejected',
+      409: 'conflict',
+      413: 'rejected',
+      415: 'rejected',
+    } as const
     return { problem: problem[response.status as keyof typeof problem] ?? 'unconfirmed' }
   } catch {
     return { problem: 'unconfirmed' }
