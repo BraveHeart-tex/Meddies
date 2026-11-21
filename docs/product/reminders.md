@@ -109,7 +109,9 @@ eligibility; all doses remain unconfirmed unless specified.
 
 - A **Device registration** lets backend reminders reach one installed Meddies app on one device.
   An account can have several; each belongs to exactly one account. Registering an installation
-  that another account registered moves it to the signing-in account.
+  that another account registered moves it to the signing-in account only when it presents
+  the same FCM registration token. A different token leaves that row unchanged and answers
+  `registered: false`. The owning account can replace its token.
 - Registrations hold an FCM registration token. #6 proved FCM on a real iPhone, so Meddies
   never runs a second provider.
 - Turning notifications on asks for system permission only from an explicit tap in Settings, and

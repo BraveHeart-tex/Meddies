@@ -108,13 +108,23 @@ test('Renew updates an existing registration and never recreates a removed one',
   assert.deepEqual(await read(id), { status: 200, body: { registered: false } })
 })
 
-test('Saving an installation registered to another account moves it to the caller', async () => {
+test('Saving another account’s Device registration requires its current token to move it', async () => {
   const [a, b] = [owner(), owner()]
   const id = installation()
   as(a)
-  await save(id, token(id))
-  as(b)
   const moved = token(id)
+  await save(id, moved)
+  const before = await db
+    .prepare('SELECT * FROM device_registrations WHERE installation_id=?')
+    .bind(id)
+    .first()
+  as(b)
+  assert.deepEqual(await save(id, token(id)), { status: 200, body: { registered: false } })
+  assert.deepEqual(
+    await db.prepare('SELECT * FROM device_registrations WHERE installation_id=?').bind(id).first(),
+    before,
+  )
+  assert.deepEqual(await read(id), { status: 200, body: { registered: false } })
   assert.deepEqual(await save(id, moved), { status: 200, body: { registered: true } })
   assert.deepEqual(await rows(id), [{ ownerId: b, token: moved }])
   assert.deepEqual(await read(id), { status: 200, body: { registered: true } })

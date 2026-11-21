@@ -1,8 +1,9 @@
 // Device registration persistence (#353). Each statement is a single atomic write keyed by
-// the installation ID: save upserts and moves the row to the caller, renew updates only the
-// caller's existing row and never recreates a removed one, and remove is idempotent.
+// the installation ID: save moves another account's row only with its current token;
+// the owner can replace its token. Renew updates only the caller's existing row and never
+// recreates a removed one, and remove is idempotent.
 // Results report only whether the caller's installation is registered, never the token.
-import { and, eq } from 'drizzle-orm'
+import { and, eq, or } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import type {
   DeviceInstallation,
@@ -24,14 +25,19 @@ export async function saveDeviceRegistration(
   now: Date,
 ): Promise<DeviceRegistrationStatus> {
   const updatedAt = now.toISOString()
-  await db
+  const rows = await db
     .insert(deviceRegistrations)
     .values({ ...registration, ownerId, updatedAt })
     .onConflictDoUpdate({
       target: deviceRegistrations.installationId,
       set: { ownerId, token: registration.token, updatedAt },
+      setWhere: or(
+        eq(deviceRegistrations.ownerId, ownerId),
+        eq(deviceRegistrations.token, registration.token),
+      ),
     })
-  return { registered: true }
+    .returning({ installationId: deviceRegistrations.installationId })
+  return { registered: rows.length > 0 }
 }
 
 export async function renewDeviceRegistration(

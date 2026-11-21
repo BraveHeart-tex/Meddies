@@ -179,8 +179,11 @@ owner.
   404 `not_found`.
 - **Device registrations:** `/api/device-registration` reads with `GET ?installationId=`
   and saves (`PUT`), renews (`PATCH`) and removes (`DELETE`) with a JSON body. The Firebase
-  installation ID is the row key: save upserts it and moves it to the caller, renew updates
-  only the caller's row, remove is idempotent. Every response is `{ registered }`; the
+  installation ID is the row key: save upserts it, updating an existing row only for its
+  owner or when the supplied token matches. The conditional write can move the row to the
+  caller; a refused move leaves it unchanged and answers `registered: false`. Save derives
+  `registered` from the write. Renew updates only the caller's row; remove is idempotent.
+  Every response is `{ registered }`; the
   token is stored for the sender and never returned or logged. The browser gets both from
   Firebase in `device-registrations/notification-device.ts`, loaded on first use, and
   `public/sw.js` displays incoming messages. `device-registrations/registration-upkeep.tsx`
