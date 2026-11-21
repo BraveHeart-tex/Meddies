@@ -1,0 +1,233 @@
+[
+  {
+    "name": "Detail correction",
+    "parser": "correctDetails",
+    "input": {
+      "expectedRevision": 2,
+      "medicineId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "actionId": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA",
+      "strengthRevisionId": "CCCCCCCC-CCCC-4CCC-8CCC-CCCCCCCCCCCC",
+      "label": "  Aspirin  ",
+      "strength": "  100 mg  ",
+      "unit": "tablet"
+    },
+    "storedText": "{\"kind\":\"correctDetails\",\"actionId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"medicineId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"expectedRevision\":2,\"strengthRevisionId\":\"cccccccc-cccc-4ccc-8ccc-cccccccccccc\",\"label\":\"Aspirin\",\"strength\":\"100 mg\",\"unit\":\"tablet\"}"
+  },
+  {
+    "name": "Strength change",
+    "parser": "changeStrength",
+    "input": {
+      "expectedRevision": 2,
+      "medicineId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "actionId": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA",
+      "strength": "  200 mg  ",
+      "effectiveAt": "2026-11-21T09:00:00.000Z",
+      "timeZone": "Europe/Istanbul"
+    },
+    "storedText": "{\"kind\":\"changeStrength\",\"actionId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"medicineId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"expectedRevision\":2,\"strength\":\"  200 mg  \",\"effectiveAt\":\"2026-11-21T09:00:00.000Z\",\"timeZone\":\"Europe/Istanbul\"}"
+  },
+  {
+    "name": "archive",
+    "parser": "archive",
+    "input": {
+      "expectedRevision": 2,
+      "medicineId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "actionId": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA"
+    },
+    "storedText": "{\"actionId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"medicineId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"expectedRevision\":2}"
+  },
+  {
+    "name": "restore",
+    "parser": "restore",
+    "input": {
+      "expectedRevision": 2,
+      "medicineId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "actionId": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA"
+    },
+    "storedText": "{\"actionId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"medicineId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"expectedRevision\":2}"
+  },
+  {
+    "name": "delete",
+    "parser": "delete",
+    "input": {
+      "expectedRevision": 2,
+      "medicineId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "actionId": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA"
+    },
+    "storedText": "{\"actionId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"medicineId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"expectedRevision\":2}"
+  },
+  {
+    "name": "stockOn",
+    "parser": "stockOn",
+    "input": {
+      "expectedRevision": 2,
+      "medicineId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "actionId": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA",
+      "unit": "liquid",
+      "startingCount": 10.5
+    },
+    "storedText": "{\"kind\":\"stockOn\",\"actionId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"medicineId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"expectedRevision\":2,\"unit\":\"liquid\",\"startingCount\":10.5}"
+  },
+  {
+    "name": "stockOff",
+    "parser": "stockOff",
+    "input": {
+      "expectedRevision": 2,
+      "medicineId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "actionId": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA"
+    },
+    "storedText": "{\"kind\":\"stockOff\",\"actionId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"medicineId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"expectedRevision\":2}"
+  },
+  {
+    "name": "stockCorrection",
+    "parser": "stockCorrection",
+    "input": {
+      "expectedRevision": 2,
+      "medicineId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "actionId": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA",
+      "unit": "liquid",
+      "count": 0
+    },
+    "storedText": "{\"kind\":\"stockCorrection\",\"actionId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"medicineId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"expectedRevision\":2,\"unit\":\"liquid\",\"count\":0}"
+  },
+  {
+    "name": "stockRefill",
+    "parser": "stockRefill",
+    "input": {
+      "expectedRevision": 2,
+      "medicineId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "actionId": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA",
+      "unit": "liquid",
+      "amount": 2.5
+    },
+    "storedText": "{\"kind\":\"stockRefill\",\"actionId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"medicineId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"expectedRevision\":2,\"unit\":\"liquid\",\"amount\":2.5}"
+  },
+  {
+    "name": "Clock schedule edit defaults and sorted times",
+    "parser": "edit",
+    "input": {
+      "basedOnId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "id": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA",
+      "endDate": null,
+      "times": [
+        {
+          "quantity": 2,
+          "time": "20:00"
+        },
+        {
+          "quantity": 1,
+          "time": "08:00"
+        }
+      ]
+    },
+    "storedText": "{\"id\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"basedOnId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"endDate\":null,\"times\":[{\"time\":\"08:00\",\"quantity\":1},{\"time\":\"20:00\",\"quantity\":2}],\"weekdays\":[0,1,2,3,4,5,6],\"intervalHours\":null}"
+  },
+  {
+    "name": "Clock schedule edit selected weekdays and Last day",
+    "parser": "edit",
+    "input": {
+      "basedOnId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "id": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA",
+      "endDate": "2026-12-01",
+      "weekdays": [5, 1, 3],
+      "times": [
+        {
+          "quantity": 0.5,
+          "time": "08:00"
+        }
+      ]
+    },
+    "storedText": "{\"id\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"basedOnId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"endDate\":\"2026-12-01\",\"times\":[{\"time\":\"08:00\",\"quantity\":0.5}],\"weekdays\":[1,3,5],\"intervalHours\":null}"
+  },
+  {
+    "name": "Interval schedule edit with Anchor",
+    "parser": "edit",
+    "input": {
+      "basedOnId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "id": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA",
+      "endDate": null,
+      "intervalHours": 8,
+      "anchorDate": "2026-11-22",
+      "times": [
+        {
+          "quantity": 1,
+          "time": "08:00"
+        }
+      ]
+    },
+    "storedText": "{\"id\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"basedOnId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"endDate\":null,\"times\":[{\"time\":\"08:00\",\"quantity\":1}],\"weekdays\":[0,1,2,3,4,5,6],\"intervalHours\":8,\"anchorDate\":\"2026-11-22\"}"
+  },
+  {
+    "name": "Stop schedule",
+    "parser": "stop",
+    "input": {
+      "basedOnId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "id": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA"
+    },
+    "storedText": "{\"id\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"basedOnId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\"}"
+  },
+  {
+    "name": "Pause schedule",
+    "parser": "pause",
+    "input": {
+      "basedOnId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "id": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA"
+    },
+    "storedText": "{\"id\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"basedOnId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"operation\":\"pause\"}"
+  },
+  {
+    "name": "Resume Clock schedule",
+    "parser": "resume",
+    "input": {
+      "basedOnId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "id": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA"
+    },
+    "storedText": "{\"id\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"basedOnId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"operation\":\"resume\"}"
+  },
+  {
+    "name": "Resume Interval schedule",
+    "parser": "resume",
+    "input": {
+      "basedOnId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "id": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA",
+      "anchorDate": "2026-11-22",
+      "anchorTime": "09:00"
+    },
+    "storedText": "{\"id\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"basedOnId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"anchorDate\":\"2026-11-22\",\"anchorTime\":\"09:00\",\"operation\":\"resume\"}"
+  },
+  {
+    "name": "Save Unscheduled dose",
+    "parser": "saveUnscheduled",
+    "input": {
+      "quantity": 0.5,
+      "takenAt": "2026-11-21T09:00:00.000Z",
+      "medicineId": "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+      "actionId": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA"
+    },
+    "storedText": "{\"actionId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"medicineId\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\"takenAt\":\"2026-11-21T09:00:00.000Z\",\"quantity\":0.5}"
+  },
+  {
+    "name": "Change Unscheduled dose",
+    "parser": "changeUnscheduled",
+    "input": {
+      "removed": false,
+      "expectedRevision": 0,
+      "doseId": "CCCCCCCC-CCCC-4CCC-8CCC-CCCCCCCCCCCC",
+      "actionId": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA",
+      "quantity": 1.5,
+      "takenAt": "2026-11-21T10:00:00.000Z"
+    },
+    "storedText": "{\"actionId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"doseId\":\"cccccccc-cccc-4ccc-8ccc-cccccccccccc\",\"expectedRevision\":0,\"removed\":false,\"takenAt\":\"2026-11-21T10:00:00.000Z\",\"quantity\":1.5}"
+  },
+  {
+    "name": "Remove Unscheduled dose",
+    "parser": "changeUnscheduled",
+    "input": {
+      "removed": true,
+      "expectedRevision": 0,
+      "doseId": "CCCCCCCC-CCCC-4CCC-8CCC-CCCCCCCCCCCC",
+      "actionId": "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA"
+    },
+    "storedText": "{\"actionId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"doseId\":\"cccccccc-cccc-4ccc-8ccc-cccccccccccc\",\"expectedRevision\":0,\"removed\":true}"
+  }
+]
