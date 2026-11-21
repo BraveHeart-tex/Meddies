@@ -3,6 +3,7 @@ import {
   parseMedicine,
   parseStockOn,
   parseStockCorrection,
+  parseStockRefill,
   parseStockOff,
   parseDetailCorrection,
   parseStrengthChange,
@@ -53,6 +54,23 @@ export function createMedicineOperations(dependencies: {
       if (
         !confirmed.stock.tracked ||
         confirmed.stock.count !== stock.count ||
+        confirmed.stock.intakePastCount ||
+        confirmed.unit !== stock.unit
+      )
+        throw new ApplicationError('unavailable', 503)
+      return records
+    },
+    async stockRefill(input: unknown) {
+      const user = await dependencies.requireUser()
+      const stock = parseStockRefill(input)
+      const records = confirmedEdit(
+        await sendRows({ operation: 'stockRefill', ownerId: user.id, stock }),
+        stock,
+      )
+      const confirmed = records[0]
+      if (
+        !confirmed.stock.tracked ||
+        confirmed.stock.count < stock.amount ||
         confirmed.stock.intakePastCount ||
         confirmed.unit !== stock.unit
       )

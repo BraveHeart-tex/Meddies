@@ -2,6 +2,7 @@ import { expect, test } from 'vitest'
 import {
   parseMedicine,
   parseStockCorrection,
+  parseStockRefill,
   parseStockOn,
 } from '../src/features/medicines/contract'
 
@@ -36,4 +37,27 @@ test('starting counts follow the Quantity unit grid and safe bound, allowing zer
     ).toThrow('validation')
   }
   expect(() => parseStockOn({ ...key, unit: 'tablet' })).toThrow('validation')
+})
+
+test('refill amounts are positive, on the Quantity unit grid and within its safe bound', () => {
+  for (const [unit, amount] of [
+    ['tablet', 0.5],
+    ['capsule', 7],
+    ['liquid', 0.1],
+    ['inhaler', 1],
+    ['drops', 1],
+  ] as const) {
+    expect(parseStockRefill({ ...key, unit, amount }).amount).toBe(amount)
+  }
+  for (const [unit, amount] of [
+    ['tablet', 0],
+    ['tablet', -1],
+    ['capsule', 7.5],
+    ['liquid', 0.15],
+    ['tablet', Number.MAX_SAFE_INTEGER],
+    ['tablet', null],
+    ['tablet', undefined],
+  ] as const) {
+    expect(() => parseStockRefill({ ...key, unit, amount })).toThrow('validation')
+  }
 })

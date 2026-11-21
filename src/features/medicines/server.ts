@@ -18,6 +18,7 @@ export async function send(command: MedicineCommand) {
         (command.operation === 'stockOn' ||
           command.operation === 'stockOff' ||
           command.operation === 'stockCorrection' ||
+          command.operation === 'stockRefill' ||
           (command.operation === 'save' && command.medicine.startingCount !== undefined)) &&
         data.medicines.some((row) => !row || typeof row !== 'object' || !('stock' in row))
       )

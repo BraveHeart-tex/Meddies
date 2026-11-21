@@ -6,6 +6,7 @@ import {
   parseMedicine,
   parseStockOn,
   parseStockCorrection,
+  parseStockRefill,
   parseStockOff,
   parseDetailCorrection,
   parseStrengthChange,
@@ -166,6 +167,11 @@ export function decodeCommand(path: CommandPath, value: unknown): WorkerCommand 
         return {
           path,
           command: { operation: 'stockOff', ownerId, stock: parseStockOff(input.stock) },
+        }
+      case 'stockRefill':
+        return {
+          path,
+          command: { operation: 'stockRefill', ownerId, stock: parseStockRefill(input.stock) },
         }
       case 'stockCorrection':
         return {

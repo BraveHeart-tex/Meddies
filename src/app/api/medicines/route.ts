@@ -34,6 +34,8 @@ export async function PATCH(request: Request) {
       return json({ medicines: await medicines.stockOff(input.stock) })
     if (input?.operation === 'stockCorrection')
       return json({ medicines: await medicines.stockCorrection(input.stock) })
+    if (input?.operation === 'stockRefill')
+      return json({ medicines: await medicines.stockRefill(input.stock) })
     if (input?.operation === 'delete')
       return json({ deletion: await medicines.delete(input.deletion) })
     if (input?.operation === 'correctDetails')

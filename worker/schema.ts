@@ -457,7 +457,7 @@ export const medicationNamesReceipts = sqliteTable(
   ],
 )
 
-// Starting counts are retained independently of the current tracking state.
+// Starting counts, count corrections and refills outlive the current tracking state.
 export const stockMovements = sqliteTable(
   'stock_movements',
   {
@@ -467,7 +467,7 @@ export const stockMovements = sqliteTable(
     count: real('count').notNull(),
     unit: text('unit', { enum: writableMedicineTypes }).notNull(),
     occurredAt: text('occurred_at').notNull(),
-    kind: text('kind', { enum: ['startingCount', 'countCorrection'] }).notNull(),
+    kind: text('kind', { enum: ['startingCount', 'countCorrection', 'refill'] }).notNull(),
   },
   (table) => [
     primaryKey({ columns: [table.ownerId, table.id] }),
@@ -485,7 +485,9 @@ export const medicineStockActions = sqliteTable(
     actionId: text('action_id').notNull(),
     medicineId: text('medicine_id').notNull(),
     expectedRevision: integer('expected_revision').notNull(),
-    kind: text('kind', { enum: ['stockOn', 'stockOff', 'stockCorrection'] }).notNull(),
+    kind: text('kind', {
+      enum: ['stockOn', 'stockOff', 'stockCorrection', 'stockRefill'],
+    }).notNull(),
     count: real('count'),
     unit: text('unit'),
     confirmedAt: text('confirmed_at').notNull(),

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { test } from 'vitest'
 import { createWorker } from '../worker/index'
+import { createMedicineOperations } from '../src/features/medicines/operations'
 import { createScheduleOperations } from '../src/features/schedules/operations'
 import type { ScheduleCommand, ScheduleResponse } from '../src/features/schedules/contract'
 import type { MedicineRecord } from '../src/features/medicines/contract'
@@ -117,6 +118,173 @@ async function fixture(unit: 'tablet' | 'liquid' = 'tablet', startingCount = 30)
     stockAt,
   }
 }
+
+test('refills add once, reconcile only past the count, and refuse invalid writes atomically', async () => {
+  for (const startingCount of [30, 1, 0.5]) {
+    const f = await fixture('tablet', startingCount)
+    await f.taken(11)
+    const past = startingCount < 1
+    const before = await f.medicines()
+    const intakeBefore = await f.movements()
+    f.setNow('2026-11-19T12:00:40.000Z')
+    const refill = {
+      operation: 'stockRefill',
+      stock: {
+        actionId: randomUUID(),
+        medicineId: f.medicineId,
+        expectedRevision: before.revision,
+        unit: 'tablet',
+        amount: 30,
+      },
+    }
+    const send = (command: object) => f.post('medicines', command)
+    const snapshot = async () => ({
+      medicine: await f.medicines(),
+      actions: (
+        await f.db
+          .prepare('SELECT * FROM medicine_stock_actions WHERE owner_id=? ORDER BY rowid')
+          .bind(f.ownerId)
+          .all()
+      ).results,
+      movements: (
+        await f.db
+          .prepare('SELECT * FROM stock_movements WHERE owner_id=? ORDER BY rowid')
+          .bind(f.ownerId)
+          .all()
+      ).results,
+    })
+    const unchanged = await snapshot()
+    for (const [stock, status] of [
+      [{ ...refill.stock, expectedRevision: before.revision - 1 }, 409],
+      [{ ...refill.stock, unit: 'capsule' }, 409],
+      [{ ...refill.stock, amount: 0 }, 400],
+      [{ ...refill.stock, amount: -1 }, 400],
+      [{ ...refill.stock, amount: 0.1 }, 400],
+    ] as const) {
+      assert.equal((await send({ ...refill, stock })).status, status)
+      assert.deepEqual(await snapshot(), unchanged)
+    }
+    assert.equal((await send({ ...refill, ownerId: `google:${randomUUID()}` })).status, 404)
+    assert.deepEqual(await snapshot(), unchanged)
+    const [saved, retry] = await Promise.all([send(refill), send(refill)])
+    assert.equal(saved.status, 200)
+    assert.deepEqual(retry, saved)
+    assert.deepEqual(await f.stock(), { tracked: true, count: past ? 30 : startingCount + 29 })
+    assert.equal((await f.medicines()).revision, before.revision + 1)
+    assert.deepEqual(await f.movements(), intakeBefore)
+    const movements = (
+      await f.db
+        .prepare(
+          'SELECT count,unit,occurred_at,kind FROM stock_movements WHERE owner_id=? AND kind=?',
+        )
+        .bind(f.ownerId, 'refill')
+        .all()
+    ).results
+    assert.deepEqual(movements, [
+      { count: 30, unit: 'tablet', occurred_at: '2026-11-19T12:00:40.000Z', kind: 'refill' },
+    ])
+    const changed = await snapshot()
+    assert.equal((await send({ ...refill, stock: { ...refill.stock, amount: 31 } })).status, 409)
+    assert.deepEqual(await snapshot(), changed)
+    f.setNow('2026-11-19T17:30:00.000Z')
+    await f.operations.correctOutcome({
+      ...f.occurrence(11),
+      actionId: randomUUID(),
+      expectedRevision: 0,
+      expectedOutcome: 'Taken',
+      outcome: 'Skipped',
+    })
+    assert.deepEqual(await f.stock(), { tracked: true, count: past ? 30 : startingCount + 30 })
+    await f.taken(10, 1, '2026-11-19T11:59:00.000Z')
+    assert.deepEqual(await f.stock(), { tracked: true, count: past ? 30 : startingCount + 29 })
+    await f.taken(12)
+    assert.deepEqual(await f.stock(), { tracked: true, count: past ? 29 : startingCount + 28 })
+    assert.deepEqual(await send(refill), saved)
+    await f.stockAt(null, '2026-11-19T18:00:00.000Z')
+    const off = await snapshot()
+    const next = {
+      ...refill,
+      stock: {
+        ...refill.stock,
+        actionId: randomUUID(),
+        expectedRevision: (await f.medicines()).revision,
+      },
+    }
+    assert.equal((await send(next)).status, 409)
+    assert.deepEqual(await snapshot(), off)
+    await f.stockAt(1, '2026-11-19T18:01:00.000Z')
+    await send({
+      operation: 'archive',
+      archive: {
+        actionId: randomUUID(),
+        medicineId: f.medicineId,
+        expectedRevision: (await f.medicines()).revision,
+      },
+    })
+    const archived = await snapshot()
+    assert.equal(
+      (
+        await send({
+          ...next,
+          stock: { ...next.stock, expectedRevision: (await f.medicines()).revision },
+        })
+      ).status,
+      409,
+    )
+    assert.deepEqual(await snapshot(), archived)
+    assert.deepEqual(await send(refill), saved)
+  }
+  for (const [unit, maximum, step] of [
+    ['tablet', 4503599627370495.5, 0.5],
+    ['liquid', 900719925474099, 0.1],
+  ] as const) {
+    const f = await fixture(unit, maximum)
+    const before = await f.medicines()
+    assert.equal(
+      (
+        await f.post('medicines', {
+          operation: 'stockRefill',
+          stock: {
+            actionId: randomUUID(),
+            medicineId: f.medicineId,
+            expectedRevision: before.revision,
+            unit,
+            amount: step,
+          },
+        })
+      ).status,
+      409,
+    )
+    assert.deepEqual(await f.medicines(), before)
+    assert.deepEqual(
+      await f.db
+        .prepare('SELECT count(*) AS n FROM stock_movements WHERE owner_id=?')
+        .bind(f.ownerId)
+        .first(),
+      { n: 1 },
+    )
+  }
+  const liquid = await fixture('liquid', 0.1)
+  const operations = createMedicineOperations({
+    requireUser: async () => ({ id: liquid.ownerId }),
+    send: async (command) => {
+      const { status, body } = await liquid.post('medicines', command)
+      if (status !== 200) throw new Error(body.error as string)
+      return body.medicines as MedicineRecord[]
+    },
+  })
+  for (const count of [0.2, 0.3]) {
+    const [confirmed] = await operations.stockRefill({
+      actionId: randomUUID(),
+      medicineId: liquid.medicineId,
+      expectedRevision: (await liquid.medicines()).revision,
+      unit: 'liquid',
+      amount: 0.1,
+    })
+    assert.deepEqual(confirmed.stock, { tracked: true, count })
+    assert.deepEqual(await liquid.stock(), confirmed.stock)
+  }
+})
 
 test('a count correction reconciles Stock once without rewriting intake history', async () => {
   const f = await fixture('tablet', 1)
