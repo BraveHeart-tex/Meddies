@@ -58,6 +58,44 @@ independent of `MEDICINES_WORKER_SECRET`; without it that command answers 503. T
 only the run's `submitted`, `dropped` and `retrying` counts. Without all three FCM secrets both
 paths stop before claiming any reminder.
 
+## Reminder processing heartbeat
+
+Use a Healthchecks.io check outside Cloudflare and Vercel with a **1 minute period** and
+**15 minutes grace**. Enable the maintainer's email integration for down and recovery
+notifications, with repeated down reminders disabled: one email on down, one on recovery.
+Keep the ping URL private. Set it as the optional Worker secret `HEARTBEAT_URL` using
+`pnpm exec wrangler secret put HEARTBEAT_URL --config worker/wrangler.jsonc`. For local
+Worker runs, put it in `worker/.dev.vars`; `.env.example` inventories the secret, and Vercel
+needs no copy. Creating and configuring the production check belongs to #418.
+
+After either a cron or authenticated scheduler command completes, a **Healthy run** sends
+one bare GET to that URL: no body, appended query, counts or owner data. A Healthy run has
+no Delivery attempts in the last 80 minutes, or at least one accepted or rejected attempt
+in that window (including both boundaries and this run's attempts). All-transient attempts
+or a thrown run send nothing, including no fail ping. Without the secret, no ping is sent.
+Pings use deferred Worker work, abort after 5 seconds and never alter the run's result.
+A ping failure also produces no log containing the secret.
+
+Stall drill (run against the configured check in #418):
+
+1. Confirm at least one Healthy run reached the check and its status is up. Record its last
+   ping time. Keep the maintainer's existing reminder method active during the drill.
+2. Save the private ping URL securely, then remove `HEARTBEAT_URL` with
+   `pnpm exec wrangler secret delete HEARTBEAT_URL --config worker/wrangler.jsonc`.
+   Leave reminder processing running; this safely simulates absent heartbeats without
+   interrupting submissions. Do not manually ping the check during the drill.
+3. After 16 minutes without a ping (1 minute period plus 15 minutes grace), expect the
+   check to turn down and send the maintainer one down email. Allow email delivery time;
+   verify no repeated down email while leaving it down for another check period.
+4. Restore the saved URL with the secret-put command above. On the next Healthy run,
+   expect the check to turn up and send one recovery email. If it stays down, inspect
+   scheduler events and recent Delivery attempts; all-transient attempts suppress pings
+   until a final answer occurs or the attempts age out of the 80-minute window.
+
+This drill proves the independent missing-ping alert and recovery path. Worker tests
+separately prove suppression for failed runs and all-transient attempts; a check or email
+integration not yet configured is not production alert evidence.
+
 ## Verify workflow
 
 `.github/workflows/verify.yml` runs on pull requests and is called by Release before

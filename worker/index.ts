@@ -31,17 +31,44 @@ import {
 import { readQuietHours, setQuietHours } from './quiet-hours'
 import { readMedicationNames, setMedicationNames } from './medication-names'
 import { snoozeDose } from './snoozes'
-import { runDueReminders, type ReminderProvider } from './due-reminders'
+import { isHealthyRun, runDueReminders, type ReminderProvider } from './due-reminders'
 import { createFcmProvider } from './fcm'
 import { ApplicationError } from '../src/lib/application-error'
 
 type Env = {
   DB: D1Database
   MEDICINES_WORKER_SECRET: string
+  HEARTBEAT_URL?: string
   SCHEDULER_SECRET?: string
   FCM_PROJECT_ID?: string
   FCM_CLIENT_EMAIL?: string
   FCM_PRIVATE_KEY?: string
+}
+
+type RunContext = { waitUntil(promise: Promise<unknown>): void }
+
+// Keep the bare heartbeat outside the run lifetime. Bound even a fetch that never settles;
+// failures are deliberately silent so neither the secret nor provider text reaches logs.
+async function pingHeartbeat(url: string) {
+  const controller = new AbortController()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      fetch(url, { signal: controller.signal, redirect: 'error' }).then((response) =>
+        response.body?.cancel(),
+      ),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(() => {
+          controller.abort()
+          resolve()
+        }, 5_000)
+      }),
+    ])
+  } catch {
+    // The external check detects missing pings; a ping failure never fails the run.
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 // Without every FCM secret the run stops before claiming, so no reminder is spent on it.
@@ -63,13 +90,14 @@ function fcmProvider({ FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY }: Env)
  * Each command and each started run emits one allowlisted event. Never log raw input or errors;
  * only decoded operation names, known paths and safe error codes cross the logging boundary.
  * Failed run counts stay unknown: earlier submissions may already have happened.
+ * Only a Healthy run pings HEARTBEAT_URL, without data, in deferred bounded work.
  */
 export function createWorker(
   clock: () => Date = () => new Date(),
   reminderProvider: (env: Env) => ReminderProvider = fcmProvider,
 ) {
   let provider: ReminderProvider | undefined
-  const dueReminders = async (env: Env, origin: 'cron' | 'command') => {
+  const dueReminders = async (env: Env, origin: 'cron' | 'command', context?: RunContext) => {
     const started = performance.now()
     const event = {
       kind: 'scheduler',
@@ -87,6 +115,10 @@ export function createWorker(
         (provider ??= reminderProvider(env)),
         clock,
       )
+      if (env.HEARTBEAT_URL && (await isHealthyRun(drizzle(env.DB), clock()))) {
+        const ping = pingHeartbeat(env.HEARTBEAT_URL)
+        context?.waitUntil(ping)
+      }
       event.status = 'completed'
       event.submitted = run.submitted
       event.dropped = run.dropped
@@ -112,13 +144,14 @@ export function createWorker(
     request: Request,
     env: Env,
     event: CommandEvent,
+    context?: RunContext,
   ): Promise<Response> => {
     try {
       if (isSchedulerRequest(request)) {
         event.path = '/due-reminders'
         event.operation = 'run'
         await authenticateService(request, env.SCHEDULER_SECRET)
-        const { submitted, dropped, retrying } = await dueReminders(env, 'command')
+        const { submitted, dropped, retrying } = await dueReminders(env, 'command', context)
         return json({ submitted, dropped, retrying })
       }
       await authenticateService(request, env.MEDICINES_WORKER_SECRET)
@@ -252,15 +285,15 @@ export function createWorker(
     }
   }
   return {
-    async scheduled(_controller: unknown, env: Env): Promise<void> {
+    async scheduled(_controller: unknown, env: Env, context?: RunContext): Promise<void> {
       try {
-        await dueReminders(env, 'cron')
+        await dueReminders(env, 'cron', context)
       } catch (error) {
         // Fail the trigger with only the safe code, never query or provider detail.
         throw new Error(error instanceof ApplicationError ? error.code : 'internal')
       }
     },
-    async fetch(request: Request, env: Env): Promise<Response> {
+    async fetch(request: Request, env: Env, context?: RunContext): Promise<Response> {
       const started = performance.now()
       const path = commandPath(request)
       const event: CommandEvent = {
@@ -271,7 +304,7 @@ export function createWorker(
         errorCode: null,
         durationMs: 0,
       }
-      const response = await handleCommand(request, env, event)
+      const response = await handleCommand(request, env, event, context)
       event.status = response.status
       event.durationMs = performance.now() - started
       console.log(event)

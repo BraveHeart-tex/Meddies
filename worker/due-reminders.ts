@@ -106,6 +106,18 @@ export type DueReminderRun = { submitted: number; dropped: number; retrying: num
 
 /** No automatic reminder submits after due +80 minutes; at equality the last may (#9 D4). */
 export const REMINDER_WINDOW_MS = 80 * 60_000
+/** A completed run is Healthy with no recent attempts, or at least one final answer.
+ * The inclusive 80-minute window spans all owners and includes this run's submissions.
+ */
+export async function isHealthyRun(db: DrizzleD1Database, now: Date): Promise<boolean> {
+  const row = await db.get<{ healthy: number }>(sql`SELECT
+    count(*) = 0 OR max(outcome <> 'transient') AS healthy
+    FROM delivery_attempts
+    WHERE attempted_at >= ${new Date(now.getTime() - REMINDER_WINDOW_MS).toISOString()}
+      AND attempted_at <= ${now.toISOString()}`)
+  return row?.healthy === 1
+}
+
 export const FOLLOW_UP_INTERVAL_MS = 40 * 60_000
 /** A Snooze submits from its target through 5 minutes later inclusive (#9 D5). */
 export const SNOOZE_LATENESS_MS = 5 * 60_000
