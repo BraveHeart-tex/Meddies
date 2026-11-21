@@ -49,8 +49,14 @@ const capsules: MedicineRecord = {
 const snapshot: ScheduleSnapshot = { schedules: [], records: [], date: '2035-06-15', now }
 
 type StockRequest = {
-  operation: 'stockOn' | 'stockOff' | 'stockCorrection'
-  stock: { actionId: string; expectedRevision: number; startingCount?: number; count?: number }
+  operation: 'stockOn' | 'stockOff' | 'stockCorrection' | 'stockRefill'
+  stock: {
+    actionId: string
+    expectedRevision: number
+    startingCount?: number
+    count?: number
+    amount?: number
+  }
 }
 /** The Worker's receipt: revision + 1, this action, the requested stock. */
 function receipt(medicine: MedicineRecord, body: StockRequest): MedicineRecord {
@@ -455,3 +461,112 @@ test('Archived medication detail shows the count read-only with no stock actions
   untracked.unmount()
   untracked.client.clear()
 })
+
+async function addRefill(user: ReturnType<typeof userEvent.setup>, label = 'Magnesium') {
+  await user.click(stockRow())
+  await user.click(within(optionsDrawer(label)).getByRole('button', { name: 'Add a refill' }))
+  const drawer = within(screen.getByRole('dialog', { name: `Add ${label} refill` }))
+  const field = drawer.getByRole('textbox', { name: 'Refill amount' })
+  expect(field).toHaveValue('')
+  return { drawer, field }
+}
+
+test('a refill shows the server count after a fresh read, restores focus and updates the Medications list', async () => {
+  const tracked: MedicineRecord = { ...tablets, stock: { tracked: true, count: 24 } }
+  const { user, client, unmount, rerender } = open(tracked)
+  let current = tracked
+  const reads = vi.fn()
+  const requests = vi.fn()
+  server.use(
+    http.get('/api/medicines', () => {
+      reads(current.revision)
+      return HttpResponse.json({ medicines: [current] })
+    }),
+    http.patch('/api/medicines', async ({ request }) => {
+      const body = (await request.json()) as StockRequest
+      requests(body)
+      // Intake changed the count since the form opened; use the server's total.
+      current = { ...receipt(current, body), stock: { tracked: true, count: 53.5 } }
+      return HttpResponse.json({ medicines: [current] })
+    }),
+  )
+  const { drawer, field } = await addRefill(user)
+  await user.type(field, '30')
+  await user.click(drawer.getByRole('button', { name: 'Add refill' }))
+  await noDrawer()
+  await waitFor(() => expect(reads).toHaveBeenCalledWith(2))
+  expect(stockRow()).toHaveAccessibleDescription('53½ tablets left')
+  await waitFor(() => expect(stockRow()).toHaveFocus())
+  expect(requests).toHaveBeenCalledWith({
+    operation: 'stockRefill',
+    stock: {
+      actionId: expect.any(String),
+      medicineId: tablets.id,
+      expectedRevision: 1,
+      unit: 'tablet',
+      amount: 30,
+    },
+  })
+  window.history.replaceState(null, '', '/medications')
+  rerender(
+    <QueryClientProvider client={client}>
+      <MedicationsScreen initialNow={now} serverEntry />
+    </QueryClientProvider>,
+  )
+  expect(screen.getByText('53½ tablets left')).toBeVisible()
+  unmount()
+  client.clear()
+})
+
+test('invalid refill amounts send nothing and focus the field', async () => {
+  const tracked: MedicineRecord = { ...capsules, stock: { tracked: true, count: 24 } }
+  const requests = confirmingServer(tracked)
+  const { user, client, unmount } = open(tracked)
+  const { drawer, field } = await addRefill(user, tracked.label)
+  for (const value of ['', '0', '-1', '7.5']) {
+    await user.clear(field)
+    if (value) await user.type(field, value)
+    await user.click(drawer.getByRole('button', { name: 'Add refill' }))
+    expect(field).toBeInvalid()
+    expect(field).toHaveFocus()
+    expect(field).toHaveAccessibleDescription(/Adds to your current count/)
+  }
+  expect(requests).toEqual([])
+  unmount()
+  client.clear()
+})
+
+test.each([
+  [400, 'Refill wasn’t added.'],
+  [500, 'That might not have saved.'],
+])(
+  'a refill problem (%s) keeps the previous count and retries the same action ID',
+  async (status, message) => {
+    const tracked: MedicineRecord = { ...tablets, stock: { tracked: true, count: 24 } }
+    const requests: StockRequest[] = []
+    const { user, client, unmount } = open(tracked)
+    let current = tracked
+    server.use(
+      http.get('/api/medicines', () => HttpResponse.json({ medicines: [current] })),
+      http.patch('/api/medicines', async ({ request }) => {
+        const body = (await request.json()) as StockRequest
+        requests.push(body)
+        if (requests.length === 1) return HttpResponse.json({}, { status })
+        current = { ...receipt(tracked, body), stock: { tracked: true, count: 54 } }
+        return HttpResponse.json({ medicines: [current] })
+      }),
+    )
+    const { drawer, field } = await addRefill(user)
+    await user.type(field, '30')
+    await user.click(drawer.getByRole('button', { name: 'Add refill' }))
+    expect(await drawer.findByText(message)).toBeVisible()
+    expect(field).toHaveValue('30')
+    expect(stockRow()).toHaveTextContent('24 tablets left')
+    await user.click(drawer.getByRole('button', { name: 'Try adding refill again' }))
+    await noDrawer()
+    expect(stockRow()).toHaveAccessibleDescription('54 tablets left')
+    expect(requests).toEqual([requests[0], requests[0]])
+    unmount()
+    client.clear()
+  },
+)

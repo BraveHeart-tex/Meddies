@@ -5,6 +5,11 @@ export const stockCopy = {
   off: 'Not tracking',
   optionsTitle: (label: string) => `${label} stock`,
   stop: 'Stop tracking',
+  refill: 'Add a refill',
+  refillTitle: (label: string) => `Add ${label} refill`,
+  refillBody: (plural: string) => `How many ${plural} did you get?`,
+  refillLabel: 'Refill amount',
+  refillHelp: 'Adds to your current count.',
   change: 'Change the count',
   changeTitle: (label: string) => `Change ${label} count`,
   currentLabel: 'Current count',
@@ -28,6 +33,12 @@ const countSaveCopy = {
 export const drawerCopy = {
   stockOn: { ...countSaveCopy, submit: 'Start tracking' },
   stockCorrection: { ...countSaveCopy, submit: 'Save count' },
+  stockRefill: {
+    submit: 'Add refill',
+    pending: 'Adding refill...',
+    rejected: 'Refill wasn’t added.',
+    retry: 'Try adding refill again',
+  },
   stockOff: {
     rejected: 'Stock tracking didn’t stop.',
     pending: 'Stopping...',

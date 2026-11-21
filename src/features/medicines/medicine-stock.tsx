@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Package, PackageCheck, PackageX, X } from 'lucide-react'
+import { Package, X } from 'lucide-react'
 import { z } from 'zod'
 import { QuantityStepper } from '@/components/quantity-stepper'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -19,6 +19,7 @@ import {
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import {
   parseQuantity,
+  quantityProblem,
   stockCountProblem,
   stockLeft,
   unitName,
@@ -27,20 +28,25 @@ import {
 import { saveMessages } from '@/lib/save-messages'
 import { useKnownOffline } from '@/lib/use-known-offline'
 import type { Medicine } from './contract'
-import { MedicationInsetGroup, MedicationInsetRow } from './medication-inset-list'
+import { MedicationInsetRow } from './medication-inset-list'
+import { StockOptionsDrawer } from './stock-options-drawer'
 import { drawerCopy, stockCopy } from './stock-copy'
 import { useMedicineStock, type MedicineStockAction } from './use-medicine-stock'
 
 export { stockCopy } from './stock-copy'
 
-/** Client mirror of `isStockCount` for inline feedback: the unit's grid, zero allowed. */
-export function stockCountSchema(unit: MedicineType) {
+/** Inline unit grid feedback: counts allow zero; a Refill must be positive. */
+export function stockCountSchema(unit: MedicineType, refill = false) {
   return z.object({
     count: z
       .string()
       .superRefine((value, context) => {
         // Required here: an empty count leaves stock off only in Add medicine.
-        const problem = value.trim() ? stockCountProblem(value, unit) : 'Enter a count.'
+        const problem = refill
+          ? quantityProblem(value, unit)
+          : value.trim()
+            ? stockCountProblem(value, unit)
+            : 'Enter a count.'
         if (problem) context.addIssue({ code: 'custom', message: problem })
       })
       .transform((value) => parseQuantity(value) as number),
@@ -64,10 +70,9 @@ type StockDrawerKind = MedicineStockAction | 'options'
  * The Stock row on the Medication detail summary (238·A3), first in the inset group above Dose
  * history: the package tile and a quiet value, "Not tracking" or the server-confirmed count such as
  * "120 ml left"; a save in flight never shows a count. Off, the row opens the turn-on drawer; on,
- * the stock Drawer with Change the count and Stop tracking. Every stock drawer returns
+ * the stock Drawer with Add a refill, Change the count and Stop tracking. Every stock drawer returns
  * focus to the row when it closes, after a confirmed change too. Days of stock left (#395) and the
- * low-stock warning (#52) join the past-count line under this row; Record a refill (#48)
- * joins the stock Drawer above Stop tracking.
+ * low-stock warning (#52) join the past-count line under this row.
  */
 export function MedicineStockRow({ medicine }: { medicine: Medicine }) {
   const [open, setOpen] = useState<StockDrawerKind | null>(null)
@@ -111,12 +116,20 @@ export function MedicineStockRow({ medicine }: { medicine: Medicine }) {
         onClose={close}
         onClosed={closed}
       />
+      <StockCountDrawer
+        action="stockRefill"
+        medicine={medicine}
+        open={open === 'stockRefill'}
+        onClose={close}
+        onClosed={closed}
+      />
       <StockOptionsDrawer
         medicine={medicine}
         count={count}
         open={open === 'options' && count !== null}
         onClose={close}
         onClosed={closed}
+        onRefill={() => setOpen('stockRefill')}
         onChangeCount={() => setOpen('stockCorrection')}
         onStop={() => setOpen('stockOff')}
       />
@@ -133,71 +146,8 @@ export function MedicineStockRow({ medicine }: { medicine: Medicine }) {
   )
 }
 
-/* The stock Drawer (238·A3) shows the count and opens the action drawers. It saves nothing itself. */
-function StockOptionsDrawer({
-  medicine,
-  count,
-  open,
-  onClose,
-  onClosed,
-  onChangeCount,
-  onStop,
-}: {
-  medicine: Medicine
-  count: number | null
-  open: boolean
-  onClose: () => void
-  onClosed: () => void
-  onChangeCount: () => void
-  onStop: () => void
-}) {
-  const titleRef = useRef<HTMLHeadingElement>(null)
-  return (
-    <Drawer
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) onClose()
-      }}
-      onOpenChangeComplete={(next) => {
-        if (!next) onClosed()
-      }}
-    >
-      <DrawerContent initialFocus={titleRef} finalFocus={false}>
-        <div className="flex flex-col gap-4.5">
-          <DrawerHeader>
-            <div className="flex items-start justify-between gap-3">
-              <DrawerTitle ref={titleRef} tabIndex={-1} className="outline-none">
-                {stockCopy.optionsTitle(medicine.label)}
-              </DrawerTitle>
-              <DrawerClose
-                render={<Button type="button" size="icon" variant="ghost" />}
-                aria-label="Close"
-              >
-                <X aria-hidden="true" />
-              </DrawerClose>
-            </div>
-            {count !== null && (
-              <DrawerDescription>{stockLeft(count, medicine.unit)}</DrawerDescription>
-            )}
-          </DrawerHeader>
-          <div className="pb-2">
-            <MedicationInsetGroup>
-              <MedicationInsetRow
-                icon={PackageCheck}
-                label={stockCopy.change}
-                onClick={onChangeCount}
-              />
-              <MedicationInsetRow icon={PackageX} label={stockCopy.stop} onClick={onStop} />
-            </MedicationInsetGroup>
-          </div>
-        </div>
-      </DrawerContent>
-    </Drawer>
-  )
-}
-
-/* The #392 count drawer shell: a starting or current count in the Medicine's Quantity unit, zero allowed, empty on
-   every open. The grid error sits under the control, above the help. */
+/* The #392 count drawer shell: a starting/current count (zero allowed) or positive Refill amount
+   in the Medicine's Quantity unit, empty on every open. The grid error sits under the control, above the help. */
 function StockCountDrawer({
   action,
   medicine,
@@ -205,23 +155,32 @@ function StockCountDrawer({
   onClose,
   onClosed,
 }: {
-  action: 'stockOn' | 'stockCorrection'
+  action: 'stockOn' | 'stockCorrection' | 'stockRefill'
   medicine: Medicine
   open: boolean
   onClose: () => void
   onClosed: () => void
 }) {
   const form = useForm<StockCountValues, unknown, z.output<ReturnType<typeof stockCountSchema>>>({
-    resolver: zodResolver(stockCountSchema(medicine.unit)),
+    resolver: zodResolver(stockCountSchema(medicine.unit, action === 'stockRefill')),
     defaultValues: stockCountDefaults,
   })
   const { reset } = form
   useEffect(() => {
     if (open) reset(stockCountDefaults)
   }, [open, reset])
+  const refill = action === 'stockRefill'
   const correction = action === 'stockCorrection'
-  const id = correction ? `current-count-${medicine.id}` : `stock-count-${medicine.id}`
-  const label = correction ? stockCopy.currentLabel : stockCopy.countLabel
+  const id = refill
+    ? `refill-amount-${medicine.id}`
+    : correction
+      ? `current-count-${medicine.id}`
+      : `stock-count-${medicine.id}`
+  const label = refill
+    ? stockCopy.refillLabel
+    : correction
+      ? stockCopy.currentLabel
+      : stockCopy.countLabel
   return (
     <StockDrawer
       action={action}
@@ -230,9 +189,15 @@ function StockCountDrawer({
       onClose={onClose}
       onClosed={onClosed}
       title={
-        correction ? stockCopy.changeTitle(medicine.label) : stockCopy.drawerTitle(medicine.label)
+        refill
+          ? stockCopy.refillTitle(medicine.label)
+          : correction
+            ? stockCopy.changeTitle(medicine.label)
+            : stockCopy.drawerTitle(medicine.label)
       }
-      description={stockCopy.drawerBody(unitName(null, medicine.unit))}
+      description={(refill ? stockCopy.refillBody : stockCopy.drawerBody)(
+        unitName(null, medicine.unit),
+      )}
       validate={(submit) => form.handleSubmit(({ count }) => submit(count))()}
     >
       {(busy) => (
@@ -253,14 +218,18 @@ function StockCountDrawer({
                   onBlur={field.onBlur}
                   disabled={busy}
                   grow
-                  zero
+                  zero={!refill}
                   aria-invalid={fieldState.invalid}
                   aria-describedby={fieldState.invalid ? `${id}-error ${id}-help` : `${id}-help`}
                 />
               </div>
               <FieldError id={`${id}-error`} errors={[fieldState.error]} />
               <FieldDescription id={`${id}-help`}>
-                {correction ? stockCopy.currentHelp : stockCopy.countHelp}
+                {refill
+                  ? stockCopy.refillHelp
+                  : correction
+                    ? stockCopy.currentHelp
+                    : stockCopy.countHelp}
               </FieldDescription>
             </Field>
           )}
@@ -412,7 +381,8 @@ function StockDrawer({
                 : offline
                   ? saveMessages.connectToSave
                   : problem === 'unconfirmed' ||
-                      (action === 'stockCorrection' && problem === 'rejected')
+                      ((action === 'stockCorrection' || action === 'stockRefill') &&
+                        problem === 'rejected')
                     ? text.retry
                     : text.submit}
             </Button>
