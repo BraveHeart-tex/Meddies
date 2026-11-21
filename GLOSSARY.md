@@ -45,6 +45,12 @@ reconciliation point: doses taken before it no longer change Stock. UI copy call
 count".
 _Avoid_: adjustment, recount, stock edit
 
+**Refill**:
+An amount the user adds to a Medicine's Stock, such as a new pack. It adds to the tracked count
+rather than replacing it; only a refill while more was taken than counted is a reconciliation
+point. UI copy calls it "Add a refill".
+_Avoid_: restock, top-up, purchase
+
 ## Schedules
 
 **Clock schedule**:

@@ -9,7 +9,7 @@ The entities below are conceptual distinctions, not an approved database schema.
 - **StockMovement** represents intake consumption, refill and count reconciliation independently of reminder delivery. Medication strength (e.g., mg) and recorded quantity are different fields.
 - Only user confirmation establishes **Taken** or **Skipped**, attributed to the intended occurrence; a reminder being delivered, acknowledged or opened never does. An unconfirmed occurrence is **Due now** for 15 minutes from its due time, then **Not logged**, never automatically missed or skipped ([#275 rules](#275---approved-dose-status-and-late-logging-rules-november-14-2026)). Actual intake time is distinct from scheduled due time.
 - Supported Medicine types and quantities follow [Medicine types and quantity units](#medicine-types-and-quantity-units). Fractional capsules and unlisted forms are unsupported.
-- Taken consumes the explicitly recorded quantity; Skipped consumes nothing. Corrections, refills and retries reconcile stock once. A count correction is a reconciliation point: a Taken dose whose Taken time is before the latest count correction never changes current stock. A zero/insufficient count never blocks truthful intake; displayed stock is non-negative with a correction prompt.
+- Taken consumes the explicitly recorded quantity; Skipped consumes nothing. Corrections, refills and retries reconcile stock once. A count correction is a reconciliation point: a Taken dose whose Taken time is before the latest count correction never changes current stock. A refill adds to stock and is a reconciliation point only while more was taken than counted ([#48 rules](#48---approved-refill-rules-november-21-2026)). A zero/insufficient count never blocks truthful intake; displayed stock is non-negative with a correction prompt.
 - Optimistic dose outcomes are unconfirmed presentation only. Server records remain authoritative; success announcements, reminder cancellation and confirmed stock require server receipt. Rejection and uncertain receipt follow the topic 02 [session contract](./ux-journeys.md#session-contract).
 - Stable occurrence IDs, schedule versions, client action IDs and revisions preserve history, prevent duplicate effects and support conflict resolution. Online stale revisions/conflicting outcomes require explicit recovery, not silent last-write-wins; preserve existing evidence, idempotency and server correctness. Stock is uncertain and affected reminders stop when a genuine unresolved conflict is known to the server. Offline queue and expanded multi-device UX delivery are deferred.
 - Unscheduled intake does not reschedule future expected doses. Server history remains until deliberate history/account deletion; deleting history does not reverse past inventory consumption. Full deletion and current online/session scope (including deferred offline capability) belong to [02 - UX & User Journeys](./ux-journeys.md).
@@ -219,8 +219,9 @@ See **Stock** (GLOSSARY.md).
 
 - Stock follows each dose's latest saved version. A dose counts when it is Taken, its Medicine
   tracks stock, and its Taken time is not in a minute before the latest reconciliation point (the
-  starting count or a count correction); a Taken time in the same minute counts. It counts its
-  recorded quantity. Doses of an Archived medicine count too; its count stays read-only.
+  starting count, a count correction or a refill past the count); a Taken time in the same minute
+  counts. It counts its recorded quantity. Doses of an Archived medicine count too; its count stays
+  read-only.
 - Each dose save changes stock once, by the difference between what its new and previous
   versions count: a first log, Taken to Skipped and back, a quantity or Taken time change, or an
   Unscheduled removal. A retry changes nothing further.
@@ -285,6 +286,44 @@ See **Count correction** and **Stock** (GLOSSARY.md). In UI copy it is "Change t
 | Recount            | Count 20; change the count to 20                    | 20 tablets left; new point saved |
 | Archived           | Archived medicine with stock                        | No Change the count              |
 | Retry              | Correction retried with the same action ID          | One correction                   |
+
+### #48 - Approved refill rules (November 21, 2026)
+
+See **Refill** and **Stock** (GLOSSARY.md). In UI copy it is "Add a refill".
+
+- While stock tracking is on, the user enters the amount they got from Add a refill in the stock
+  Drawer on Medication detail. The field starts empty.
+- The amount counts in the Medicine's Quantity unit and follows its step (#46). It must be above
+  zero; zero and negative amounts are rejected. There is no medical maximum; the resulting count
+  stays within the safe bound.
+- A refill adds its amount to the tracked count. It is not a reconciliation point: a dose logged
+  or changed later still counts by the #47 rules, even when its Taken time is before the refill.
+- While more was taken than counted (the stored count below zero), a refill starts from zero: the
+  count becomes the refill amount, and the refill is a reconciliation point at its server time,
+  replacing the previous one. Exactly zero is not past the count, so the refill only adds.
+- A refill saves at its server time. It cannot be backdated, changed or undone; a wrong count is
+  fixed with Change the count (#49). Refills never rewrite doses or their intake movements.
+- Each refill is its own StockMovement with its amount and Quantity unit, kept for export (#55).
+- An Archived medicine's count stays read-only, and a Medicine without stock tracking has no
+  refill. Low-stock evaluation after a refill follows #10 D4 (#52); refills while stock is
+  uncertain follow #10 D4 (#51).
+- Each refill has its own action ID and follows the
+  [session contract](./ux-journeys.md#session-contract); a retry applies once.
+
+| Example            | Setup (start 30 tablets at 10:00:40)                  | Expected                    |
+| ------------------ | ----------------------------------------------------- | --------------------------- |
+| Refill             | Refill 30 at 12:00                                    | 60 tablets left             |
+| Half tablet        | Refill 0.5                                            | 30½ tablets left            |
+| Half capsule       | Capsules; refill 7.5                                  | Rejected with a field error |
+| Zero               | Refill 0                                              | Rejected with a field error |
+| Liquid             | Start 150 ml; refill 100 ml                           | 250 ml left                 |
+| Late from History  | Refill 30 at 12:00; Taken 1 at 11:00 logged           | 59 tablets left             |
+| Earlier dose fixed | Taken 1 at 11:00; refill 30 at 12:00; to Skipped      | 60 tablets left             |
+| Past the count     | Start 0.5; Taken 1 at 11:00; refill 30 at 12:00       | 30 tablets left, line gone  |
+| Undo after refill  | Previous row; the 11:00 dose to Skipped               | 30 tablets left             |
+| Exactly zero       | Start 1; Taken 1 at 11:00; refill 30; dose to Skipped | 31 tablets left             |
+| Archived           | Archived medicine with stock                          | No Add a refill             |
+| Retry              | Refill retried with the same action ID                | One refill                  |
 
 ## Required product behavior
 
