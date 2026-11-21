@@ -1600,6 +1600,8 @@ test('Last day drops Follow-up reminders and Snoozes from midnight without recor
     )
   }
   const { provider, sent } = fake()
+  // Four claimable instants need two runs under the shared three-instant budget.
+  await run(provider, ist(day, '23:40'))
   await run(provider, ist(day, '23:40'))
   assert.deepEqual(summary(sent), [
     `${automatic.due('23:00')} #1 x1`,
@@ -1630,4 +1632,114 @@ test('Last day drops Follow-up reminders and Snoozes from midnight without recor
       .first<{ n: number }>()
     assert.equal(outcomes?.n, 0, 'the Occurrences stay Not logged')
   }
+})
+
+test('The largest reminder batch stays within 50 D1 queries including the Healthy run check', async () => {
+  const o = await owner(
+    '2027-04-01',
+    ['08:15', '08:20', '08:25', '09:00', '09:10', '09:20'],
+    12,
+    12,
+  )
+  await setMedicationNames(
+    drizzle(db),
+    o.ownerId,
+    { actionId: randomUUID(), medicationNames: true },
+    new Date('2027-04-01T04:00:00Z'),
+  )
+  let queries = 0
+  const counted = drizzle(db, { logger: { logQuery: () => queries++ } })
+  const at = new Date('2027-04-01T06:30:00.000Z')
+  const { provider, sent } = fake((message) =>
+    message.token === o.tokens[0]
+      ? { outcome: 'rejected', code: 'UNREGISTERED' }
+      : { outcome: 'accepted' },
+  )
+  const result = await runDueReminders(counted, provider, () => at, 10_000)
+  await isHealthyRun(counted, at)
+  assert.ok(queries <= 50, `${queries} D1 queries exceed the Workers Free limit`)
+  assert.equal(result.submitted, 36, 'three whole instants, each covering twelve Occurrences')
+  assert.equal(new Set(sent.map((message) => message.dueAt)).size, 3)
+  assert.ok(sent.every((message) => message.labels?.length === 12))
+  assert.equal((await registrations(o.ownerId)).length, 11)
+  queries = 0
+  assert.equal(
+    (await runDueReminders(counted, provider, () => at)).submitted,
+    36,
+    'remaining Follow-up reminders wait for the next run',
+  )
+  await isHealthyRun(counted, at)
+  assert.ok(queries <= 50, `${queries} D1 queries exceed the Workers Free limit`)
+})
+
+test('A failed settlement rolls back Delivery attempts and Device registration removals while other instants deliver', async () => {
+  const o = await owner('2027-04-02', ['09:00', '09:10'], 2, 2)
+  await db
+    .prepare(
+      `CREATE TRIGGER fail_reminder_settlement BEFORE UPDATE ON original_reminders
+    WHEN NEW.owner_id = '${o.ownerId}' AND NEW.due_at = '${o.due('09:00')}' AND NEW.state = 'submitted'
+    BEGIN SELECT RAISE(ABORT, 'injected settlement failure'); END`,
+    )
+    .run()
+  const { provider, sent } = fake((message) =>
+    message.dueAt === o.due('09:00') && message.token === o.tokens[0]
+      ? { outcome: 'rejected', code: 'UNREGISTERED' }
+      : { outcome: 'accepted' },
+  )
+  try {
+    assert.deepEqual(await run(provider, '2027-04-02T06:20:00.000Z'), {
+      submitted: 2,
+      dropped: 0,
+      retrying: 0,
+    })
+    assert.equal(sent.length, 4, 'provider accepted before the failed database write')
+    assert.deepEqual(await attemptedSchedules(o.ownerId, o.due('09:00'), 0), [])
+    assert.equal((await registrations(o.ownerId)).length, 2, 'registration removal rolled back')
+    assert.deepEqual(
+      (await reminderState(o.ownerId)).map((row) => row.state),
+      ['pending', 'pending', 'submitted', 'submitted'],
+    )
+    assert.equal((await attemptedSchedules(o.ownerId, o.due('09:10'), 0)).length, 4)
+  } finally {
+    await db.prepare('DROP TRIGGER fail_reminder_settlement').run()
+  }
+  assert.equal(
+    (await run(fake().provider, '2027-04-02T06:25:00.000Z')).submitted,
+    2,
+    'the failed instant can be retried once its lease expires',
+  )
+})
+
+test('A slow provider reaches the lease cutoff without starting another instant, which a later run delivers', async () => {
+  const o = await owner('2027-04-03', ['09:00', '09:10', '09:20'])
+  let now = new Date('2027-04-03T06:20:00.000Z')
+  const slow = fake(() => {
+    now = new Date(now.getTime() + 270_000)
+    return { outcome: 'accepted' }
+  })
+  assert.deepEqual(await runDueReminders(drizzle(db), slow.provider, () => now), {
+    submitted: 1,
+    dropped: 0,
+    retrying: 0,
+  })
+  assert.deepEqual(
+    slow.sent.map((message) => message.dueAt),
+    [o.due('09:00')],
+  )
+  assert.deepEqual(
+    (await reminderState(o.ownerId)).map((row) => row.state),
+    ['submitted', 'pending', 'pending'],
+  )
+  assert.deepEqual(await attemptedSchedules(o.ownerId, o.due('09:10'), 0), [])
+  now = new Date('2027-04-03T06:25:00.000Z')
+  const later = fake(() => {
+    now = new Date(now.getTime() + 360_000)
+    return { outcome: 'accepted' }
+  })
+  assert.equal((await runDueReminders(drizzle(db), later.provider, () => now)).submitted, 1)
+  assert.deepEqual(
+    later.sent.map((message) => message.dueAt),
+    [o.due('09:10')],
+  )
+  assert.equal((await run(fake().provider, '2027-04-03T06:31:00.000Z')).submitted, 1)
 })

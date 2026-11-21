@@ -8,7 +8,7 @@
 //    so a late run never bursts older ones (#9 D4);
 // 2. drops recorded reminders, unsent, once a later one is due or due +80 minutes has passed, and
 //    pending Snoozes more than 5 minutes past their target;
-// 3. claims a bounded batch of owners' due instants per reminder, and of Snoozes due by the run,
+// 3. claims at most three instants total across Original reminders, Follow-up reminders and Snoozes,
 //    with one conditional
 //    UPDATE ... RETURNING per table that sets a fresh claim token and lease (#5) on every
 //    claimable reminder of each instant, so overlapping runs never claim the same reminder or
@@ -54,8 +54,13 @@
 // since been renewed with another token. Processing time counts in whole seconds, the precision of
 // the #9 timelines, so a run at 10:20:00.4 still submits a dose's 10:20 Follow-up reminder and one
 // at 10:20:01 drops it. Delivery attempts hold no registration token and no Medicine label, and
-// this module logs nothing. The FCM provider is worker/fcm.ts.
-import { and, eq, gte, inArray, isNull, lt, lte, or, sql } from 'drizzle-orm'
+// this module logs nothing. Each instant's Delivery attempts, registration removals and settlement
+// share one D1 transaction. A failed instant retains its lease and does not stop the others. No new
+// instant or provider submission starts in the last 30 seconds of this run's five-minute lease;
+// unstarted claims remain pending for lease recovery. Provider submission stays outside the
+// transaction, so an interrupted or failed write can still cause a later duplicate.
+// The FCM provider is worker/fcm.ts.
+import { and, eq, gte, isNull, lt, lte, or, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import { istanbulDate } from '../src/features/schedules/contract'
 import { scheduleSlotsOn } from '../src/features/schedules/occurrences'
@@ -102,7 +107,7 @@ export type ReminderProvider = { submit(message: ReminderMessage): Promise<Provi
 
 /**
  * Reminders this run settled or released; a claim lost to another run counts in none.
- * `batch` bounds the due instants a run claims per table.
+ * `batch` bounds the total due instants a run claims across all three tables.
  */
 export type DueReminderRun = { submitted: number; dropped: number; retrying: number }
 
@@ -128,10 +133,12 @@ export const SNOOZE_LATENESS_MS = 5 * 60_000
 // The latest Snooze, accepted at due +80 minutes, submits by due +125.
 const OCCURRENCE_LOOKBACK_MS = REMINDER_WINDOW_MS + FOLLOW_UP_INTERVAL_MS + SNOOZE_LATENESS_MS
 const LEASE_MS = 5 * 60_000
-const DUE_REMINDER_BATCH = 25
+// Leave 30 seconds for the FCM token request + submission (10 seconds each) and settlement.
+const LEASE_MARGIN_MS = 30_000
+// At most 9 setup statements + 3 * 11 delivery statements + 1 Healthy run read = 43.
+// JSON-backed set operations keep that bound independent of Occurrences and registrations.
+const DUE_REMINDER_BATCH = 3
 const UNREGISTERED_CODES = new Set(['UNREGISTERED', 'NOT_FOUND'])
-// D1 binds at most 100 parameters per statement.
-const ROWS_PER_INSERT = 10
 
 type Reminder = { ownerId: string; scheduleId: string; dueAt: string; reminder: ReminderNumber }
 /** A claimed reminder; `targetAt` is set for a Snooze. */
@@ -185,6 +192,7 @@ export async function runDueReminders(
 ): Promise<DueReminderRun> {
   const seconds = () => new Date(Math.floor(clock().getTime() / 1000) * 1000)
   const now = seconds()
+  const cutoff = now.getTime() + LEASE_MS - LEASE_MARGIN_MS
   const at = now.toISOString()
   const windowStart = new Date(now.getTime() - REMINDER_WINDOW_MS).toISOString()
   const followUpDue = new Date(now.getTime() - FOLLOW_UP_INTERVAL_MS).toISOString()
@@ -200,6 +208,7 @@ export async function runDueReminders(
   const context: Context = {
     superseded,
     present: (ownerId, scheduleId, dueAt) => known.has(`${ownerId}:${scheduleId}:${dueAt}`),
+    cutoff,
   }
   const current = occurrences
     .filter(
@@ -216,19 +225,27 @@ export async function runDueReminders(
     }))
   const originals = current.filter((row) => row.reminder === 0)
   const followUps = current.filter((row) => row.reminder !== 0)
-  // One batch, so a concurrent claim never sees an instant half recorded.
-  const [first, ...rest] = [
-    ...chunks(originals).map((rows) =>
-      db
-        .insert(originalReminders)
-        .values(rows.map(({ reminder: _, ...row }) => row))
-        .onConflictDoNothing(),
-    ),
-    ...chunks(followUps).map((rows) =>
-      db.insert(followUpReminders).values(rows).onConflictDoNothing(),
-    ),
-  ]
-  if (first) await db.batch([first, ...rest])
+  // Fixed statement and parameter counts even when many Occurrences share an instant.
+  await db.batch([
+    db
+      .insert(originalReminders)
+      .select(
+        sql`SELECT
+      json_extract(value, '$.ownerId'), json_extract(value, '$.scheduleId'),
+      json_extract(value, '$.dueAt'), 'pending', NULL, NULL, NULL
+      FROM json_each(${JSON.stringify(originals)}) WHERE true`,
+      )
+      .onConflictDoNothing(),
+    db
+      .insert(followUpReminders)
+      .select(
+        sql`SELECT
+      json_extract(value, '$.ownerId'), json_extract(value, '$.scheduleId'),
+      json_extract(value, '$.dueAt'), json_extract(value, '$.reminder'), 'pending', NULL, NULL, NULL
+      FROM json_each(${JSON.stringify(followUps)}) WHERE true`,
+      )
+      .onConflictDoNothing(),
+  ])
 
   const dropped = { state: 'dropped', settledAt: at, claimToken: null, leaseUntil: null } as const
   await db.batch([
@@ -267,6 +284,7 @@ export async function runDueReminders(
       ),
   ])
 
+  let remaining = Math.max(0, Math.min(DUE_REMINDER_BATCH, Math.floor(batch)))
   const token = crypto.randomUUID()
   const leaseUntil = new Date(now.getTime() + LEASE_MS).toISOString()
   const claim = (table: 'original_reminders' | 'follow_up_reminders') => {
@@ -278,7 +296,7 @@ export async function runDueReminders(
         AND (${group}) IN (SELECT ${group} FROM ${sql.raw(table)}
           WHERE state = 'pending' AND (lease_until IS NULL OR lease_until <= ${at})
             AND due_at >= ${windowStart} AND due_at <= ${at}
-          GROUP BY ${group} ORDER BY due_at LIMIT ${batch})
+          GROUP BY ${group} ORDER BY due_at LIMIT ${remaining})
       RETURNING owner_id AS ownerId, schedule_id AS scheduleId, due_at AS dueAt,
         ${sql.raw(original ? '0' : 'reminder')} AS reminder`)
   }
@@ -289,14 +307,15 @@ export async function runDueReminders(
       WHERE rowid IN (SELECT rowid FROM snoozes
         WHERE state = 'pending' AND (lease_until IS NULL OR lease_until <= ${at})
           AND target_at >= ${lateStart} AND target_at <= ${at}
-        ORDER BY target_at LIMIT ${batch})
+        ORDER BY target_at LIMIT ${remaining})
       RETURNING owner_id AS ownerId, schedule_id AS scheduleId, due_at AS dueAt, reminder,
         target_at AS targetAt`)
-  const claimed: Claimed[] = [
-    ...(await claim('original_reminders')),
-    ...(await claim('follow_up_reminders')),
-    ...(await claimSnoozes()),
-  ]
+  const originalsClaimed = await claim('original_reminders')
+  remaining -= new Set(originalsClaimed.map((row) => `${row.ownerId}:${row.dueAt}`)).size
+  const followUpsClaimed = await claim('follow_up_reminders')
+  remaining -= new Set(followUpsClaimed.map((row) => `${row.ownerId}:${row.dueAt}:${row.reminder}`))
+    .size
+  const claimed: Claimed[] = [...originalsClaimed, ...followUpsClaimed, ...(await claimSnoozes())]
 
   const instants = new Map<string, Claimed[]>()
   for (const reminder of [...claimed].sort(
@@ -308,14 +327,22 @@ export async function runDueReminders(
     instants.set(key, [...(instants.get(key) ?? []), reminder])
   }
   const run: DueReminderRun = { submitted: 0, dropped: 0, retrying: 0 }
-  for (const reminders of instants.values())
-    for (const result of await deliver(db, provider, seconds, token, context, reminders))
-      if (result) run[result]++
+  for (const reminders of instants.values()) {
+    if (clock().getTime() >= cutoff) break
+    try {
+      for (const result of await deliver(db, provider, seconds, token, context, reminders))
+        if (result) run[result]++
+    } catch {
+      // A failed instant keeps its lease for recovery; the other claims can still deliver.
+      // Its provider submissions may have succeeded, as with an interrupted invocation.
+    }
+  }
   return run
 }
 
 type Superseded = (ownerId: string, scheduleId: string, dueAt: string, now: Date) => boolean
 type Context = {
+  cutoff: number
   superseded: Superseded
   /** Whether the Occurrence is one of a running Schedule version of an owner with a registration. */
   present: (ownerId: string, scheduleId: string, dueAt: string) => boolean
@@ -409,25 +436,33 @@ async function deliver(
   provider: ReminderProvider,
   clock: () => Date,
   token: string,
-  { superseded, present }: Context,
+  { superseded, present, cutoff }: Context,
   reminders: Claimed[],
 ): Promise<(keyof DueReminderRun | null)[]> {
   const now = clock()
   const { ownerId, dueAt, reminder, targetAt } = reminders[0]
-  const table = sql.raw(
-    targetAt ? 'snoozes' : reminder ? 'follow_up_reminders' : 'original_reminders',
-  )
+  const table = targetAt ? snoozes : reminder ? followUpReminders : originalReminders
   const sameReminder = reminder ? sql`AND reminder = ${reminder}` : sql``
-  // Settles only while this run still holds the claim; null once another run has reclaimed it.
-  const settle = async (scheduleId: string, result: keyof DueReminderRun) => {
-    const state =
-      result === 'retrying' ? sql`` : sql`, state = ${result}, settled_at = ${now.toISOString()}`
-    const held = await db.all(sql`UPDATE ${table}
-      SET claim_token = NULL, lease_until = NULL ${state}
-      WHERE owner_id = ${ownerId} AND schedule_id = ${scheduleId} AND due_at = ${dueAt}
-        ${sameReminder} AND claim_token = ${token}
-      RETURNING due_at`)
-    return held.length ? result : null
+  // One conditional settlement for the whole instant; only the claim holder can settle.
+  const settlement = (results: { scheduleId: string; result: keyof DueReminderRun }[]) => {
+    const result = sql`(SELECT json_extract(value, '$.result')
+      FROM json_each(${JSON.stringify(results)})
+      WHERE json_extract(value, '$.scheduleId') = ${table.scheduleId})`
+    return db
+      .update(table)
+      .set({
+        claimToken: null,
+        leaseUntil: null,
+        state: sql`CASE WHEN ${result} = 'retrying' THEN 'pending' ELSE ${result} END`,
+        settledAt: sql`CASE WHEN ${result} = 'retrying' THEN NULL ELSE ${now.toISOString()} END`,
+      })
+      .where(
+        sql`owner_id = ${ownerId} AND due_at = ${dueAt}
+      ${sameReminder} AND claim_token = ${token}
+      AND schedule_id IN (SELECT json_extract(value, '$.scheduleId')
+        FROM json_each(${JSON.stringify(results)}))`,
+      )
+      .returning({ scheduleId: table.scheduleId })
   }
   const stale = targetAt
     ? now.getTime() < Date.parse(targetAt) ||
@@ -437,7 +472,9 @@ async function deliver(
     stale ||
     (reminder && (await quietDrop(db, ownerId, targetAt ?? followUpTarget(dueAt, reminder), now)))
   )
-    return Promise.all(reminders.map((row) => settle(row.scheduleId, 'dropped')))
+    return (
+      await settlement(reminders.map(({ scheduleId }) => ({ scheduleId, result: 'dropped' })))
+    ).map(() => 'dropped')
 
   const stopped = new Set(
     (
@@ -468,9 +505,6 @@ async function deliver(
           : await snoozedReminders(db, ownerId, dueAt, reminder),
       ),
   )
-  for (const { scheduleId } of reminders) {
-    if (await scheduleStopsReminders(db, ownerId, scheduleId)) stopped.add(scheduleId)
-  }
   const live = reminders
     .map((row) => row.scheduleId)
     .filter((scheduleId) => !stopped.has(scheduleId))
@@ -501,6 +535,8 @@ async function deliver(
     }))
     .filter((registration) => registration.scheduleIds.length)
   const labelsOf = registrations.length ? await medicineLabels(db, ownerId, live) : null
+  // Reads can also consume the lease margin; recheck before starting provider submissions.
+  if (clock().getTime() >= cutoff) return []
   const answers = await Promise.all(
     registrations.map((registration) =>
       submit(provider, {
@@ -526,32 +562,40 @@ async function deliver(
       attemptedAt: now.toISOString(),
     })),
   )
-  for (const rows of chunks(attempts)) await db.insert(deliveryAttempts).values(rows)
   const unregistered = registrations.filter((_, index) => {
     const answer = answers[index]
     return answer.outcome === 'rejected' && UNREGISTERED_CODES.has(answer.code)
   })
-  for (const registration of unregistered)
-    await db
-      .delete(deviceRegistrations)
-      .where(
-        and(
-          eq(deviceRegistrations.installationId, registration.installationId),
-          eq(deviceRegistrations.token, registration.token),
-        ),
-      )
-
   const retrying = new Set(
     attempts.filter((attempt) => attempt.outcome === 'transient').map((row) => row.scheduleId),
   )
-  return Promise.all(
-    reminders.map(({ scheduleId }) =>
-      settle(
-        scheduleId,
-        stopped.has(scheduleId) ? 'dropped' : retrying.has(scheduleId) ? 'retrying' : 'submitted',
+  const results = reminders.map(({ scheduleId }) => ({
+    scheduleId,
+    result: (stopped.has(scheduleId)
+      ? 'dropped'
+      : retrying.has(scheduleId)
+        ? 'retrying'
+        : 'submitted') as keyof DueReminderRun,
+  }))
+  const [, , settled] = await db.batch([
+    db.insert(deliveryAttempts).select(sql`SELECT
+      json_extract(value, '$.id'), json_extract(value, '$.ownerId'),
+      json_extract(value, '$.scheduleId'), json_extract(value, '$.dueAt'),
+      json_extract(value, '$.installationId'), json_extract(value, '$.outcome'),
+      json_extract(value, '$.code'), json_extract(value, '$.attemptedAt'),
+      json_extract(value, '$.reminder') FROM json_each(${JSON.stringify(attempts)})`),
+    db.delete(deviceRegistrations).where(
+      and(
+        eq(deviceRegistrations.ownerId, ownerId),
+        sql`EXISTS (SELECT 1 FROM json_each(${JSON.stringify(unregistered)})
+        WHERE json_extract(value, '$.installationId') = ${deviceRegistrations.installationId}
+          AND json_extract(value, '$.token') = ${deviceRegistrations.token})`,
       ),
     ),
-  )
+    settlement(results),
+  ])
+  const resultOf = new Map(results.map((row) => [row.scheduleId, row.result]))
+  return settled.map((row) => resultOf.get(row.scheduleId)!)
 }
 
 // The schedules of an owner's due instant whose Snoozes rule out automatic reminder `reminder`.
@@ -573,7 +617,8 @@ async function snoozedReminders(
   )
 }
 
-// Last day changes govern retained Occurrences too, so read each chain's latest version at
+// Last day, pause and archive changes govern retained Occurrences too. Read all chains in one
+// statement, independent of the number of Occurrences sharing the instant. Read the latest version at
 // send time. A Last day is inclusive in Istanbul; equality still permits reminders that day.
 async function endedReminders(
   db: DrizzleD1Database,
@@ -583,33 +628,21 @@ async function endedReminders(
 ) {
   const rows = await db.all<{
     scheduleId: string
-  }>(sql`WITH RECURSIVE chain(schedule_id, id, end_date) AS (
-      SELECT id, id, end_date FROM daily_schedules
+  }>(sql`WITH RECURSIVE chain(schedule_id, id, end_date, paused_at) AS (
+      SELECT id, id, end_date, paused_at FROM daily_schedules
         WHERE owner_id = ${ownerId} AND id IN (SELECT value FROM json_each(${JSON.stringify(scheduleIds)}))
-      UNION ALL SELECT chain.schedule_id, successor.id, successor.end_date
+      UNION ALL SELECT chain.schedule_id, successor.id, successor.end_date, successor.paused_at
         FROM daily_schedules successor JOIN chain ON successor.based_on_id = chain.id
         WHERE successor.owner_id = ${ownerId})
     SELECT schedule_id AS scheduleId FROM chain
-      WHERE end_date < ${istanbulDate(now)} AND NOT EXISTS (
+      WHERE (end_date < ${istanbulDate(now)} OR paused_at IS NOT NULL OR EXISTS (
+        SELECT 1 FROM daily_schedules s JOIN user_medications m
+          ON m.owner_id = s.owner_id AND m.id = s.medicine_id
+        WHERE s.owner_id = ${ownerId} AND s.id = chain.schedule_id AND m.archived_at IS NOT NULL
+      )) AND NOT EXISTS (
         SELECT 1 FROM daily_schedules next
           WHERE next.owner_id = ${ownerId} AND next.based_on_id = chain.id)`)
   return rows.map((row) => row.scheduleId)
-}
-
-// Pause and archive suppress every pending dose-related reminder, including earlier doses.
-async function scheduleStopsReminders(db: DrizzleD1Database, ownerId: string, scheduleId: string) {
-  const [medicine] = await db
-    .select({ archivedAt: userMedications.archivedAt })
-    .from(dailySchedules)
-    .innerJoin(
-      userMedications,
-      and(
-        eq(userMedications.ownerId, dailySchedules.ownerId),
-        eq(userMedications.id, dailySchedules.medicineId),
-      ),
-    )
-    .where(and(eq(dailySchedules.ownerId, ownerId), eq(dailySchedules.id, scheduleId)))
-  return !!medicine?.archivedAt || (await schedulePaused(db, ownerId, scheduleId))
 }
 
 // With the owner's Quiet hours on, a Follow-up reminder or Snooze drops when its target or its
@@ -637,7 +670,12 @@ async function medicineLabels(db: DrizzleD1Database, ownerId: string, scheduleId
         eq(userMedications.id, dailySchedules.medicineId),
       ),
     )
-    .where(and(eq(dailySchedules.ownerId, ownerId), inArray(dailySchedules.id, scheduleIds)))
+    .where(
+      and(
+        eq(dailySchedules.ownerId, ownerId),
+        sql`${dailySchedules.id} IN (SELECT value FROM json_each(${JSON.stringify(scheduleIds)}))`,
+      ),
+    )
   const medicineOf = new Map(rows.map((row) => [row.scheduleId, row]))
   const order = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
   return (covered: string[]) =>
@@ -664,11 +702,4 @@ async function submit(provider: ReminderProvider, message: ReminderMessage) {
     outcome: answer.outcome,
     code: /^[A-Z][A-Z0-9_]{0,63}$/.test(answer.code) ? answer.code : 'UNKNOWN',
   }
-}
-
-function chunks<T>(rows: T[]) {
-  const result: T[][] = []
-  for (let index = 0; index < rows.length; index += ROWS_PER_INSERT)
-    result.push(rows.slice(index, index + ROWS_PER_INSERT))
-  return result
 }
