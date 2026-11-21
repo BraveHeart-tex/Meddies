@@ -184,6 +184,11 @@ One submission of a reminder to one Device registration, with the provider's ans
 acceptance is not delivery, and never intake.
 _Avoid_: send result, push result
 
+**Healthy run**:
+A due-reminder run that completes and whose Delivery attempts from the last 80 minutes are not
+all transient. Only a Healthy run sends the heartbeat ping.
+_Avoid_: successful run, heartbeat run
+
 **Reminder link**:
 The link a reminder carries to its Occurrence. Opening it shows that dose's drawer once. A
 reminder covering several Occurrences links to their due instant and opens the screen listing
