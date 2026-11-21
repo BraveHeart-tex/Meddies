@@ -14,10 +14,10 @@
 //    claimable reminder of each instant, so overlapping runs never claim the same reminder or
 //    split an instant, and an abandoned claim becomes claimable again once its lease expires;
 // 4. rechecks that the reminder is still current, the owner's Quiet hours for a Follow-up reminder
-//    or Snooze (#35), and Taken/Skipped, a Snooze and a newer Occurrence of the same Medicine per
-//    Occurrence and the latest Schedule version's Last day at processing time, then submits one
-//    reminder per due instant and reminder (#372), and one per Snooze covering only its Occurrence,
-//    through the
+//    or Snooze (#35), and Taken/Skipped, a Snooze, the latest Schedule's pause and Last day,
+//    an archived Medicine and a newer Occurrence of the same Medicine at processing time, then
+//    submits one reminder per due instant and reminder (#372), and one per Snooze covering only
+//    its Occurrence, through the
 //    provider port to each Device registration, covering the remaining Occurrences without a final
 //    answer for it, and records one Delivery attempt per covered Occurrence naming the reminder
 //    and the answer.
@@ -33,8 +33,8 @@
 // reminder when it would move past due +80 minutes. That moved target, 40 minutes after the Snooze's
 // target, stays inside only for a Snooze accepted at the due instant, where it equals due +80, so
 // the remaining reminder keeps its target or retires. A Snooze submits from its target through 5
-// minutes later (#9 D5) and drops with Taken or Skipped, a paused Schedule, a newer Occurrence of
-// its Medicine due by then, or Quiet hours at its target or processing time.
+// minutes later (#9 D5) and drops with Taken or Skipped, a paused Schedule, an archived Medicine,
+// a newer Occurrence of its Medicine due by then, or Quiet hours at its target or processing time.
 // With Quiet hours on, a Follow-up reminder whose target or processing time is inside 23:00 to
 // 08:00 Istanbul drops; its slot is never replaced and nothing catches up at 08:00. Original
 // reminders ignore Quiet hours. From 00:00 Istanbul after the latest Schedule version's Last day,
@@ -401,7 +401,7 @@ export function newerOccurrence(
 }
 
 // Delivers one reminder of one owner's due instant, or one Snooze: rechecks that it is still
-// current, and Taken/Skipped, a Snooze, a pause and a newer same-Medicine Occurrence per Occurrence,
+// current, and Taken/Skipped, a Snooze, a pause, an archive and a newer same-Medicine Occurrence,
 // then submits one reminder to each Device registration covering the remaining Occurrences without
 // a final answer for it, recording one Delivery attempt per covered Occurrence with that answer.
 async function deliver(
@@ -462,10 +462,15 @@ async function deliver(
       )
       .concat(
         targetAt
-          ? await snoozeStops(db, ownerId, reminders[0].scheduleId, dueAt, present)
+          ? reminders
+              .filter(({ scheduleId }) => !present(ownerId, scheduleId, dueAt))
+              .map(({ scheduleId }) => scheduleId)
           : await snoozedReminders(db, ownerId, dueAt, reminder),
       ),
   )
+  for (const { scheduleId } of reminders) {
+    if (await scheduleStopsReminders(db, ownerId, scheduleId)) stopped.add(scheduleId)
+  }
   const live = reminders
     .map((row) => row.scheduleId)
     .filter((scheduleId) => !stopped.has(scheduleId))
@@ -591,17 +596,20 @@ async function endedReminders(
   return rows.map((row) => row.scheduleId)
 }
 
-// A Snooze's schedule when its Schedule is paused or its Occurrence is no longer a running one.
-async function snoozeStops(
-  db: DrizzleD1Database,
-  ownerId: string,
-  scheduleId: string,
-  dueAt: string,
-  present: Context['present'],
-) {
-  return !present(ownerId, scheduleId, dueAt) || (await schedulePaused(db, ownerId, scheduleId))
-    ? [scheduleId]
-    : []
+// Pause and archive suppress every pending dose-related reminder, including earlier doses.
+async function scheduleStopsReminders(db: DrizzleD1Database, ownerId: string, scheduleId: string) {
+  const [medicine] = await db
+    .select({ archivedAt: userMedications.archivedAt })
+    .from(dailySchedules)
+    .innerJoin(
+      userMedications,
+      and(
+        eq(userMedications.ownerId, dailySchedules.ownerId),
+        eq(userMedications.id, dailySchedules.medicineId),
+      ),
+    )
+    .where(and(eq(dailySchedules.ownerId, ownerId), eq(dailySchedules.id, scheduleId)))
+  return !!medicine?.archivedAt || (await schedulePaused(db, ownerId, scheduleId))
 }
 
 // With the owner's Quiet hours on, a Follow-up reminder or Snooze drops when its target or its

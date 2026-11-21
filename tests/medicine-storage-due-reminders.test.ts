@@ -14,6 +14,7 @@ import { createWorker } from '../worker/index'
 import { setQuietHours } from '../worker/quiet-hours'
 import { setMedicationNames } from '../worker/medication-names'
 import { snoozeDose } from '../worker/snoozes'
+import { archiveMedicine } from '../worker/medicines'
 import { fcmMessage } from '../worker/fcm'
 import { reminderLink } from '../src/features/schedules/reminder-link'
 import {
@@ -1292,6 +1293,48 @@ const snoozeState = async (ownerId: string) =>
 const runIst = async (provider: ReminderProvider, date: string, times: string[]) => {
   for (const time of times) await run(provider, ist(date, time))
 }
+
+test('A pause or archive after a dose is due drops its pending reminders unsent', async () => {
+  for (const [day, action] of [
+    ['2027-03-21', 'pause'],
+    ['2027-03-22', 'archive'],
+    ['2027-03-23', 'archive-snooze'],
+  ] as const) {
+    const o = await owner(day, ['09:00'])
+    const { provider, sent } = fake()
+    await runIst(provider, day, ['09:00'])
+    assert.equal(sent.length, 1, 'the Original reminder sends before the change')
+    sent.length = 0
+    if (action === 'archive-snooze') {
+      assert.deepEqual(await snooze(o, ist(day, '09:10')), {
+        outcome: 'snoozed',
+        targetAt: ist(day, '09:50'),
+      })
+    }
+    o.setNow(ist(day, '09:20'))
+    if (action === 'pause') {
+      await o.operations.pause({ id: randomUUID(), basedOnId: o.scheduleId })
+    } else {
+      await archiveMedicine(
+        drizzle(db),
+        o.ownerId,
+        { actionId: randomUUID(), medicineId: o.medicineId, expectedRevision: 0 },
+        new Date(ist(day, '09:20')),
+      )
+    }
+    await runIst(provider, day, ['09:40', '09:50', '10:20'])
+    assert.deepEqual(sent, [], `${action} suppresses reminders of the earlier dose`)
+    assert.deepEqual(await followUpState(o.ownerId), [
+      { reminder: 1, state: 'dropped' },
+      { reminder: 2, state: 'dropped' },
+    ])
+    if (action === 'archive-snooze') {
+      assert.deepEqual(await snoozeState(o.ownerId), [
+        { reminder: 1, targetAt: ist(day, '09:50'), state: 'dropped' },
+      ])
+    }
+  }
+})
 
 test('Snooze timing follows #9 D2: immediate, intermediate and final-slot extension', async () => {
   const immediate = await owner('2027-01-04', ['09:00'])
