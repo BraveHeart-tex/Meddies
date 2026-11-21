@@ -347,8 +347,10 @@ See **Low-stock threshold** and **Stock** (GLOSSARY.md). In UI copy it is "Low-s
   Its drawer has the title "{label} low-stock alert", the field "Alert below" with the help "Shows
   when fewer than this are left.", the submit "Save alert", and "Turn off alert" while one is set.
 - Stopping stock tracking keeps the threshold; turning tracking back on evaluates the fresh count
-  against it (#10 D2). An Archived medicine keeps its threshold, shows no low notice and has no
-  Low-stock alert. Deleting a Medicine deletes its threshold.
+  against it (#10 D2). Changing the Medicine type clears the threshold, even if its number fits
+  the new Quantity unit; after restarting tracking, the user can set a new alert. An Archived
+  medicine keeps its threshold, shows no low notice and has no Low-stock alert. Deleting a
+  Medicine deletes its threshold.
 - Low-stock episodes and the refill push belong to #53 and #54; while stock is uncertain the notice
   follows #51. The notice shows only on Medication detail and the Medications list, not on Today.
 - Each threshold save has its own action ID and follows the

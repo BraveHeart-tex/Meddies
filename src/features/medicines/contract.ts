@@ -34,8 +34,10 @@ type MedicineMetadata = {
   latestTakenAt: string | null
   /** The archive's Edit time; null while active. Reads before #322 omit it (active). */
   archivedAt: string | null
-  /** Count shows never below zero; `intakePastCount` marks intake past it (#47), for #49. */
-  stock: { tracked: false } | { tracked: true; count: number; intakePastCount?: true }
+  /** Count floors at zero. Absent threshold means alert off; only active, tracked low Stock has `low: true`. */
+  stock: (
+    { tracked: false } | { tracked: true; count: number; intakePastCount?: true; low?: true }
+  ) & { threshold?: number }
 }
 
 export type MedicineRecord = Medicine & MedicineMetadata
@@ -56,6 +58,7 @@ export type MedicineResponses = {
   stockOff: { medicines: MedicineRecord[] }
   stockCorrection: { medicines: MedicineRecord[] }
   stockRefill: { medicines: MedicineRecord[] }
+  stockThreshold: { medicines: MedicineRecord[] }
   delete: { deletion: MedicineDeleteReceipt }
 }
 export type MedicineCommand =
@@ -63,6 +66,7 @@ export type MedicineCommand =
   | { operation: 'stockOff'; ownerId: string; stock: StockOff }
   | { operation: 'stockCorrection'; ownerId: string; stock: StockCorrection }
   | { operation: 'stockRefill'; ownerId: string; stock: StockRefill }
+  | { operation: 'stockThreshold'; ownerId: string; stock: StockThreshold }
   | { operation: 'list'; ownerId: string }
   | { operation: 'save'; ownerId: string; medicine: MedicineInput }
   | { operation: 'correctDetails'; ownerId: string; correction: DetailCorrection }
@@ -268,6 +272,20 @@ export type StockOn = MedicineArchive & { unit: WritableMedicineType; startingCo
 export type StockOff = MedicineArchive
 export type StockCorrection = MedicineArchive & { unit: WritableMedicineType; count: number }
 export type StockRefill = MedicineArchive & { unit: WritableMedicineType; amount: number }
+export type StockThreshold = MedicineArchive & {
+  unit: WritableMedicineType
+  threshold: number | null
+}
+export function parseStockThreshold(value: unknown): StockThreshold {
+  const key = parseEditKey(value)
+  const input = value as Record<string, unknown>
+  if (
+    !isWritableMedicineType(input.unit) ||
+    (input.threshold !== null && !isQuantityFor(input.threshold, input.unit))
+  )
+    throw new ApplicationError('validation', 400)
+  return { ...key, unit: input.unit, threshold: input.threshold as number | null }
+}
 export function parseStockRefill(value: unknown): StockRefill {
   const key = parseEditKey(value)
   const input = value as Record<string, unknown>
@@ -296,10 +314,17 @@ function parseStock(value: unknown, unit: MedicineType): MedicineRecord['stock']
   if (value === undefined) return { tracked: false }
   if (!value || typeof value !== 'object') throw new ApplicationError('validation', 400)
   const stock = value as Record<string, unknown>
-  if (stock.tracked === false) return { tracked: false }
+  if (stock.threshold !== undefined && !isQuantityFor(stock.threshold, unit))
+    throw new ApplicationError('validation', 400)
+  const threshold = stock.threshold === undefined ? {} : { threshold: stock.threshold as number }
+  if (stock.tracked === false) return { tracked: false, ...threshold }
   if (stock.tracked === true && isStockCount(stock.count, unit))
-    return stock.intakePastCount === true
-      ? { tracked: true, count: stock.count, intakePastCount: true }
-      : { tracked: true, count: stock.count }
+    return {
+      tracked: true,
+      count: stock.count,
+      ...threshold,
+      ...(stock.intakePastCount === true ? { intakePastCount: true as const } : {}),
+      ...(stock.low === true ? { low: true as const } : {}),
+    }
   throw new ApplicationError('validation', 400)
 }

@@ -3,6 +3,7 @@ import {
   parseMedicine,
   parseStockCorrection,
   parseStockRefill,
+  parseStockThreshold,
   parseStockOn,
 } from '../src/features/medicines/contract'
 
@@ -59,5 +60,29 @@ test('refill amounts are positive, on the Quantity unit grid and within its safe
     ['tablet', undefined],
   ] as const) {
     expect(() => parseStockRefill({ ...key, unit, amount })).toThrow('validation')
+  }
+})
+
+test('Low-stock thresholds are positive quantities or explicit null to turn the alert off', () => {
+  for (const [unit, threshold] of [
+    ['tablet', 4.5],
+    ['liquid', 0.1],
+    ['capsule', 5],
+    ['inhaler', 1],
+    ['drops', 1],
+    ['tablet', null],
+  ] as const) {
+    expect(parseStockThreshold({ ...key, unit, threshold }).threshold).toBe(threshold)
+  }
+  for (const [unit, threshold] of [
+    ['tablet', 0],
+    ['tablet', -1],
+    ['capsule', 7.5],
+    ['liquid', 0.15],
+    ['tablet', Number.MAX_SAFE_INTEGER],
+    ['tablet', undefined],
+    ['tablet', '5'],
+  ] as const) {
+    expect(() => parseStockThreshold({ ...key, unit, threshold })).toThrow('validation')
   }
 })

@@ -195,6 +195,7 @@ export function createWorker(
           case 'stockOff':
           case 'stockCorrection':
           case 'stockRefill':
+          case 'stockThreshold':
             return json(
               await setMedicineStock(
                 db,

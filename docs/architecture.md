@@ -109,7 +109,7 @@ owner.
   Owner-scoped deletion receipts outlive the record and block creation replay, including
   inserts from an older Worker. The response contains a `deletion` receipt with the action,
   Medicine, expected revision and server-confirmed `deletedAt`; refused attempts write nothing.
-- **Stock:** `PATCH /api/medicines` accepts `stockOn`, `stockOff`, `stockCorrection` and `stockRefill` with an
+- **Stock:** `PATCH /api/medicines` accepts `stockOn`, `stockOff`, `stockCorrection`, `stockRefill` and `stockThreshold` with an
   action UUID and expected Medicine revision. `stockOn` supplies the Medicine type and
   `startingCount`; `stockCorrection` supplies the Medicine type and `count`. The atomic
   write compares that type against the owned active Medicine. A correction requires tracking
@@ -121,6 +121,16 @@ owner.
   reset `stock_started_at` to server time. Otherwise it preserves the reconciliation point,
   including at exactly zero. It never rewrites doses or intake movements. The resulting count
   must stay within the Quantity unit's safe bound; a refusal writes nothing.
+  `stockThreshold` supplies the Medicine type and a positive `threshold`, or explicit `null`
+  to turn the alert off. It requires tracking on, compares the Medicine type and saves the
+  threshold and receipt without changing the count, reconciliation point or movements.
+  Thresholds use the Quantity unit's step and safe bound. Reads include `stock.threshold`
+  when configured and `stock.low: true` only for an active, tracked Medicine whose raw
+  stored count is below it, including below zero. Equality is sufficient. The low flag is
+  derived, never stored. Tracking off keeps the threshold; tracking on evaluates the fresh
+  count against it. A Type change clears the threshold in the same write, including from an
+  older Worker; a different Quantity unit needs a new alert. Archive keeps the threshold
+  without marking Stock low.
   Stock uses the shared quantity grid and safe bound with zero allowed. Starting counts
   are reconciliation movements with their server time and Quantity unit, retained when
   tracking turns off. Stock locks the Type while on; archive preserves it read-only.

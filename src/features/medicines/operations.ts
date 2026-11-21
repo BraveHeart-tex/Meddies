@@ -4,6 +4,7 @@ import {
   parseStockOn,
   parseStockCorrection,
   parseStockRefill,
+  parseStockThreshold,
   parseStockOff,
   parseDetailCorrection,
   parseStrengthChange,
@@ -28,6 +29,22 @@ export function createMedicineOperations(dependencies: {
     return rows
   }
   return {
+    async stockThreshold(input: unknown) {
+      const user = await dependencies.requireUser()
+      const stock = parseStockThreshold(input)
+      const records = confirmedEdit(
+        await sendRows({ operation: 'stockThreshold', ownerId: user.id, stock }),
+        stock,
+      )
+      const confirmed = records[0]
+      if (
+        !confirmed.stock.tracked ||
+        confirmed.unit !== stock.unit ||
+        (confirmed.stock.threshold ?? null) !== stock.threshold
+      )
+        throw new ApplicationError('unavailable', 503)
+      return records
+    },
     async stockOn(input: unknown) {
       const user = await dependencies.requireUser()
       const stock = parseStockOn(input)

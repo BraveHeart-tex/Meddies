@@ -7,6 +7,7 @@ import {
   parseStockOn,
   parseStockCorrection,
   parseStockRefill,
+  parseStockThreshold,
   parseStockOff,
   parseDetailCorrection,
   parseStrengthChange,
@@ -167,6 +168,15 @@ export function decodeCommand(path: CommandPath, value: unknown): WorkerCommand 
         return {
           path,
           command: { operation: 'stockOff', ownerId, stock: parseStockOff(input.stock) },
+        }
+      case 'stockThreshold':
+        return {
+          path,
+          command: {
+            operation: 'stockThreshold',
+            ownerId,
+            stock: parseStockThreshold(input.stock),
+          },
         }
       case 'stockRefill':
         return {

@@ -26,6 +26,7 @@ export const userMedications = sqliteTable(
     everHadDose: integer('ever_had_dose', { mode: 'boolean' }).notNull().default(false),
     startingCount: real('starting_count'),
     stockCount: real('stock_count'),
+    lowStockThreshold: real('low_stock_threshold'),
     stockStartedAt: text('stock_started_at'),
     creationRequest: text('creation_request'),
     creationResult: text('creation_result'),
@@ -510,7 +511,7 @@ export const medicineStockActions = sqliteTable(
     medicineId: text('medicine_id').notNull(),
     expectedRevision: integer('expected_revision').notNull(),
     kind: text('kind', {
-      enum: ['stockOn', 'stockOff', 'stockCorrection', 'stockRefill'],
+      enum: ['stockOn', 'stockOff', 'stockCorrection', 'stockRefill', 'stockThreshold'],
     }).notNull(),
     count: real('count'),
     unit: text('unit'),

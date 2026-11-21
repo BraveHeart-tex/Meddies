@@ -2,6 +2,8 @@
 // snapshot changes, revision increment and exact receipt commit or roll back together.
 // Triggers serialize usage locks and latest-Taken checks against concurrent dose writes,
 // including writes from an older Worker. Retry lookup precedes clock/revision validation.
+// Stock actions likewise commit through one receipt insert. Threshold saves preserve the
+// count and reconciliation point; reads derive low from raw Stock (migration 0030).
 import { and, eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import {
@@ -11,6 +13,7 @@ import {
   type StockOn,
   type StockCorrection,
   type StockRefill,
+  type StockThreshold,
   type StockOff,
   type MedicineInput,
   type MedicineRecord,
@@ -246,8 +249,8 @@ export async function deleteMedicine(
 export async function setMedicineStock(
   db: DrizzleD1Database,
   ownerId: string,
-  kind: 'stockOn' | 'stockOff' | 'stockCorrection' | 'stockRefill',
-  input: StockOn | StockOff | StockCorrection | StockRefill,
+  kind: 'stockOn' | 'stockOff' | 'stockCorrection' | 'stockRefill' | 'stockThreshold',
+  input: StockOn | StockOff | StockCorrection | StockRefill | StockThreshold,
   now: Date,
 ) {
   const request = JSON.stringify({ kind, ...input })
@@ -266,13 +269,15 @@ export async function setMedicineStock(
   )
   if (!owned) throw new ApplicationError('not_found', 404)
   const count =
-    'amount' in input
-      ? input.amount
-      : 'count' in input
-        ? input.count
-        : 'startingCount' in input
-          ? input.startingCount
-          : null
+    'threshold' in input
+      ? input.threshold
+      : 'amount' in input
+        ? input.amount
+        : 'count' in input
+          ? input.count
+          : 'startingCount' in input
+            ? input.startingCount
+            : null
   await db.run(sql`INSERT INTO medicine_stock_actions
     (owner_id,action_id,medicine_id,expected_revision,kind,count,unit,confirmed_at,request)
     VALUES(${ownerId},${input.actionId},${input.medicineId},${input.expectedRevision},${kind},${count},${'unit' in input ? input.unit : null},${now.toISOString()},${request}) ON CONFLICT DO NOTHING`)
