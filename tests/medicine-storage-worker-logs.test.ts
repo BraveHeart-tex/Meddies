@@ -52,8 +52,22 @@ test('saved and refused commands each log one result with validated command iden
     409,
   )
   assert.deepEqual(captured().map(duration), [
-    { kind: 'command', path: '/medicines', operation: 'save', status: 200, errorCode: null },
-    { kind: 'command', path: '/medicines', operation: 'save', status: 409, errorCode: 'conflict' },
+    {
+      kind: 'command',
+      path: '/medicines',
+      operation: 'save',
+      status: 200,
+      cause: null,
+      errorCode: null,
+    },
+    {
+      kind: 'command',
+      path: '/medicines',
+      operation: 'save',
+      status: 409,
+      cause: null,
+      errorCode: 'conflict',
+    },
   ])
 })
 
@@ -104,6 +118,7 @@ test('cron and scheduler commands log one run outcome, counts and duration even 
         kind: 'scheduler',
         origin: 'cron',
         status: 'completed',
+        cause: null,
         errorCode: null,
         submitted: 1,
         dropped: 0,
@@ -113,6 +128,7 @@ test('cron and scheduler commands log one run outcome, counts and duration even 
         kind: 'scheduler',
         origin: 'cron',
         status: 'failed',
+        cause: null,
         errorCode: 'unavailable',
         submitted: null,
         dropped: null,
@@ -122,6 +138,7 @@ test('cron and scheduler commands log one run outcome, counts and duration even 
         kind: 'scheduler',
         origin: 'command',
         status: 'completed',
+        cause: null,
         errorCode: null,
         submitted: 1,
         dropped: 0,
@@ -131,6 +148,7 @@ test('cron and scheduler commands log one run outcome, counts and duration even 
         kind: 'scheduler',
         origin: 'command',
         status: 'failed',
+        cause: null,
         errorCode: 'unavailable',
         submitted: null,
         dropped: null,
@@ -144,12 +162,20 @@ test('cron and scheduler commands log one run outcome, counts and duration even 
       .filter((event) => event.kind === 'command')
       .map(duration),
     [
-      { kind: 'command', path: '/due-reminders', operation: 'run', status: 200, errorCode: null },
+      {
+        kind: 'command',
+        path: '/due-reminders',
+        operation: 'run',
+        status: 200,
+        cause: null,
+        errorCode: null,
+      },
       {
         kind: 'command',
         path: '/due-reminders',
         operation: 'run',
         status: 503,
+        cause: null,
         errorCode: 'unavailable',
       },
       {
@@ -157,6 +183,7 @@ test('cron and scheduler commands log one run outcome, counts and duration even 
         path: '/due-reminders',
         operation: 'run',
         status: 401,
+        cause: null,
         errorCode: 'unauthorized',
       },
     ],
@@ -206,7 +233,7 @@ test('logs exclude seeded personal data, credentials, arbitrary paths and storag
     ...env(),
     DB: {
       prepare() {
-        throw new Error(sql)
+        throw new Error(`D1_ERROR: ${sql}`)
       },
     } as unknown as D1Database,
   }
@@ -214,22 +241,62 @@ test('logs exclude seeded personal data, credentials, arbitrary paths and storag
     (await worker.fetch(request('/medicines', { operation: 'list', ownerId }), broken)).status,
     503,
   )
+  // Exercise a real asynchronous D1 error wrapped by Drizzle, as well as prepare failure.
+  const queryFailure = {
+    ...env(),
+    DB: {
+      prepare() {
+        return db.prepare('SELECT * FROM missing_logging_table WHERE owner_id = ?')
+      },
+    } as unknown as D1Database,
+  }
+  assert.equal(
+    (await worker.fetch(request('/medicines', { operation: 'list', ownerId }), queryFailure))
+      .status,
+    503,
+  )
+  const storageScheduler = createWorker(undefined, () => ({
+    submit: async () => ({ outcome: 'accepted' }),
+  }))
+  await assert.rejects(storageScheduler.scheduled(undefined, broken), { message: 'internal' })
+  await storageScheduler.fetch(request('/due-reminders', {}), broken)
+  const unexpected = createWorker(() => {
+    throw new Error(providerText)
+  })
+  await unexpected.fetch(request('/medicines', { operation: 'save', ownerId, medicine }), env())
   const scheduler = createWorker(undefined, () => {
     throw new Error(providerText)
   })
   await assert.rejects(scheduler.scheduled(undefined, env()), { message: 'internal' })
   await scheduler.fetch(request('/due-reminders', {}), env())
   const logged = captured()
-  assert.equal(logged.length, 9)
-  assert.ok(logged.some((event) => event.errorCode === 'internal'))
+  assert.equal(logged.length, 14)
+  assert.deepEqual(
+    logged
+      .filter((event) => event.errorCode === 'internal')
+      .map((event) => [event.kind, event.cause]),
+    [
+      ['command', 'storage'],
+      ['command', 'storage'],
+      ['scheduler', 'storage'],
+      ['scheduler', 'storage'],
+      ['command', 'storage'],
+      ['command', 'unexpected'],
+      ['scheduler', 'unexpected'],
+      ['scheduler', 'unexpected'],
+      ['command', 'unexpected'],
+    ],
+  )
   for (const value of privateValues) assert.ok(!JSON.stringify(logged).includes(value), value)
   assert.deepEqual(errors.mock.calls, [])
   for (const event of logged) {
+    assert.ok([null, 'storage', 'unexpected'].includes(event.cause as string | null))
     assert.deepEqual(
       Object.keys(event).sort(),
       event.kind === 'command'
-        ? ['durationMs', 'errorCode', 'kind', 'operation', 'path', 'status']
+        ? ['cause', 'durationMs', 'errorCode', 'kind', 'operation', 'path', 'status']
         : [
+            'cause',
             'dropped',
             'durationMs',
             'errorCode',

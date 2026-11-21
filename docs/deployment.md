@@ -18,18 +18,26 @@ In the Cloudflare dashboard, open **Workers & Pages > meddies-data > Observabili
 to query persisted Worker events. Workers Logs are enabled at full sampling in
 `worker/wrangler.jsonc`; invocation logs stay off.
 
-- `kind: command`: `path`, `operation`, HTTP `status`, `errorCode` and `durationMs`.
+- `kind: command`: `path`, `operation`, HTTP `status`, `errorCode`, `cause` and `durationMs`.
   Paths come from the command allowlist (or `/due-reminders`), never the raw URL. Unknown
   paths are `null`; operations are `null` until decoded, or `run` for the scheduler command.
 - `kind: scheduler`: `origin` (`cron` or `command`), `status` (`completed` or `failed`),
-  `errorCode`, `submitted`, `dropped`, `retrying` and `durationMs`. Counts are `null` on
+  `errorCode`, `cause`, `submitted`, `dropped`, `retrying` and `durationMs`. Counts are `null` on
   failure because a run may have stopped after partial work.
 
 Each command emits one event. Each scheduler run emits one event; an authenticated scheduler
 command therefore emits both a command event and a scheduler event. A refused scheduler
 command emits only its command event because no run starts. Durations are elapsed milliseconds;
 `errorCode` is `null` on success, the ApplicationError code on a known failure, or `internal`.
+`cause` is `null` for success and known ApplicationError failures, `storage` for D1
+preparation or Drizzle query failures, and `unexpected` for other unexpected failures.
 The HTTP response for an unexpected failure remains `unavailable` (503).
+
+The app logs `kind: medicine_gateway_failure` with only `cause` and `status`. Causes are
+`timeout`, `network` (including rejected redirects), `http`, `configuration` (invalid URL)
+and `response` (unreadable JSON). `status` is the Worker's HTTP status for `http`, otherwise
+`null`. Expected validation, conflict and not-found responses keep their existing mapping
+without a failure event. Missing gateway configuration still fails before a request is made.
 
 Events exclude owner IDs, request bodies, headers, Medicine labels, Device registration
 tokens, credentials, SQL, provider text and error messages. Cron failures expose only a safe

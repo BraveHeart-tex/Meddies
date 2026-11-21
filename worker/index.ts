@@ -1,3 +1,4 @@
+import { DrizzleQueryError } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { decodeCommand, type WorkerCommand } from './commands'
 import {
@@ -34,6 +35,19 @@ import { snoozeDose } from './snoozes'
 import { isHealthyRun, runDueReminders, type ReminderProvider } from './due-reminders'
 import { createFcmProvider } from './fcm'
 import { ApplicationError } from '../src/lib/application-error'
+
+// Drizzle wraps execution failures; D1 can also fail while preparing a statement.
+// Inspect only the runtime's fixed prefix, never copy its message or query into an event.
+type FailureCause = 'storage' | 'unexpected' | null
+function failureCause(error: unknown): FailureCause {
+  if (error instanceof ApplicationError) return null
+  if (
+    error instanceof DrizzleQueryError ||
+    (error instanceof Error && error.message.startsWith('D1_ERROR:'))
+  )
+    return 'storage'
+  return 'unexpected'
+}
 
 type Env = {
   DB: D1Database
@@ -89,7 +103,8 @@ function fcmProvider({ FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY }: Env)
  * authenticates with its own `SCHEDULER_SECRET`, never the Next.js capability, and answers counts
  * only. One reminder provider serves the isolate, so its FCM access token is reused across runs.
  * Each command and each started run emits one allowlisted event. Never log raw input or errors;
- * only decoded operation names, known paths and safe error codes cross the logging boundary.
+ * only decoded operation names, known paths, safe error codes and causes cross the
+ * logging boundary.
  * Failed run counts stay unknown: earlier submissions may already have happened.
  * Only a Healthy run pings HEARTBEAT_URL, without data, in deferred bounded work.
  */
@@ -105,6 +120,7 @@ export function createWorker(
       origin,
       status: 'failed',
       errorCode: null as ApplicationError['code'] | 'internal' | null,
+      cause: null as FailureCause,
       submitted: null as number | null,
       dropped: null as number | null,
       retrying: null as number | null,
@@ -127,6 +143,7 @@ export function createWorker(
       return run
     } catch (error) {
       event.errorCode = error instanceof ApplicationError ? error.code : 'internal'
+      event.cause = failureCause(error)
       throw error
     } finally {
       event.durationMs = performance.now() - started
@@ -139,6 +156,7 @@ export function createWorker(
     operation: WorkerCommand['command']['operation'] | 'run' | null
     status: number
     errorCode: ApplicationError['code'] | 'internal' | null
+    cause: FailureCause
     durationMs: number
   }
   const handleCommand = async (
@@ -282,6 +300,7 @@ export function createWorker(
       }
     } catch (error) {
       event.errorCode = error instanceof ApplicationError ? error.code : 'internal'
+      event.cause = failureCause(error)
       return failure(error)
     }
   }
@@ -303,6 +322,7 @@ export function createWorker(
         operation: null,
         status: 500,
         errorCode: null,
+        cause: null,
         durationMs: 0,
       }
       const response = await handleCommand(request, env, event, context)

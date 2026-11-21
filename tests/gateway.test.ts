@@ -30,26 +30,53 @@ const list: Extract<MedicineCommand, { operation: 'list' }> = {
   ownerId: 'google:test',
 }
 test('gateway preserves Worker status mapping and hides network, redirect and JSON failures', async () => {
-  for (const [upstream, status, code] of [
-    [400, 400, 'validation'],
-    [409, 409, 'conflict'],
-    [401, 503, 'unavailable'],
-    [500, 503, 'unavailable'],
-  ] as const) {
-    globalThis.fetch = async () => new Response('{}', { status: upstream })
-    await assert.rejects(() => medicineSend(list), { status, code })
-  }
-  for (const error of [
-    new DOMException('timeout', 'TimeoutError'),
-    new TypeError('redirect rejected'),
-  ] as const) {
-    globalThis.fetch = async () => {
-      throw error
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+  try {
+    for (const [upstream, status, code] of [
+      [400, 400, 'validation'],
+      [409, 409, 'conflict'],
+      [401, 503, 'unavailable'],
+      [500, 503, 'unavailable'],
+    ] as const) {
+      globalThis.fetch = async () => new Response('{}', { status: upstream })
+      await assert.rejects(() => medicineSend(list), { status, code })
+      if (upstream === 401 || upstream === 500)
+        assert.deepEqual(logged.mock.calls.at(-1), [
+          { kind: 'medicine_gateway_failure', cause: 'http', status: upstream },
+        ])
+      else assert.equal(logged.mock.calls.length, 0)
     }
+    for (const [error, cause] of [
+      [new DOMException('private timeout detail', 'TimeoutError'), 'timeout'],
+      [new TypeError('private network detail'), 'network'],
+    ] as const) {
+      globalThis.fetch = async () => {
+        throw error
+      }
+      await assert.rejects(() => medicineSend(list), { status: 503 })
+      assert.deepEqual(logged.mock.calls.at(-1), [
+        { kind: 'medicine_gateway_failure', cause, status: null },
+      ])
+    }
+    globalThis.fetch = async () => new Response('{')
     await assert.rejects(() => medicineSend(list), { status: 503 })
+    assert.deepEqual(logged.mock.calls.at(-1), [
+      { kind: 'medicine_gateway_failure', cause: 'response', status: null },
+    ])
+    globalThis.fetch = async () =>
+      Object.assign(new Response('{}'), {
+        json: async () => {
+          throw new DOMException('private body timeout', 'TimeoutError')
+        },
+      })
+    await assert.rejects(() => medicineSend(list), { status: 503 })
+    assert.deepEqual(logged.mock.calls.at(-1), [
+      { kind: 'medicine_gateway_failure', cause: 'timeout', status: null },
+    ])
+    assert.equal(logged.mock.calls.length, 6)
+  } finally {
+    logged.mockRestore()
   }
-  globalThis.fetch = async () => new Response('{')
-  await assert.rejects(() => medicineSend(list), { status: 503 })
 })
 test('gateway applies private capability, no-store, timeout and redirect rejection', async () => {
   globalThis.fetch = async (url, options) => {

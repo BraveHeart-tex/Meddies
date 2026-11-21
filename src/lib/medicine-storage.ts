@@ -15,6 +15,8 @@ export async function sendStorage(
   const secret = process.env.MEDICINES_WORKER_SECRET
   const configuredUrl = process.env.MEDICINES_WORKER_URL
   if (!secret || !configuredUrl) throw new ApplicationError('unavailable', 503)
+  let cause: 'configuration' | 'network' | 'http' | 'response' | 'timeout' = 'configuration'
+  let status: number | null = null
   try {
     const url = new URL(configuredUrl)
     if (
@@ -22,6 +24,7 @@ export async function sendStorage(
       !(url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))
     )
       throw new Error('configuration')
+    cause = 'network'
     const response = await fetch(new URL(path, url), {
       method: 'POST',
       headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' },
@@ -33,11 +36,22 @@ export async function sendStorage(
     if (response.status === 409) throw new ApplicationError('conflict', 409)
     if (response.status === 400) throw new ApplicationError('validation', 400)
     if (response.status === 404) throw new ApplicationError('not_found', 404)
-    if (!response.ok) throw new Error('storage')
+    if (!response.ok) {
+      cause = 'http'
+      status = response.status
+      throw new Error('storage')
+    }
+    cause = 'response'
     return await response.json()
   } catch (error) {
     if (error instanceof ApplicationError) throw error
-    console.error('medicine_gateway_failure')
+    if (
+      (cause === 'network' || cause === 'response') &&
+      error instanceof Error &&
+      error.name === 'TimeoutError'
+    )
+      cause = 'timeout'
+    console.error({ kind: 'medicine_gateway_failure', cause, status })
     throw new ApplicationError('unavailable', 503)
   }
 }
