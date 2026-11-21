@@ -1535,3 +1535,56 @@ test('A snooze reminder goes to each Device registration covering only its Occur
     [other, other, snoozed, snoozed].toSorted(),
   )
 })
+
+test('Last day drops Follow-up reminders and Snoozes from midnight without recording a Dose outcome', async () => {
+  const day = '2027-03-01'
+  const next = '2027-03-02'
+  const automatic = await owner(day, ['23:00', '23:30'])
+  const boundary = await owner(day, ['23:00'])
+  const later = await owner(day, ['23:30'])
+  for (const [o, time, acceptedAt, targetAt] of [
+    [boundary, '23:00', '23:20', '00:00'],
+    [later, '23:30', '23:40', '00:20'],
+  ] as const) {
+    assert.deepEqual(
+      await snoozeDose(
+        drizzle(db),
+        o.ownerId,
+        { actionId: randomUUID(), scheduleId: o.scheduleId, dueAt: o.due(time) },
+        new Date(ist(day, acceptedAt)),
+      ),
+      { outcome: 'snoozed', targetAt: ist(next, targetAt) },
+    )
+  }
+  const { provider, sent } = fake()
+  await run(provider, ist(day, '23:40'))
+  assert.deepEqual(summary(sent), [
+    `${automatic.due('23:00')} #1 x1`,
+    `${automatic.due('23:30')} #0 x1`,
+  ])
+  sent.length = 0
+  await runIst(provider, next, ['00:00', '00:10', '00:20', '00:50'])
+  assert.deepEqual(sent, [])
+  assert.deepEqual(await followUpState(automatic.ownerId), [
+    { reminder: 1, state: 'submitted' },
+    { reminder: 2, state: 'dropped' },
+    { reminder: 1, state: 'dropped' },
+    { reminder: 2, state: 'dropped' },
+  ])
+  for (const o of [boundary, later])
+    assert.deepEqual(
+      (await snoozeState(o.ownerId)).map((row) => row.state),
+      ['dropped'],
+    )
+  for (const o of [automatic, boundary, later]) {
+    const outcomes = await db
+      .prepare(
+        `SELECT
+      (SELECT COUNT(*) FROM dose_records WHERE owner_id=?1)
+      + (SELECT COUNT(*) FROM skipped_dose_records WHERE owner_id=?1) AS n`,
+      )
+      .bind(o.ownerId)
+      .first<{ n: number }>()
+    assert.equal(outcomes?.n, 0, 'the Occurrences stay Not logged')
+  }
+})

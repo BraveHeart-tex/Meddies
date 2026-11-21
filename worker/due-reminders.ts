@@ -15,8 +15,9 @@
 //    split an instant, and an abandoned claim becomes claimable again once its lease expires;
 // 4. rechecks that the reminder is still current, the owner's Quiet hours for a Follow-up reminder
 //    or Snooze (#35), and Taken/Skipped, a Snooze and a newer Occurrence of the same Medicine per
-//    Occurrence at processing time, then submits one reminder per due instant and reminder (#372),
-//    and one per Snooze covering only its Occurrence, through the
+//    Occurrence and the latest Schedule version's Last day at processing time, then submits one
+//    reminder per due instant and reminder (#372), and one per Snooze covering only its Occurrence,
+//    through the
 //    provider port to each Device registration, covering the remaining Occurrences without a final
 //    answer for it, and records one Delivery attempt per covered Occurrence naming the reminder
 //    and the answer.
@@ -36,7 +37,8 @@
 // its Medicine due by then, or Quiet hours at its target or processing time.
 // With Quiet hours on, a Follow-up reminder whose target or processing time is inside 23:00 to
 // 08:00 Istanbul drops; its slot is never replaced and nothing catches up at 08:00. Original
-// reminders ignore Quiet hours.
+// reminders ignore Quiet hours. From 00:00 Istanbul after the latest Schedule version's Last day,
+// all unsent reminders drop, including Snoozes; earlier Occurrences and Dose outcomes stay.
 // A newer Occurrence counts from any Schedule version of the Medicine, even with an early Taken or
 // Skipped, and at its due instant itself; Occurrences are those of Schedule versions running at
 // the run's start, through the end of its Istanbul day, so a transient answer or an abandoned claim
@@ -451,6 +453,14 @@ async function deliver(
           .filter((scheduleId) => superseded(ownerId, scheduleId, dueAt, now)),
       )
       .concat(
+        await endedReminders(
+          db,
+          ownerId,
+          reminders.map((row) => row.scheduleId),
+          now,
+        ),
+      )
+      .concat(
         targetAt
           ? await snoozeStops(db, ownerId, reminders[0].scheduleId, dueAt, present)
           : await snoozedReminders(db, ownerId, dueAt, reminder),
@@ -556,6 +566,29 @@ async function snoozedReminders(
       rows.filter((row) => row.scheduleId === scheduleId),
     ),
   )
+}
+
+// Last day changes govern retained Occurrences too, so read each chain's latest version at
+// send time. A Last day is inclusive in Istanbul; equality still permits reminders that day.
+async function endedReminders(
+  db: DrizzleD1Database,
+  ownerId: string,
+  scheduleIds: string[],
+  now: Date,
+) {
+  const rows = await db.all<{
+    scheduleId: string
+  }>(sql`WITH RECURSIVE chain(schedule_id, id, end_date) AS (
+      SELECT id, id, end_date FROM daily_schedules
+        WHERE owner_id = ${ownerId} AND id IN (SELECT value FROM json_each(${JSON.stringify(scheduleIds)}))
+      UNION ALL SELECT chain.schedule_id, successor.id, successor.end_date
+        FROM daily_schedules successor JOIN chain ON successor.based_on_id = chain.id
+        WHERE successor.owner_id = ${ownerId})
+    SELECT schedule_id AS scheduleId FROM chain
+      WHERE end_date < ${istanbulDate(now)} AND NOT EXISTS (
+        SELECT 1 FROM daily_schedules next
+          WHERE next.owner_id = ${ownerId} AND next.based_on_id = chain.id)`)
+  return rows.map((row) => row.scheduleId)
 }
 
 // A Snooze's schedule when its Schedule is paused or its Occurrence is no longer a running one.
