@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/d1'
 import { beforeAll, test } from 'vitest'
 import { saveDeviceRegistration } from '../worker/device-registrations'
 import {
+  isHealthyRun,
   runDueReminders,
   type ProviderAnswer,
   type ReminderMessage,
@@ -203,6 +204,47 @@ test('A run at or after the due instant submits one Original reminder per Device
 
   await run(provider, '2026-11-10T06:01:00.000Z')
   assert.equal(sent.length, 2, 'a submitted Original reminder is not submitted again')
+})
+
+test('Delivery attempt reads in a run and its Healthy run check search an index, never scan the table', async () => {
+  // A scan grows with every Delivery attempt kept and can exhaust the D1 daily read limit (#422).
+  const o = await owner('2027-02-20', ['09:00'])
+  const reads: { query: string; params: unknown[] }[] = []
+  const logged = drizzle(db, {
+    logger: {
+      logQuery: (query, params) => {
+        if (/^\s*SELECT[\s\S]*FROM delivery_attempts/i.test(query)) reads.push({ query, params })
+      },
+    },
+  })
+  const at = new Date(o.due('09:00'))
+  assert.deepEqual(await runDueReminders(logged, fake().provider, () => at), {
+    submitted: 1,
+    dropped: 0,
+    retrying: 0,
+  })
+  assert.equal(await isHealthyRun(logged, at), true)
+
+  const plans = await Promise.all(
+    reads.map(async ({ query, params }) => {
+      const { results } = await db
+        .prepare(`EXPLAIN QUERY PLAN ${query}`)
+        .bind(...params)
+        .all<{ detail: string }>()
+      return { query, plan: results.map((row) => row.detail).join('\n') }
+    }),
+  )
+  for (const { query, plan } of plans) assert.doesNotMatch(plan, /SCAN delivery_attempts/, query)
+  const planOf = (pattern: RegExp) => {
+    const found = plans.find(({ query }) => pattern.test(query))
+    assert.ok(found, `no query matched ${pattern}`)
+    return found.plan
+  }
+  assert.match(planOf(/max\(outcome <> 'transient'\)/), /SEARCH delivery_attempts USING/)
+  assert.match(
+    planOf(/owner_id = \? AND due_at = \? AND reminder = \?/),
+    /SEARCH delivery_attempts USING (COVERING )?INDEX \w+ \(owner_id=\? AND due_at=\? AND reminder=\?\)/,
+  )
 })
 
 test('A late run submits only the latest reminder due by then, through due +80 minutes inclusive', async () => {

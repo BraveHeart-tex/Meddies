@@ -403,6 +403,8 @@ export const deliveryAttempts = sqliteTable(
   },
   (table) => [
     index('delivery_attempts_occurrence').on(table.ownerId, table.scheduleId, table.dueAt),
+    index('delivery_attempts_attempted').on(table.attemptedAt, table.outcome),
+    index('delivery_attempts_final').on(table.ownerId, table.dueAt, table.reminder),
     check(
       'delivery_attempts_outcome',
       sql`${table.outcome} IN ('accepted', 'rejected', 'transient')`,
