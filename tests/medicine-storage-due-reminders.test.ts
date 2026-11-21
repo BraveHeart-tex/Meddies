@@ -240,7 +240,7 @@ test('Delivery attempt reads in a run and its Healthy run check search an index,
     assert.ok(found, `no query matched ${pattern}`)
     return found.plan
   }
-  assert.match(planOf(/max\(outcome <> 'transient'\)/), /SEARCH delivery_attempts USING/)
+  assert.match(planOf(/AS healthy/), /SEARCH delivery_attempts USING/)
   assert.match(
     planOf(/owner_id = \? AND due_at = \? AND reminder = \?/),
     /SEARCH delivery_attempts USING (COVERING )?INDEX \w+ \(owner_id=\? AND due_at=\? AND reminder=\?\)/,

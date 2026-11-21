@@ -62,15 +62,15 @@ test('Healthy runs ping once from cron and command without sending reminder or o
   }
 })
 
-test('only transient Delivery attempts in the inclusive last 80 minutes suppress the heartbeat', async () => {
+test('only accepted or device-gone Delivery attempts make a nonempty inclusive 80-minute window Healthy', async () => {
   const fetch = vi.fn(async () => new Response())
   vi.stubGlobal('fetch', fetch)
-  const seed = async (outcome: string, attemptedAt: string) => {
+  const seed = async (outcome: string, attemptedAt: string, code: string | null = null) => {
     await db
       .prepare(
         `INSERT INTO delivery_attempts
-      (id, owner_id, schedule_id, due_at, installation_id, outcome, attempted_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      (id, owner_id, schedule_id, due_at, installation_id, outcome, attempted_at, code)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         crypto.randomUUID(),
@@ -80,10 +80,21 @@ test('only transient Delivery attempts in the inclusive last 80 minutes suppress
         'private-installation',
         outcome,
         attemptedAt,
+        code,
       )
       .run()
   }
   for (const { attempts, pings } of [
+    { attempts: [], pings: 1 },
+    {
+      attempts: [
+        ['rejected', '2038-01-01T04:40:00.000Z', 'SENDER_ID_MISMATCH'],
+        ['rejected', '2038-01-01T06:00:00.000Z', 'PERMISSION_DENIED'],
+        ['rejected', '2038-01-01T05:59:00.000Z', 'INVALID_ARGUMENT'],
+      ],
+      pings: 0,
+    },
+    { attempts: [['rejected', '2038-01-01T06:00:00.000Z']], pings: 0 },
     { attempts: [['transient', '2038-01-01T04:40:00.000Z']], pings: 0 },
     {
       attempts: [
@@ -103,14 +114,30 @@ test('only transient Delivery attempts in the inclusive last 80 minutes suppress
     {
       attempts: [
         ['transient', '2038-01-01T06:00:00.000Z'],
-        ['rejected', '2038-01-01T05:59:00.000Z'],
+        ['rejected', '2038-01-01T05:59:00.000Z', 'INVALID_ARGUMENT'],
+        ['accepted', '2038-01-01T06:00:00.000Z'],
       ],
       pings: 1,
+    },
+    ...['UNREGISTERED', 'NOT_FOUND'].map((code) => ({
+      attempts: [['rejected', '2038-01-01T06:00:00.000Z', code]],
+      pings: 1,
+    })),
+    {
+      attempts: [['transient', '2038-01-01T06:00:00.000Z', 'NOT_FOUND']],
+      pings: 0,
+    },
+    {
+      attempts: [
+        ['rejected', '2038-01-01T05:59:00.000Z', 'INVALID_ARGUMENT'],
+        ['rejected', '2038-01-01T06:00:00.001Z', 'UNREGISTERED'],
+      ],
+      pings: 0,
     },
   ]) {
     await db.prepare('DELETE FROM delivery_attempts').run()
     fetch.mockClear()
-    for (const [outcome, at] of attempts) await seed(outcome, at)
+    for (const [outcome, at, code] of attempts) await seed(outcome, at, code)
     const pending: Promise<unknown>[] = []
     const response = await worker().fetch(request(), env(), {
       waitUntil: (promise) => {

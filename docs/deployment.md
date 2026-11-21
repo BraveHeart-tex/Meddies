@@ -70,9 +70,11 @@ needs no copy. Creating and configuring the production check belongs to #418.
 
 After either a cron or authenticated scheduler command completes, a **Healthy run** sends
 one bare GET to that URL: no body, appended query, counts or owner data. A Healthy run has
-no Delivery attempts in the last 80 minutes, or at least one accepted or rejected attempt
-in that window (including both boundaries and this run's attempts). All-transient attempts
-or a thrown run send nothing, including no fail ping. Without the secret, no ping is sent.
+no Delivery attempts in the last 80 minutes, at least one accepted attempt, or a rejection
+that only reports the device gone (`UNREGISTERED` or `NOT_FOUND`) in that window (including
+both boundaries and this run's attempts). Windows with only transient attempts or other
+rejections, and thrown runs, send nothing, including no fail ping. Without the secret, no ping
+is sent.
 Pings use deferred Worker work, abort after 5 seconds and never alter the run's result.
 A ping failure also produces no log containing the secret.
 
