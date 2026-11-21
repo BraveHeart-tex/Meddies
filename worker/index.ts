@@ -1,8 +1,9 @@
 import { drizzle } from 'drizzle-orm/d1'
-import { decodeCommand } from './commands'
+import { decodeCommand, type WorkerCommand } from './commands'
 import {
   authenticateService,
   commandPath,
+  type CommandPath,
   failure,
   isSchedulerRequest,
   json,
@@ -59,154 +60,222 @@ function fcmProvider({ FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY }: Env)
  * approved external scheduler run the same due-reminder operation. The scheduler command
  * authenticates with its own `SCHEDULER_SECRET`, never the Next.js capability, and answers counts
  * only. One reminder provider serves the isolate, so its FCM access token is reused across runs.
+ * Each command and each started run emits one allowlisted event. Never log raw input or errors;
+ * only decoded operation names, known paths and safe error codes cross the logging boundary.
+ * Failed run counts stay unknown: earlier submissions may already have happened.
  */
 export function createWorker(
   clock: () => Date = () => new Date(),
   reminderProvider: (env: Env) => ReminderProvider = fcmProvider,
 ) {
   let provider: ReminderProvider | undefined
-  const dueReminders = (env: Env) =>
-    runDueReminders(drizzle(env.DB), (provider ??= reminderProvider(env)), clock)
+  const dueReminders = async (env: Env, origin: 'cron' | 'command') => {
+    const started = performance.now()
+    const event = {
+      kind: 'scheduler',
+      origin,
+      status: 'failed',
+      errorCode: null as ApplicationError['code'] | 'internal' | null,
+      submitted: null as number | null,
+      dropped: null as number | null,
+      retrying: null as number | null,
+      durationMs: 0,
+    }
+    try {
+      const run = await runDueReminders(
+        drizzle(env.DB),
+        (provider ??= reminderProvider(env)),
+        clock,
+      )
+      event.status = 'completed'
+      event.submitted = run.submitted
+      event.dropped = run.dropped
+      event.retrying = run.retrying
+      return run
+    } catch (error) {
+      event.errorCode = error instanceof ApplicationError ? error.code : 'internal'
+      throw error
+    } finally {
+      event.durationMs = performance.now() - started
+      console.log(event)
+    }
+  }
+  type CommandEvent = {
+    kind: 'command'
+    path: CommandPath | '/due-reminders' | null
+    operation: WorkerCommand['command']['operation'] | 'run' | null
+    status: number
+    errorCode: ApplicationError['code'] | 'internal' | null
+    durationMs: number
+  }
+  const handleCommand = async (
+    request: Request,
+    env: Env,
+    event: CommandEvent,
+  ): Promise<Response> => {
+    try {
+      if (isSchedulerRequest(request)) {
+        event.path = '/due-reminders'
+        event.operation = 'run'
+        await authenticateService(request, env.SCHEDULER_SECRET)
+        const { submitted, dropped, retrying } = await dueReminders(env, 'command')
+        return json({ submitted, dropped, retrying })
+      }
+      await authenticateService(request, env.MEDICINES_WORKER_SECRET)
+      const path = commandPath(request)
+      if (path instanceof Response) {
+        event.errorCode = 'not_found'
+        return path
+      }
+      const decoded = decodeCommand(path, await readJsonRequest(request))
+      event.operation = decoded.command.operation
+      const db = drizzle(env.DB)
+      if (decoded.path === '/medicines') {
+        const command = decoded.command
+        switch (command.operation) {
+          case 'correctDetails':
+            return json(await editMedicine(db, command.ownerId, command.correction, clock()))
+          case 'changeStrength':
+            return json(await editMedicine(db, command.ownerId, command.change, clock()))
+          case 'archive':
+            return json(await archiveMedicine(db, command.ownerId, command.archive, clock()))
+          case 'stockOn':
+          case 'stockOff':
+          case 'stockCorrection':
+          case 'stockRefill':
+            return json(
+              await setMedicineStock(
+                db,
+                command.ownerId,
+                command.operation,
+                command.stock,
+                clock(),
+              ),
+            )
+          case 'restore':
+            return json(await restoreMedicine(db, command.ownerId, command.restore, clock()))
+          case 'delete':
+            return json(await deleteMedicine(db, command.ownerId, command.deletion, clock()))
+          case 'list':
+            return json(await listMedicines(db, command.ownerId))
+          case 'save':
+            return json(await saveMedicine(db, command.ownerId, command.medicine, clock()))
+        }
+      }
+      if (decoded.path === '/device-registrations') {
+        const command = decoded.command
+        switch (command.operation) {
+          case 'save':
+            return json(
+              await saveDeviceRegistration(db, command.ownerId, command.registration, clock()),
+            )
+          case 'renew':
+            return json(
+              await renewDeviceRegistration(db, command.ownerId, command.registration, clock()),
+            )
+          case 'remove':
+            return json(await removeDeviceRegistration(db, command.ownerId, command.installation))
+          case 'read':
+            return json(await readDeviceRegistration(db, command.ownerId, command.installation))
+        }
+      }
+      if (decoded.path === '/medication-names') {
+        const command = decoded.command
+        switch (command.operation) {
+          case 'read':
+            return json(await readMedicationNames(db, command.ownerId))
+          case 'set':
+            return json(await setMedicationNames(db, command.ownerId, command.change, clock()))
+        }
+      }
+      if (decoded.path === '/snoozes') {
+        const { ownerId, request } = decoded.command
+        return json(await snoozeDose(db, ownerId, request, clock()))
+      }
+      if (decoded.path === '/dose-history') {
+        const { ownerId, medicineId, before } = decoded.command
+        return json(await readDoseHistory(db, ownerId, { medicineId, before }, clock()))
+      }
+      if (decoded.path === '/quiet-hours') {
+        const command = decoded.command
+        switch (command.operation) {
+          case 'read':
+            return json(await readQuietHours(db, command.ownerId))
+          case 'set':
+            return json(await setQuietHours(db, command.ownerId, command.change, clock()))
+        }
+      }
+      const command = decoded.command
+      switch (command.operation) {
+        case 'saveUnscheduled':
+          return json({
+            unscheduledDoses: [
+              await writeUnscheduledDose(db, command.ownerId, command.dose, clock()),
+            ],
+          })
+        case 'changeUnscheduled':
+          return json({
+            unscheduledDoses: [
+              await writeUnscheduledDose(db, command.ownerId, command.change, clock()),
+            ],
+          })
+        case 'list':
+          return json(await listLegacySnapshot(db, command.ownerId, command.date))
+        case 'listOutcomes':
+          return json(await listOutcomeSnapshot(db, command.ownerId, command.date))
+        case 'save':
+          return json(await saveSchedule(db, command.ownerId, command.schedule, clock))
+        case 'resume':
+          return json(await editSchedule(db, command.ownerId, command.resume, clock, 'resume'))
+        case 'pause':
+          return json(await editSchedule(db, command.ownerId, command.pause, clock, 'pause'))
+        case 'stop':
+          return json(await editSchedule(db, command.ownerId, command.stop, clock))
+        case 'edit':
+          return json(await editSchedule(db, command.ownerId, command.edit, clock))
+        case 'recordTaken':
+          return json({
+            records: [await recordTaken(db, command.ownerId, command.record, clock())],
+          })
+        case 'recordSkipped':
+          return json({
+            records: [await recordSkipped(db, command.ownerId, command.record, clock())],
+          })
+        case 'correctOutcome':
+          return json({
+            records: [await correctDoseOutcome(db, command.ownerId, command.correction, clock())],
+          })
+      }
+    } catch (error) {
+      event.errorCode = error instanceof ApplicationError ? error.code : 'internal'
+      return failure(error)
+    }
+  }
   return {
     async scheduled(_controller: unknown, env: Env): Promise<void> {
       try {
-        await dueReminders(env)
-      } catch {
-        // A fixed message fails the run without logging query or provider detail.
-        throw new Error('due_reminder_failure')
+        await dueReminders(env, 'cron')
+      } catch (error) {
+        // Fail the trigger with only the safe code, never query or provider detail.
+        throw new Error(error instanceof ApplicationError ? error.code : 'internal')
       }
     },
     async fetch(request: Request, env: Env): Promise<Response> {
-      try {
-        if (isSchedulerRequest(request)) {
-          await authenticateService(request, env.SCHEDULER_SECRET)
-          const { submitted, dropped, retrying } = await dueReminders(env)
-          return json({ submitted, dropped, retrying })
-        }
-        await authenticateService(request, env.MEDICINES_WORKER_SECRET)
-        const path = commandPath(request)
-        if (path instanceof Response) return path
-        const decoded = decodeCommand(path, await readJsonRequest(request))
-        const db = drizzle(env.DB)
-        if (decoded.path === '/medicines') {
-          const command = decoded.command
-          switch (command.operation) {
-            case 'correctDetails':
-              return json(await editMedicine(db, command.ownerId, command.correction, clock()))
-            case 'changeStrength':
-              return json(await editMedicine(db, command.ownerId, command.change, clock()))
-            case 'archive':
-              return json(await archiveMedicine(db, command.ownerId, command.archive, clock()))
-            case 'stockOn':
-            case 'stockOff':
-            case 'stockCorrection':
-            case 'stockRefill':
-              return json(
-                await setMedicineStock(
-                  db,
-                  command.ownerId,
-                  command.operation,
-                  command.stock,
-                  clock(),
-                ),
-              )
-            case 'restore':
-              return json(await restoreMedicine(db, command.ownerId, command.restore, clock()))
-            case 'delete':
-              return json(await deleteMedicine(db, command.ownerId, command.deletion, clock()))
-            case 'list':
-              return json(await listMedicines(db, command.ownerId))
-            case 'save':
-              return json(await saveMedicine(db, command.ownerId, command.medicine, clock()))
-          }
-        }
-        if (decoded.path === '/device-registrations') {
-          const command = decoded.command
-          switch (command.operation) {
-            case 'save':
-              return json(
-                await saveDeviceRegistration(db, command.ownerId, command.registration, clock()),
-              )
-            case 'renew':
-              return json(
-                await renewDeviceRegistration(db, command.ownerId, command.registration, clock()),
-              )
-            case 'remove':
-              return json(await removeDeviceRegistration(db, command.ownerId, command.installation))
-            case 'read':
-              return json(await readDeviceRegistration(db, command.ownerId, command.installation))
-          }
-        }
-        if (decoded.path === '/medication-names') {
-          const command = decoded.command
-          switch (command.operation) {
-            case 'read':
-              return json(await readMedicationNames(db, command.ownerId))
-            case 'set':
-              return json(await setMedicationNames(db, command.ownerId, command.change, clock()))
-          }
-        }
-        if (decoded.path === '/snoozes') {
-          const { ownerId, request } = decoded.command
-          return json(await snoozeDose(db, ownerId, request, clock()))
-        }
-        if (decoded.path === '/dose-history') {
-          const { ownerId, medicineId, before } = decoded.command
-          return json(await readDoseHistory(db, ownerId, { medicineId, before }, clock()))
-        }
-        if (decoded.path === '/quiet-hours') {
-          const command = decoded.command
-          switch (command.operation) {
-            case 'read':
-              return json(await readQuietHours(db, command.ownerId))
-            case 'set':
-              return json(await setQuietHours(db, command.ownerId, command.change, clock()))
-          }
-        }
-        const command = decoded.command
-        switch (command.operation) {
-          case 'saveUnscheduled':
-            return json({
-              unscheduledDoses: [
-                await writeUnscheduledDose(db, command.ownerId, command.dose, clock()),
-              ],
-            })
-          case 'changeUnscheduled':
-            return json({
-              unscheduledDoses: [
-                await writeUnscheduledDose(db, command.ownerId, command.change, clock()),
-              ],
-            })
-          case 'list':
-            return json(await listLegacySnapshot(db, command.ownerId, command.date))
-          case 'listOutcomes':
-            return json(await listOutcomeSnapshot(db, command.ownerId, command.date))
-          case 'save':
-            return json(await saveSchedule(db, command.ownerId, command.schedule, clock))
-          case 'resume':
-            return json(await editSchedule(db, command.ownerId, command.resume, clock, 'resume'))
-          case 'pause':
-            return json(await editSchedule(db, command.ownerId, command.pause, clock, 'pause'))
-          case 'stop':
-            return json(await editSchedule(db, command.ownerId, command.stop, clock))
-          case 'edit':
-            return json(await editSchedule(db, command.ownerId, command.edit, clock))
-          case 'recordTaken':
-            return json({
-              records: [await recordTaken(db, command.ownerId, command.record, clock())],
-            })
-          case 'recordSkipped':
-            return json({
-              records: [await recordSkipped(db, command.ownerId, command.record, clock())],
-            })
-          case 'correctOutcome':
-            return json({
-              records: [await correctDoseOutcome(db, command.ownerId, command.correction, clock())],
-            })
-        }
-      } catch (error) {
-        return failure(error)
+      const started = performance.now()
+      const path = commandPath(request)
+      const event: CommandEvent = {
+        kind: 'command',
+        path: path instanceof Response ? null : path,
+        operation: null,
+        status: 500,
+        errorCode: null,
+        durationMs: 0,
       }
+      const response = await handleCommand(request, env, event)
+      event.status = response.status
+      event.durationMs = performance.now() - started
+      console.log(event)
+      return response
     },
   } satisfies ExportedHandler<Env>
 }

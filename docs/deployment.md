@@ -12,6 +12,29 @@ Cloudflare management credentials stay in the protected release environment or o
 maintainer machine. Keep synthetic feasibility databases separate from production.
 Manual Wrangler commands are for [coordinated recovery](#failure-and-recovery) only.
 
+## Worker logs
+
+In the Cloudflare dashboard, open **Workers & Pages > meddies-data > Observability > Logs**
+to query persisted Worker events. Workers Logs are enabled at full sampling in
+`worker/wrangler.jsonc`; invocation logs stay off.
+
+- `kind: command`: `path`, `operation`, HTTP `status`, `errorCode` and `durationMs`.
+  Paths come from the command allowlist (or `/due-reminders`), never the raw URL. Unknown
+  paths are `null`; operations are `null` until decoded, or `run` for the scheduler command.
+- `kind: scheduler`: `origin` (`cron` or `command`), `status` (`completed` or `failed`),
+  `errorCode`, `submitted`, `dropped`, `retrying` and `durationMs`. Counts are `null` on
+  failure because a run may have stopped after partial work.
+
+Each command emits one event. Each scheduler run emits one event; an authenticated scheduler
+command therefore emits both a command event and a scheduler event. A refused scheduler
+command emits only its command event because no run starts. Durations are elapsed milliseconds;
+`errorCode` is `null` on success, the ApplicationError code on a known failure, or `internal`.
+The HTTP response for an unexpected failure remains `unavailable` (503).
+
+Events exclude owner IDs, request bodies, headers, Medicine labels, Device registration
+tokens, credentials, SQL, provider text and error messages. Cron failures expose only a safe
+error code to the runtime. These events replace the earlier fixed failure logs.
+
 ## Push notifications
 
 Notifications use the Firebase project's public web config, set as Vercel Preview and

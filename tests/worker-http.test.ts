@@ -124,7 +124,7 @@ test('Worker hides unexpected persistence errors behind unavailable and no-store
         } as unknown as D1Database,
       },
     )
-    assert.deepEqual(logged, [['medicine_storage_failure']])
+    assert.deepEqual(logged, [])
   } finally {
     console.error = originalError
   }

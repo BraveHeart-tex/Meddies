@@ -42,6 +42,5 @@ export const isSchedulerRequest = (request: Request) =>
 
 export function failure(error: unknown) {
   if (error instanceof ApplicationError) return json({ error: error.code }, error.status)
-  console.error('medicine_storage_failure')
   return json({ error: 'unavailable' }, 503)
 }

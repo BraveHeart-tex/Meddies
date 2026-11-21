@@ -1093,7 +1093,7 @@ test('The cron trigger runs the due-reminder operation, and stops before claimin
   const unconfigured = await owner('2026-11-21', ['09:00'])
   await assert.rejects(
     createWorker(() => new Date('2026-11-21T06:00:00.000Z')).scheduled(undefined, bindings()),
-    { message: 'due_reminder_failure' },
+    { message: 'unavailable' },
   )
   assert.deepEqual(await reminderState(unconfigured.ownerId), [], 'no reminder is spent')
 })
