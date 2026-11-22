@@ -14,7 +14,7 @@
 // named wording: one dose's label in its title, several doses' labels in their body, with the
 // generic body or title beside it. A label appears in nothing else.
 //
-// Answers: success is accepted; 429, 5xx, an expired access token, a token-endpoint failure, a
+// Dose reminder answers: success is accepted; 429, 5xx, an expired access token, a token-endpoint failure, a
 // network error or a timeout is transient; anything else is rejected with FCM's `errorCode`, or
 // its status. Nothing here logs, so no token, credential or provider message text leaves it.
 import { reminderDueLink, reminderLink } from '../src/features/schedules/reminder-link'
@@ -26,6 +26,7 @@ import {
   type ReminderMessage,
   type ReminderProvider,
 } from './due-reminders'
+import type { RefillProvider } from './refill-pushes'
 
 /** The `FCM_PROJECT_ID`, `FCM_CLIENT_EMAIL` and `FCM_PRIVATE_KEY` Worker secrets. */
 export type FcmCredentials = { projectId: string; clientEmail: string; privateKey: string }
@@ -57,7 +58,7 @@ const TIMEOUT_MS = 10_000
 export function createFcmProvider(
   credentials: FcmCredentials,
   { fetch: send = fetch, clock = () => new Date(), timeoutMs = TIMEOUT_MS }: Options = {},
-): ReminderProvider {
+): ReminderProvider & RefillProvider {
   const sendUrl = `https://fcm.googleapis.com/v1/projects/${encodeURIComponent(credentials.projectId)}/messages:send`
   let key: Promise<CryptoKey> | undefined
   let cached: { value: string; refreshAt: number } | undefined
@@ -99,16 +100,45 @@ export function createFcmProvider(
     return cached.value
   }
 
+  const sendMessage = (token: string, body: object, redirect?: RequestRedirect) =>
+    send(sendUrl, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      redirect,
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+
   return {
+    async submitRefill(begin) {
+      // An OAuth failure happens before any Delivery attempt. Once a refill request goes
+      // out, transport failures and 5xx responses cannot establish that FCM rejected it.
+      const token = await accessToken().catch(() => null)
+      if (!token) return
+      const message = await begin()
+      if (!message) return
+      const response = await sendMessage(
+        token,
+        {
+          message: {
+            token: message.token,
+            notification: {
+              title: message.label ? `Check Stock for ${message.label}` : 'Check your Stock',
+            },
+            webpush: { headers: { TTL: '0' } },
+          },
+        },
+        'error',
+      ).catch(() => null)
+      if (!response || response.status >= 500) return 'indeterminate'
+      if (response.ok) return 'accepted'
+      if (response.status === 401) cached = undefined
+      return response.status === 401 || response.status === 429 ? 'retryable' : 'rejected'
+    },
     async submit(message: ReminderMessage): Promise<ProviderAnswer> {
       try {
         const token = await accessToken()
-        const response = await send(sendUrl, {
-          method: 'POST',
-          headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-          body: JSON.stringify(fcmMessage(message, clock())),
-          signal: AbortSignal.timeout(timeoutMs),
-        })
+        const response = await sendMessage(token, fcmMessage(message, clock()))
         if (response.ok) return { outcome: 'accepted' }
         const code = await errorCode(response)
         if (code === 'UNAUTHENTICATED') cached = undefined

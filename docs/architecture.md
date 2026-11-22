@@ -72,9 +72,11 @@ owner.
   account's Quiet hours reads and sets, and `medication-names.ts` its Medication names reads and
   sets. `snoozes.ts` owns the Snooze command. `due-reminders.ts` owns the due-reminder operation,
   its Original reminder, Follow-up reminder and Snooze claims and Delivery attempts, and the
-  provider port, and `fcm.ts` implements that port with FCM HTTP v1. The `schedules.ts`,
-  `doses/mutations.ts`, `snoozes.ts`, `due-reminders.ts` and `fcm.ts` headers state their
-  invariants.
+  provider port. `refill-pushes.ts` owns low-stock episode targeting and refill Delivery
+  attempts. `fcm.ts` implements both provider ports with FCM HTTP v1. The scheduler leaves
+  refill pushes inactive until #54 adds Quiet hours and activates the sender. The `schedules.ts`,
+  `doses/mutations.ts`, `snoozes.ts`, `due-reminders.ts`, `refill-pushes.ts` and `fcm.ts`
+  headers state their invariants.
 - SQL stays beside its behavior. Map selected rows to wire fields explicitly; snapshot
   null metadata and omitted mutation fields are compatibility contracts.
 - Worker modules import only runtime-neutral contracts, scheduling rules, the Reminder link
