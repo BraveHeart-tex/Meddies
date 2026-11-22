@@ -4,7 +4,12 @@ import { test } from 'vitest'
 import { createWorker } from '../worker/index'
 import { createMedicineOperations } from '../src/features/medicines/operations'
 import type { MedicineRecord } from '../src/features/medicines/contract'
-import { startWorkerRuntime, secret, runtime } from './helpers/medicine-storage-runtime'
+import {
+  startWorkerRuntime,
+  secret,
+  runtime,
+  readLowStockEpisode,
+} from './helpers/medicine-storage-runtime'
 
 startWorkerRuntime()
 async function fixture() {
@@ -33,6 +38,7 @@ async function fixture() {
     expectedRevision,
   })
   return {
+    episode: () => readLowStockEpisode(ownerId, medicine.id),
     ownerId,
     db,
     medicine,
@@ -101,35 +107,62 @@ test('dose saves, refills, Count corrections and threshold edits share the raw S
   }
   f.setNow('2026-11-19T10:45:00.000Z')
   await save('stockThreshold', 0, { threshold: 5 })
-  const dose = async (quantity: number, takenAt = '2026-11-19T10:30:00.000Z') => {
+  const scheduleCommand = async (command: object) => {
     const response = await createWorker(() => new Date('2026-11-19T11:00:00.000Z')).fetch(
       new Request('http://worker/schedules', {
         method: 'POST',
         headers: { authorization: `Bearer ${secret}` },
-        body: JSON.stringify({
-          ownerId: f.ownerId,
-          operation: 'saveUnscheduled',
-          dose: {
-            actionId: randomUUID(),
-            medicineId: f.medicine.id,
-            takenAt,
-            quantity,
-          },
-        }),
+        body: JSON.stringify({ ownerId: f.ownerId, ...command }),
       }),
       { DB: f.db, MEDICINES_WORKER_SECRET: secret },
     )
     assert.equal(response.status, 200, await response.text())
   }
+  const dose = async (quantity: number, takenAt = '2026-11-19T10:30:00.000Z') => {
+    const actionId = randomUUID()
+    await scheduleCommand({
+      operation: 'saveUnscheduled',
+      dose: { actionId, medicineId: f.medicine.id, takenAt, quantity },
+    })
+    return actionId
+  }
   await dose(0.5)
+  assert.equal(await f.episode(), null)
   assert.deepEqual(await read(), { tracked: true, count: 5, threshold: 5 })
-  await dose(0.5)
+  const doseId = await dose(0.5)
   assert.deepEqual(await read(), { tracked: true, count: 4.5, threshold: 5, low: true })
+  const firstEpisode = await f.episode()
+  assert.equal(firstEpisode?.pushEligible, 1)
+  const removeDose = {
+    operation: 'changeUnscheduled',
+    change: { actionId: randomUUID(), doseId, expectedRevision: 0, removed: true },
+  }
+  await scheduleCommand(removeDose)
+  assert.equal(await f.episode(), null)
+  await dose(1)
+  const afterDose = await f.episode()
+  assert.equal(afterDose?.pushEligible, 1)
+  assert.notEqual(afterDose.id, firstEpisode.id)
+  await scheduleCommand(removeDose)
+  assert.deepEqual(await f.episode(), afterDose)
   await save('stockRefill', 1, { amount: 0.5 })
+  assert.deepEqual(await f.episode(), afterDose)
+  await save('stockRefill', 2, { amount: 0.5 })
+  assert.equal(await f.episode(), null)
   assert.deepEqual(await read(), { tracked: true, count: 5, threshold: 5 })
-  await save('stockCorrection', 2, { count: 4 })
+  const correction = {
+    operation: 'stockCorrection',
+    stock: { ...f.key(3), unit: 'tablet', count: 4 },
+  }
+  const corrected = await f.send(correction)
+  assert.equal(corrected.status, 200)
+  const nextEpisode = await f.episode()
+  assert.equal(nextEpisode?.pushEligible, 1)
+  assert.notEqual(nextEpisode.id, afterDose.id)
+  assert.deepEqual(await f.send(correction), corrected)
+  assert.deepEqual(await f.episode(), nextEpisode)
   assert.deepEqual(await read(), { tracked: true, count: 4, threshold: 5, low: true })
-  await save('stockThreshold', 3, { threshold: 4 })
+  await save('stockThreshold', 4, { threshold: 4 })
   assert.deepEqual(await read(), { tracked: true, count: 4, threshold: 4 })
   await dose(5, '2026-11-19T10:50:00.000Z')
   assert.deepEqual(await read(), {
@@ -139,7 +172,7 @@ test('dose saves, refills, Count corrections and threshold edits share the raw S
     low: true,
     intakePastCount: true,
   })
-  await save('stockThreshold', 4, { threshold: null })
+  await save('stockThreshold', 5, { threshold: null })
   assert.deepEqual(await read(), { tracked: true, count: 0, intakePastCount: true })
 })
 

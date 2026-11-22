@@ -506,8 +506,10 @@ describe unsent reminders.
 | D6  | Each episode has one logical refill push, with no repeated push after submission or ambiguous acceptance. Known failed attempts may retry that same alert. With quiet hours enabled, defer at 23:00 inclusive until 08:00 exclusive Europe/Istanbul. At submission, recheck tracking, saved Stock, current episode, budget and quiet hours. Recovery after 08:00 may submit the still-valid alert; never revive an ended episode. | Preserves one push per episode and overnight deferral without claiming exactly-once device delivery. |
 
 The in-app low notice persists while saved Stock is low even after its push.
-Closing an episode
-cancels unsent work; already submitted notifications cannot be retracted.
+Confirmed Stock and threshold writes persist episode transitions in the same transaction.
+Closing an episode cancels unsent work. Archiving forfeits the current episode's remaining
+push eligibility, and restoring low Stock does not grant it again. Already submitted
+notifications cannot be retracted.
 Thresholds and counts use the supported units, and stock consumption follows the
 contract above. These decisions do not change dose pause, resume or course-end rules.
 

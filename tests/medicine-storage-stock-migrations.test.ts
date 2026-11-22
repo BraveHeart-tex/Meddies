@@ -67,6 +67,48 @@ test('migrations after 0028 preserve Stock movements, action receipts, intake mo
           receipts = seededReceipts
           seeded = true
         }
+        if (file === '0031_medicine_type_correction.sql') {
+          await db.batch([
+            db
+              .prepare(
+                'UPDATE user_medications SET low_stock_threshold=11 WHERE owner_id=? AND id=?',
+              )
+              .bind(ownerId, medicineId),
+            db
+              .prepare(
+                `INSERT INTO user_medications
+              (owner_id,id,label,unit,stock_count,low_stock_threshold,archived_at) VALUES
+              (?,?,'Equal','tablet',5,5,NULL),
+              (?,?,'Untracked','tablet',NULL,5,NULL),
+              (?,?,'Archived','tablet',4,5,'2026-11-21T10:00:00.000Z')`,
+              )
+              .bind(ownerId, randomUUID(), ownerId, randomUUID(), ownerId, randomUUID()),
+          ])
+        }
+        if (file === '0032_low_stock_episodes.sql') {
+          const { results } = await db
+            .prepare(
+              'SELECT medicine_id AS medicineId, id, push_eligible AS pushEligible FROM low_stock_episodes WHERE owner_id=?',
+            )
+            .bind(ownerId)
+            .all<{ medicineId: string; id: string; pushEligible: number }>()
+          assert.equal(results.length, 1)
+          assert.equal(results[0].medicineId, medicineId)
+          assert.ok(results[0].id)
+          assert.equal(results[0].pushEligible, 0)
+          const record = await db
+            .prepare('SELECT record FROM medicine_records WHERE owner_id=? AND id=?')
+            .bind(ownerId, medicineId)
+            .first<string>('record')
+          assert.ok(record)
+          assert.deepEqual(JSON.parse(record).stock, {
+            tracked: true,
+            count: 10.5,
+            intakePastCount: false,
+            threshold: 11,
+            low: true,
+          })
+        }
         if (!seeded) return
         // Assert at every boundary: a later migration must not hide earlier data loss.
         assert.deepEqual(await rowCounts(), [1, 1, 1], `${file}: stock row counts`)

@@ -2,11 +2,65 @@ import assert from 'node:assert/strict'
 import { endedOn, pausedOn } from '../src/features/schedules/last-day'
 import { randomUUID } from 'node:crypto'
 import { test } from 'vitest'
+import type { MedicineRecord } from '../src/features/medicines/contract'
 import { createScheduleOperations } from '../src/features/schedules/operations'
-import { startWorkerRuntime, versionFixture } from './helpers/medicine-storage-runtime'
+import {
+  call,
+  readLowStockEpisode,
+  startWorkerRuntime,
+  versionFixture,
+} from './helpers/medicine-storage-runtime'
 
 // Pause and resume on real D1.
 startWorkerRuntime()
+
+test('Pause and Resume preserve the episode while Archive forfeits its push budget', async () => {
+  const f = await versionFixture()
+  const id = randomUUID()
+  const { ownerId, medicineId } = f
+  const send = async (command: object) => {
+    const response = await call({ ownerId, ...command })
+    assert.equal(response.status, 200, response.ok ? undefined : await response.text())
+    return (await response.json()) as { medicines: MedicineRecord[] }
+  }
+  const read = async () => (await send({ operation: 'list' })).medicines[0]
+  const key = async () => ({
+    actionId: randomUUID(),
+    medicineId,
+    expectedRevision: (await read()).revision,
+  })
+  const episode = () => readLowStockEpisode(ownerId, medicineId)
+  await f.operations.save({
+    id,
+    medicineId,
+    startDate: '2026-11-02',
+    times: [{ time: '08:00', quantity: 1 }],
+  })
+  await send({
+    operation: 'stockOn',
+    stock: { ...(await key()), unit: 'tablet', startingCount: 4 },
+  })
+  await send({
+    operation: 'stockThreshold',
+    stock: { ...(await key()), unit: 'tablet', threshold: 5 },
+  })
+  const low = await episode()
+  assert.equal(low?.pushEligible, 1)
+
+  f.setNow('2026-11-03T11:00:00.000Z')
+  const [paused] = await f.operations.pause({ id: randomUUID(), basedOnId: id })
+  assert.deepEqual(await episode(), low)
+  f.setNow('2026-11-05T07:00:00.000Z')
+  await f.operations.resume({ id: randomUUID(), basedOnId: paused.id })
+  assert.deepEqual(await episode(), low)
+
+  await send({ operation: 'archive', archive: await key() })
+  assert.deepEqual((await read()).stock, { tracked: true, count: 4, threshold: 5 })
+  assert.deepEqual(await episode(), { id: low.id, pushEligible: 0 })
+  await send({ operation: 'restore', restore: await key() })
+  assert.deepEqual((await read()).stock, { tracked: true, count: 4, threshold: 5, low: true })
+  assert.deepEqual(await episode(), { id: low.id, pushEligible: 0 })
+})
 
 test('Pause now keeps the morning dose loggable without future doses', async () => {
   const f = await versionFixture()

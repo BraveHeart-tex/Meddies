@@ -45,6 +45,24 @@ export const userMedications = sqliteTable(
   ],
 )
 
+export const lowStockEpisodes = sqliteTable(
+  'low_stock_episodes',
+  {
+    ownerId: text('owner_id').notNull(),
+    medicineId: text('medicine_id').notNull(),
+    id: text('id').notNull().unique(),
+    pushEligible: integer('push_eligible', { mode: 'boolean' }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.medicineId] }),
+    foreignKey({
+      columns: [table.ownerId, table.medicineId],
+      foreignColumns: [userMedications.ownerId, userMedications.id],
+    }).onDelete('cascade'),
+    check('low_stock_episodes_push_eligible', sql`${table.pushEligible} IN (0, 1)`),
+  ],
+)
+
 export const dailySchedules = sqliteTable(
   'daily_schedules',
   {

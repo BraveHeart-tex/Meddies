@@ -12,6 +12,7 @@ import {
   secret,
   runtime,
   stockBackfill,
+  readLowStockEpisode,
 } from './helpers/medicine-storage-runtime'
 
 startWorkerRuntime({ history: ['0025_stock_tracking.sql'] })
@@ -511,6 +512,19 @@ test('dose saves with stock off change no Stock, and a fresh count stands', asyn
 
 test('retries, concurrent identical saves and rejected writes apply each stock change at most once', async () => {
   const f = await fixture()
+  const { revision } = await f.medicines()
+  const threshold = await f.post('medicines', {
+    operation: 'stockThreshold',
+    stock: {
+      actionId: randomUUID(),
+      medicineId: f.medicineId,
+      expectedRevision: revision,
+      unit: 'tablet',
+      threshold: 30,
+    },
+  })
+  assert.equal(threshold.status, 200)
+  const episode = () => readLowStockEpisode(f.ownerId, f.medicineId)
   const taken = { ...f.occurrence(12), takenAt: due(12), quantity: 1 }
   await Promise.all([f.operations.recordTaken(taken), f.operations.recordTaken(taken)])
   await f.operations.recordTaken(taken)
@@ -520,8 +534,10 @@ test('retries, concurrent identical saves and rejected writes apply each stock c
     () => f.operations.recordTaken({ ...f.occurrence(13), takenAt: due(13), quantity: 1 }),
     /conflict/,
   )
-  assert.deepEqual(await f.stock(), { tracked: true, count: 29 })
+  assert.deepEqual(await f.stock(), { tracked: true, count: 29, threshold: 30, low: true })
 
+  const opened = await episode()
+  assert.equal(opened?.pushEligible, 1)
   const correction = {
     ...f.occurrence(12),
     actionId: randomUUID(),
@@ -536,11 +552,18 @@ test('retries, concurrent identical saves and rejected writes apply each stock c
     f.operations.correctOutcome(correction),
   ])
   await f.operations.correctOutcome(correction)
-  await assert.rejects(
-    () => f.operations.correctOutcome({ ...correction, actionId: randomUUID(), quantity: 5 }),
-    /conflict/,
-  )
-  assert.deepEqual(await f.stock(), { tracked: true, count: 27 })
+  assert.deepEqual(await episode(), opened)
+  const stale = {
+    ...f.occurrence(12),
+    actionId: randomUUID(),
+    expectedRevision: 0,
+    expectedOutcome: 'Taken' as const,
+    outcome: 'Skipped' as const,
+  }
+  await assert.rejects(() => f.operations.correctOutcome(stale), { status: 409 })
+  await assert.rejects(() => f.operations.correctOutcome(stale), { status: 409 })
+  assert.deepEqual(await episode(), opened)
+  assert.deepEqual(await f.stock(), { tracked: true, count: 27, threshold: 30, low: true })
 
   const dose = { actionId: randomUUID(), medicineId: f.medicineId, takenAt: due(14), quantity: 2 }
   await Promise.all([f.operations.saveUnscheduled(dose), f.operations.saveUnscheduled(dose)])
@@ -565,7 +588,7 @@ test('retries, concurrent identical saves and rejected writes apply each stock c
       }),
     /conflict/,
   )
-  assert.deepEqual(await f.stock(), { tracked: true, count: 27 })
+  assert.deepEqual(await f.stock(), { tracked: true, count: 27, threshold: 30, low: true })
   assert.deepEqual(await f.movements(), [-1, -2, -2, 2])
 })
 

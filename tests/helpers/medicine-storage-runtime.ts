@@ -39,6 +39,14 @@ export const call = (command: unknown, authorization = `Bearer ${secret}`) =>
     body: JSON.stringify(command),
   })
 
+export const readLowStockEpisode = async (ownerId: string, medicineId: string) =>
+  (await runtime.getD1Database('DB'))
+    .prepare(
+      'SELECT id, push_eligible AS pushEligible FROM low_stock_episodes WHERE owner_id=? AND medicine_id=?',
+    )
+    .bind(ownerId, medicineId)
+    .first<{ id: string; pushEligible: number }>()
+
 // Doses saved after a starting count but before 0026 count once when it applies.
 export const stockBackfill = {
   ownerId: 'google:stock-backfill',

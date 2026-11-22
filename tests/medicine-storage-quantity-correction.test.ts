@@ -9,6 +9,7 @@ import {
   secret,
   startWorkerRuntime,
   stockBackfill,
+  readLowStockEpisode,
 } from './helpers/medicine-storage-runtime'
 
 startWorkerRuntime({
@@ -166,6 +167,43 @@ async function reviewedCorrection(f: Fixture, stockCount: number | null = null) 
     stockCount,
   }
 }
+
+test('threshold, tracking and Type changes open, preserve or end a low-stock episode', async () => {
+  const f = await fixture(4)
+  const episode = () => readLowStockEpisode(f.ownerId, f.medicineId)
+  const stock = async (operation: string, values: object = {}) =>
+    f.medicines({
+      operation,
+      stock: {
+        actionId: randomUUID(),
+        medicineId: f.medicineId,
+        expectedRevision: (await f.list()).revision,
+        ...values,
+      },
+    })
+  await stock('stockThreshold', { unit: 'tablet', threshold: 5 })
+  const first = await episode()
+  assert.equal(first?.pushEligible, 1)
+  await stock('stockThreshold', { unit: 'tablet', threshold: 6 })
+  assert.deepEqual(await episode(), first)
+  await stock('stockThreshold', { unit: 'tablet', threshold: 4 })
+  assert.equal(await episode(), null)
+  await stock('stockThreshold', { unit: 'tablet', threshold: 5 })
+  const second = await episode()
+  assert.equal(second?.pushEligible, 1)
+  assert.notEqual(second.id, first.id)
+  await stock('stockOff')
+  assert.equal(await episode(), null)
+  await stock('stockOn', { unit: 'tablet', startingCount: 3 })
+  const third = await episode()
+  assert.equal(third?.pushEligible, 1)
+  assert.notEqual(third.id, second.id)
+
+  const correction = await reviewedCorrection(f, 3)
+  await f.medicines({ operation: 'correctType', correction })
+  assert.deepEqual((await f.list()).stock, { tracked: true, count: 3 })
+  assert.equal(await episode(), null)
+})
 
 test('correction preserves dose and Schedule identities, applies explicit repairs across Strength periods, and reconciles tracked Stock', async () => {
   const f = await fixture(10)
