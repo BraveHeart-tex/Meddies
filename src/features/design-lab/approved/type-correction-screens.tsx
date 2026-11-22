@@ -12,10 +12,8 @@ import { toast } from '@/components/ui/toast'
 import { FixtureQuery } from '../fixture-query'
 import { NOW, routine } from '../lab-fixtures'
 import { correctionMedicine, type SharedState } from './type-correction-model'
-import { Frame, Nav, TypeChange } from './type-correction-parts'
-import { EditDetails } from './type-correction-edit'
+import { Nav } from './type-correction-parts'
 import { SimpleCorrection } from './type-correction-simple'
-import { Card } from '@/components/ui/card'
 
 function SaveState({ state }: { state: SharedState }) {
   const [retried, setRetried] = useState(false)
@@ -43,26 +41,6 @@ function SaveState({ state }: { state: SharedState }) {
     ],
   }
   const message = messages[state]
-  if (state === 'load-error')
-    return (
-      <Frame title="Review Type change">
-        <Card className="gap-2 px-4">
-          <h3 className="text-body-sm font-extrabold">Your chosen Type</h3>
-          <TypeChange />
-        </Card>
-        <Alert variant="destructive">
-          <AlertTitle>Couldn’t load the review.</AlertTitle>
-          <AlertDescription>
-            Your entered details are still here. All doses and saved schedules must be checked
-            before saving.
-          </AlertDescription>
-        </Alert>
-        <Nav href="/lab/440-d1" primary>
-          Try loading again
-        </Nav>
-        <Nav href="/lab/440-s6">Cancel</Nav>
-      </Frame>
-    )
   return (
     <SimpleCorrection
       initialStep="save"
@@ -87,7 +65,7 @@ function SaveState({ state }: { state: SharedState }) {
                   <AlertDescription>{message[1]}</AlertDescription>
                 </Alert>
                 {state === 'stale' ? (
-                  <Nav href="/lab/440-s1" primary>
+                  <Nav href={`/medications?medicine=${correctionMedicine.id}&record=fix`} primary>
                     {message[2]}
                   </Nav>
                 ) : (
@@ -173,7 +151,6 @@ export function CorrectionState({ state }: { state: SharedState }) {
         </ScreenStack>
       </AppShell>
     )
-  if (state === 'edit') return <EditDetails />
   if (state === 'cancel')
     return <SimpleCorrection initialStep="amount" initialIndex={1} initiallyDiscarding />
   if (state === 'saved') return <SavedMedication />

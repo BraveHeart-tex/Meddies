@@ -83,7 +83,7 @@ function open(
   )
   return { ...view, client, onSaved, onCancel, user: userEvent.setup() }
 }
-test('selected-period correction saves only after confirmation and locks used Type', async () => {
+test('selected-period correction allows used Type and retains its unchanged-Type save', async () => {
   let payload: Record<string, unknown> = {}
   server.use(
     http.patch('/api/medicines', async ({ request }) => {
@@ -106,14 +106,26 @@ test('selected-period correction saves only after confirmation and locks used Ty
   )
   const { user, onSaved } = open('fix', medicine, medicine.strengthRevisions[0].id)
   expect(screen.getByRole('textbox', { name: /Strength/ })).toHaveValue('200 mg')
-  expect(screen.queryByRole('combobox', { name: 'Type' })).not.toBeInTheDocument()
+  expect(screen.getByRole('combobox', { name: 'Type' })).toBeVisible()
   expect(screen.getByText('tablet', { exact: true })).toBeVisible()
   expect(
-    screen.getByText(/^These changes also update doses recorded for this period\./),
+    screen.getByText(/Name and strength change only for this period and its doses\./),
   ).toBeVisible()
   expect(
-    screen.getByText('Type and dose unit can’t change after a schedule or dose is added.'),
+    screen.getByText(
+      'Type and dose unit change throughout this medication, including every strength period, dose and saved schedule.',
+    ),
   ).toBeVisible()
+  await user.click(screen.getByRole('combobox', { name: 'Type' }))
+  await user.click(await screen.findByRole('option', { name: 'Liquid' }))
+  expect(screen.getByText('ml', { exact: true })).toBeVisible()
+  expect(screen.getByRole('textbox', { name: 'Strength' })).toHaveValue('200 mg')
+  expect(screen.getByRole('textbox', { name: 'Strength' })).toHaveAccessibleDescription(
+    'On the bottle, e.g. 250 mg/5 ml. Not your dose amount.',
+  )
+  expect(screen.getByRole('button', { name: 'Review Type change' })).toBeVisible()
+  await user.click(screen.getByRole('combobox', { name: 'Type' }))
+  await user.click(await screen.findByRole('option', { name: 'Tablet' }))
   await user.clear(screen.getByRole('textbox', { name: /Strength/ }))
   await user.type(screen.getByRole('textbox', { name: /Strength/ }), '250 mg')
   await user.click(screen.getByRole('button', { name: 'Save details' }))
@@ -260,14 +272,6 @@ test('Unscheduled disclosure updates from an earlier period to Now before saving
       expect.anything(),
     ),
   )
-})
-
-test('never-used Type changes its matching Quantity unit; any past dose locks it', async () => {
-  const { user } = open('fix', { ...medicine, everHadSchedule: false, everHadDose: false })
-  await user.click(screen.getByRole('combobox', { name: 'Type' }))
-  expect(await screen.findAllByRole('option')).toHaveLength(5)
-  await user.click(screen.getByRole('option', { name: 'Capsule' }))
-  expect(screen.getByText('capsule', { exact: true })).toBeVisible()
 })
 
 test('strength bounds reject future and before latest Taken without sending a save', async () => {
@@ -643,52 +647,6 @@ test('a restored correction sends the revision first edited rather than silently
   expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Old draft')
 })
 
-test('unused Type updates singular dose unit and Strength help without locking the form', async () => {
-  const record = {
-    ...medicine,
-    everHadSchedule: false,
-    everHadDose: false,
-    strengthRevisions: [
-      { ...medicine.strengthRevisions[0], effectiveAt: '0001-01-01T00:00:00.000Z' },
-    ],
-    currentStrengthRevisionId: medicine.strengthRevisions[0].id,
-  }
-  const { user } = open('fix', record)
-  expect(screen.getByRole('heading', { name: 'Edit details' })).toBeVisible()
-  expect(screen.getByText(/This period started when you added Magnesium\./)).toBeVisible()
-  expect(screen.getByRole('group', { name: 'Name and strength' })).toBeVisible()
-  expect(screen.getByText('tablet', { exact: true })).toBeVisible()
-  expect(screen.getByText('Type can change until a schedule or dose is added.')).toBeVisible()
-  await user.click(screen.getByRole('combobox', { name: 'Type' }))
-  await user.click(await screen.findByRole('option', { name: 'Liquid' }))
-  expect(screen.getByText('ml', { exact: true })).toBeVisible()
-  expect(screen.getByRole('textbox', { name: 'Strength' })).toHaveAccessibleDescription(
-    'On the bottle, e.g. 250 mg/5 ml. Not your dose amount.',
-  )
-})
-
-test('locked Liquid describes its later current period and retains singular ml', () => {
-  const record = {
-    ...medicine,
-    unit: 'liquid' as const,
-    strengthRevisions: medicine.strengthRevisions.map((period, index) => ({
-      ...period,
-      unit: 'liquid' as const,
-      effectiveAt: index ? '2026-11-04T06:00:00.000Z' : '0001-01-01T00:00:00.000Z',
-    })),
-  }
-  open('fix', record)
-  const group = screen.getByRole('group', { name: 'Type and dose unit' })
-  expect(within(group).getByText('Liquid')).toBeVisible()
-  expect(within(group).getByText('ml')).toBeVisible()
-  expect(group).toHaveAccessibleDescription(
-    'Type and dose unit can’t change after a schedule or dose is added.',
-  )
-  expect(within(group).getAllByLabelText('Can’t change')).toHaveLength(2)
-  expect(screen.queryByRole('combobox', { name: 'Type' })).not.toBeInTheDocument()
-  expect(screen.getByText(/This period started Wed 4 Nov at 09:00\./)).toBeVisible()
-})
-
 // #377: a confirmed record save returns to Medication detail with its Toast. Catches the
 // confirmation going back inline or dropping its check.
 test.each([
@@ -779,4 +737,124 @@ test.each([
   }
   await user.click(await screen.findByRole('button', { name: saveLabel }))
   await findConfirmation(title, 'check')
+})
+
+// #442: public form + authenticated read boundary. No Type correction write is permitted.
+test('Type review counts conflicts and compatible amounts and classifies later destinations without saving', async () => {
+  const requests: { method: string; body: unknown }[] = []
+  let stockTracked = true
+  let conflicts = [
+    { key: 'dose:1', kind: 'scheduled', quantity: 0.5, time: '2026-11-01T06:00:00.000Z' },
+    {
+      key: 'schedule:1',
+      kind: 'schedule',
+      quantity: 0.5,
+      time: '09:00',
+      version: {
+        id: '44444444-4444-4444-8444-444444444444',
+        startDate: '2026-11-01',
+        confirmedAt: '2026-11-01T00:00:00.000Z',
+        replacedAt: null,
+      },
+    },
+  ]
+  server.use(
+    http.all('/api/medicines/type-correction', async ({ request }) => {
+      requests.push({ method: request.method, body: await request.json() })
+      return HttpResponse.json({
+        review: {
+          medicineId: medicine.id,
+          unit: 'capsule',
+          fromUnit: 'tablet',
+          revision: 1,
+          reviewVersion: 5,
+          stockTracked,
+          compatibleAmounts: 7,
+          conflicts,
+        },
+      })
+    }),
+  )
+  const { user, onSaved } = open('fix', medicine, medicine.strengthRevisions[0].id)
+  await user.click(screen.getByRole('combobox', { name: 'Type' }))
+  await user.click(await screen.findByRole('option', { name: 'Capsule' }))
+  await user.click(screen.getByRole('button', { name: 'Review Type change' }))
+  expect(await screen.findByRole('heading', { name: 'Change to Capsule?' })).toHaveFocus()
+  expect(screen.getByText('Every strength period, dose and schedule.')).toBeVisible()
+  expect(screen.getByText('1 tablet is recorded as 1 capsule.')).toBeVisible()
+  expect(screen.getByRole('heading', { name: '2 amounts to check' })).toBeVisible()
+  expect(screen.getByText(/1 dose and 1 schedule amount/)).toBeVisible()
+  expect(screen.getByText('7 compatible amounts keep their number.')).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Check first amount' })).not.toBeInTheDocument()
+  for (const tracked of [true, false]) {
+    await user.click(screen.getByRole('button', { name: 'Edit details' }))
+    conflicts = []
+    stockTracked = tracked
+    await user.click(screen.getByRole('button', { name: 'Review Type change' }))
+    expect(await screen.findByRole('heading', { name: 'All saved amounts fit' })).toBeVisible()
+    expect(
+      screen.getByText(tracked ? 'Next, count your capsules.' : 'Stock tracking stays off.'),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: /Review changes|Count Stock/ }),
+    ).not.toBeInTheDocument()
+  }
+  expect(requests).toEqual(
+    Array(3).fill({ method: 'POST', body: { medicineId: medicine.id, unit: 'capsule' } }),
+  )
+  expect(onSaved).not.toHaveBeenCalled()
+})
+
+test('failed Type preflight retains selected-period details, retries only the read and permits cancellation', async () => {
+  const methods: string[] = []
+  server.use(
+    http.all('/api/medicines/type-correction', async ({ request }) => {
+      methods.push(request.method)
+      expect(await request.json()).toEqual({ medicineId: medicine.id, unit: 'capsule' })
+      return methods.length === 1
+        ? HttpResponse.error()
+        : HttpResponse.json({
+            review: {
+              medicineId: medicine.id,
+              unit: 'capsule',
+              fromUnit: 'tablet',
+              revision: 1,
+              reviewVersion: 2,
+              stockTracked: false,
+              compatibleAmounts: 1,
+              conflicts: [],
+            },
+          })
+    }),
+  )
+  const period = medicine.strengthRevisions[0].id
+  const { user, client, onSaved, onCancel } = open('fix', medicine, period)
+  await user.clear(screen.getByRole('textbox', { name: 'Name' }))
+  await user.click(screen.getByRole('combobox', { name: 'Type' }))
+  await user.click(await screen.findByRole('option', { name: 'Capsule' }))
+  await user.click(screen.getByRole('button', { name: 'Review Type change' }))
+  expect(screen.getByRole('textbox', { name: 'Name' })).toHaveFocus()
+  await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Corrected Magnesium')
+  await user.clear(screen.getByRole('textbox', { name: 'Strength' }))
+  await user.type(screen.getByRole('textbox', { name: 'Strength' }), '250 mg')
+  await user.click(screen.getByRole('button', { name: 'Review Type change' }))
+  expect(await screen.findByText('Couldn’t load the review.')).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Review Type change' })).toHaveFocus()
+  expect(methods).toEqual(['POST'])
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(screen.getByRole('dialog', { name: 'Discard these changes?' })).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Keep editing' }))
+  await user.click(screen.getByRole('button', { name: 'Try loading again' }))
+  expect(await screen.findByRole('heading', { name: 'Change to Capsule?' })).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Edit details' }))
+  expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Corrected Magnesium')
+  expect(screen.getByRole('textbox', { name: 'Strength' })).toHaveValue('250 mg')
+  expect(screen.getByRole('combobox', { name: 'Type' })).toHaveTextContent('Capsule')
+  expect(screen.getByText(/This period ran from/)).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+  await user.click(screen.getByRole('button', { name: 'Discard changes' }))
+  expect(onCancel).toHaveBeenCalledOnce()
+  expect(onSaved).not.toHaveBeenCalled()
+  expect(methods).toEqual(['POST', 'POST'])
+  expect(client.getQueryData(medicineKeys.list())).toBeUndefined()
 })

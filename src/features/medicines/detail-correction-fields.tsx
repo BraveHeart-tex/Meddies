@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronsUpDownIcon, LockIcon } from 'lucide-react'
+import { ChevronsUpDownIcon } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
 import { Controller, useWatch, type Control } from 'react-hook-form'
 import { Card } from '@/components/ui/card'
@@ -18,18 +18,13 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectGroup,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  medicineTypeLabel,
-  medicineTypeOptions,
-  strengthHelp,
-  unitName,
-} from '@/lib/quantity-policy'
+import { medicineTypeOptions, strengthHelp, unitName } from '@/lib/quantity-policy'
 import { TypeTile } from './type-tile'
 import type { MedicineDetails, MedicineDetailsValues } from './medicine-form-schema'
-import type { MedicineRecord } from './contract'
 
 type RecordValues = MedicineDetailsValues & { expectedRevision: number; date: string; time: string }
 type RecordOutput = MedicineDetails & { expectedRevision: number; date: string; time: string }
@@ -43,19 +38,13 @@ const rowHelp = 'col-span-full pb-3 text-caption'
 const rowLabel = 'text-base font-extrabold text-foreground'
 const valueRow = 'grid min-h-14 grid-cols-[5.75rem_minmax(0,1fr)_1.375rem] items-center'
 
-/** A fact the user can read but not change here: label, muted value, optional lock. */
-function ValueRow({ label, value, locked }: { label: string; value: string; locked: boolean }) {
+/** A fact the user can read but not change here: label and derived muted value. */
+function ValueRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="px-4 not-first:border-t">
       <div className={valueRow}>
         <span className={rowLabel}>{label}</span>
         <span className="text-body-lg font-bold text-muted-foreground">{value}</span>
-        {locked && (
-          <LockIcon
-            aria-label="Can’t change"
-            className="size-4.5 justify-self-center text-muted-foreground"
-          />
-        )}
       </div>
     </div>
   )
@@ -81,23 +70,17 @@ function Group({ title, note, children }: { title: string; note?: string; childr
   )
 }
 
-/** Detail correction keeps editable facts first; used Types remain locked to their saved unit. */
+/** Name and Strength stay period-scoped; Type and its derived Dose unit cover the Medicine. */
 export function DetailCorrectionFields({
   control,
-  period,
-  locked,
   disabled,
-  typeNote,
 }: {
   control: Control<RecordValues, unknown, RecordOutput>
-  period: MedicineRecord['strengthRevisions'][number]
-  locked: boolean
   disabled: boolean
-  typeNote?: string
 }) {
   const id = useId()
   const selected = useWatch({ control, name: 'unit' })
-  const type = locked ? period.unit : selected
+  const type = selected
   return (
     <>
       <Group title="Name and strength">
@@ -152,45 +135,38 @@ export function DetailCorrectionFields({
       </Group>
       <Group
         title="Type and dose unit"
-        note={
-          typeNote ??
-          (locked
-            ? 'Type and dose unit can’t change after a schedule or dose is added.'
-            : 'Type can change until a schedule or dose is added.')
-        }
+        note="Type and dose unit change throughout this medication, including every strength period, dose and saved schedule."
       >
-        {locked ? (
-          <ValueRow label="Type" value={medicineTypeLabel(period.unit)} locked />
-        ) : (
-          <Controller
-            name="unit"
-            control={control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid} className="not-first:border-t">
-                <Select
-                  items={medicineTypeOptions}
-                  value={field.value || null}
-                  onValueChange={(value) => field.onChange(value ?? '')}
-                  disabled={disabled}
+        <Controller
+          name="unit"
+          control={control}
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid} className="not-first:border-t">
+              <Select
+                items={medicineTypeOptions}
+                value={field.value || null}
+                onValueChange={(value) => field.onChange(value ?? '')}
+                disabled={disabled}
+              >
+                <SelectTrigger
+                  ref={field.ref}
+                  onBlur={field.onBlur}
+                  icon={ChevronsUpDownIcon}
+                  aria-labelledby={`${id}-type-label`}
+                  aria-invalid={fieldState.invalid}
+                  aria-describedby={fieldState.invalid ? `${id}-unit-error` : undefined}
+                  className='grid min-h-14 grid-cols-[5.75rem_minmax(0,1fr)_1.375rem] gap-0 rounded-none border-0 bg-transparent px-4 text-body-lg focus-visible:-outline-offset-2 aria-invalid:ring-0 [&_svg:not([class*="size-"])]:size-5.5'
                 >
-                  <SelectTrigger
-                    ref={field.ref}
-                    onBlur={field.onBlur}
-                    icon={ChevronsUpDownIcon}
-                    aria-labelledby={`${id}-type-label`}
-                    aria-invalid={fieldState.invalid}
-                    aria-describedby={fieldState.invalid ? `${id}-unit-error` : undefined}
-                    className='grid min-h-14 grid-cols-[5.75rem_minmax(0,1fr)_1.375rem] gap-0 rounded-none border-0 bg-transparent px-4 text-body-lg focus-visible:-outline-offset-2 aria-invalid:ring-0 [&_svg:not([class*="size-"])]:size-5.5'
-                  >
-                    <span id={`${id}-type-label`} className={rowLabel}>
-                      Type
-                    </span>
-                    <SelectValue
-                      placeholder="Choose"
-                      className="font-bold in-data-placeholder:font-semibold"
-                    />
-                  </SelectTrigger>
-                  <SelectContent side="top" align="end" className="w-61 rounded-lg p-0.5">
+                  <span id={`${id}-type-label`} className={rowLabel}>
+                    Type
+                  </span>
+                  <SelectValue
+                    placeholder="Choose"
+                    className="font-bold in-data-placeholder:font-semibold"
+                  />
+                </SelectTrigger>
+                <SelectContent side="top" align="end" className="w-61 rounded-lg p-0.5">
+                  <SelectGroup>
                     {medicineTypeOptions.map((option) => (
                       <SelectItem
                         key={option.value}
@@ -203,18 +179,18 @@ export function DetailCorrectionFields({
                         </span>
                       </SelectItem>
                     ))}
-                  </SelectContent>
-                </Select>
-                <FieldError
-                  id={`${id}-unit-error`}
-                  className="px-4 pb-3 font-extrabold"
-                  errors={[fieldState.error]}
-                />
-              </Field>
-            )}
-          />
-        )}
-        <ValueRow label="Dose unit" value={type ? unitName(1, type) : ''} locked={locked} />
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <FieldError
+                id={`${id}-unit-error`}
+                className="px-4 pb-3 font-extrabold"
+                errors={[fieldState.error]}
+              />
+            </Field>
+          )}
+        />
+        <ValueRow label="Dose unit" value={type ? unitName(1, type) : ''} />
       </Group>
     </>
   )

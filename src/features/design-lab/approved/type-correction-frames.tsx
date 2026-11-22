@@ -4,12 +4,6 @@ import { CorrectionState } from './type-correction-screens'
 
 export const typeCorrectionFrames = [
   {
-    slug: '440-d1',
-    citation: '440·D1',
-    title: 'One clear next action',
-    render: () => <SimpleCorrection />,
-  },
-  {
     slug: '440-d2',
     citation: '440·D2',
     title: 'One amount at a time',
@@ -44,12 +38,6 @@ export const typeCorrectionFrames = [
     citation: '440·D7',
     title: 'Enter a missing dose amount',
     render: () => <SimpleCorrection initialStep="amount" initiallyInvalid />,
-  },
-  {
-    slug: '440-s1',
-    citation: '440·S1',
-    title: 'Edit an earlier Strength period',
-    render: () => <CorrectionState state="edit" />,
   },
   {
     slug: '440-s6',
@@ -92,12 +80,6 @@ export const typeCorrectionFrames = [
     citation: '440·S12',
     title: 'Saved medication',
     render: () => <CorrectionState state="saved" />,
-  },
-  {
-    slug: '440-s13',
-    citation: '440·S13',
-    title: 'Review could not load',
-    render: () => <CorrectionState state="load-error" />,
   },
   {
     slug: '440-s14',

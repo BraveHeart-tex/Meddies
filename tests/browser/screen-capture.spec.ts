@@ -155,6 +155,37 @@ test.describe('Edit details groups', () => {
             .bind(ownerId, id, label, strength, unit, Number(locked))
             .run()
         }
+        const magnesiumId = records[1][0]
+        await db
+          .prepare(
+            'UPDATE medicine_strength_revisions SET id=?, effective_at=? WHERE owner_id=? AND medicine_id=?',
+          )
+          .bind(
+            '00000000-0000-4000-8000-000000442001',
+            '2026-10-01T05:00:00.000Z',
+            ownerId,
+            magnesiumId,
+          )
+          .run()
+        await db
+          .prepare('UPDATE user_medications SET strength=? WHERE owner_id=? AND id=?')
+          .bind('400 mg', ownerId, magnesiumId)
+          .run()
+        await db
+          .prepare(
+            'INSERT INTO medicine_strength_revisions(owner_id,medicine_id,id,strength,label,unit,effective_at,sequence) VALUES(?,?,?,?,?,?,?,?)',
+          )
+          .bind(
+            ownerId,
+            magnesiumId,
+            '00000000-0000-4000-8000-000000442003',
+            '400 mg',
+            'Magnesium',
+            'tablet',
+            '2026-11-01T05:00:00.000Z',
+            1,
+          )
+          .run()
         const id = records[3][0]
         await db
           .prepare(
@@ -182,6 +213,7 @@ test.describe('Edit details groups', () => {
   })
 
   test('capture Edit details groups', { tag: '@visual' }, async ({ page }) => {
+    test.setTimeout(120_000)
     // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
     test.skip(!out || process.env.MEDDIES_RECORD_CAPTURE !== '1', 'Set MEDDIES_RECORD_CAPTURE=1')
     await mkdir(resolve(out!), { recursive: true })
@@ -215,6 +247,75 @@ test.describe('Edit details groups', () => {
     })
     await page.keyboard.press('Escape')
     await expect(type).toBeFocused()
+    // #442: additional production states in the existing opt-in capture path.
+    const id = records[1][0]
+    const earlierPeriod = '00000000-0000-4000-8000-000000442001'
+    const reviewPath = '/api/medicines/type-correction'
+    await page.goto(`/medications?medicine=${id}&record=history`)
+    // Strength history links to the earlier period seeded above.
+    await expect(
+      page.getByRole('link', { name: 'Edit details for this period' }).last(),
+    ).toHaveAttribute('href', expect.stringContaining(earlierPeriod))
+    await page.getByRole('link', { name: 'Edit details for this period' }).last().click()
+    await expect(page.getByRole('heading', { name: 'Edit details for this period' })).toBeVisible()
+    await page.getByRole('combobox', { name: 'Type' }).click()
+    await page.getByRole('option', { name: 'Capsule', exact: true }).click()
+    const captureCorrection = async (name: string) => {
+      expect(await scrollsHorizontally(page)).toBe(false)
+      await page.getByRole('button').first().scrollIntoViewIfNeeded()
+      await captureSettled(page, {
+        path: resolve(out!, `${name}-402.png`),
+        style: 'nextjs-portal { display: none !important; }',
+      })
+    }
+    await captureCorrection('type-entry-earlier')
+    await page.route(`**${reviewPath}`, async (route) => {
+      await route.fulfill({
+        json: {
+          review: {
+            medicineId: id,
+            fromUnit: 'tablet',
+            unit: 'capsule',
+            revision: 0,
+            reviewVersion: 0,
+            stockTracked: true,
+            compatibleAmounts: 7,
+            conflicts: Array.from({ length: 26 }, (_, index) =>
+              index < 24
+                ? {
+                    key: `dose:${index}`,
+                    kind: 'scheduled',
+                    quantity: 0.5,
+                    time: '2026-10-01T05:00:00.000Z',
+                  }
+                : {
+                    key: `schedule:${index}`,
+                    kind: 'schedule',
+                    quantity: 0.5,
+                    time: '08:00',
+                    version: {
+                      id: '00000000-0000-4000-8000-000000442002',
+                      startDate: '2026-10-01',
+                      confirmedAt: '2026-10-01T05:00:00.000Z',
+                      replacedAt: null,
+                    },
+                  },
+            ),
+          },
+        },
+      })
+    })
+    await page.getByRole('button', { name: 'Review Type change' }).click()
+    await expect(page.getByRole('heading', { name: 'Change to Capsule?' })).toBeFocused()
+    await captureCorrection('type-consequences')
+    await page.getByRole('button', { name: 'Edit details', exact: true }).click()
+    await page.unroute(`**${reviewPath}`)
+    await page.route(`**${reviewPath}`, (route) =>
+      route.fulfill({ status: 503, json: { error: 'unavailable' } }),
+    )
+    await page.getByRole('button', { name: 'Review Type change' }).click()
+    await expect(page.getByText('Couldn’t load the review.')).toBeVisible()
+    await captureCorrection('type-read-failure')
   })
 })
 
