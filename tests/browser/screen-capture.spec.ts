@@ -284,20 +284,20 @@ test.describe('Edit details groups', () => {
               index < 24
                 ? {
                     key: `dose:${index}`,
-                    kind: 'scheduled',
+                    kind: index === 1 ? 'unscheduled' : 'scheduled',
                     quantity: 0.5,
-                    time: '2026-10-01T05:00:00.000Z',
+                    time: new Date(Date.UTC(2026, 10, 8 - index, 5, 10)).toISOString(),
                   }
                 : {
                     key: `schedule:${index}`,
                     kind: 'schedule',
-                    quantity: 0.5,
+                    quantity: index === 24 ? 0.5 : 1.5,
                     time: '08:00',
                     version: {
                       id: '00000000-0000-4000-8000-000000442002',
-                      startDate: '2026-10-01',
+                      startDate: index === 24 ? '2026-11-01' : '2026-10-01',
                       confirmedAt: '2026-10-01T05:00:00.000Z',
-                      replacedAt: null,
+                      replacedAt: index === 24 ? null : '2026-10-31T05:00:00.000Z',
                     },
                   },
             ),
@@ -308,6 +308,45 @@ test.describe('Edit details groups', () => {
     await page.getByRole('button', { name: 'Review Type change' }).click()
     await expect(page.getByRole('heading', { name: 'Change to Capsule?' })).toBeFocused()
     await captureCorrection('type-consequences')
+    // #450: production repair, validation and discard with the complete large-history queue.
+    await page.getByRole('button', { name: 'Check first amount' }).click()
+    await expect(
+      page.getByRole('heading', { name: 'How many capsules was this dose?' }),
+    ).toBeFocused()
+    await expect(page.getByText('Amount 1 of 26')).toBeVisible()
+    await captureCorrection('type-dose-repair')
+    const amount = page.getByRole('textbox', { name: 'Amount', exact: true })
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    await expect(amount).toBeFocused()
+    await expect(page.getByText('Enter a quantity.')).toBeVisible()
+    await captureCorrection('type-repair-invalid')
+    await amount.fill('1.5')
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    await expect(page.getByText('Use whole capsules.')).toBeVisible()
+    await expect(page.getByText('Amount 1 of 26')).toBeVisible()
+    await expect(amount).toBeFocused()
+    await amount.fill('2')
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    await page.getByRole('button', { name: 'Cancel change' }).click()
+    await expect(page.getByRole('dialog', { name: 'Discard these changes?' })).toBeVisible()
+    await captureCorrection('type-repair-discard')
+    await page.getByRole('button', { name: 'Keep editing' }).click()
+    for (let index = 1; index < 24; index++) {
+      await expect(page.getByText(`Amount ${index + 1} of 26`)).toBeVisible()
+      await amount.fill('1')
+      await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    }
+    await expect(page.getByText('Current schedule · 08:00')).toBeVisible()
+    await captureCorrection('type-current-schedule-repair')
+    await amount.fill('1')
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    await expect(page.getByText('Earlier schedule · 08:00')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'How many capsules per dose?' })).toBeFocused()
+    await captureCorrection('type-earlier-schedule-repair')
+    for (let index = 25; index >= 0; index--) {
+      await page.getByRole('button', { name: 'Back', exact: true }).click()
+    }
+
     await page.getByRole('button', { name: 'Edit details', exact: true }).click()
     await page.unroute(`**${reviewPath}`)
     await page.route(`**${reviewPath}`, (route) =>

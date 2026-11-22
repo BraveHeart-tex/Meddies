@@ -1,3 +1,4 @@
+import { RepairFrame } from './type-correction-screen'
 import Loading from '@/app/loading'
 import { SettingsScreen } from '@/app/settings/settings-screen'
 import { AppHeader } from '@/components/layout/app-header'
@@ -24,6 +25,20 @@ import { LabNotificationsOff } from '../lab-notifications'
  * the panel their view selects.
  */
 export const builtFrames = [
+  {
+    slug: '440-d2',
+    citation: '440·D2',
+    title: 'Dose repair',
+    route: '/medications?medicine=<id>&record=fix',
+    render: () => <RepairFrame />,
+  },
+  {
+    slug: '440-d5',
+    citation: '440·D5',
+    title: 'Schedule amount repair',
+    route: '/medications?medicine=<id>&record=fix',
+    render: () => <RepairFrame schedule />,
+  },
   {
     slug: '238-a1',
     title: 'Today',

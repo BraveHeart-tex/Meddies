@@ -1,0 +1,37 @@
+- main
+  - button "Back"
+  - banner
+    - paragraph
+      - text: Magnesium · 400 mg
+    - heading "How many capsules per dose?" [level=1]
+  - paragraph
+    - text: Amount 26 of 26
+  - paragraph
+    - text: Earlier schedule · 08:00
+  - paragraph
+    - text: Thu 1 Oct to Sat 31 Oct
+  - paragraph
+    - text: Saved as
+    - strong
+      - text: 1½ tablets
+  - group
+    - text: Amount
+    - button "Fewer: Amount"
+    - textbox "Amount"
+    - button "More: Amount"
+    - text: capsules
+    - paragraph
+      - text: Enter the capsule amount for this dose. Use a whole number.
+  - button "Cancel change"
+  - paragraph
+    - text: Nothing saves until you review and save all changes.
+- navigation "Primary"
+  - list
+    - listitem
+      - link "Today"
+    - listitem
+      - link "Medications" [current=page]
+    - listitem
+      - link "History"
+    - listitem
+      - link "Settings"

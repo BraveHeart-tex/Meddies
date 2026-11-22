@@ -28,6 +28,8 @@ export const designCriticalScreens = [
   'History',
   'Settings',
   'Cold launch',
+  'Dose repair',
+  'Schedule amount repair',
 ] as const
 
 /**

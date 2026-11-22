@@ -785,7 +785,7 @@ test('Type review counts conflicts and compatible amounts and classifies later d
   expect(screen.getByRole('heading', { name: '2 amounts to check' })).toBeVisible()
   expect(screen.getByText(/1 dose and 1 schedule amount/)).toBeVisible()
   expect(screen.getByText('7 compatible amounts keep their number.')).toBeVisible()
-  expect(screen.queryByRole('button', { name: 'Check first amount' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Check first amount' })).toBeVisible()
   for (const tracked of [true, false]) {
     await user.click(screen.getByRole('button', { name: 'Edit details' }))
     conflicts = []
@@ -857,4 +857,182 @@ test('failed Type preflight retains selected-period details, retries only the re
   expect(onSaved).not.toHaveBeenCalled()
   expect(methods).toEqual(['POST', 'POST'])
   expect(client.getQueryData(medicineKeys.list())).toBeUndefined()
+})
+
+// #450: the complete production form proves queue identity, explicit entry and focus.
+const repairConflicts = [
+  { key: 'dose:scheduled', kind: 'scheduled', quantity: 0.5, time: '2026-11-01T06:10:00.000Z' },
+  { key: 'dose:unscheduled', kind: 'unscheduled', quantity: 1.5, time: '2026-11-02T18:15:00.000Z' },
+  {
+    key: 'schedule:current',
+    kind: 'schedule',
+    quantity: 0.5,
+    time: '09:00',
+    version: {
+      id: '44444444-4444-4444-8444-444444444444',
+      startDate: '2026-11-01',
+      confirmedAt: '2026-10-31T21:00:00.000Z',
+      replacedAt: null,
+    },
+  },
+  {
+    key: 'schedule:earlier',
+    kind: 'schedule',
+    quantity: 1.5,
+    time: '20:00',
+    version: {
+      id: '55555555-5555-4555-8555-555555555555',
+      startDate: '2026-10-01',
+      confirmedAt: '2026-09-30T21:00:00.000Z',
+      replacedAt: '2026-10-31T21:00:00.000Z',
+    },
+  },
+]
+function serveRepairQueue() {
+  server.use(
+    http.post('/api/medicines/type-correction', () =>
+      HttpResponse.json({
+        review: {
+          medicineId: medicine.id,
+          unit: 'capsule',
+          fromUnit: 'tablet',
+          revision: 1,
+          reviewVersion: 5,
+          stockTracked: false,
+          compatibleAmounts: 7,
+          conflicts: repairConflicts,
+        },
+      }),
+    ),
+  )
+}
+async function enterRepairQueue(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('combobox', { name: 'Type' }))
+  await user.click(await screen.findByRole('option', { name: 'Capsule' }))
+  await user.click(screen.getByRole('button', { name: 'Review Type change' }))
+  await user.click(await screen.findByRole('button', { name: 'Check first amount' }))
+}
+test('Type repair preserves keyed raw entries across the complete queue and rejects blank or off-grid amounts', async () => {
+  serveRepairQueue()
+  const { user, onSaved } = open()
+  await enterRepairQueue(user)
+  const heading = 'How many capsules was this dose?'
+  expect(screen.getByRole('heading', { name: heading })).toHaveFocus()
+  expect(screen.getByText('Amount 1 of 4')).toBeVisible()
+  expect(screen.getByText('Taken · Sun 1 Nov at 09:10')).toBeVisible()
+  expect(screen.getByText(/Saved as/)).toHaveTextContent('½ tablet')
+  const amount = () => screen.getByRole('textbox', { name: 'Amount' })
+  expect(amount()).toHaveValue('')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(screen.getByText('Enter a quantity.')).toBeVisible()
+  expect(amount()).toHaveFocus()
+  await user.type(amount(), '1.5')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(screen.getByText('Use whole capsules.')).toBeVisible()
+  expect(screen.getByText('Amount 1 of 4')).toBeVisible()
+  expect(amount()).toHaveFocus()
+  await user.clear(amount())
+  await user.type(amount(), '02')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(screen.getByText('Amount 2 of 4')).toBeVisible()
+  expect(screen.getByText('Taken · Mon 2 Nov at 21:15')).toBeVisible()
+  expect(screen.getByText('Unscheduled dose')).toBeVisible()
+  expect(amount()).toHaveValue('')
+  await user.type(amount(), '3')
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+  expect(amount()).toHaveValue('02')
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+  await user.click(await screen.findByRole('button', { name: 'Check first amount' }))
+  expect(amount()).toHaveValue('02')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(amount()).toHaveValue('3')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(screen.getByText('Amount 3 of 4')).toBeVisible()
+  expect(screen.getByText('Current schedule · 09:00')).toBeVisible()
+  expect(screen.getByText('From Sun 1 Nov')).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'How many capsules per dose?' })).toHaveFocus()
+  expect(amount()).toHaveValue('')
+  await user.type(amount(), '4')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(screen.getByText('Amount 4 of 4')).toBeVisible()
+  expect(screen.getByText('Earlier schedule · 20:00')).toBeVisible()
+  expect(screen.getByText('Thu 1 Oct to Sun 1 Nov')).toBeVisible()
+  expect(amount()).toHaveValue('')
+  await user.type(amount(), '5')
+  expect(
+    screen.queryByRole('button', { name: /Continue|Review changes|Count Stock/ }),
+  ).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+  expect(amount()).toHaveValue('4')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(amount()).toHaveValue('5')
+  expect(onSaved).not.toHaveBeenCalled()
+})
+
+// Catches repairs surviving explicit discard or disappearing during Session navigation.
+test('Type repair Keep editing and remount retain the draft while Discard changes clears every entry without writes', async () => {
+  serveRepairQueue()
+  const writes = vi.fn()
+  server.use(
+    http.patch('/api/medicines', () => {
+      writes()
+      return HttpResponse.json({ error: 'unexpected' }, { status: 400 })
+    }),
+  )
+  const { user, client, onSaved, onCancel, unmount } = open(
+    'fix',
+    medicine,
+    medicine.strengthRevisions[0].id,
+  )
+  client.setQueryData(medicineKeys.list(), [medicine])
+  await user.clear(screen.getByRole('textbox', { name: 'Name' }))
+  await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Draft Magnesium')
+  await user.clear(screen.getByRole('textbox', { name: 'Strength' }))
+  await user.type(screen.getByRole('textbox', { name: 'Strength' }), '250 mg')
+  await enterRepairQueue(user)
+  await user.type(screen.getByRole('textbox', { name: 'Amount' }), '02')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  await user.type(screen.getByRole('textbox', { name: 'Amount' }), '1.')
+  await user.click(screen.getByRole('button', { name: 'Cancel change' }))
+  expect(screen.getByRole('dialog', { name: 'Discard these changes?' })).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Keep editing' }))
+  expect(screen.getByText('Amount 2 of 4')).toBeVisible()
+  expect(screen.getByRole('textbox', { name: 'Amount' })).toHaveValue('1.')
+  unmount()
+  function reopen() {
+    return render(
+      <QueryClientProvider client={client}>
+        <SchedulingClockProvider serverNow="2026-11-15T07:00:00.000Z">
+          <MedicineRecordForm
+            medicine={medicine}
+            mode="fix"
+            periodId={medicine.strengthRevisions[0].id}
+            onSaved={onSaved}
+            onCancel={onCancel}
+          />
+        </SchedulingClockProvider>
+      </QueryClientProvider>,
+    )
+  }
+  const restored = reopen()
+  expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Draft Magnesium')
+  expect(screen.getByRole('textbox', { name: 'Strength' })).toHaveValue('250 mg')
+  expect(screen.getByRole('combobox', { name: 'Type' })).toHaveTextContent('Capsule')
+  await user.click(screen.getByRole('button', { name: 'Review Type change' }))
+  await user.click(await screen.findByRole('button', { name: 'Check first amount' }))
+  expect(screen.getByRole('textbox', { name: 'Amount' })).toHaveValue('02')
+  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(screen.getByRole('textbox', { name: 'Amount' })).toHaveValue('1.')
+  await user.click(screen.getByRole('button', { name: 'Cancel change' }))
+  await user.click(screen.getByRole('button', { name: 'Discard changes' }))
+  expect(onCancel).toHaveBeenCalledOnce()
+  restored.unmount()
+  reopen()
+  expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Magnesium')
+  expect(screen.getByRole('textbox', { name: 'Strength' })).toHaveValue('200 mg')
+  await enterRepairQueue(user)
+  expect(screen.getByRole('textbox', { name: 'Amount' })).toHaveValue('')
+  expect(writes).not.toHaveBeenCalled()
+  expect(onSaved).not.toHaveBeenCalled()
+  expect(client.getQueryData(medicineKeys.list())).toEqual([medicine])
 })

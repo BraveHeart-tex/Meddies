@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -14,24 +14,30 @@ import {
   unitName,
   type WritableMedicineType,
 } from '@/lib/quantity-policy'
+import { TypeCorrectionRepair } from './type-correction-repair'
 import { TypeTile } from './type-tile'
 import { MedicationIdentity } from './medication-sub-screen'
 import type { MedicineRecord } from './contract'
 import { parseTypeCorrectionReview } from './type-correction-contract'
 
 /** Advisory read only. Entry values stay in the record form's Session draft. A fresh entry or
- * explicit retry reads again; no save, repair, Stock count or automatic continuation is started.
+ * explicit retry reads again. Conflicts open the guided repair queue; no save, Stock count
+ * or automatic continuation is started.
  */
 export function TypeCorrectionReviewScreen({
   medicine,
   unit,
   onBack,
   onCancel,
+  amounts,
+  onAmountChange,
 }: {
   medicine: MedicineRecord
   unit: WritableMedicineType
   onBack: () => void
   onCancel: () => void
+  amounts: Record<string, string>
+  onAmountChange: (key: string, value: string) => void
 }) {
   const read = useQuery({
     queryKey: ['medicine-type-correction', medicine.id, unit],
@@ -56,10 +62,11 @@ export function TypeCorrectionReviewScreen({
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   })
+  const [index, setIndex] = useState<number | null>(null)
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
     heading.current?.focus()
-  }, [read.status])
+  }, [read.status, index])
   const review = read.data
   const type = medicineTypeLabel(unit)
   const count = review?.conflicts.length ?? 0
@@ -81,6 +88,20 @@ export function TypeCorrectionReviewScreen({
       </span>
     </span>
   )
+  if (review && index !== null)
+    return (
+      <TypeCorrectionRepair
+        key={review.conflicts[index].key}
+        medicine={medicine}
+        review={review}
+        index={index}
+        value={amounts[review.conflicts[index].key] ?? ''}
+        onValueChange={(value) => onAmountChange(review.conflicts[index].key, value)}
+        onBack={() => setIndex(index === 0 ? null : index - 1)}
+        onContinue={() => setIndex(index + 1)}
+        onCancel={onCancel}
+      />
+    )
   return (
     <div className={review ? 'flex flex-col gap-7 pb-5' : 'flex flex-col gap-5 pb-5'}>
       <Button variant="ghost" className="-ml-3 self-start" onClick={onBack}>
@@ -173,6 +194,12 @@ export function TypeCorrectionReviewScreen({
             </p>
           )}
         </>
+      )}
+      {review && count > 0 && (
+        <Button size="lg" onClick={() => setIndex(0)}>
+          Check first amount
+          <ArrowRight data-icon="inline-end" aria-hidden="true" />
+        </Button>
       )}
       <Button variant={review ? 'ghost' : 'outline'} onClick={onCancel}>
         Cancel

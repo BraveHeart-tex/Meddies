@@ -4,12 +4,6 @@ import { CorrectionState } from './type-correction-screens'
 
 export const typeCorrectionFrames = [
   {
-    slug: '440-d2',
-    citation: '440·D2',
-    title: 'One amount at a time',
-    render: () => <SimpleCorrection initialStep="amount" />,
-  },
-  {
     slug: '440-d3',
     citation: '440·D3',
     title: 'Count capsules',
@@ -22,28 +16,10 @@ export const typeCorrectionFrames = [
     render: () => <SimpleCorrection initialStep="save" />,
   },
   {
-    slug: '440-d5',
-    citation: '440·D5',
-    title: 'Repair an earlier Schedule amount',
-    render: () => <SimpleCorrection initialStep="amount" initialIndex={25} />,
-  },
-  {
     slug: '440-d6',
     citation: '440·D6',
     title: 'Review compatible amounts with Stock off',
     render: () => <SimpleCorrection initialStep="save" compatibleUntracked />,
-  },
-  {
-    slug: '440-d7',
-    citation: '440·D7',
-    title: 'Enter a missing dose amount',
-    render: () => <SimpleCorrection initialStep="amount" initiallyInvalid />,
-  },
-  {
-    slug: '440-s6',
-    citation: '440·S6',
-    title: 'Discard repairs',
-    render: () => <CorrectionState state="cancel" />,
   },
   {
     slug: '440-s7',

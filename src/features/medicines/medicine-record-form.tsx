@@ -70,6 +70,8 @@ export function MedicineRecordForm({
   const schema = medicineDetailsSchema
     .extend({
       expectedRevision: z.number(),
+      repairUnit: z.string().default(''),
+      repairs: z.record(z.string(), z.string()).default({}),
       strength: strength
         ? z
             .string()
@@ -104,11 +106,14 @@ export function MedicineRecordForm({
     expectedRevision: medicine.revision,
     date: '',
     time: '',
+    repairUnit: '',
+    repairs: {},
   }
   const form = useForm<z.input<typeof schema>, unknown, z.output<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: defaults,
   })
+  const repairs = useWatch({ control: form.control, name: 'repairs' })
   const chosenUnit = useWatch({ control: form.control, name: 'unit' })
   const typeChanged = !strength && chosenUnit !== medicine.unit
   const draft = useSessionFormDraft(save.key, form)
@@ -118,6 +123,10 @@ export function MedicineRecordForm({
   const problem = save.problem
   async function submit(values: z.output<typeof schema>) {
     if (!strength && values.unit !== medicine.unit) {
+      if (values.repairUnit !== values.unit) {
+        form.setValue('repairs', {})
+        form.setValue('repairUnit', values.unit)
+      }
       setReviewUnit(values.unit)
       return
     }
@@ -174,6 +183,10 @@ export function MedicineRecordForm({
             strength: form.getValues('strength') || null,
           }}
           unit={reviewUnit}
+          amounts={repairs ?? {}}
+          onAmountChange={(key, value) =>
+            form.setValue('repairs', { ...form.getValues('repairs'), [key]: value })
+          }
           onBack={() => setReviewUnit(null)}
           onCancel={cancel}
         />
