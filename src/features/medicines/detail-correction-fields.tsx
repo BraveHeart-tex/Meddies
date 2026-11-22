@@ -87,11 +87,13 @@ export function DetailCorrectionFields({
   period,
   locked,
   disabled,
+  typeNote,
 }: {
   control: Control<RecordValues, unknown, RecordOutput>
   period: MedicineRecord['strengthRevisions'][number]
   locked: boolean
   disabled: boolean
+  typeNote?: string
 }) {
   const id = useId()
   const selected = useWatch({ control, name: 'unit' })
@@ -151,9 +153,10 @@ export function DetailCorrectionFields({
       <Group
         title="Type and dose unit"
         note={
-          locked
+          typeNote ??
+          (locked
             ? 'Type and dose unit can’t change after a schedule or dose is added.'
-            : 'Type can change until a schedule or dose is added.'
+            : 'Type can change until a schedule or dose is added.')
         }
       >
         {locked ? (
