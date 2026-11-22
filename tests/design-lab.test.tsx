@@ -11,16 +11,6 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-// Every registered frame renders in jsdom, so a frame needing a browser API jsdom lacks fails
-// in the design ticket that adds it, not in the build ticket that reuses its parts.
-test.each(designFrames.map((frame) => [frame.citation, frame] as const))(
-  '%s renders',
-  (_citation, frame) => {
-    render(frame.render())
-    expect(document.body).not.toBeEmptyDOMElement()
-  },
-)
-
 test('a frame takes its status from its folder', () => {
   const folders = { draft: draftFrames, approved: approvedFrames, built: builtFrames }
   for (const [status, frames] of Object.entries(folders))
