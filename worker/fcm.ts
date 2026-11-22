@@ -12,7 +12,8 @@
 // Occurrence's +80 minute window, or a Snooze's (#36) target +5 minutes when later. Only a message
 // with `labels`, which the due-reminder operation adds with Medication names on (#37), uses the
 // named wording: one dose's label in its title, several doses' labels in their body, with the
-// generic body or title beside it. A label appears in nothing else.
+// generic body or title beside it. Refill pushes (#458) use title-only copy and open the
+// Medications list. A label appears only in the notification copy.
 //
 // Dose reminder answers: success is accepted; 429, 5xx, an expired access token, a token-endpoint failure, a
 // network error or a timeout is transient; anything else is rejected with FCM's `errorCode`, or
@@ -123,8 +124,9 @@ export function createFcmProvider(
           message: {
             token: message.token,
             notification: {
-              title: message.label ? `Check Stock for ${message.label}` : 'Check your Stock',
+              title: message.label ? `Check stock for ${message.label}` : 'Check your stock',
             },
+            data: { link: '/medications' },
             webpush: { headers: { TTL: '0' } },
           },
         },

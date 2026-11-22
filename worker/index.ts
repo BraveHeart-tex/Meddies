@@ -35,6 +35,7 @@ import { readQuietHours, setQuietHours } from './quiet-hours'
 import { readMedicationNames, setMedicationNames } from './medication-names'
 import { snoozeDose } from './snoozes'
 import { isHealthyRun, runDueReminders, type ReminderProvider } from './due-reminders'
+import { activateRefillPushes, runRefillPushes, type RefillProvider } from './refill-pushes'
 import { createFcmProvider } from './fcm'
 import { ApplicationError } from '../src/lib/application-error'
 
@@ -102,7 +103,7 @@ function fcmProvider({ FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY }: Env)
 
 /**
  * The cron trigger (`worker/wrangler.jsonc`, every minute) and the scheduler command for the
- * approved external scheduler run the same due-reminder operation. The scheduler command
+ * approved external scheduler run dose reminders and refill pushes. The scheduler command
  * authenticates with its own `SCHEDULER_SECRET`, never the Next.js capability, and answers counts
  * only. One reminder provider serves the isolate, so its FCM access token is reused across runs.
  * Each command and each started run emits one allowlisted event. Never log raw input or errors;
@@ -113,10 +114,10 @@ function fcmProvider({ FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY }: Env)
  */
 export function createWorker(
   clock: () => Date = () => new Date(),
-  reminderProvider: (env: Env) => ReminderProvider = fcmProvider,
+  reminderProvider: (env: Env) => ReminderProvider & Partial<RefillProvider> = fcmProvider,
 ) {
-  let provider: ReminderProvider | undefined
-  const dueReminders = async (env: Env, origin: 'cron' | 'command', context?: RunContext) => {
+  let provider: (ReminderProvider & Partial<RefillProvider>) | undefined
+  const runScheduler = async (env: Env, origin: 'cron' | 'command', context?: RunContext) => {
     const started = performance.now()
     const event = {
       kind: 'scheduler',
@@ -130,11 +131,12 @@ export function createWorker(
       durationMs: 0,
     }
     try {
-      const run = await runDueReminders(
-        drizzle(env.DB),
-        (provider ??= reminderProvider(env)),
-        clock,
-      )
+      provider ??= reminderProvider(env)
+      const { submitRefill } = provider
+      if (submitRefill) await activateRefillPushes(env.DB)
+      const run = await runDueReminders(drizzle(env.DB), provider, clock)
+      if (submitRefill)
+        await runRefillPushes(env.DB, { submitRefill: submitRefill.bind(provider) }, clock)
       if (env.HEARTBEAT_URL && (await isHealthyRun(drizzle(env.DB), clock()))) {
         const ping = pingHeartbeat(env.HEARTBEAT_URL)
         context?.waitUntil(ping)
@@ -173,7 +175,7 @@ export function createWorker(
         event.path = '/due-reminders'
         event.operation = 'run'
         await authenticateService(request, env.SCHEDULER_SECRET)
-        const { submitted, dropped, retrying } = await dueReminders(env, 'command', context)
+        const { submitted, dropped, retrying } = await runScheduler(env, 'command', context)
         return json({ submitted, dropped, retrying })
       }
       await authenticateService(
@@ -326,7 +328,7 @@ export function createWorker(
   return {
     async scheduled(_controller: unknown, env: Env, context?: RunContext): Promise<void> {
       try {
-        await dueReminders(env, 'cron', context)
+        await runScheduler(env, 'cron', context)
       } catch (error) {
         // Fail the trigger with only the safe code, never query or provider detail.
         throw new Error(error instanceof ApplicationError ? error.code : 'internal')

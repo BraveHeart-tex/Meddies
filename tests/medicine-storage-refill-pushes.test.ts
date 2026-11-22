@@ -17,11 +17,11 @@ const now = new Date('2026-11-21T08:00:00.000Z')
 
 afterEach(async () => clearD1Database(await runtime.getD1Database('DB')))
 
-async function fixture() {
+async function fixture(clock: () => Date = () => now) {
   const db = await runtime.getD1Database('DB')
   const ownerId = `google:${randomUUID()}`
   const medicineId = randomUUID()
-  const worker = createWorker(() => now)
+  const worker = createWorker(clock)
   const env = { DB: db, MEDICINES_WORKER_SECRET: secret }
   const command = async (path: string, data: object) => {
     const response = await worker.fetch(
@@ -63,15 +63,23 @@ async function fixture() {
       .run()
   return {
     env,
+    quietHours: (quietHours: boolean) =>
+      command('quiet-hours', { operation: 'set', change: { actionId: randomUUID(), quietHours } }),
+    currentEpisode: () => readLowStockEpisode(ownerId, medicineId),
+    correctCount: (count: number, expectedRevision: number) =>
+      command('medicines', {
+        operation: 'stockCorrection',
+        stock: { actionId: randomUUID(), medicineId, expectedRevision, unit: 'tablet', count },
+      }),
     episodeId: episode.id,
-    run: (provider: RefillProvider) => runRefillPushes(db, provider),
+    run: (provider: RefillProvider) => runRefillPushes(db, provider, clock),
     register: (id: string, token = id) =>
       execute(
         'INSERT INTO device_registrations VALUES (?, ?, ?, ?)',
         id,
         ownerId,
         token,
-        now.toISOString(),
+        clock().toISOString(),
       ),
     remove: (id: string) =>
       execute('DELETE FROM device_registrations WHERE installation_id = ?', id),
@@ -85,7 +93,7 @@ async function fixture() {
       execute(
         'INSERT INTO account_preferences (owner_id, updated_at, medication_names) VALUES (?, ?, 1)',
         ownerId,
-        now.toISOString(),
+        clock().toISOString(),
       ),
     attempts: async () =>
       (
@@ -210,7 +218,7 @@ test('The FCM request uses current Medication names and labels while attempts st
   const privateKey = Buffer.from(await crypto.subtle.exportKey('pkcs8', keys.privateKey)).toString(
     'base64',
   )
-  const requests: { message: { token: string; notification: object } }[] = []
+  const requests: { message: { token: string; notification: object; data: object } }[] = []
   let namedAttempts = 0
   const provider = createFcmProvider(
     { projectId: 'test', clientEmail: 'test@example.com', privateKey },
@@ -235,10 +243,15 @@ test('The FCM request uses current Medication names and labels while attempts st
   assert.equal(namedAttempts, 2)
   const genericRequest = requests.find(({ message }) => message.token === 'secret-generic-token')
   assert.ok(genericRequest)
+  assert.deepEqual(genericRequest.message.notification, { title: 'Check your stock' })
+  assert.deepEqual(genericRequest.message.data, { link: '/medications' })
   assert.doesNotMatch(JSON.stringify(genericRequest), /Original label|Renamed Medicine|10 mg/)
   const namedRequest = requests.find(({ message }) => message.token === 'secret-named-token')
   assert.ok(namedRequest)
-  assert.match(JSON.stringify(namedRequest.message.notification), /Renamed Medicine/)
+  assert.deepEqual(namedRequest.message.notification, {
+    title: 'Check stock for Renamed Medicine',
+  })
+  assert.deepEqual(namedRequest.message.data, { link: '/medications' })
   assert.doesNotMatch(
     JSON.stringify({ ...namedRequest.message, notification: undefined }),
     /Renamed Medicine/,
@@ -249,30 +262,132 @@ test('The FCM request uses current Medication names and labels while attempts st
   assert.doesNotMatch(JSON.stringify(attempts), /Original label|Renamed Medicine|secret-.*-token/)
 })
 
-test('The scheduled Worker leaves a pending refill push inactive', async () => {
-  const f = await fixture()
-  await f.register('inactive')
-  const sent: unknown[] = []
-  const provider = {
-    async submit(message: unknown) {
-      sent.push(message)
-      return { outcome: 'accepted' as const }
-    },
-    async submitRefill(begin: () => Promise<unknown>) {
-      sent.push(await begin())
-      return 'accepted' as const
+function scheduler(f: Awaited<ReturnType<typeof fixture>>) {
+  let time = now
+  const sent: string[] = []
+  let beforeSubmission = async () => {}
+  const provider: RefillProvider = {
+    async submitRefill(begin) {
+      await beforeSubmission()
+      const message = await begin()
+      if (!message) return
+      sent.push(message.token)
+      return 'accepted'
     },
   }
-  await createWorker(
-    () => now,
-    () => provider,
-  ).scheduled(undefined, f.env)
-  assert.deepEqual(sent, [])
-  assert.deepEqual(await f.attempts(), [])
-  assert.equal(
-    await f.env.DB.prepare('SELECT targets_selected FROM low_stock_episodes WHERE id = ?')
-      .bind(f.episodeId)
-      .first('targets_selected'),
-    0,
+  const worker = createWorker(
+    () => time,
+    () => ({ ...provider, submit: async () => ({ outcome: 'accepted' }) }),
   )
+  const env = { ...f.env, SCHEDULER_SECRET: 'synthetic-scheduler-secret-at-least-32-characters' }
+  return {
+    sent,
+    clock: () => time,
+    beforeSubmission: (hook: () => Promise<void>) => (beforeSubmission = hook),
+    at: (instant: string) => (time = new Date(instant)),
+    cron: () => worker.scheduled(undefined, env),
+    command: async () => {
+      const response = await worker.fetch(
+        new Request('http://worker/due-reminders', {
+          method: 'POST',
+          headers: { authorization: `Bearer ${env.SCHEDULER_SECRET}` },
+          body: '{}',
+        }),
+        env,
+      )
+      assert.equal(response.status, 200, await response.text())
+    },
+  }
+}
+
+test('Overlapping first scheduler runs exclude prelaunch low episodes and preserve later budgets', async () => {
+  const f = await fixture()
+  await f.register('prelaunch')
+  const run = scheduler(f)
+  await Promise.all([run.cron(), run.command()])
+  assert.deepEqual(run.sent, [])
+  assert.equal((await f.currentEpisode())?.id, f.episodeId)
+  assert.equal((await f.currentEpisode())?.pushEligible, 0)
+
+  await f.correctCount(5, 1)
+  await f.correctCount(2, 2)
+  assert.equal((await f.currentEpisode())?.pushEligible, 1)
+  const restarted = scheduler(f)
+  await restarted.command()
+  await run.cron()
+  assert.deepEqual(restarted.sent, ['prelaunch'])
+  assert.deepEqual(run.sent, [])
+})
+
+test('Both scheduler paths defer target selection and recheck Quiet hours before submission', async () => {
+  const run = scheduler(await fixture())
+  await run.cron()
+  const morning = await fixture(run.clock)
+  const changed = await fixture(run.clock)
+  await Promise.all([morning.quietHours(true), changed.quietHours(true)])
+  await morning.register('old-morning')
+  await changed.register('changed')
+
+  run.at('2026-11-21T20:00:00.000Z') // 23:00 in Istanbul
+  await run.cron()
+  run.at('2026-11-22T04:59:00.000Z') // 07:59
+  await run.command()
+  assert.deepEqual(run.sent, [])
+
+  await morning.remove('old-morning')
+  await morning.register('morning')
+  await changed.quietHours(false)
+  let reachedSubmission = false
+  run.beforeSubmission(async () => {
+    reachedSubmission = true
+    await changed.quietHours(true)
+  })
+  await run.command()
+  assert.equal(reachedSubmission, true)
+  assert.deepEqual(run.sent, [])
+
+  run.beforeSubmission(async () => {})
+  await changed.quietHours(false)
+  await run.cron()
+  assert.deepEqual(run.sent, ['changed'])
+
+  run.at('2026-11-22T05:00:00.000Z') // 08:00
+  await run.command()
+  assert.deepEqual(run.sent, ['changed', 'morning'])
+
+  // After a missed 08:00 check, a pending episode can still be submitted on recovery.
+  run.at('2026-11-22T20:30:00.000Z')
+  const recovery = await fixture(run.clock)
+  await recovery.quietHours(true)
+  await recovery.register('recovery')
+  await run.cron()
+  run.at('2026-11-23T07:15:00.000Z')
+  await run.command()
+  assert.deepEqual(run.sent, ['changed', 'morning', 'recovery'])
+})
+
+test('At 08:00, equality leaves only the replacement episode eligible, and submission spends it', async () => {
+  const run = scheduler(await fixture())
+  await run.cron()
+  const canceled = await fixture(run.clock)
+  const replaced = await fixture(run.clock)
+  await Promise.all([canceled.quietHours(true), replaced.quietHours(true)])
+  await Promise.all([canceled.register('canceled'), replaced.register('replaced')])
+
+  run.at('2026-11-21T20:00:00.000Z')
+  await run.command()
+  await Promise.all([canceled.correctCount(5, 1), replaced.correctCount(5, 1)])
+  assert.equal(await canceled.currentEpisode(), null)
+  assert.equal(await replaced.currentEpisode(), null)
+  await replaced.correctCount(2, 2)
+  const current = await replaced.currentEpisode()
+  assert.ok(current)
+  assert.notEqual(current.id, replaced.episodeId)
+
+  run.at('2026-11-22T05:00:00.000Z')
+  await run.cron()
+  await run.command()
+  assert.deepEqual(run.sent, ['replaced'])
+  assert.deepEqual(await canceled.attempts(), [])
+  assert.deepEqual(await replaced.attempts(), [])
 })

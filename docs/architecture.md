@@ -59,7 +59,7 @@ has no public browser API and no arbitrary SQL endpoint, and scopes every operat
 owner.
 
 - `worker/index.ts` owns the HTTP lifecycle, D1 and clock wiring and explicit dispatch, and
-  wires the cron trigger and the scheduler command to the due-reminder operation.
+  wires the cron trigger and the scheduler command to dose reminders and refill pushes.
 - `http.ts` owns capability authentication, route guards, bounded JSON, no-store
   responses and failure mapping. `commands.ts` decodes input into shared typed commands
   after those checks, keeping owner-first validation, defaults and legacy optional dates.
@@ -73,8 +73,8 @@ owner.
   sets. `snoozes.ts` owns the Snooze command. `due-reminders.ts` owns the due-reminder operation,
   its Original reminder, Follow-up reminder and Snooze claims and Delivery attempts, and the
   provider port. `refill-pushes.ts` owns low-stock episode targeting and refill Delivery
-  attempts. `fcm.ts` implements both provider ports with FCM HTTP v1. The scheduler leaves
-  refill pushes inactive until #54 adds Quiet hours and activates the sender. The `schedules.ts`,
+  attempts, including Quiet hours deferral and the one-time launch cutoff. `fcm.ts` implements both
+  provider ports with FCM HTTP v1. The `schedules.ts`,
   `doses/mutations.ts`, `snoozes.ts`, `due-reminders.ts`, `refill-pushes.ts` and `fcm.ts`
   headers state their invariants.
 - SQL stays beside its behavior. Map selected rows to wire fields explicitly; snapshot
