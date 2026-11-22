@@ -514,6 +514,17 @@ cancels unsent work; already submitted notifications cannot be retracted.
 Thresholds and counts use the supported units, and stock consumption follows the
 contract above. These decisions do not change dose pause, resume or course-end rules.
 
+### Refill push delivery
+
+At the first send check outside enabled Quiet hours, select the account's current Device
+registrations for the eligible episode. This is one logical refill push with at most one
+accepted or ambiguous submission per selected Device registration. A known failure may retry
+the same alert for the same registration. Skip any registration that is turned off before
+submission. Later registrations do not join the episode, even if the first check found none.
+
+When refill pushes launch, a Medicine already below its Low-stock threshold keeps its in-app
+notice. It first becomes eligible for a refill push in a new low-stock episode.
+
 ### Acceptance examples
 
 All quantities are tablets unless stated. T = 5 except where specified. Times
