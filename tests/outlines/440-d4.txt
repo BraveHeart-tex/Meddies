@@ -1,0 +1,39 @@
+- main
+  - button "Back"
+  - banner
+    - paragraph
+      - text: Magnesium · 400 mg
+    - heading "Review your changes" [level=1]
+  - term
+    - text: Type across all records
+  - definition
+    - text: Tablet
+    - text: to
+    - text: Capsule
+  - term
+    - text: Amounts you entered
+  - definition
+    - text: 24 doses · 2 schedules
+  - definition
+    - button "Review entered amounts"
+  - term
+    - text: Stock · Fresh count
+  - definition
+    - text: 16 capsules
+  - term
+    - text: Low-stock alert
+  - definition
+    - text: Below 5 tablets → Off
+  - paragraph
+    - text: These changes save together. Dose times and Taken or Skipped stay as they are.
+  - button "Cancel change"
+- navigation "Primary"
+  - list
+    - listitem
+      - link "Today"
+    - listitem
+      - link "Medications" [current=page]
+    - listitem
+      - link "History"
+    - listitem
+      - link "Settings"

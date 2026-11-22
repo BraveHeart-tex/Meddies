@@ -141,6 +141,7 @@ test.describe('Edit details groups', () => {
     ['00000000-0000-4000-8000-000000350003', 'Ibuprofen syrup', '100 mg/5 ml', 'liquid', false],
     ['00000000-0000-4000-8000-000000350004', 'Amoxicillin', '250 mg/5 ml', 'liquid', true],
   ] as const
+  const untrackedId = '00000000-0000-4000-8000-000000451001'
   test.use({
     journey: {
       auth: true,
@@ -156,6 +157,18 @@ test.describe('Edit details groups', () => {
             .run()
         }
         const magnesiumId = records[1][0]
+        await db
+          .prepare(
+            'UPDATE user_medications SET stock_count=18,low_stock_threshold=5 WHERE owner_id=? AND id=?',
+          )
+          .bind(ownerId, magnesiumId)
+          .run()
+        await db
+          .prepare(
+            'INSERT INTO user_medications(owner_id,id,label,strength,unit,ever_had_schedule) VALUES(?,?,?,?,?,1)',
+          )
+          .bind(ownerId, untrackedId, 'Magnesium', '400 mg', 'tablet')
+          .run()
         await db
           .prepare(
             'UPDATE medicine_strength_revisions SET id=?, effective_at=? WHERE owner_id=? AND medicine_id=?',
@@ -343,10 +356,46 @@ test.describe('Edit details groups', () => {
     await expect(page.getByText('Earlier schedule · 08:00')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'How many capsules per dose?' })).toBeFocused()
     await captureCorrection('type-earlier-schedule-repair')
-    for (let index = 25; index >= 0; index--) {
-      await page.getByRole('button', { name: 'Back', exact: true }).click()
-    }
+    await amount.fill('2')
+    await page.getByRole('button', { name: 'Continue to Stock' }).click()
+    await expect(
+      page.getByRole('heading', { name: 'How many capsules do you have?' }),
+    ).toBeFocused()
+    await expect(page.getByRole('note')).toContainText('Your Low-stock alert will turn off')
+    await captureCorrection('type-fresh-stock')
+    await page.getByRole('textbox', { name: 'Current count' }).fill('16')
+    await page.getByRole('button', { name: 'Review changes' }).click()
+    await expect(page.getByRole('heading', { name: 'Review your changes' })).toBeFocused()
+    await expect(page.getByText('24 doses · 2 schedules')).toBeVisible()
+    await captureCorrection('type-final-review-tracked')
 
+    await page.unroute(`**${reviewPath}`)
+    await page.route(`**${reviewPath}`, (route) =>
+      route.fulfill({
+        json: {
+          review: {
+            medicineId: untrackedId,
+            fromUnit: 'tablet',
+            unit: 'capsule',
+            revision: 0,
+            reviewVersion: 0,
+            stockTracked: false,
+            compatibleAmounts: 7,
+            conflicts: [],
+          },
+        },
+      }),
+    )
+    await page.goto(`/medications?medicine=${untrackedId}&record=fix`)
+    await page.getByRole('combobox', { name: 'Type' }).click()
+    await page.getByRole('option', { name: 'Capsule', exact: true }).click()
+    await page.getByRole('button', { name: 'Review Type change' }).click()
+    await page.getByRole('button', { name: 'Review changes' }).click()
+    await expect(page.getByRole('heading', { name: 'Review your changes' })).toBeFocused()
+    await expect(page.getByText('Stays off', { exact: true })).toBeVisible()
+    await page.mouse.move(0, 0)
+    await captureCorrection('type-final-review-untracked')
+    await page.getByRole('button', { name: 'Back', exact: true }).click()
     await page.getByRole('button', { name: 'Edit details', exact: true }).click()
     await page.unroute(`**${reviewPath}`)
     await page.route(`**${reviewPath}`, (route) =>

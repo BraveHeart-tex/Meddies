@@ -22,6 +22,7 @@
     - text: capsules
     - paragraph
       - text: Enter the capsule amount for this dose. Use a whole number.
+  - button "Continue to Stock"
   - button "Cancel change"
   - paragraph
     - text: Nothing saves until you review and save all changes.

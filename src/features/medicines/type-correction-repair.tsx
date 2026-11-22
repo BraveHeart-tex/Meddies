@@ -16,7 +16,7 @@ import type { MedicineRecord } from './contract'
 import type { TypeCorrectionReview } from './type-correction-contract'
 
 /** One advisory conflict, in the server's queue order. Raw edits are owned by the record's
- * Session draft, never inferred from saved quantities. Queue exit belongs to the next slice.
+ * Session draft, never inferred from saved quantities.
  */
 export function TypeCorrectionRepair({
   medicine,
@@ -26,6 +26,8 @@ export function TypeCorrectionRepair({
   onValueChange,
   onBack,
   onContinue,
+  continueLabel = 'Continue',
+  onReturnToSummary,
   onCancel,
 }: {
   medicine: Pick<MedicineRecord, 'label' | 'strength'>
@@ -35,6 +37,8 @@ export function TypeCorrectionRepair({
   onValueChange: (value: string) => void
   onBack: () => void
   onContinue: () => void
+  continueLabel?: string
+  onReturnToSummary?: () => void
   onCancel: () => void
 }) {
   const conflict = review.conflicts[index]
@@ -72,15 +76,7 @@ export function TypeCorrectionRepair({
           {title}
         </h1>
       </header>
-      <form
-        noValidate
-        className="flex flex-col gap-7"
-        onSubmit={(event) =>
-          void form.handleSubmit(() => {
-            if (index < review.conflicts.length - 1) onContinue()
-          })(event)
-        }
-      >
+      <form noValidate className="flex flex-col gap-7" onSubmit={form.handleSubmit(onContinue)}>
         <Card className="py-4">
           <CardContent className="flex flex-col gap-3 px-4">
             <p className="text-caption font-bold text-muted-foreground">
@@ -138,10 +134,13 @@ export function TypeCorrectionRepair({
           />
         </FieldGroup>
         <div className="flex flex-col gap-2">
-          {index < review.conflicts.length - 1 && (
-            <Button type="submit" size="lg">
-              Continue
-              <ArrowRight data-icon="inline-end" aria-hidden="true" />
+          <Button type="submit" size="lg">
+            {continueLabel}
+            <ArrowRight data-icon="inline-end" aria-hidden="true" />
+          </Button>
+          {onReturnToSummary && (
+            <Button type="button" variant="outline" onClick={form.handleSubmit(onReturnToSummary)}>
+              Back to review
             </Button>
           )}
           <Button type="button" variant="ghost" onClick={onCancel}>

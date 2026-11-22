@@ -1,26 +1,7 @@
-import { SimpleCorrection } from './type-correction-simple'
 import type { LabFrame } from '../frames'
 import { CorrectionState } from './type-correction-screens'
 
 export const typeCorrectionFrames = [
-  {
-    slug: '440-d3',
-    citation: '440·D3',
-    title: 'Count capsules',
-    render: () => <SimpleCorrection initialStep="stock" />,
-  },
-  {
-    slug: '440-d4',
-    citation: '440·D4',
-    title: 'Review and save once',
-    render: () => <SimpleCorrection initialStep="save" />,
-  },
-  {
-    slug: '440-d6',
-    citation: '440·D6',
-    title: 'Review compatible amounts with Stock off',
-    render: () => <SimpleCorrection initialStep="save" compatibleUntracked />,
-  },
   {
     slug: '440-s7',
     citation: '440·S7',

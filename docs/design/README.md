@@ -80,17 +80,19 @@ what ships. Each design-critical screen has exactly one built frame, titled by t
 (`designCriticalScreens` in the registry `frames.tsx`). The Scanner joins the list once it has a
 route.
 
-| Screen                 | Frame     | Route                                   |
-| ---------------------- | --------- | --------------------------------------- |
-| Today                  | `238·A1`  | `/`                                     |
-| Medications            | `238·A2`  | `/medications`                          |
-| Medication detail      | `238·A3`  | `/medications?medicine=<id>`            |
-| Manage                 | `403·B14` | `/medications?medicine=<id>&manage`     |
-| History                | `238·A4`  | `/history`                              |
-| Settings               | `238·A5`  | `/settings`                             |
-| Dose repair            | `440·D2`  | `/medications?medicine=<id>&record=fix` |
-| Schedule amount repair | `440·D5`  | `/medications?medicine=<id>&record=fix` |
-| Cold launch            | `109·L1`  | `/`                                     |
+| Screen                       | Frame     | Route                                   |
+| ---------------------------- | --------- | --------------------------------------- |
+| Today                        | `238·A1`  | `/`                                     |
+| Medications                  | `238·A2`  | `/medications`                          |
+| Medication detail            | `238·A3`  | `/medications?medicine=<id>`            |
+| Manage                       | `403·B14` | `/medications?medicine=<id>&manage`     |
+| History                      | `238·A4`  | `/history`                              |
+| Settings                     | `238·A5`  | `/settings`                             |
+| Dose repair                  | `440·D2`  | `/medications?medicine=<id>&record=fix` |
+| Schedule amount repair       | `440·D5`  | `/medications?medicine=<id>&record=fix` |
+| Fresh Stock count            | `440·D3`  | `/medications?medicine=<id>&record=fix` |
+| Final Type correction review | `440·D4`  | `/medications?medicine=<id>&record=fix` |
+| Cold launch                  | `109·L1`  | `/`                                     |
 
 - A built frame composes what its page renders, with the page's server reads replaced by
   fixtures seeded into `FixtureQuery` (`fixture-query.tsx`). Seeded data never goes stale and

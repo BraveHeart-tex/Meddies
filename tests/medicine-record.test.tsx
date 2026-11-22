@@ -740,7 +740,7 @@ test.each([
 })
 
 // #442: public form + authenticated read boundary. No Type correction write is permitted.
-test('Type review counts conflicts and compatible amounts and classifies later destinations without saving', async () => {
+test('Type review counts conflicts and compatible amounts and reaches final review directly with Stock off', async () => {
   const requests: { method: string; body: unknown }[] = []
   let stockTracked = true
   let conflicts = [
@@ -795,13 +795,64 @@ test('Type review counts conflicts and compatible amounts and classifies later d
     expect(
       screen.getByText(tracked ? 'Next, count your capsules.' : 'Stock tracking stays off.'),
     ).toBeVisible()
-    expect(
-      screen.queryByRole('button', { name: /Review changes|Count Stock/ }),
-    ).not.toBeInTheDocument()
+    if (!tracked) {
+      await user.click(screen.getByRole('button', { name: 'Review changes' }))
+      expect(screen.getByRole('heading', { name: 'Review your changes' })).toHaveFocus()
+      expect(screen.getByText('Same numbers, now in capsules')).toBeVisible()
+      expect(screen.getByText('Stays off')).toBeVisible()
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    }
   }
   expect(requests).toEqual(
     Array(3).fill({ method: 'POST', body: { medicineId: medicine.id, unit: 'capsule' } }),
   )
+  expect(onSaved).not.toHaveBeenCalled()
+})
+
+test('compatible tracked Type correction requires a fresh count and accepts zero', async () => {
+  const tracked = { ...medicine, stock: { tracked: true as const, count: 18, threshold: 5 } }
+  server.use(
+    http.post('/api/medicines/type-correction', () =>
+      HttpResponse.json({
+        review: {
+          medicineId: medicine.id,
+          fromUnit: 'tablet',
+          unit: 'capsule',
+          revision: 1,
+          reviewVersion: 5,
+          stockTracked: true,
+          compatibleAmounts: 7,
+          conflicts: [],
+        },
+      }),
+    ),
+  )
+  const { user, onSaved } = open('fix', tracked)
+  await user.click(screen.getByRole('combobox', { name: 'Type' }))
+  await user.click(await screen.findByRole('option', { name: 'Capsule' }))
+  await user.click(screen.getByRole('button', { name: 'Review Type change' }))
+  await user.click(await screen.findByRole('button', { name: 'Continue to Stock' }))
+  expect(screen.getByRole('heading', { name: 'How many capsules do you have?' })).toHaveFocus()
+  expect(screen.getByText(/saved count of 18 tablets/)).toBeVisible()
+  expect(screen.getByRole('note')).toHaveTextContent('Your Low-stock alert will turn off')
+  const count = screen.getByRole('textbox', { name: 'Current count' })
+  const next = screen.getByRole('button', { name: 'Review changes' })
+  expect(count).toHaveValue('')
+  await user.click(next)
+  expect(count).toHaveFocus()
+  expect(screen.getByText('Enter your current count.')).toBeVisible()
+  await user.type(count, '1.5')
+  await user.click(next)
+  expect(count).toHaveFocus()
+  expect(screen.getByText('Use whole capsules.')).toBeVisible()
+  await user.clear(count)
+  await user.type(count, '0')
+  await user.click(next)
+  expect(screen.getByRole('heading', { name: 'Review your changes' })).toHaveFocus()
+  expect(screen.getByText('0 capsules')).toBeVisible()
+  expect(screen.getByText('Below 5 tablets → Off')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+  expect(screen.getByRole('textbox', { name: 'Current count' })).toHaveValue('0')
   expect(onSaved).not.toHaveBeenCalled()
 })
 
@@ -888,7 +939,7 @@ const repairConflicts = [
     },
   },
 ]
-function serveRepairQueue() {
+function serveRepairQueue(stockTracked = false) {
   server.use(
     http.post('/api/medicines/type-correction', () =>
       HttpResponse.json({
@@ -898,7 +949,7 @@ function serveRepairQueue() {
           fromUnit: 'tablet',
           revision: 1,
           reviewVersion: 5,
-          stockTracked: false,
+          stockTracked,
           compatibleAmounts: 7,
           conflicts: repairConflicts,
         },
@@ -912,62 +963,95 @@ async function enterRepairQueue(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Review Type change' }))
   await user.click(await screen.findByRole('button', { name: 'Check first amount' }))
 }
-test('Type repair preserves keyed raw entries across the complete queue and rejects blank or off-grid amounts', async () => {
-  serveRepairQueue()
-  const { user, onSaved } = open()
-  await enterRepairQueue(user)
-  const heading = 'How many capsules was this dose?'
-  expect(screen.getByRole('heading', { name: heading })).toHaveFocus()
-  expect(screen.getByText('Amount 1 of 4')).toBeVisible()
-  expect(screen.getByText('Taken · Sun 1 Nov at 09:10')).toBeVisible()
-  expect(screen.getByText(/Saved as/)).toHaveTextContent('½ tablet')
-  const amount = () => screen.getByRole('textbox', { name: 'Amount' })
-  expect(amount()).toHaveValue('')
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(screen.getByText('Enter a quantity.')).toBeVisible()
-  expect(amount()).toHaveFocus()
-  await user.type(amount(), '1.5')
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(screen.getByText('Use whole capsules.')).toBeVisible()
-  expect(screen.getByText('Amount 1 of 4')).toBeVisible()
-  expect(amount()).toHaveFocus()
-  await user.clear(amount())
-  await user.type(amount(), '02')
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(screen.getByText('Amount 2 of 4')).toBeVisible()
-  expect(screen.getByText('Taken · Mon 2 Nov at 21:15')).toBeVisible()
-  expect(screen.getByText('Unscheduled dose')).toBeVisible()
-  expect(amount()).toHaveValue('')
-  await user.type(amount(), '3')
-  await user.click(screen.getByRole('button', { name: 'Back' }))
-  expect(amount()).toHaveValue('02')
-  await user.click(screen.getByRole('button', { name: 'Back' }))
-  await user.click(await screen.findByRole('button', { name: 'Check first amount' }))
-  expect(amount()).toHaveValue('02')
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(amount()).toHaveValue('3')
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(screen.getByText('Amount 3 of 4')).toBeVisible()
-  expect(screen.getByText('Current schedule · 09:00')).toBeVisible()
-  expect(screen.getByText('From Sun 1 Nov')).toBeVisible()
-  expect(screen.getByRole('heading', { name: 'How many capsules per dose?' })).toHaveFocus()
-  expect(amount()).toHaveValue('')
-  await user.type(amount(), '4')
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(screen.getByText('Amount 4 of 4')).toBeVisible()
-  expect(screen.getByText('Earlier schedule · 20:00')).toBeVisible()
-  expect(screen.getByText('Thu 1 Oct to Sun 1 Nov')).toBeVisible()
-  expect(amount()).toHaveValue('')
-  await user.type(amount(), '5')
-  expect(
-    screen.queryByRole('button', { name: /Continue|Review changes|Count Stock/ }),
-  ).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Back' }))
-  expect(amount()).toHaveValue('4')
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(amount()).toHaveValue('5')
-  expect(onSaved).not.toHaveBeenCalled()
-})
+test.each([true, false])(
+  'Type repair preserves keyed raw entries through final review (Stock tracked: %s)',
+  async (tracked) => {
+    serveRepairQueue(tracked)
+    const { user, onSaved } = open(
+      'fix',
+      tracked ? { ...medicine, stock: { tracked: true, count: 18, threshold: 5 } } : medicine,
+    )
+    await enterRepairQueue(user)
+    const heading = 'How many capsules was this dose?'
+    expect(screen.getByRole('heading', { name: heading })).toHaveFocus()
+    expect(screen.getByText('Amount 1 of 4')).toBeVisible()
+    expect(screen.getByText('Taken · Sun 1 Nov at 09:10')).toBeVisible()
+    expect(screen.getByText(/Saved as/)).toHaveTextContent('½ tablet')
+    const amount = () => screen.getByRole('textbox', { name: 'Amount' })
+    expect(amount()).toHaveValue('')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(screen.getByText('Enter a quantity.')).toBeVisible()
+    expect(amount()).toHaveFocus()
+    await user.type(amount(), '1.5')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(screen.getByText('Use whole capsules.')).toBeVisible()
+    expect(screen.getByText('Amount 1 of 4')).toBeVisible()
+    expect(amount()).toHaveFocus()
+    await user.clear(amount())
+    await user.type(amount(), '02')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(screen.getByText('Amount 2 of 4')).toBeVisible()
+    expect(screen.getByText('Taken · Mon 2 Nov at 21:15')).toBeVisible()
+    expect(screen.getByText('Unscheduled dose')).toBeVisible()
+    expect(amount()).toHaveValue('')
+    await user.type(amount(), '3')
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+    expect(amount()).toHaveValue('02')
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+    await user.click(await screen.findByRole('button', { name: 'Check first amount' }))
+    expect(amount()).toHaveValue('02')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(amount()).toHaveValue('3')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(screen.getByText('Amount 3 of 4')).toBeVisible()
+    expect(screen.getByText('Current schedule · 09:00')).toBeVisible()
+    expect(screen.getByText('From Sun 1 Nov')).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'How many capsules per dose?' })).toHaveFocus()
+    expect(amount()).toHaveValue('')
+    await user.type(amount(), '4')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(screen.getByText('Amount 4 of 4')).toBeVisible()
+    expect(screen.getByText('Earlier schedule · 20:00')).toBeVisible()
+    expect(screen.getByText('Thu 1 Oct to Sun 1 Nov')).toBeVisible()
+    expect(amount()).toHaveValue('')
+    await user.type(amount(), '5')
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+    expect(amount()).toHaveValue('4')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(amount()).toHaveValue('5')
+    await user.click(
+      screen.getByRole('button', { name: tracked ? 'Continue to Stock' : 'Review changes' }),
+    )
+    if (tracked) {
+      const count = screen.getByRole('textbox', { name: 'Current count' })
+      expect(count).toHaveValue('')
+      await user.type(count, '16')
+      await user.click(screen.getByRole('button', { name: 'Review changes' }))
+      expect(screen.getByText('16 capsules')).toBeVisible()
+    } else {
+      expect(screen.getByText('Stays off')).toBeVisible()
+    }
+    expect(screen.getByRole('heading', { name: 'Review your changes' })).toHaveFocus()
+    expect(screen.getByText('2 doses · 2 schedules')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Review entered amounts' }))
+    expect(amount()).toHaveValue('02')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(amount()).toHaveValue('3')
+    await user.clear(amount())
+    await user.type(amount(), '3.5')
+    await user.click(screen.getByRole('button', { name: 'Back to review' }))
+    expect(amount()).toHaveFocus()
+    await user.clear(amount())
+    await user.type(amount(), '6')
+    await user.click(screen.getByRole('button', { name: 'Back to review' }))
+    expect(screen.getByRole('heading', { name: 'Review your changes' })).toHaveFocus()
+    if (tracked) expect(screen.getByText('16 capsules')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Review entered amounts' }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(amount()).toHaveValue('6')
+    expect(onSaved).not.toHaveBeenCalled()
+  },
+)
 
 // Catches repairs surviving explicit discard or disappearing during Session navigation.
 test('Type repair Keep editing and remount retain the draft while Discard changes clears every entry without writes', async () => {

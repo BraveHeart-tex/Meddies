@@ -71,6 +71,7 @@ export function MedicineRecordForm({
     .extend({
       expectedRevision: z.number(),
       repairUnit: z.string().default(''),
+      correctionStockCount: z.string().default(''),
       repairs: z.record(z.string(), z.string()).default({}),
       strength: strength
         ? z
@@ -108,11 +109,13 @@ export function MedicineRecordForm({
     time: '',
     repairUnit: '',
     repairs: {},
+    correctionStockCount: '',
   }
   const form = useForm<z.input<typeof schema>, unknown, z.output<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: defaults,
   })
+  const correctionStockCount = useWatch({ control: form.control, name: 'correctionStockCount' })
   const repairs = useWatch({ control: form.control, name: 'repairs' })
   const chosenUnit = useWatch({ control: form.control, name: 'unit' })
   const typeChanged = !strength && chosenUnit !== medicine.unit
@@ -125,6 +128,7 @@ export function MedicineRecordForm({
     if (!strength && values.unit !== medicine.unit) {
       if (values.repairUnit !== values.unit) {
         form.setValue('repairs', {})
+        form.setValue('correctionStockCount', '')
         form.setValue('repairUnit', values.unit)
       }
       setReviewUnit(values.unit)
@@ -184,6 +188,8 @@ export function MedicineRecordForm({
           }}
           unit={reviewUnit}
           amounts={repairs ?? {}}
+          stockCount={correctionStockCount ?? ''}
+          onStockCountChange={(value) => form.setValue('correctionStockCount', value)}
           onAmountChange={(key, value) =>
             form.setValue('repairs', { ...form.getValues('repairs'), [key]: value })
           }

@@ -10,19 +10,23 @@ import { PrivateReadError } from '@/lib/session-check'
 import {
   medicineTypeLabel,
   quantityLabel,
+  quantityProblem,
   quantityRule,
   unitName,
   type WritableMedicineType,
 } from '@/lib/quantity-policy'
 import { TypeCorrectionRepair } from './type-correction-repair'
-import { TypeTile } from './type-tile'
+import {
+  CorrectionTypeChange,
+  TypeCorrectionStock,
+  TypeCorrectionSummary,
+} from './type-correction-summary'
 import { MedicationIdentity } from './medication-sub-screen'
 import type { MedicineRecord } from './contract'
 import { parseTypeCorrectionReview } from './type-correction-contract'
 
 /** Advisory read only. Entry values stay in the record form's Session draft. A fresh entry or
- * explicit retry reads again. Conflicts open the guided repair queue; no save, Stock count
- * or automatic continuation is started.
+ * explicit retry reads again. Repairs and a fresh Stock count feed final review without writing.
  */
 export function TypeCorrectionReviewScreen({
   medicine,
@@ -31,11 +35,15 @@ export function TypeCorrectionReviewScreen({
   onCancel,
   amounts,
   onAmountChange,
+  stockCount,
+  onStockCountChange,
 }: {
   medicine: MedicineRecord
   unit: WritableMedicineType
   onBack: () => void
   onCancel: () => void
+  stockCount: string
+  onStockCountChange: (value: string) => void
   amounts: Record<string, string>
   onAmountChange: (key: string, value: string) => void
 }) {
@@ -62,11 +70,12 @@ export function TypeCorrectionReviewScreen({
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   })
-  const [index, setIndex] = useState<number | null>(null)
+  const [step, setStep] = useState<'consequences' | 'stock' | 'summary' | number>('consequences')
+  const [checkingEntries, setCheckingEntries] = useState(false)
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
     heading.current?.focus()
-  }, [read.status, index])
+  }, [read.status, step])
   const review = read.data
   const type = medicineTypeLabel(unit)
   const count = review?.conflicts.length ?? 0
@@ -74,31 +83,74 @@ export function TypeCorrectionReviewScreen({
   const schedules = count - doses
   const destination = count ? 'repair' : review?.stockTracked ? 'stock' : 'review'
   const oldUnit = review?.fromUnit ?? medicine.unit
-  const change = (
-    <span className="flex flex-wrap items-center gap-x-3 gap-y-2 text-body-lg font-extrabold">
-      <span className="inline-flex items-center gap-2">
-        <TypeTile type={oldUnit} />
-        {medicineTypeLabel(oldUnit)}
-      </span>
-      <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <span className="sr-only">to</span>
-      <span className="inline-flex items-center gap-2">
-        <TypeTile type={unit} />
-        {type}
-      </span>
-    </span>
-  )
-  if (review && index !== null)
+  const change = <CorrectionTypeChange from={oldUnit} to={unit} />
+  const lastAmount = count - 1
+  const afterRepairs = review?.stockTracked ? 'stock' : 'summary'
+  function returnToSummary() {
+    if (!review) return
+    const invalid = review.conflicts.findIndex(({ key }) =>
+      quantityProblem(amounts[key] ?? '', unit),
+    )
+    setStep(invalid === -1 ? 'summary' : invalid)
+  }
+  if (review && typeof step === 'number')
     return (
       <TypeCorrectionRepair
-        key={review.conflicts[index].key}
+        key={review.conflicts[step].key}
         medicine={medicine}
         review={review}
-        index={index}
-        value={amounts[review.conflicts[index].key] ?? ''}
-        onValueChange={(value) => onAmountChange(review.conflicts[index].key, value)}
-        onBack={() => setIndex(index === 0 ? null : index - 1)}
-        onContinue={() => setIndex(index + 1)}
+        index={step}
+        value={amounts[review.conflicts[step].key] ?? ''}
+        onValueChange={(value) => onAmountChange(review.conflicts[step].key, value)}
+        onBack={() => {
+          if (step > 0) setStep(step - 1)
+          else if (checkingEntries) returnToSummary()
+          else setStep('consequences')
+        }}
+        onContinue={() => {
+          if (step < lastAmount) setStep(step + 1)
+          else if (checkingEntries) returnToSummary()
+          else setStep(afterRepairs)
+        }}
+        continueLabel={
+          step < lastAmount
+            ? 'Continue'
+            : checkingEntries
+              ? 'Back to review'
+              : review.stockTracked
+                ? 'Continue to Stock'
+                : 'Review changes'
+        }
+        onReturnToSummary={checkingEntries && step < lastAmount ? returnToSummary : undefined}
+        onCancel={onCancel}
+      />
+    )
+  if (review && step === 'stock')
+    return (
+      <TypeCorrectionStock
+        medicine={medicine}
+        review={review}
+        value={stockCount}
+        onValueChange={onStockCountChange}
+        onContinue={() => setStep('summary')}
+        onBack={() => setStep(count ? lastAmount : 'consequences')}
+        onCancel={onCancel}
+      />
+    )
+  if (review && step === 'summary')
+    return (
+      <TypeCorrectionSummary
+        medicine={medicine}
+        review={review}
+        count={stockCount}
+        onReviewAmounts={() => {
+          setCheckingEntries(true)
+          setStep(0)
+        }}
+        onBack={() => {
+          setCheckingEntries(false)
+          setStep(review.stockTracked ? 'stock' : count ? lastAmount : 'consequences')
+        }}
         onCancel={onCancel}
       />
     )
@@ -195,9 +247,13 @@ export function TypeCorrectionReviewScreen({
           )}
         </>
       )}
-      {review && count > 0 && (
-        <Button size="lg" onClick={() => setIndex(0)}>
-          Check first amount
+      {review && (
+        <Button size="lg" onClick={() => setStep(count ? 0 : afterRepairs)}>
+          {count
+            ? 'Check first amount'
+            : review.stockTracked
+              ? 'Continue to Stock'
+              : 'Review changes'}
           <ArrowRight data-icon="inline-end" aria-hidden="true" />
         </Button>
       )}

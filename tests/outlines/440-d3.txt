@@ -1,0 +1,33 @@
+- main
+  - button "Back"
+  - banner
+    - paragraph
+      - text: Magnesium · 400 mg
+    - heading "How many capsules do you have?" [level=1]
+  - paragraph
+    - text: Count what you have now. The saved count of 18 tablets can’t be used as a capsule count.
+  - group
+    - text: Current count
+    - button "Fewer: Current count"
+    - textbox "Current count"
+    - button "More: Current count"
+    - text: capsules
+    - paragraph
+      - text: Enter a whole number. Zero is fine.
+  - note
+    - text: Your Low-stock alert will turn off
+    - text: Your current alert is set to Below 5 tablets. After saving, you can set a new alert in capsules. Earlier Stock records are kept.
+  - button "Review changes"
+  - button "Cancel change"
+  - paragraph
+    - text: Nothing saves until you review and save all changes.
+- navigation "Primary"
+  - list
+    - listitem
+      - link "Today"
+    - listitem
+      - link "Medications" [current=page]
+    - listitem
+      - link "History"
+    - listitem
+      - link "Settings"

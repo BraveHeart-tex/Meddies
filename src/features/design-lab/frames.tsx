@@ -30,6 +30,8 @@ export const designCriticalScreens = [
   'Cold launch',
   'Dose repair',
   'Schedule amount repair',
+  'Fresh Stock count',
+  'Final Type correction review',
 ] as const
 
 /**

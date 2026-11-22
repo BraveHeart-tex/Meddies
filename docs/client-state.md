@@ -98,12 +98,13 @@ browser storage is used. Losing it on reload, app closure or browser eviction is
 
 Medicine Add, Detail correction, Strength change, schedule setup and the dose drawer keep raw editing values in an in-memory
 store scoped to the session Query client, keyed by form and medicine ID. Medicine record drafts retain the selected period and the revision first edited, so
-returning never silently rebases unsaved details. Type correction drafts also retain raw amount
-replacements by preflight conflict key and the Type they were entered for; selecting another
-Type clears those replacements on the next review. The guided queue follows the advisory
-preflight order, with Taken doses before Schedule amounts; Back retains incomplete entries.
-Nothing writes or publishes confirmed facts while repairing amounts. A successful conflict review discards the stale
-draft after reading current saved details. A schedule change
+returning never silently rebases unsaved details. Type correction drafts retain raw amount
+replacements by preflight conflict key and a fresh Stock count for the chosen Type.
+Selecting another Type clears both on the next review. The guided queue follows the advisory
+preflight order, with Taken doses before Schedule amounts. Back retains incomplete entries.
+Final review retains the entered amounts and fresh Stock count when revisiting either step.
+Nothing writes or publishes confirmed facts during Type correction review. A successful
+conflict review discards the stale draft after reading current saved details. A schedule change
 is keyed by the Schedule version it edits, so a newer version opens without an older draft.
 
 - Returning restores values through React Hook Form `reset`, with the

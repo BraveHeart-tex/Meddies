@@ -1,4 +1,4 @@
-import { RepairFrame } from './type-correction-screen'
+import { CorrectionFrame } from './type-correction-screen'
 import Loading from '@/app/loading'
 import { SettingsScreen } from '@/app/settings/settings-screen'
 import { AppHeader } from '@/components/layout/app-header'
@@ -30,14 +30,28 @@ export const builtFrames = [
     citation: '440·D2',
     title: 'Dose repair',
     route: '/medications?medicine=<id>&record=fix',
-    render: () => <RepairFrame />,
+    render: () => <CorrectionFrame initial={0} />,
   },
   {
     slug: '440-d5',
     citation: '440·D5',
     title: 'Schedule amount repair',
     route: '/medications?medicine=<id>&record=fix',
-    render: () => <RepairFrame schedule />,
+    render: () => <CorrectionFrame initial={25} />,
+  },
+  {
+    slug: '440-d3',
+    citation: '440·D3',
+    title: 'Fresh Stock count',
+    route: '/medications?medicine=<id>&record=fix',
+    render: () => <CorrectionFrame initial="stock" />,
+  },
+  {
+    slug: '440-d4',
+    citation: '440·D4',
+    title: 'Final Type correction review',
+    route: '/medications?medicine=<id>&record=fix',
+    render: () => <CorrectionFrame initial="summary" />,
   },
   {
     slug: '238-a1',
