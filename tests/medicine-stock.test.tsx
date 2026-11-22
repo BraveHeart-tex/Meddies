@@ -49,13 +49,14 @@ const capsules: MedicineRecord = {
 const snapshot: ScheduleSnapshot = { schedules: [], records: [], date: '2035-06-15', now }
 
 type StockRequest = {
-  operation: 'stockOn' | 'stockOff' | 'stockCorrection' | 'stockRefill'
+  operation: 'stockOn' | 'stockOff' | 'stockCorrection' | 'stockRefill' | 'stockThreshold'
   stock: {
     actionId: string
     expectedRevision: number
     startingCount?: number
     count?: number
     amount?: number
+    threshold?: number | null
   }
 }
 /** The Worker's receipt: revision + 1, this action, the requested stock. */
@@ -308,8 +309,9 @@ async function changeCount(user: ReturnType<typeof userEvent.setup>, medicine = 
   await user.click(stockRow())
   const options = within(optionsDrawer(medicine.label))
   const change = options.getByRole('button', { name: 'Change the count' })
-  expect(options.getAllByRole('button').slice(-2)).toEqual([
+  expect(options.getAllByRole('button').slice(-3)).toEqual([
     change,
+    options.getByRole('button', { name: 'Low-stock alert' }),
     options.getByRole('button', { name: 'Stop tracking' }),
   ])
   await user.click(change)
@@ -570,3 +572,227 @@ test.each([
     client.clear()
   },
 )
+
+const lowStock: MedicineRecord = {
+  ...tablets,
+  stock: { tracked: true, count: 0, intakePastCount: true, threshold: 5, low: true },
+}
+const lowNotice = 'Running low: fewer than 5 tablets left.'
+const alertDrawer = () => screen.getByRole('dialog', { name: 'Magnesium low-stock alert' })
+async function editAlert(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(stockRow())
+  await user.click(within(optionsDrawer()).getByRole('button', { name: 'Low-stock alert' }))
+  return within(alertDrawer())
+}
+
+test('a low-stock alert is saved only on confirmation, survives a fresh read, and turning it off clears the notice', async () => {
+  const { user, client, unmount } = open(lowStock)
+  let current = lowStock
+  const requests: StockRequest[] = []
+  server.use(
+    http.get('/api/medicines', () => HttpResponse.json({ medicines: [current] })),
+    http.patch('/api/medicines', async ({ request }) => {
+      const body = (await request.json()) as StockRequest
+      requests.push(body)
+      current = {
+        ...receipt(current, body),
+        stock:
+          body.stock.threshold === null
+            ? { tracked: true, count: 0, intakePastCount: true }
+            : {
+                tracked: true,
+                count: 0,
+                intakePastCount: true,
+                threshold: body.stock.threshold!,
+                low: true,
+              },
+      }
+      return HttpResponse.json({ medicines: [current] })
+    }),
+  )
+  expect(stockRow()).toHaveAccessibleDescription(
+    `${lowNotice} More was taken than counted. Change the count to fix it. 0 tablets left`,
+  )
+  const drawer = await editAlert(user)
+  const field = drawer.getByRole('textbox', { name: 'Alert below' })
+  expect(field).toHaveValue('5')
+  expect(drawer.getByText('Shows when fewer than this are left.')).toBeVisible()
+  await user.clear(field)
+  await user.type(field, '4.5')
+  await user.click(drawer.getByRole('button', { name: 'Save alert' }))
+  await noDrawer()
+  await waitFor(() => expect(stockRow()).toHaveFocus())
+  await client.refetchQueries({ queryKey: medicineKeys.list() })
+  await user.click(stockRow())
+  expect(
+    within(optionsDrawer()).getByRole('button', { name: 'Low-stock alert' }),
+  ).toHaveAccessibleDescription('Below 4½ tablets')
+  await user.click(within(optionsDrawer()).getByRole('button', { name: 'Low-stock alert' }))
+  await user.click(within(alertDrawer()).getByRole('button', { name: 'Turn off alert' }))
+  await noDrawer()
+  expect(screen.queryByText(/Running low/)).toBeNull()
+  await user.click(stockRow())
+  expect(
+    within(optionsDrawer()).getByRole('button', { name: 'Low-stock alert' }),
+  ).toHaveAccessibleDescription('Off')
+  await user.click(within(optionsDrawer()).getByRole('button', { name: 'Low-stock alert' }))
+  expect(within(alertDrawer()).getByRole('textbox', { name: 'Alert below' })).toHaveValue('')
+  expect(within(alertDrawer()).queryByRole('button', { name: 'Turn off alert' })).toBeNull()
+  expect(requests.map(({ operation, stock }) => [operation, stock.threshold])).toEqual([
+    ['stockThreshold', 4.5],
+    ['stockThreshold', null],
+  ])
+  unmount()
+  client.clear()
+})
+
+test('invalid low-stock thresholds stay in the field and send no command', async () => {
+  const tracked: MedicineRecord = { ...capsules, stock: { tracked: true, count: 24 } }
+  const requests = confirmingServer(tracked)
+  const { user, client, unmount } = open(tracked)
+  await user.click(stockRow())
+  await user.click(
+    within(optionsDrawer('Omega-3')).getByRole('button', { name: 'Low-stock alert' }),
+  )
+  const drawer = within(screen.getByRole('dialog', { name: 'Omega-3 low-stock alert' }))
+  const field = drawer.getByRole('textbox', { name: 'Alert below' })
+  expect(field).toHaveValue('')
+  for (const value of ['', '0', '-1', '7.5']) {
+    await user.clear(field)
+    if (value) await user.type(field, value)
+    await user.click(drawer.getByRole('button', { name: 'Save alert' }))
+    expect(field).toHaveAttribute('aria-invalid', 'true')
+    expect(field).toHaveFocus()
+    expect(drawer.getByRole('alert')).toBeVisible()
+    expect(requests).toEqual([])
+  }
+  expect(drawer.getByText('Use whole capsules.')).toBeVisible()
+  unmount()
+  client.clear()
+})
+
+test('rejected and unconfirmed threshold saves keep the previous alert and retry the identical set or turn-off attempt', async () => {
+  for (const status of [400, 500]) {
+    for (const threshold of [6, null]) {
+      const { user, client, unmount } = open(lowStock)
+      let current = lowStock
+      const requests: StockRequest[] = []
+      let answer: (() => void) | undefined
+      server.use(
+        http.get('/api/medicines', () => HttpResponse.json({ medicines: [current] })),
+        http.patch('/api/medicines', async ({ request }) => {
+          const body = (await request.json()) as StockRequest
+          requests.push(body)
+          if (requests.length === 1) {
+            await new Promise<void>((resolve) => {
+              answer = resolve
+            })
+            return HttpResponse.json({}, { status })
+          }
+          current = {
+            ...receipt(lowStock, body),
+            stock:
+              threshold === null
+                ? { tracked: true, count: 0, intakePastCount: true }
+                : { tracked: true, count: 0, intakePastCount: true, threshold: 6, low: true },
+          }
+          return HttpResponse.json({ medicines: [current] })
+        }),
+      )
+      const drawer = await editAlert(user)
+      const field = drawer.getByRole('textbox', { name: 'Alert below' })
+      if (threshold !== null) {
+        await user.clear(field)
+        await user.type(field, '6')
+      }
+      await user.click(
+        drawer.getByRole('button', { name: threshold === null ? 'Turn off alert' : 'Save alert' }),
+      )
+      await waitFor(() => expect(answer).toBeDefined())
+      expect(drawer.getByRole('button', { name: 'Saving alert...' })).toBeDisabled()
+      expect(field).toBeDisabled()
+      expect(drawer.getByRole('button', { name: 'Close' })).toBeDisabled()
+      expect(stockRow()).toHaveTextContent(lowNotice)
+      expect(client.getQueryData<MedicineRecord[]>(medicineKeys.list())?.[0].stock.threshold).toBe(
+        5,
+      )
+      answer!()
+      expect(
+        await drawer.findByText(
+          status === 400 ? 'Alert wasn’t saved.' : 'That might not have saved.',
+        ),
+      ).toBeVisible()
+      expect(field).toHaveValue(threshold === null ? '5' : '6')
+      expect(stockRow()).toHaveTextContent(lowNotice)
+      await user.click(
+        drawer.getByRole('button', {
+          name: threshold === null ? 'Try turning off alert again' : 'Try saving alert again',
+        }),
+      )
+      await noDrawer()
+      expect(requests).toEqual([requests[0], requests[0]])
+      expect(requests[0].stock.threshold).toBe(threshold)
+      unmount()
+      client.clear()
+    }
+  }
+})
+
+test('the Medications list uses the confirmed low flag after threshold, refill and count changes, with no notice at equality', async () => {
+  let current: MedicineRecord = { ...tablets, stock: { tracked: true, count: 5, threshold: 5 } }
+  const { user, client, unmount, rerender } = open(current, false)
+  server.use(
+    http.get('/api/medicines', () => HttpResponse.json({ medicines: [current] })),
+    http.patch('/api/medicines', async ({ request }) => {
+      const body = (await request.json()) as StockRequest
+      const count =
+        body.operation === 'stockRefill' ? 6 : body.operation === 'stockCorrection' ? 4 : 5
+      current = {
+        ...receipt(current, body),
+        stock: { tracked: true, count, threshold: 6, ...(count < 6 && { low: true as const }) },
+      }
+      return HttpResponse.json({ medicines: [current] })
+    }),
+  )
+  const navigate = (detail: boolean) => {
+    window.history.replaceState(
+      null,
+      '',
+      detail ? `/medications?medicine=${tablets.id}` : '/medications',
+    )
+    rerender(
+      <QueryClientProvider client={client}>
+        <MedicationsScreen initialNow={now} serverEntry />
+      </QueryClientProvider>,
+    )
+  }
+  expect(screen.queryByText(/Running low/)).toBeNull()
+  navigate(true)
+  expect(screen.queryByText(/Running low/)).toBeNull()
+  const drawer = await editAlert(user)
+  const field = drawer.getByRole('textbox', { name: 'Alert below' })
+  await user.clear(field)
+  await user.type(field, '6')
+  await user.click(drawer.getByRole('button', { name: 'Save alert' }))
+  await noDrawer()
+  navigate(false)
+  expect(screen.getByText('Running low: fewer than 6 tablets left.')).toBeVisible()
+  navigate(true)
+  const refill = await addRefill(user)
+  await user.type(refill.field, '1')
+  await user.click(refill.drawer.getByRole('button', { name: 'Add refill' }))
+  await noDrawer()
+  navigate(false)
+  expect(screen.getByText('6 tablets left')).toBeVisible()
+  expect(screen.queryByText(/Running low/)).toBeNull()
+  navigate(true)
+  const correction = await changeCount(user)
+  await user.type(correction.field, '4')
+  await user.click(correction.drawer.getByRole('button', { name: 'Save count' }))
+  await noDrawer()
+  navigate(false)
+  expect(screen.getByText('4 tablets left')).toBeVisible()
+  expect(screen.getByText('Running low: fewer than 6 tablets left.')).toBeVisible()
+  unmount()
+  client.clear()
+})

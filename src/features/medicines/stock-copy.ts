@@ -1,6 +1,12 @@
+import { formatQuantity, unitName } from '@/lib/quantity-policy'
+import type { Medicine } from './contract'
 import type { MedicineStockAction } from './use-medicine-stock'
 
 export const stockCopy = {
+  alert: 'Low-stock alert',
+  alertTitle: (label: string) => `${label} low-stock alert`,
+  alertLabel: 'Alert below',
+  alertHelp: 'Shows when fewer than this are left.',
   heading: 'Stock',
   off: 'Not tracking',
   optionsTitle: (label: string) => `${label} stock`,
@@ -39,6 +45,12 @@ export const drawerCopy = {
     rejected: 'Refill wasn’t added.',
     retry: 'Try adding refill again',
   },
+  stockThreshold: {
+    submit: 'Save alert',
+    pending: 'Saving alert...',
+    rejected: 'Alert wasn’t saved.',
+    retry: 'Try saving alert again',
+  },
   stockOff: {
     rejected: 'Stock tracking didn’t stop.',
     pending: 'Stopping...',
@@ -46,3 +58,11 @@ export const drawerCopy = {
     submit: stockCopy.stop,
   },
 } satisfies Record<MedicineStockAction, unknown>
+
+/** Threshold wording shared by the stock Drawer and both server-confirmed low notices. */
+export function thresholdValue(medicine: Medicine) {
+  const threshold = medicine.stock?.threshold
+  return threshold === undefined
+    ? null
+    : `${formatQuantity(threshold, medicine.unit)} ${unitName(threshold, medicine.unit)}`
+}

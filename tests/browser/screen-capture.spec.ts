@@ -1152,3 +1152,74 @@ test('capture the Stock row and stock Drawer', { tag: '@visual' }, async ({ page
   await expect(row).toHaveAccessibleDescription('10 tablets left')
   await expect(row).toBeFocused()
 })
+
+// Opt-in #420 evidence, reusing the stock fixtures and production drawer at 402x874.
+test('capture low-stock alert states', { tag: '@visual' }, async ({ page, app }) => {
+  // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
+  test.skip(
+    !out || process.env.MEDDIES_LOW_STOCK_CAPTURE !== '1',
+    'Set MEDDIES_LOW_STOCK_CAPTURE=1',
+  )
+  await mkdir(resolve(out!), { recursive: true })
+  await page.setViewportSize(captureCases.phone.viewport)
+  const id = '00000000-0000-4000-8000-0000000d0420'
+  await app.api('POST', '/api/medicines', {
+    id,
+    label: 'Magnesium',
+    strength: '400 mg',
+    unit: 'tablet',
+    startingCount: 4,
+  })
+  await page.goto(`/medications?medicine=${id}`)
+  const row = page.getByRole('button', { name: 'Stock' })
+  await row.click()
+  const options = page.getByRole('dialog', { name: 'Magnesium stock', exact: true })
+  const alertRow = options.getByRole('button', { name: 'Low-stock alert' })
+  await expect(alertRow).toHaveAccessibleDescription('Off')
+  await captureSettled(page, { path: resolve(out!, 'low-stock-options-off-402.png') })
+  await alertRow.focus()
+  await page.keyboard.press('Enter')
+  const alert = page.getByRole('dialog', { name: 'Magnesium low-stock alert' })
+  await expect(alert.getByRole('heading')).toBeFocused()
+  const amount = alert.getByRole('textbox', { name: 'Alert below' })
+  await expect(amount).toHaveValue('')
+  await expect(alert.getByRole('button', { name: 'Turn off alert' })).toHaveCount(0)
+  await captureSettled(page, { path: resolve(out!, 'low-stock-empty-402.png') })
+  await alert.getByRole('button', { name: 'Save alert', exact: true }).click()
+  await expect(amount).toBeFocused()
+  await expect(amount).toHaveAttribute('aria-invalid', 'true')
+  await captureSettled(page, { path: resolve(out!, 'low-stock-invalid-402.png') })
+  await amount.fill('5')
+  await page.route('**/api/medicines', async (route) => {
+    if (route.request().method() !== 'PATCH') return route.fallback()
+    return route.fulfill({ status: 503, json: {} })
+  })
+  await alert.getByRole('button', { name: 'Save alert', exact: true }).click()
+  await expect(alert.getByText('That might not have saved.')).toBeVisible()
+  await captureSettled(page, { path: resolve(out!, 'low-stock-recovery-402.png') })
+  await page.unroute('**/api/medicines')
+  const command = { method: 'POST', path: '/medicines', operation: 'stockThreshold' }
+  app.worker.hold(command)
+  await alert.getByRole('button', { name: 'Try saving alert again' }).click()
+  await expect(alert.getByRole('button', { name: 'Saving alert...' })).toBeDisabled()
+  await expect(amount).toBeDisabled()
+  await captureSettled(page, { path: resolve(out!, 'low-stock-saving-402.png') })
+  app.worker.release(command)
+  await expect(alert).toBeHidden()
+  await expect(row).toBeFocused()
+  await expect(row).toContainText('Running low: fewer than 5 tablets left.')
+  await captureSettled(page, { path: resolve(out!, 'low-stock-detail-402.png') })
+  await row.click()
+  await expect(alertRow).toHaveAccessibleDescription('Below 5 tablets')
+  await captureSettled(page, { path: resolve(out!, 'low-stock-options-set-402.png') })
+  await alertRow.click()
+  await expect(amount).toHaveValue('5')
+  await captureSettled(page, { path: resolve(out!, 'low-stock-set-402.png') })
+  await page.keyboard.press('Escape')
+  await expect(alert).toBeHidden()
+  await expect(row).toBeFocused()
+  await page.getByRole('link', { name: 'Medications', exact: true }).first().click()
+  await expect(page.getByText('Running low: fewer than 5 tablets left.')).toBeVisible()
+  await expect.poll(() => scrollsHorizontally(page)).toBe(false)
+  await captureSettled(page, { path: resolve(out!, 'low-stock-list-402.png') })
+})

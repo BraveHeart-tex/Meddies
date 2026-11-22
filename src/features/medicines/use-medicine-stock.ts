@@ -7,7 +7,8 @@ import { parseMedicineRecord, type Medicine, type MedicineRecord } from './contr
 import { medicineKeys, medicinesQuery, mergeClientMedicines } from './queries'
 import { medicationRecordHref } from './routes'
 
-export type MedicineStockAction = 'stockOn' | 'stockOff' | 'stockCorrection' | 'stockRefill'
+export type MedicineStockAction =
+  'stockOn' | 'stockOff' | 'stockCorrection' | 'stockRefill' | 'stockThreshold'
 
 /** #393: publishes a matching stock receipt only. After cancelling older reads the Medicine, at
  * revision + 1 with the new stock, replaces the cached one; revision merges keep a delayed read
@@ -26,10 +27,10 @@ export async function confirmMedicineStock(
   void client.invalidateQueries({ queryKey: medicineKeys.all })
 }
 
-/** Session-owned stock on, off, Count correction or Refill: only a record
+/** Session-owned stock on, off, Count correction, Refill or Low-stock threshold: only a record
  * bearing this action, revision + 1 and the requested stock (or the server total for a Refill) confirms it, so the count shows only
- * once the server has it. Unconfirmed retries and rejected Count correction or Refill retries reuse the
- * action ID and payload; a changed count is a new attempt. The shared feedback host takes
+ * once the server has it. Unconfirmed retries and rejected Count correction, Refill or threshold retries reuse the
+ * action ID and payload; a changed count or threshold is a new attempt. The shared feedback host takes
  * over without cancelling the save.
  */
 export function useMedicineStock(
@@ -55,11 +56,13 @@ export function useMedicineStock(
   }, [attempt, key, onSaved, open, store])
   const correction = action === 'stockCorrection'
   const refill = action === 'stockRefill'
-  const retryRejected = correction || refill
+  const threshold = action === 'stockThreshold'
+  const retryRejected = correction || refill || threshold
   const retry =
     attempt?.result?.problem === 'unconfirmed' ||
     (retryRejected && attempt?.result?.problem === 'rejected')
   return {
+    turningOffAlert: threshold && attempt?.payload.threshold === null,
     pending: attempt?.status === 'pending',
     problem: attempt?.result?.problem,
     clear: () => store.clear(key),
@@ -67,7 +70,7 @@ export function useMedicineStock(
       await client.fetchQuery({ ...medicinesQuery(client), staleTime: 0 })
       store.clear(key)
     },
-    submit: (count?: number) =>
+    submit: (count?: number | null) =>
       store.submit(
         key,
         {
@@ -76,14 +79,17 @@ export function useMedicineStock(
             // A newer read after navigation must not silently rebase an Unconfirmed save.
             expectedRevision:
               retry &&
-              (refill
-                ? attempt.payload.amount === count
-                : !correction || attempt.payload.count === count)
+              (threshold
+                ? attempt.payload.threshold === count
+                : refill
+                  ? attempt.payload.amount === count
+                  : !correction || attempt.payload.count === count)
                 ? attempt.payload.expectedRevision
                 : medicine.revision,
             ...(action === 'stockOn' && { unit: medicine.unit, startingCount: count }),
             ...(correction && { unit: medicine.unit, count }),
             ...(refill && { unit: medicine.unit, amount: count }),
+            ...(threshold && { unit: medicine.unit, threshold: count }),
           },
           label: medicine.label,
           kind: 'medicine',
@@ -92,11 +98,15 @@ export function useMedicineStock(
           savedTitle:
             action === 'stockOn'
               ? `Tracking ${medicine.label} stock`
-              : refill
-                ? `Added ${medicine.label} refill`
-                : correction
-                  ? `Saved ${medicine.label} count`
-                  : `Stopped tracking ${medicine.label} stock`,
+              : threshold
+                ? count === null
+                  ? `Turned off ${medicine.label} low-stock alert`
+                  : `Saved ${medicine.label} low-stock alert`
+                : refill
+                  ? `Added ${medicine.label} refill`
+                  : correction
+                    ? `Saved ${medicine.label} count`
+                    : `Stopped tracking ${medicine.label} stock`,
         },
         async (payload, active) => {
           const { id, ...rest } = payload
@@ -107,6 +117,7 @@ export function useMedicineStock(
             startingCount?: number
             count?: number
             amount?: number
+            threshold?: number | null
             unit?: Medicine['unit']
           }
           function match(value: unknown) {
@@ -115,13 +126,17 @@ export function useMedicineStock(
               saved.id !== edit.medicineId ||
               saved.lastActionId !== edit.actionId ||
               saved.revision !== edit.expectedRevision + 1 ||
-              (action === 'stockOff'
-                ? saved.stock.tracked
-                : !saved.stock.tracked ||
-                  (!refill &&
-                    saved.stock.count !== (correction ? edit.count : edit.startingCount)) ||
-                  (refill && saved.unit !== edit.unit) ||
-                  (correction && (saved.stock.intakePastCount || saved.unit !== edit.unit)))
+              (threshold
+                ? !saved.stock.tracked ||
+                  saved.unit !== edit.unit ||
+                  (saved.stock.threshold ?? null) !== edit.threshold
+                : action === 'stockOff'
+                  ? saved.stock.tracked
+                  : !saved.stock.tracked ||
+                    (!refill &&
+                      saved.stock.count !== (correction ? edit.count : edit.startingCount)) ||
+                    (refill && saved.unit !== edit.unit) ||
+                    (correction && (saved.stock.intakePastCount || saved.unit !== edit.unit)))
             )
               throw new Error('Medicine stock receipt does not match attempt')
             return saved

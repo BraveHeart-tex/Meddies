@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { PackageCheck, PackagePlus, PackageX, X } from 'lucide-react'
+import { Bell, PackageCheck, PackagePlus, PackageX, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Drawer,
@@ -12,7 +12,7 @@ import {
 import { stockLeft } from '@/lib/quantity-policy'
 import type { Medicine } from './contract'
 import { MedicationInsetGroup, MedicationInsetRow } from './medication-inset-list'
-import { stockCopy } from './stock-copy'
+import { stockCopy, thresholdValue } from './stock-copy'
 
 /* The stock Drawer (238·A3) shows the count and opens the action drawers. It saves nothing itself. */
 export function StockOptionsDrawer({
@@ -24,6 +24,7 @@ export function StockOptionsDrawer({
   onRefill,
   onChangeCount,
   onStop,
+  onAlert,
 }: {
   medicine: Medicine
   count: number | null
@@ -33,6 +34,7 @@ export function StockOptionsDrawer({
   onRefill: () => void
   onChangeCount: () => void
   onStop: () => void
+  onAlert: () => void
 }) {
   const titleRef = useRef<HTMLHeadingElement>(null)
   return (
@@ -70,6 +72,12 @@ export function StockOptionsDrawer({
                 icon={PackageCheck}
                 label={stockCopy.change}
                 onClick={onChangeCount}
+              />
+              <MedicationInsetRow
+                icon={Bell}
+                label={stockCopy.alert}
+                value={thresholdValue(medicine) ? `Below ${thresholdValue(medicine)}` : 'Off'}
+                onClick={onAlert}
               />
               <MedicationInsetRow icon={PackageX} label={stockCopy.stop} onClick={onStop} />
             </MedicationInsetGroup>

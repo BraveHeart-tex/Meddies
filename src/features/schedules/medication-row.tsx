@@ -7,6 +7,7 @@ import type { Medicine } from '@/features/medicines/contract'
 import { TypeTile } from '@/features/medicines/type-tile'
 import { MedicationsLink } from '@/features/medicines/medications-nav'
 import { medicationsHref } from '@/features/medicines/routes'
+import { LowStockNotice } from '@/features/medicines/low-stock-notice'
 import { stockLeft } from '@/lib/quantity-policy'
 import { PausedBadge } from './clock-schedule-card'
 
@@ -44,6 +45,11 @@ export function MedicationRow({
         </ItemDescription>
         {medicine.stock?.tracked && (
           <ItemDescription>{stockLeft(medicine.stock.count, medicine.unit)}</ItemDescription>
+        )}
+        {medicine.stock?.tracked && medicine.stock.low && (
+          <ItemDescription>
+            <LowStockNotice medicine={medicine} />
+          </ItemDescription>
         )}
         {medicine.stock?.tracked && medicine.stock.intakePastCount && (
           <ItemDescription>More was taken than counted</ItemDescription>

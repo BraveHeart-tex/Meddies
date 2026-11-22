@@ -267,6 +267,13 @@ confirmed stop (4 screenshots named `stock-…-402.png`) also check focus return
 MEDDIES_STOCK_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-stock pnpm test:browser:visual screen-capture --grep "Stock row and stock Drawer"
 ```
 
+Low-stock alert's off/set rows, empty, validation, saving and recovery drawers, and low notices
+on Medication detail and Medications (with keyboard focus checks):
+
+```sh
+MEDDIES_LOW_STOCK_CAPTURE=1 MEDDIES_VISUAL_OUT=/tmp/meddies-low-stock pnpm test:browser:visual screen-capture --grep "low-stock alert states"
+```
+
 Schedule Amount inputs (#265) add a second Clock time row with a plural amount, then open the
 Interval Amount sheet on the seeded medicine's Change schedule (2 screenshots named
 `amount-…-402.png`); singular and plural rows must share one input width:
