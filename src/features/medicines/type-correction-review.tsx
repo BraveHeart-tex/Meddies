@@ -158,13 +158,9 @@ export function TypeCorrectionReviewScreen({
       <TypeCorrectionSummary
         medicine={resumed?.medicine ?? medicine}
         review={review}
-        count={
-          correction.confirmed ? String(correction.submitted?.command.stockCount ?? '') : stockCount
-        }
-        onLeave={correction.confirmed ? correction.clear : undefined}
+        count={stockCount}
         pending={correction.pending}
         problem={correction.problem}
-        confirmed={correction.confirmed}
         onReviewSaved={onReviewSaved}
         onSave={() => {
           if (correction.problem === 'unconfirmed') {

@@ -40,7 +40,7 @@ export function MedicineRecordScreen({
   record: 'fix' | 'strength' | 'history'
   periodId?: string
   today: string
-  onSaved: (medicine: MedicineRecord, kind: 'fix' | 'strength') => void
+  onSaved: (medicine: MedicineRecord, kind: 'fix' | 'strength' | 'type') => void
 }) {
   // An Archived medicine keeps its read-only Strength history, never its edits.
   const medicine = medicinesRead.medicines.find(
@@ -108,8 +108,8 @@ export function MedicineRecordScreen({
               medicine={saved}
               mode={record}
               periodId={period}
-              onSaved={(value) => {
-                onSaved(value, record)
+              onSaved={(value, kind) => {
+                onSaved(value, kind ?? record)
               }}
               onCancel={() => returnToMedicationPage(saved.id)}
             />

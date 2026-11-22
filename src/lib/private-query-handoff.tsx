@@ -8,6 +8,7 @@ import {
   type DehydratedState,
 } from '@tanstack/react-query'
 import { medicineKeys, mergeClientMedicines } from '@/features/medicines/queries'
+import { applyConfirmedTypeCorrections } from '@/features/medicines/confirm-type-correction'
 import type { Medicine } from '@/features/medicines/contract'
 import {
   scheduleKeys,
@@ -29,7 +30,10 @@ function mergePolicy(
       mergeClientMedicines(client, current as Medicine[] | undefined, incoming as Medicine[])
   if (key.length === 2 && key[0] === scheduleKeys.all[0] && key[1] === scheduleKeys.snapshot()[1])
     return (current, incoming) =>
-      mergeSnapshot(current as ScheduleSnapshot | undefined, incoming as ScheduleSnapshot)
+      mergeSnapshot(
+        current as ScheduleSnapshot | undefined,
+        applyConfirmedTypeCorrections(client, key, incoming as ScheduleSnapshot),
+      )
   if (
     key.length === 3 &&
     key[0] === scheduleKeys.all[0] &&
@@ -37,10 +41,16 @@ function mergePolicy(
     typeof key[2] === 'string'
   )
     return (current, incoming) =>
-      mergeHistoryDay(current as DoseOccurrence[] | undefined, incoming as DoseOccurrence[])
+      mergeHistoryDay(
+        current as DoseOccurrence[] | undefined,
+        applyConfirmedTypeCorrections(client, key, incoming as DoseOccurrence[]),
+      )
   if (isUnscheduledKey(key))
     return (current, incoming) =>
-      mergeUnscheduledDay(current as UnscheduledDose[] | undefined, incoming as UnscheduledDose[])
+      mergeUnscheduledDay(
+        current as UnscheduledDose[] | undefined,
+        applyConfirmedTypeCorrections(client, key, incoming as UnscheduledDose[]),
+      )
   throw new Error(`Private query needs an explicit handoff policy: ${JSON.stringify(key)}`)
 }
 

@@ -68,6 +68,13 @@ export function confirmDeleted(label: string) {
   show(`${label} deleted`, 'none', 'This medication had no schedule or doses.')
 }
 
-export function confirmRecordSaved(kind: 'fix' | 'strength') {
-  show(kind === 'fix' ? 'Fixed details saved' : 'Strength change saved', 'check')
+export function confirmRecordSaved(kind: 'fix' | 'strength' | 'type') {
+  show(
+    kind === 'type'
+      ? 'Details saved'
+      : kind === 'fix'
+        ? 'Fixed details saved'
+        : 'Strength change saved',
+    'check',
+  )
 }

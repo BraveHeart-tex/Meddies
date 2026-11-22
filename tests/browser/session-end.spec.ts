@@ -22,7 +22,7 @@ test.use({
   },
 })
 
-const notice = 'A save was still in progress. After signing in, check whether it was recorded.'
+const notice = 'A save may still finish. Sign in again to check what was saved.'
 const signIn = 'Continue with Google'
 
 test('expiry with a pending save shows the notice, removes private content and returns fresh', async ({

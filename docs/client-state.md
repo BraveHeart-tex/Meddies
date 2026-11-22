@@ -44,8 +44,11 @@ browser storage is used. Losing it on reload, app closure or browser eviction is
   submitting explicit repairs. A review is advisory. The save checks both the Medicine revision
   and the review version so a dose or Schedule write can require a fresh review. An Unconfirmed
   retry keeps the original action ID and submitted payload and returns its original receipt.
-  A fresh read can confirm the same action ID at the expected successor revision. The attempt
-  restores its final review after navigation. When offline, final review keeps the Session
+  A fresh read can confirm the same action ID at the expected successor revision. Either
+  confirmation cancels older reads before publishing the corrected Type, amounts and Stock,
+  then returns to Medication detail with “Details saved” if final review is still open.
+  Dose history reloads its affected pages and totals. An outstanding attempt restores its
+  final review after navigation. When offline, final review keeps the Session
   draft visible and disables Connect to save. Reconnect requires an explicit save or retry.
   A definite rejection keeps the draft editable.
   Review saved medication discards a stale draft only after a fresh read succeeds.
@@ -144,5 +147,5 @@ references and mounted forms cannot restore any cleared state.
 - **A save's 401** stays pending through the check, then continues as an unconfirmed save if
   the session is not over.
 - **Pending and unconfirmed saves.** Before clearing, only whether one existed survives, as
-  a generic sign-in notice with no medication details. Sign-out with one outstanding warns by
-  name first and offers to stay signed in.
+  a generic sign-in notice that the save may still finish, with no medication details. Sign-out
+  with one outstanding warns by name first and offers to stay signed in.

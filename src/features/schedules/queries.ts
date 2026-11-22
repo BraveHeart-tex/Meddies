@@ -54,6 +54,7 @@ export async function fetchHistoryDay(
   if (!response.ok) throw new PrivateReadError(response.status)
   const data: { doses: DoseOccurrence[]; unscheduledDoses?: UnscheduledDose[] } =
     await response.json()
+  signal?.throwIfAborted()
   if (client) seedUnscheduledDay(client, date, data.unscheduledDoses ?? [])
   return data.doses.map((dose) => markSnoozeRead(dose, readVersion))
 }
@@ -87,6 +88,7 @@ export async function fetchScheduleSnapshot(
   })
   if (!response.ok) throw new PrivateReadError(response.status)
   const data = await response.json()
+  signal?.throwIfAborted()
   if (client) seedUnscheduledDay(client, data.today.date, data.unscheduledDoses ?? [])
   return markSnoozeRead(toScheduleSnapshot(data), readVersion)
 }

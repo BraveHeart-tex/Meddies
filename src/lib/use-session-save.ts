@@ -26,7 +26,7 @@ export function useSessionSave<T>(key: string, onSaved?: (saved: T) => void) {
     }
   }, [store, key])
   useEffect(() => {
-    if (onSaved && attempt?.result?.saved && handled.current !== attempt) {
+    if (store.active && onSaved && attempt?.result?.saved && handled.current !== attempt) {
       handled.current = attempt
       onSaved(attempt.result.saved as T)
       store.clear(key)

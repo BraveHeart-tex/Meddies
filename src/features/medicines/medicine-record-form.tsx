@@ -44,14 +44,16 @@ export function MedicineRecordForm({
   medicine: MedicineRecord
   mode: 'fix' | 'strength'
   periodId: string
-  onSaved: (medicine: MedicineRecord) => void
+  onSaved: (medicine: MedicineRecord, kind?: 'type') => void
   onCancel: () => void
 }) {
   const heading = useRef<HTMLHeadingElement>(null)
   const [recovered, setRecovered] = useState<MedicineRecord>()
   const medicine =
     recovered && recovered.revision >= savedMedicine.revision ? recovered : savedMedicine
-  const correction = useTypeCorrectionSave(medicine, mode === 'fix' ? periodId : '-')
+  const correction = useTypeCorrectionSave(medicine, mode === 'fix' ? periodId : '-', (saved) =>
+    onSaved(saved, 'type'),
+  )
   const [resumed, setResumed] = useState(() => (mode === 'fix' ? correction.submitted : undefined))
   const [reviewUnit, setReviewUnit] = useState<WritableMedicineType | null>(
     resumed?.command.unit ?? null,

@@ -116,7 +116,7 @@ test('known offline offers retry without dispatching; returning online permits r
   online.mockRestore()
 })
 
-const saveNotice = 'A save was still in progress. After signing in, check whether it was recorded.'
+const saveNotice = 'A save may still finish. Sign in again to check what was saved.'
 
 test.each(['expired', 'signed-out'])('reason %s adds the generic save notice', (reason) => {
   render(<SignInScreen configured reason={reason} saveInProgress />)

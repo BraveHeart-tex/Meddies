@@ -7,6 +7,7 @@ import { useSessionSave } from '@/lib/use-session-save'
 import { parseMedicineRecord, type MedicineRecord } from './contract'
 import { fetchMedicines, medicineKeys, medicinesQuery } from './queries'
 import { medicationRecordHref } from './routes'
+import { confirmTypeCorrection } from './confirm-type-correction'
 import { medicineRecordKey } from './use-medicine-record-save'
 import type { TypeCorrection, TypeCorrectionReview } from './type-correction-contract'
 
@@ -19,10 +20,14 @@ type CorrectionDraft = {
 /** The reviewed facts travel with the session attempt so returning to Edit details can
  * reconstruct final review and retry even if saved facts have changed in the meantime.
  */
-export function useTypeCorrectionSave(medicine: MedicineRecord, periodId: string) {
+export function useTypeCorrectionSave(
+  medicine: MedicineRecord,
+  periodId: string,
+  onSaved: (saved: MedicineRecord) => void,
+) {
   const client = useQueryClient()
   const key = `medicine:${medicine.id}:type-correction:${periodId}`
-  const { store, attempt, pending, problem } = useSessionSave<MedicineRecord>(key)
+  const { store, attempt, pending, problem } = useSessionSave<MedicineRecord>(key, onSaved)
   const submitted = attempt?.payload as (CorrectionDraft & { id: string }) | undefined
 
   function submit({ medicine, review, command }: CorrectionDraft) {
@@ -37,12 +42,13 @@ export function useTypeCorrectionSave(medicine: MedicineRecord, periodId: string
         savedTitle: 'Details saved',
       },
       async (payload, active) => {
-        const { command, id } = payload as CorrectionDraft & { id: string }
+        const { command, id, review } = payload as CorrectionDraft & { id: string }
         function match(value: unknown) {
           const saved = parseMedicineRecord(value)
           if (
             saved.id !== command.medicineId ||
             saved.lastActionId !== id ||
+            saved.unit !== command.unit ||
             saved.revision !== command.expectedRevision + 1
           )
             throw new Error('Type correction receipt does not match attempt')
@@ -68,8 +74,11 @@ export function useTypeCorrectionSave(medicine: MedicineRecord, periodId: string
             // Only the expected successor bearing this action ID confirms the attempt.
           }
         }
-        if (result.saved && active())
-          discardSessionFormDraft(client, medicineRecordKey(command.medicineId, 'fix', periodId))
+        if (result.saved && active()) {
+          await confirmTypeCorrection(client, result.saved, command, review, active)
+          if (active())
+            discardSessionFormDraft(client, medicineRecordKey(command.medicineId, 'fix', periodId))
+        }
         return result
       },
     )
@@ -77,9 +86,8 @@ export function useTypeCorrectionSave(medicine: MedicineRecord, periodId: string
 
   return {
     submitted,
-    pending,
+    pending: pending || Boolean(attempt?.result?.saved),
     problem,
-    confirmed: Boolean(attempt?.result?.saved),
     submit,
     retry: () => submitted && submit(submitted),
     clear: () => store.clear(key),

@@ -53,7 +53,7 @@ export function SchedulePanel({
   onArchiveRequested?: (medicine: Medicine) => void
   onRestoreRequested?: (medicine: Medicine) => void
   onDeleteRequested?: (medicine: Medicine) => void
-  onRecordSaved?: (medicine: MedicineRecord, kind: 'fix' | 'strength') => void
+  onRecordSaved?: (medicine: MedicineRecord, kind: 'fix' | 'strength' | 'type') => void
   detailHeadingRef?: Ref<HTMLHeadingElement>
 }) {
   const schedulesRead = useScheduleSnapshot({ serverEntry: serverEntry || mode === 'today' })

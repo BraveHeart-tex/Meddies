@@ -13,7 +13,7 @@ const medicine = 'Private Omega'
 
 const expiredUrl = `/?reason=expired&returnTo=${encodeURIComponent(historyPath)}`
 const cleared = "Changes you hadn't saved were cleared."
-const saveNotice = 'A save was still in progress. After signing in, check whether it was recorded.'
+const saveNotice = 'A save may still finish. Sign in again to check what was saved.'
 const correctionWrite = { method: 'POST', path: '/schedules', operation: 'correctOutcome' } as const
 
 test.use({

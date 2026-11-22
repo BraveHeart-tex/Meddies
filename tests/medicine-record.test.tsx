@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
+import { act, render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { expect, test, vi } from 'vitest'
@@ -10,9 +10,14 @@ import { Toaster } from '../src/components/ui/toast'
 import { scheduleKeys, type ScheduleSnapshot } from '../src/features/schedules/queries'
 import { MedicineRecordForm } from '../src/features/medicines/medicine-record-form'
 import type { MedicineRecord } from '../src/features/medicines/contract'
-import { writeSessionDraft } from '../src/lib/session-drafts'
+import { readSessionDraft, writeSessionDraft } from '../src/lib/session-drafts'
 import { medicineRecordKey } from '../src/features/medicines/use-medicine-record-save'
-import { createQueryClient } from '../src/lib/session-query-client'
+import {
+  createQueryClient,
+  endSessionQueryClient,
+  sessionQueryClient,
+} from '../src/lib/session-query-client'
+import { sessionSaves } from '../src/lib/session-saves'
 import { SchedulingClockProvider } from '../src/features/schedules/scheduling-clock'
 import { server } from './helpers/msw-server'
 import { findConfirmation } from './helpers/toasts'
@@ -54,8 +59,8 @@ function open(
   record = medicine,
   periodId = record.currentStrengthRevisionId,
   draft?: Record<string, unknown>,
+  client = createQueryClient(),
 ) {
-  const client = createQueryClient()
   if (draft)
     writeSessionDraft(client, medicineRecordKey(record.id, mode, periodId), {
       label: record.label,
@@ -1192,7 +1197,18 @@ test('Type correction locks its submitted draft and retries the identical comman
       const command = (await request.json()) as Record<string, unknown>
       commands.push(command)
       if (commands.length === 1) await held
-      else saved = { ...record, revision: 2, lastActionId: command.actionId as string }
+      else
+        saved = {
+          ...record,
+          unit: 'capsule',
+          stock: { tracked: true, count: 16 },
+          revision: 2,
+          lastActionId: command.actionId as string,
+          strengthRevisions: record.strengthRevisions.map((period) => ({
+            ...period,
+            unit: 'capsule',
+          })),
+        }
       return HttpResponse.error()
     }),
   )
@@ -1253,9 +1269,81 @@ test('Type correction locks its submitted draft and retries the identical comman
   await user.click(screen.getByRole('button', { name: 'Retry save' }))
   await waitFor(() => expect(commands).toHaveLength(2))
   expect(commands[1]).toEqual(commands[0])
-  expect(await screen.findByText('Details saved')).toBeVisible()
-  expect(onSaved).not.toHaveBeenCalled()
-  expect(client.getQueryData(medicineKeys.list())).toBeUndefined()
+  await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved, 'type'))
+  expect(client.getQueryData(medicineKeys.list())).toEqual([saved])
+})
+
+test('Session end discards the Type correction draft and ignores its late confirmation', async () => {
+  const client = sessionQueryClient('type-correction-expiry')
+  const store = sessionSaves(client)
+  const submit = vi.spyOn(store, 'submit')
+  const key = medicineRecordKey(medicine.id, 'fix', medicine.currentStrengthRevisionId)
+  let respond!: (value: Response) => void
+  const held = new Promise<Response>((resolve) => (respond = resolve))
+  let actionId: string | undefined
+  server.use(
+    http.post('/api/medicines/type-correction', () =>
+      HttpResponse.json({
+        review: {
+          medicineId: medicine.id,
+          unit: 'capsule',
+          fromUnit: 'tablet',
+          revision: 1,
+          reviewVersion: 5,
+          stockTracked: false,
+          compatibleAmounts: 1,
+          conflicts: [],
+        },
+      }),
+    ),
+    http.patch('/api/medicines/type-correction', async ({ request }) => {
+      actionId = ((await request.json()) as { actionId: string }).actionId
+      return held
+    }),
+  )
+  try {
+    client.setQueryData(medicineKeys.list(), [medicine])
+    const { user, onSaved, unmount } = open(
+      'fix',
+      medicine,
+      medicine.currentStrengthRevisionId,
+      undefined,
+      client,
+    )
+    await user.click(screen.getByRole('combobox', { name: 'Type' }))
+    await user.click(await screen.findByRole('option', { name: 'Capsule' }))
+    await user.click(screen.getByRole('button', { name: 'Review Type change' }))
+    await user.click(await screen.findByRole('button', { name: 'Review changes' }))
+    await user.click(screen.getByRole('button', { name: 'Save details' }))
+    await waitFor(() => expect(actionId).toEqual(expect.any(String)))
+    expect(readSessionDraft(client, key)).toBeDefined()
+
+    act(() => endSessionQueryClient())
+    unmount()
+    expect(readSessionDraft(client, key)).toBeUndefined()
+    respond(
+      HttpResponse.json({
+        medicines: [
+          {
+            ...medicine,
+            unit: 'capsule',
+            revision: 2,
+            lastActionId: actionId,
+            strengthRevisions: medicine.strengthRevisions.map((period) => ({
+              ...period,
+              unit: 'capsule',
+            })),
+          },
+        ],
+      }),
+    )
+    await act(() => submit.mock.results[0].value)
+    expect(client.getQueryCache().getAll()).toEqual([])
+    expect(store.entries.size).toBe(0)
+    expect(onSaved).not.toHaveBeenCalled()
+  } finally {
+    endSessionQueryClient()
+  }
 })
 
 // Definite rejection must keep the draft editable, and a changed preflight must

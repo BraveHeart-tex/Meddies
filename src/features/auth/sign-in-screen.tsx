@@ -54,8 +54,8 @@ export function SignInScreen({
               : null
 
   const detail =
-    info && saveInProgress && message
-      ? `${message[1]} A save was still in progress. After signing in, check whether it was recorded.`
+    info && saveInProgress
+      ? 'A save may still finish. Sign in again to check what was saved.'
       : message?.[1]
 
   async function submit() {

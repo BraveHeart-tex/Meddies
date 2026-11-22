@@ -200,10 +200,8 @@ export function TypeCorrectionSummary({
   onReviewAmounts,
   onSave,
   onReviewSaved,
-  onLeave,
   pending,
   problem,
-  confirmed,
   onBack,
   onCancel,
 }: CorrectionScreenProps & {
@@ -211,17 +209,15 @@ export function TypeCorrectionSummary({
   count: string
   onReviewAmounts: () => void
   onSave: () => void
-  onLeave?: () => void
   onReviewSaved?: () => Promise<void>
   pending?: boolean
   problem?: SaveProblem
-  confirmed?: boolean
 }) {
   const [refreshing, setRefreshing] = useState(false)
   const [refreshFailed, setRefreshFailed] = useState(false)
   const offline = useKnownOffline()
-  const showOffline = offline && !pending && !confirmed
-  const locked = pending || confirmed || problem === 'unconfirmed' || problem === 'conflict'
+  const showOffline = offline && !pending
+  const locked = pending || problem === 'unconfirmed' || problem === 'conflict'
   const message = problem && correctionProblems[problem]
   async function reviewSaved() {
     setRefreshing(true)
@@ -305,7 +301,7 @@ export function TypeCorrectionSummary({
           </div>
         )}
       </dl>
-      {!pending && !problem && !confirmed && !showOffline && (
+      {!pending && !problem && !showOffline && (
         <p className="text-body-sm text-muted-foreground">
           These changes save together. Dose times and Taken or Skipped stay as they are.
         </p>
@@ -334,27 +330,20 @@ export function TypeCorrectionSummary({
           )
         )}
         {refreshFailed && <p role="alert">Couldn’t load the saved medication. Try again.</p>}
-        {confirmed ? (
-          <p role="status" className="text-body-sm">
-            Details saved
-          </p>
-        ) : (
-          <Button
-            size="lg"
-            disabled={pending || refreshing || offline}
-            onClick={problem === 'conflict' ? () => void reviewSaved() : onSave}
-          >
-            {pending
-              ? 'Saving…'
-              : showOffline
-                ? saveMessages.connectToSave
-                : (message?.action ?? 'Save details')}
-          </Button>
-        )}
-        {problem === 'unconfirmed' || confirmed ? (
+        <Button
+          size="lg"
+          disabled={pending || refreshing || offline}
+          onClick={problem === 'conflict' ? () => void reviewSaved() : onSave}
+        >
+          {pending
+            ? 'Saving…'
+            : showOffline
+              ? saveMessages.connectToSave
+              : (message?.action ?? 'Save details')}
+        </Button>
+        {problem === 'unconfirmed' ? (
           <MedicationsLink
             href={medicationRecordHref(medicine.id)}
-            onShow={onLeave}
             className={buttonVariants({ variant: 'outline' })}
           >
             Back to medication

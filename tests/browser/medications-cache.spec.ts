@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
-import { hydrated } from './actions'
+import { focusWindow, hydrated } from './actions'
 import { expect, test } from './fixtures'
 import { pickDate, pickTime } from './pickers'
+import { insertScheduledMedicine, insertTakenRecord } from './seed'
+import { captureSettled } from './settled-capture'
 
 test.use({
   journey: {
@@ -277,4 +279,130 @@ test('detail correction retains its draft and pending save across navigation, th
     await page.getByRole('link', { name: 'View details for Magnesium' }).click()
     await expect(page.getByText('No schedule', { exact: true })).toBeVisible()
   })
+})
+
+test.describe('Type Detail correction', () => {
+  const date = '2035-06-15'
+  const medicineId = '00000000-0000-4000-8000-000000455001'
+  const label = 'Correction Medicine'
+  const detail = `/medications?medicine=${medicineId}`
+  const history = `/history?date=${date}`
+  const correctionWrite = {
+    method: 'POST',
+    path: '/medicine-type-correction',
+    operation: 'correctType',
+  } as const
+  const captureDir = process.env.MEDDIES_TYPE_CORRECTION_CAPTURE
+
+  test.use({
+    journey: {
+      auth: true,
+      storage: true,
+      initialScheduleTime: '2035-06-15T08:00:00.000Z',
+      seed: async ({ db, ownerId }) => {
+        const { scheduleId } = await insertScheduledMedicine(db, ownerId, {
+          medicineId,
+          label,
+          startDate: date,
+          times: [
+            { time: '09:00', quantity: 1.5 },
+            { time: '12:00', quantity: 2 },
+          ],
+        })
+        await insertTakenRecord(db, ownerId, {
+          scheduleId,
+          dueAt: `${date}T06:00:00.000Z`,
+          takenAt: `${date}T06:05:00.000Z`,
+          quantity: 0.5,
+        })
+        await db
+          .prepare(
+            'UPDATE user_medications SET stock_count=12,low_stock_threshold=3 WHERE owner_id=? AND id=?',
+          )
+          .bind(ownerId, medicineId)
+          .run()
+      },
+    },
+  })
+
+  async function reviewCorrection(page: Page) {
+    await page.getByRole('link', { name: 'Manage medication' }).click()
+    await page.getByRole('link', { name: 'Edit details', exact: true }).click()
+    await page.getByRole('combobox', { name: 'Type' }).click()
+    await page.getByRole('option', { name: 'Capsule', exact: true }).click()
+    await page.getByRole('button', { name: 'Review Type change' }).click()
+    await page.getByRole('button', { name: 'Check first amount' }).click()
+    await page.getByRole('textbox', { name: 'Amount' }).fill('3')
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    await page.getByRole('textbox', { name: 'Amount' }).fill('4')
+    await page.getByRole('button', { name: 'Continue to Stock' }).click()
+    await page.getByRole('textbox', { name: 'Current count' }).fill('16')
+    await page.getByRole('button', { name: 'Review changes' }).click()
+  }
+
+  // Allowed reason: data consistency across routes.
+  test('a confirmed Type correction survives older reads across the medication and dose routes', async ({
+    page,
+    app,
+  }) => {
+    const nav = page.getByRole('navigation', { name: 'Primary' })
+    await page.goto(history)
+    await expect(page.getByText(/½\s+tablet/).first()).toBeVisible()
+    await nav.getByRole('link', { name: 'Medications' }).click()
+    await page.getByRole('link', { name: `View details for ${label}` }).click()
+    await page.getByRole('link', { name: 'Dose history' }).click()
+    await expect(page.getByText(/½\s+tablet/).first()).toBeVisible()
+    await page.goBack()
+    await expect(page).toHaveURL(detail)
+
+    const olderRead = { method: 'POST', path: '/schedules', operation: 'listOutcomes' } as const
+    app.worker.hold(olderRead)
+    await focusWindow(page)
+    await expect.poll(() => app.worker.held(olderRead)).toBeGreaterThan(0)
+
+    await reviewCorrection(page)
+    await page.getByRole('button', { name: 'Save details' }).click()
+    await expect(page).toHaveURL(detail)
+    await expect(page.getByRole('heading', { name: label, exact: true })).toBeFocused()
+    await expect(page.getByText('Details saved', { exact: true })).toBeVisible()
+    await expect(page.getByText('10 mg · capsule', { exact: true })).toBeVisible()
+    await expect(page.getByText(/16\s+capsules/).first()).toBeVisible()
+    // eslint-disable-next-line playwright/no-conditional-in-test -- receipt capture is opt-in
+    if (captureDir) await captureSettled(page, { path: `${captureDir}/440-s12-production.png` })
+
+    await app.worker.release(olderRead)
+    await expect(page.getByText(/4\s+capsules/).first()).toBeVisible()
+    await nav.getByRole('link', { name: 'Today' }).click()
+    await expect(page.getByText(/3\s+capsules/).first()).toBeVisible()
+    await nav.getByRole('link', { name: 'History' }).click()
+    await expect(page.getByText(/3\s+capsules/).first()).toBeVisible()
+    await nav.getByRole('link', { name: 'Medications' }).click()
+    await page.getByRole('link', { name: `View details for ${label}` }).click()
+    await page.getByRole('link', { name: 'Dose history' }).click()
+    await expect(page.getByText(/3\s+capsules/).first()).toBeVisible()
+    await expect(page.getByText(/½\s+tablet/)).toHaveCount(0)
+  })
+
+  test(
+    'capture Session end during a held Type correction',
+    { tag: '@visual' },
+    async ({ page, app }) => {
+      // eslint-disable-next-line playwright/no-skipped-test -- opt-in visual evidence
+      test.skip(!captureDir, 'Set MEDDIES_TYPE_CORRECTION_CAPTURE')
+      await page.goto(detail)
+      await expect.poll(() => hydrated(page)).toBe(true)
+      await reviewCorrection(page)
+      app.worker.hold(correctionWrite)
+      await page.getByRole('button', { name: 'Save details' }).click()
+      await expect.poll(() => app.worker.held(correctionWrite)).toBe(1)
+      await app.expireSession()
+      await focusWindow(page)
+      await expect(page.getByRole('heading', { name: 'Sign in to Meddies' })).toBeFocused()
+      await expect(page.getByRole('status')).toContainText('A save may still finish.')
+      await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible()
+      await expect(page.getByText(label)).toHaveCount(0)
+      await captureSettled(page, { path: `${captureDir}/440-s14-production.png` })
+      await app.worker.release(correctionWrite)
+    },
+  )
 })

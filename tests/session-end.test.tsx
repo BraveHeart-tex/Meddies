@@ -211,7 +211,7 @@ test('a save 401 holds the save pending, then ends with only a generic notice', 
   expect(screen.getByRole('status')).toBeInTheDocument()
   await waitFor(() =>
     expect(screen.getByRole('status')).toHaveTextContent(
-      'A save was still in progress. After signing in, check whether it was recorded.',
+      'A save may still finish. Sign in again to check what was saved.',
     ),
   )
 })
@@ -444,7 +444,7 @@ test('Sign out anyway ends the session only after the server confirms, keeping t
   expect(replace).toHaveBeenCalledWith('/?reason=signed-out&returnTo=%2F&notice=save-in-progress')
   await waitFor(() =>
     expect(screen.getByRole('status')).toHaveTextContent(
-      'A save was still in progress. After signing in, check whether it was recorded.',
+      'A save may still finish. Sign in again to check what was saved.',
     ),
   )
 })
