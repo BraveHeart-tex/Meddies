@@ -385,6 +385,20 @@ test.describe('Edit details groups', () => {
     await expect(page.getByRole('heading', { name: 'Review your changes' })).toBeFocused()
     await expect(page.getByText('24 doses · 2 schedules')).toBeVisible()
     await captureCorrection('type-final-review-tracked')
+    await page.context().setOffline(true)
+    try {
+      await expect(page.getByRole('button', { name: 'Connect to save' })).toBeDisabled()
+      await expect(
+        page.getByText(
+          'Keep Meddies open to retain these details. Reconnect to save. Nothing saves on its own.',
+          { exact: true },
+        ),
+      ).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Review your changes' })).toBeFocused()
+      await captureCorrection('type-final-review-offline')
+    } finally {
+      await page.context().setOffline(false)
+    }
     await page.getByRole('button', { name: 'Save details' }).click()
     await expect(page.getByRole('button', { name: 'Saving…' })).toBeDisabled()
     await captureCorrection('type-save-pending')

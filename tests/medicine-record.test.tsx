@@ -1121,6 +1121,63 @@ test('Type repair Keep editing and remount retain the draft while Discard change
   expect(client.getQueryData(medicineKeys.list())).toEqual([medicine])
 })
 
+test('offline Type correction retains final review and saves only after explicit action', async () => {
+  serveRepairQueue(true)
+  const record: MedicineRecord = { ...medicine, stock: { tracked: true, count: 12, threshold: 3 } }
+  const commands: unknown[] = []
+  server.use(
+    http.patch('/api/medicines/type-correction', async ({ request }) => {
+      commands.push(await request.json())
+      return HttpResponse.json({ error: 'validation' }, { status: 400 })
+    }),
+  )
+
+  const { user } = open('fix', record)
+  await user.type(screen.getByRole('textbox', { name: 'Name' }), ' corrected')
+  await enterRepairQueue(user)
+  for (const quantity of ['2', '3', '4', '5']) {
+    await user.type(screen.getByRole('textbox', { name: 'Amount' }), quantity)
+    await user.click(
+      screen.getByRole('button', { name: quantity === '5' ? 'Continue to Stock' : 'Continue' }),
+    )
+  }
+  await user.type(screen.getByRole('textbox', { name: 'Current count' }), '16')
+  await user.click(screen.getByRole('button', { name: 'Review changes' }))
+
+  const connection = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+  try {
+    fireEvent(window, new Event('offline'))
+    const connect = await screen.findByRole('button', { name: 'Connect to save' })
+    expect(connect).toBeDisabled()
+    await user.click(connect)
+    expect(screen.getByText('16 capsules')).toBeVisible()
+    expect(commands).toEqual([])
+
+    connection.mockReturnValue(true)
+    fireEvent(window, new Event('online'))
+    const save = await screen.findByRole('button', { name: 'Save details' })
+    expect(save).toBeEnabled()
+    expect(screen.getByText('16 capsules')).toBeVisible()
+    expect(commands).toEqual([])
+    await user.click(save)
+    await screen.findByText('Your changes weren’t saved.')
+    expect(commands).toEqual([
+      expect.objectContaining({
+        unit: 'capsule',
+        stockCount: 16,
+        repairs: repairConflicts.map(({ key }, index) => ({ key, quantity: index + 2 })),
+        details: {
+          strengthRevisionId: record.currentStrengthRevisionId,
+          label: 'Magnesium corrected',
+          strength: '400 mg',
+        },
+      }),
+    ])
+  } finally {
+    connection.mockRestore()
+  }
+})
+
 // A lost response must preserve the entire atomic command across a route remount.
 test('Type correction locks its submitted draft and retries the identical command after navigation', async () => {
   serveRepairQueue(true)

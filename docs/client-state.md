@@ -45,7 +45,9 @@ browser storage is used. Losing it on reload, app closure or browser eviction is
   and the review version so a dose or Schedule write can require a fresh review. An Unconfirmed
   retry keeps the original action ID and submitted payload and returns its original receipt.
   A fresh read can confirm the same action ID at the expected successor revision. The attempt
-  restores its final review after navigation. A definite rejection keeps the draft editable.
+  restores its final review after navigation. When offline, final review keeps the Session
+  draft visible and disables Connect to save. Reconnect requires an explicit save or retry.
+  A definite rejection keeps the draft editable.
   Review saved medication discards a stale draft only after a fresh read succeeds.
 - **Medicine archive** confirms only from a record bearing its action ID, revision + 1 and
   `archivedAt`. After cancelling older reads it publishes that record and the head Schedule

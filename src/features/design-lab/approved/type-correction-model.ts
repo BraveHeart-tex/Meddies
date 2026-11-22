@@ -33,7 +33,7 @@ export const correctionMedicine: MedicineRecord = {
 }
 
 export type SharedState =
-  'cancel' | 'pending' | 'unconfirmed' | 'rejected' | 'stale' | 'offline' | 'saved' | 'session'
+  'cancel' | 'pending' | 'unconfirmed' | 'rejected' | 'stale' | 'saved' | 'session'
 
 /** Explicit synthetic user entries for the revised final-review frame, not suggested amounts. */
 export const reviewedCorrectionAmounts: Record<number, string> = {

@@ -19,6 +19,8 @@ import {
 } from '@/lib/quantity-policy'
 import type { MedicineRecord } from './contract'
 import type { TypeCorrectionReview } from './type-correction-contract'
+import { saveMessages } from '@/lib/save-messages'
+import { useKnownOffline } from '@/lib/use-known-offline'
 import type { SaveProblem } from '@/lib/session-saves'
 import { MedicationsLink } from './medications-nav'
 import { medicationRecordHref } from './routes'
@@ -190,6 +192,7 @@ export function TypeCorrectionStock({
   )
 }
 
+/** Final review keeps its Session draft visible offline. Save and retry require an explicit action after reconnect. */
 export function TypeCorrectionSummary({
   medicine,
   review,
@@ -216,6 +219,8 @@ export function TypeCorrectionSummary({
 }) {
   const [refreshing, setRefreshing] = useState(false)
   const [refreshFailed, setRefreshFailed] = useState(false)
+  const offline = useKnownOffline()
+  const showOffline = offline && !pending && !confirmed
   const locked = pending || confirmed || problem === 'unconfirmed' || problem === 'conflict'
   const message = problem && correctionProblems[problem]
   async function reviewSaved() {
@@ -300,7 +305,7 @@ export function TypeCorrectionSummary({
           </div>
         )}
       </dl>
-      {!pending && !problem && !confirmed && (
+      {!pending && !problem && !confirmed && !showOffline && (
         <p className="text-body-sm text-muted-foreground">
           These changes save together. Dose times and Taken or Skipped stay as they are.
         </p>
@@ -311,12 +316,22 @@ export function TypeCorrectionSummary({
             Saving your Type, amounts and Stock together.
           </p>
         )}
-        {message && (
-          <Alert variant="destructive">
+        {showOffline ? (
+          <Alert>
             <TriangleAlert aria-hidden="true" />
-            <AlertTitle>{message.title}</AlertTitle>
-            <AlertDescription>{message.description}</AlertDescription>
+            <AlertTitle>{saveMessages.offline}</AlertTitle>
+            <AlertDescription>
+              {saveMessages.offlineFormDetails} Nothing saves on its own.
+            </AlertDescription>
           </Alert>
+        ) : (
+          message && (
+            <Alert variant="destructive">
+              <TriangleAlert aria-hidden="true" />
+              <AlertTitle>{message.title}</AlertTitle>
+              <AlertDescription>{message.description}</AlertDescription>
+            </Alert>
+          )
         )}
         {refreshFailed && <p role="alert">Couldn’t load the saved medication. Try again.</p>}
         {confirmed ? (
@@ -326,10 +341,14 @@ export function TypeCorrectionSummary({
         ) : (
           <Button
             size="lg"
-            disabled={pending || refreshing}
+            disabled={pending || refreshing || offline}
             onClick={problem === 'conflict' ? () => void reviewSaved() : onSave}
           >
-            {pending ? 'Saving…' : (message?.action ?? 'Save details')}
+            {pending
+              ? 'Saving…'
+              : showOffline
+                ? saveMessages.connectToSave
+                : (message?.action ?? 'Save details')}
           </Button>
         )}
         {problem === 'unconfirmed' || confirmed ? (

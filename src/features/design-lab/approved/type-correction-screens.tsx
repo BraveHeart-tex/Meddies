@@ -34,11 +34,6 @@ function SaveState({ state }: { state: SharedState }) {
       'Your changes weren’t saved. Review the saved details and check every amount and your Stock count again.',
       'Review saved medication',
     ],
-    offline: [
-      'You’re offline.',
-      'Keep Meddies open to retain these details. Reconnect to save. Nothing saves on its own.',
-      'Connect to save',
-    ],
   }
   const message = messages[state]
   return (
@@ -59,7 +54,7 @@ function SaveState({ state }: { state: SharedState }) {
           ) : (
             message && (
               <>
-                <Alert variant={state === 'offline' ? 'default' : 'destructive'}>
+                <Alert variant="destructive">
                   <TriangleAlert aria-hidden="true" />
                   <AlertTitle>{message[0]}</AlertTitle>
                   <AlertDescription>{message[1]}</AlertDescription>
@@ -69,7 +64,7 @@ function SaveState({ state }: { state: SharedState }) {
                     {message[2]}
                   </Nav>
                 ) : (
-                  <Button size="lg" disabled={state === 'offline'} onClick={() => setRetried(true)}>
+                  <Button size="lg" onClick={() => setRetried(true)}>
                     {message[2]}
                   </Button>
                 )}
