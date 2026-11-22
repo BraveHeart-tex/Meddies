@@ -72,21 +72,28 @@ for (const failure of ['build', 'test:unit', 'test:integration', '']) {
     if (failure === 'test:unit') assert.match(result.stdout, /PASS integration/)
     assert.match(result.stdout, /WARNING: dev stack tests skipped/)
     assert.match(result.stdout, /PASS typecheck: [\d.]+s/)
-    assert.match(result.stdout, /Tooling tests run: changes against origin\/main are unknown/)
+    assert.match(
+      result.stdout,
+      /Tooling policy: all suites are required locally; no CI-only tooling checks/,
+    )
     if (failure) assert.match(result.stdout, /FAIL .*: [\d.]+s/)
   })
 }
 
-// Outside a git checkout the changes are unknown, so the stage tests above run tooling.
-for (const [path, change, runs] of [
-  ['src/app.ts', 'committed', false],
-  ['docs/notes.md', 'untracked', false],
-  ['scripts/verify.mjs', 'committed', true],
-  ['vitest.config.mts', 'modified', true],
-  ['tests/browser/example.spec.ts', 'untracked', true],
-  ['tests/verify.test.ts', 'committed', true],
+// Tooling coverage is independent of Git impact, including unknown history above.
+for (const [path, change] of [
+  ['src/app.ts', 'committed'],
+  ['docs/notes.md', 'untracked'],
+  ['tests/helpers/d1-migrations.mjs', 'committed'],
+  ['worker/migrations/0001.sql', 'untracked'],
+  ['worker/wrangler.jsonc', 'modified'],
+  ['scripts/verify.mjs', 'committed'],
+  ['vitest.config.mts', 'modified'],
+  ['tests/browser/example.spec.ts', 'untracked'],
+  ['tests/verify.test.ts', 'committed'],
+  ['src/app.ts', 'unchanged'],
 ] as const) {
-  test(`verify ${runs ? 'runs' : 'skips'} tooling for a ${change} ${path}`, async (t) => {
+  test(`verify runs tooling for a ${change} ${path}`, async (t) => {
     const root = await fakeRoot(t)
     const git = (...args: string[]) => execFileSync('git', args, { cwd: root })
     const write = async (content: string) => {
@@ -100,7 +107,7 @@ for (const [path, change, runs] of [
     git('add', '-A')
     git('commit', '-qm', 'base')
     git('update-ref', 'refs/remotes/origin/main', 'HEAD')
-    await write('change')
+    if (change !== 'unchanged') await write('change')
     if (change === 'committed') {
       git('add', '-A')
       git('commit', '-qm', 'change')
@@ -111,9 +118,9 @@ for (const [path, change, runs] of [
       () => true,
       () => false,
     )
-    assert.equal(ran, runs)
-    if (runs) assert.match(result.stdout, /PASS unit, component and tooling/)
-    else assert.match(result.stdout, /SKIP tooling: no script/)
+    assert.equal(ran, true)
+    assert.match(result.stdout, /PASS unit, component and tooling/)
+    assert.doesNotMatch(result.stdout, /SKIP tooling/)
   })
 }
 
@@ -211,6 +218,10 @@ test('runner SIGTERM names every interrupted static stage and retains their diag
     assert.match(diagnostics, /SIGTERM/)
   }
   assert.doesNotMatch(output, /START unit|START build|START integration/)
+  assert.match(
+    output,
+    /SKIP unit, component and tooling: static checks failed or runner interrupted/,
+  )
   assert.match(output, /Summary/)
   assert.match(output, /\[verify\] FAIL/)
 })

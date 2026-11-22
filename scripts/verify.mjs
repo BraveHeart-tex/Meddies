@@ -5,17 +5,8 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { productionBuild } from './production-build.mjs'
-import { changedToolingInput } from './tooling-tests.mjs'
 
-// The tooling project runs when one of its inputs changed, or when git cannot tell.
-let tooling
-try {
-  const input = await changedToolingInput(process.cwd())
-  if (input) tooling = `Tooling tests run: ${input} changed.`
-} catch {
-  tooling = 'Tooling tests run: changes against origin/main are unknown.'
-}
-if (tooling) console.log(`[verify] ${tooling}`)
+console.log('[verify] Tooling policy: all suites are required locally; no CI-only tooling checks.')
 
 const diagnostics = await mkdtemp(join(tmpdir(), 'meddies-verify-logs-'))
 console.log(`[verify] Diagnostic logs: ${diagnostics}`)
@@ -122,14 +113,15 @@ const stage1 = await Promise.all([
 // Stage 2 runs in order: unit and component tests time out when the build and integration
 // share the CPU. A unit failure still runs the rest; integration needs the build.
 if (!interrupted && stage1.every(Boolean)) {
-  await check(tooling ? 'unit, component and tooling' : 'unit and component', async (run) => {
+  await check('unit, component and tooling', async (run) => {
     const directory = await mkdtemp(join(tmpdir(), 'meddies-verify-'))
     const report = join(directory, 'unit.json')
     let failure
     try {
       await run('pnpm', [
         'test:unit',
-        ...(tooling ? ['--project', 'tooling'] : []),
+        '--project',
+        'tooling',
         '--reporter=default',
         '--reporter=json',
         '--outputFile.json',
@@ -165,8 +157,8 @@ if (!interrupted && stage1.every(Boolean)) {
 console.log('\n[verify] Summary')
 for (const { label, passed, seconds } of results)
   console.log(`${passed ? 'PASS' : 'FAIL'} ${label}: ${seconds}s`)
-if (stage1.every(Boolean) && !tooling)
-  console.log('SKIP tooling: no script, workflow, journey harness or test config changed')
+if (!results.some(({ label }) => label === 'unit, component and tooling'))
+  console.log('SKIP unit, component and tooling: static checks failed or runner interrupted')
 if (skippedDevStack)
   console.log('WARNING: dev stack tests skipped because fixed local ports were unavailable')
 for (const [signal, handler] of signalHandlers) process.off(signal, handler)

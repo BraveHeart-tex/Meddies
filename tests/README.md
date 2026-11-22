@@ -5,10 +5,15 @@
 runs the Worker bundle (`.worker-build`) in local workerd/D1; its auth and design-lab suites
 also start `next start`, so they need a production build in `.next`. The `tooling` project
 tests scripts, workflows and the journey harness
-([required checks](../docs/verification.md#required-checks)). The `lint-rules` project runs the
-ESLint rule tests (`*-lint.test.ts`) without per-file isolation, so the repo ESLint config
-loads once per run; each file still builds its own `ESLint` instance and writes no
-module-level state.
+([required checks](../docs/verification.md#required-checks)). `pnpm verify:local` includes
+every tooling suite alongside unit, lint-rule and component tests, regardless of changed paths
+or Git availability. No tooling checks are change-selected or CI-only. Static-check failure
+or interruption can prevent the test stage from starting; the runner summary names that skip
+and warns about dev-stack cases skipped because fixed local ports were unavailable.
+
+The `lint-rules` project runs the ESLint rule tests (`*-lint.test.ts`) without per-file
+isolation, so the repo ESLint config loads once per run; each file still builds its own
+`ESLint` instance and writes no module-level state.
 
 ```sh
 pnpm test:unit                           # unit, lint-rules and component projects, no Worker build

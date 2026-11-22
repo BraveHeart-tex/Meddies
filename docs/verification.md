@@ -7,10 +7,10 @@ pnpm verify:local
 ```
 
 Runs lint, format check and typecheck in parallel, then, in order, the unit and component
-tests, the build and the integration tests: run alongside, the build and integration starve
-the component tests of CPU. A static-check failure stops before the second stage; second-stage
-checks all run and report even when an earlier one fails, except that a failed build skips
-integration. Locally, a warning names dev-stack tests skipped because fixed ports were busy.
+tests plus every tooling suite, the build and the integration tests: run alongside, the build
+and integration starve the component tests of CPU. A static-check failure stops before the
+second stage; second-stage checks all run and report even when an earlier one fails, except
+that a failed build skips integration. Locally, a warning names dev-stack tests skipped because fixed ports were busy.
 In CI, each dev-stack case fails if its required fixed ports cannot be bound, so a passing
 run proves the lifecycle and cleanup checks executed.
 It runs alongside `pnpm dev`. Its typecheck and build stages fail fast while a dev-mode journey,
@@ -35,10 +35,12 @@ output already written to diagnostic logs can survive. These messages report obs
 signals, not why they were sent.
 
 The `tooling` Vitest project (scripts, workflows and the journey harness, listed in
-`scripts/tooling-tests.mjs`) runs only when one of its inputs changed against `origin/main`
-or in the working tree, or when git cannot tell; the summary says when it was skipped. CI
-runs every Vitest project, `tooling` included, in parallel with journeys before Release
-([Verify workflow](deployment.md#verify-workflow)).
+`scripts/tooling-tests.mjs`) runs in every local verification, independent of changed paths
+or Git availability. No tooling checks are CI-only or change-selected. The runner prints this
+policy, reports the combined test stage and names it as skipped if static checks fail or the
+runner is interrupted before tests start. The dev-stack port warning above identifies any skipped cases within a
+completed test stage. CI runs every Vitest project, `tooling` included, in parallel with
+journeys before Release ([Verify workflow](deployment.md#verify-workflow)).
 
 A change touching only `docs/**` and Markdown runs `pnpm format:check` instead; Release
 skips the same paths.
