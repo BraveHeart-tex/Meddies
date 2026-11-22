@@ -13,7 +13,19 @@ pair described in [Worker Access setup](deployment-setup.md#worker-access). Acce
 replace the existing Worker bearer authentication.
 Cloudflare management credentials stay in the protected release environment or on the
 maintainer machine. Keep synthetic feasibility databases separate from production.
-Manual Wrangler commands are for [coordinated recovery](#failure-and-recovery) only.
+
+To rotate the Worker capability, first confirm the deployed Worker supports the previous
+secret. Run the Wrangler commands from `worker/`. Each secret change deploys immediately.
+
+1. Set the existing secret as `MEDICINES_WORKER_SECRET_PREVIOUS` with `wrangler secret put`.
+   Then set a new independent secret as `MEDICINES_WORKER_SECRET` the same way. Both must
+   be at least 32 characters. The Worker accepts both during the overlap.
+2. Update `MEDICINES_WORKER_SECRET` in Vercel Production and redeploy. Verify that the
+   live app can make authenticated Worker requests.
+3. Remove the previous secret with `wrangler secret delete MEDICINES_WORKER_SECRET_PREVIOUS`.
+
+Outside initial setup and rotation, manual Wrangler commands are for
+[coordinated recovery](#failure-and-recovery) only.
 
 ## Worker logs
 

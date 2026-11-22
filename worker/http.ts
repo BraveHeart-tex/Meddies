@@ -4,18 +4,30 @@ export { readJsonRequest } from '../src/lib/json-request'
 export const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } })
 
-export async function authenticateService(request: Request, secret: string | undefined) {
+export async function authenticateService(
+  request: Request,
+  secret: string | undefined,
+  previousSecret?: string,
+) {
   if (!secret || secret.length < 32) throw new ApplicationError('unavailable', 503)
   // Fixed-length digests avoid an early-return comparison of secret strings.
   const digest = async (value: string) =>
     new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))
-  const [actual, expected] = await Promise.all([
+  const [actual, expected, previous] = await Promise.all([
     digest(request.headers.get('authorization') || ''),
     digest(`Bearer ${secret}`),
+    previousSecret && previousSecret.length >= 32 ? digest(`Bearer ${previousSecret}`) : undefined,
   ])
-  let mismatch = 0
-  for (let i = 0; i < actual.length; i++) mismatch |= actual[i] ^ expected[i]
-  if (mismatch) throw new ApplicationError('unauthorized', 401)
+
+  const matches = (candidate: Uint8Array) => {
+    let mismatch = 0
+    for (let i = 0; i < actual.length; i++) mismatch |= actual[i] ^ candidate[i]
+    return mismatch === 0
+  }
+  // During rotation, compare both digests even when the current one matches.
+  const currentMatches = matches(expected)
+  const previousMatches = previous !== undefined && matches(previous)
+  if (!currentMatches && !previousMatches) throw new ApplicationError('unauthorized', 401)
 }
 
 const commandPaths = [

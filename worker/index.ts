@@ -54,6 +54,7 @@ function failureCause(error: unknown): FailureCause {
 type Env = {
   DB: D1Database
   MEDICINES_WORKER_SECRET: string
+  MEDICINES_WORKER_SECRET_PREVIOUS?: string
   HEARTBEAT_URL?: string
   SCHEDULER_SECRET?: string
   FCM_PROJECT_ID?: string
@@ -175,7 +176,11 @@ export function createWorker(
         const { submitted, dropped, retrying } = await dueReminders(env, 'command', context)
         return json({ submitted, dropped, retrying })
       }
-      await authenticateService(request, env.MEDICINES_WORKER_SECRET)
+      await authenticateService(
+        request,
+        env.MEDICINES_WORKER_SECRET,
+        env.MEDICINES_WORKER_SECRET_PREVIOUS,
+      )
       const path = commandPath(request)
       if (path instanceof Response) {
         event.errorCode = 'not_found'

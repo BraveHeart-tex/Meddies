@@ -17,7 +17,9 @@ async function failure(
   req: Request,
   status: number,
   error: string,
-  bindings: { DB: D1Database; MEDICINES_WORKER_SECRET?: string } = env,
+  bindings: Omit<Parameters<typeof worker.fetch>[1], 'MEDICINES_WORKER_SECRET'> & {
+    MEDICINES_WORKER_SECRET?: string
+  } = env,
 ) {
   // Missing capability is deliberately passed to the runtime guard.
   const response = await worker.fetch(req, bindings as Parameters<typeof worker.fetch>[1])
@@ -45,6 +47,23 @@ test('Worker capability and routing precede JSON and owner validation', async ()
     404,
     'not_found',
   )
+})
+
+test('Worker accepts a previous capability of at least 32 characters during rotation', async () => {
+  const previous = 'p'.repeat(32)
+  const requestWithToken = (token: string) =>
+    request('{', { headers: { authorization: `Bearer ${token}` } })
+  const overlap = { ...env, MEDICINES_WORKER_SECRET_PREVIOUS: previous }
+
+  await failure(requestWithToken(previous), 400, 'validation', overlap)
+  await failure(request('{'), 400, 'validation', overlap)
+  await failure(request('{'), 400, 'validation')
+  await failure(requestWithToken(previous), 401, 'unauthorized')
+
+  const shortPrevious = previous.slice(1)
+  const invalidOverlap = { ...env, MEDICINES_WORKER_SECRET_PREVIOUS: shortPrevious }
+  await failure(requestWithToken(shortPrevious), 401, 'unauthorized', invalidOverlap)
+  await failure(request('{'), 400, 'validation', invalidOverlap)
 })
 
 test('Worker rejects invalid owner, unsupported commands and invalid list dates', async () => {
