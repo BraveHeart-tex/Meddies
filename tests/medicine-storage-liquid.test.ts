@@ -57,7 +57,22 @@ async function seed() {
     startDate: '2026-11-16',
     times: [{ time: '16:00', quantity: 0.5 }],
   }
-  await send('schedules', { operation: 'save', schedule })
+  // Seed the Schedule versions with the pre-0017 write shape. Current Worker
+  // Schedule receipts read columns that were introduced by later migrations.
+  await db
+    .prepare(
+      `INSERT INTO daily_schedules(owner_id,id,medicine_id,start_date,times,confirmed_at)
+      VALUES(?,?,?,?,?,?)`,
+    )
+    .bind(
+      migrationOwner,
+      schedule.id,
+      m.id,
+      schedule.startDate,
+      JSON.stringify(schedule.times),
+      now.toISOString(),
+    )
+    .run()
   const record = {
     scheduleId: schedule.id,
     dueAt: '2026-11-16T13:00:00.000Z',
@@ -76,15 +91,28 @@ async function seed() {
       quantity: 1.5,
     },
   })
-  await send('schedules', {
-    operation: 'edit',
-    edit: {
-      id: randomUUID(),
-      basedOnId: schedule.id,
-      endDate: null,
-      times: [{ time: '17:00', quantity: 1 }],
-    },
-  })
+  const edit = {
+    id: randomUUID(),
+    basedOnId: schedule.id,
+    endDate: null,
+    times: [{ time: '17:00', quantity: 1 }],
+  }
+  await db
+    .prepare(
+      `INSERT INTO daily_schedules(owner_id,id,medicine_id,start_date,times,confirmed_at,based_on_id,edit_request)
+      VALUES(?,?,?,?,?,?,?,?)`,
+    )
+    .bind(
+      migrationOwner,
+      edit.id,
+      m.id,
+      schedule.startDate,
+      JSON.stringify(edit.times),
+      now.toISOString(),
+      edit.basedOnId,
+      JSON.stringify(edit),
+    )
+    .run()
   const dose = {
     actionId: randomUUID(),
     medicineId: m.id,

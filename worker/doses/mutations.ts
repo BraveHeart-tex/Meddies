@@ -61,7 +61,9 @@ export async function correctDoseOutcome(
       ${correction.expectedRevision + 1}, ${correction.actionId},
       ${correction.expectedOutcome}, ${correction.outcome},
       ${takenAt}, ${quantity}, ${now.toISOString()}
-    WHERE COALESCE(
+    WHERE EXISTS (SELECT 1 FROM user_medications WHERE owner_id=${ownerId}
+      AND id=${schedule.medicineId} AND unit=${schedule.unit})
+    AND COALESCE(
       (SELECT outcome FROM dose_corrections
        WHERE owner_id = ${ownerId} AND schedule_id = ${correction.scheduleId}
          AND due_at = ${correction.dueAt}
@@ -223,12 +225,13 @@ export async function recordTaken(
 
     // Cross-outcome and Schedule version triggers RAISE(IGNORE) when a competing write wins.
     // Re-read below reconciles that race and identical concurrent Taken retries.
-    await db
-      .insert(doseRecords)
-      .values({ ...record, ownerId, outcome: 'Taken' })
-      .onConflictDoNothing({
-        target: [doseRecords.ownerId, doseRecords.scheduleId, doseRecords.dueAt],
-      })
+    await db.run(sql`
+      INSERT INTO dose_records(owner_id,schedule_id,due_at,taken_at,quantity,outcome)
+      SELECT ${ownerId},${record.scheduleId},${record.dueAt},${record.takenAt},${record.quantity},'Taken'
+      WHERE EXISTS(SELECT 1 FROM user_medications WHERE owner_id=${ownerId}
+        AND id=${schedule.medicineId} AND unit=${schedule.unit})
+      ON CONFLICT(owner_id,schedule_id,due_at) DO NOTHING
+    `)
     saved = await readTaken()
   }
   if (!saved || saved.takenAt !== record.takenAt || saved.quantity !== record.quantity)

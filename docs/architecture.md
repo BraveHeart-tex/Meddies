@@ -27,7 +27,7 @@ HTTP 503; missing database configuration renders an explicit unavailable state.
   to the layers below. Auth.js stays its own protocol handler; the session endpoint keeps
   its human-readable errors.
 - **`src/lib/http.ts`** owns mutation origin and content-type guards, no-store JSON and
-  failure mapping. **`src/lib/json-request.ts`** owns the 4096-byte streamed JSON limit
+  failure mapping. **`src/lib/json-request.ts`** owns the default 4096-byte streamed JSON limit
   shared with the Worker.
 - **Feature operations** (`src/features/*/operations.ts`) authenticate through
   `requireUser` before protected work, server pages included, and send the Worker owner
@@ -89,13 +89,21 @@ owner.
   The initial strength period covers all earlier instants. `PATCH /api/medicines` accepts
   `correctDetails` with a target strength revision or `changeStrength` with a UTC instant
   explicitly named in `Europe/Istanbul`; both require an action UUID and expected medication
-  revision. A Detail correction amends only its period and linked dose snapshots, retaining
+  revision. Name and Strength corrections amend their period and linked dose snapshots, retaining
   previous details for export. A Strength change adds a period without rewriting saved doses,
   rejects future instants and instants before any recorded Taken time (including changed or
   removed records), and permits equality. At equal effective instants the later revision wins
   for new doses. The database validates, applies and stores the exact retry receipt atomically.
-  Type/Quantity unit lock permanently on first schedule or dose use. First-use writes compare
-  the unit validated by the shared quantity policy in their insertion statement.
+  `POST /api/medicines/type-correction` reviews the requested Type against all Schedule versions
+  and current Taken amounts. `PATCH` on the same route submits the Medicine revision and
+  review version, the explicit repairs, a fresh Stock count if tracked and any Name or Strength
+  changes for the selected period. The correction route accepts a bounded 128 KiB repair payload.
+  The Medicine revision protects Medicine and Stock edits. The review version also advances
+  with Schedule version and dose writes. The insertion statement compares both versions.
+  The correction updates Type across Strength periods, stores amended Schedule amounts with
+  original retry values, and overlays repaired quantities on exact dose revisions for reads.
+  The receipt and earlier details and amounts are retained. Other writers still validate
+  against the current Type at insertion, including an older Worker on the migrated schema.
   `PATCH /api/medicines` also accepts `archive` and `restore`, each with an action UUID
   and expected medication revision. Archive appends a stop version when needed and sets
   `archivedAt`; restore clears `archivedAt` without changing any Schedule version or replaying
@@ -129,8 +137,10 @@ owner.
   stored count is below it, including below zero. Equality is sufficient. The low flag is
   derived, never stored. Tracking off keeps the threshold; tracking on evaluates the fresh
   count against it. A Type change clears the threshold in the same write, including from an
-  older Worker; a different Quantity unit needs a new alert. Archive keeps the threshold
-  without marking Stock low.
+  older Worker. A tracked Type correction requires a fresh count and creates a
+  `countCorrection` movement in the corrected unit at the new reconciliation point.
+  Prior Stock movements and their units are retained. Untracked Stock stays off.
+  Archive keeps the threshold without marking Stock low.
   Stock uses the shared quantity grid and safe bound with zero allowed. Starting counts
   are reconciliation movements with their server time and Quantity unit, retained when
   tracking turns off. Stock locks the Type while on; archive preserves it read-only.

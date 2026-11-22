@@ -1,3 +1,4 @@
+import { projectedDoseQuantity } from './queries'
 // Dose history read (#386). One medication's Taken doses at their latest values: scheduled
 // originals without a correction, latest corrections that are Taken (a correction to Skipped
 // leaves), and the latest non-removed Unscheduled revision. A dose's day is the Istanbul day of
@@ -42,7 +43,7 @@ function takenDoses(ownerId: string, medicineId: string) {
       SELECT unit FROM user_medications WHERE owner_id = ${ownerId} AND id = ${medicineId}
     ), taken AS (
       SELECT 'scheduled' AS kind, r.schedule_id AS scheduleId, r.due_at AS dueAt, NULL AS id,
-        r.taken_at AS takenAt, r.quantity, r.unit, r.strength, 0 AS revision
+        r.taken_at AS takenAt, r.quantity, r.unit, r.strength, r.strength_revision_id AS periodId, 0 AS revision
       FROM dose_records r
       WHERE r.owner_id = ${ownerId} AND r.schedule_id IN (SELECT id FROM versions)
         AND NOT EXISTS (
@@ -50,7 +51,7 @@ function takenDoses(ownerId: string, medicineId: string) {
           AND c.schedule_id = r.schedule_id AND c.due_at = r.due_at)
       UNION ALL
       SELECT 'scheduled', c.schedule_id, c.due_at, NULL, c.taken_at, c.quantity, c.unit,
-        c.strength, c.revision
+        c.strength, c.strength_revision_id, c.revision
       FROM dose_corrections c
       WHERE c.owner_id = ${ownerId} AND c.schedule_id IN (SELECT id FROM versions)
         AND c.outcome = 'Taken'
@@ -59,7 +60,7 @@ function takenDoses(ownerId: string, medicineId: string) {
           WHERE latest.owner_id = c.owner_id AND latest.schedule_id = c.schedule_id
             AND latest.due_at = c.due_at)
       UNION ALL
-      SELECT 'unscheduled', NULL, NULL, u.id, u.taken_at, u.quantity, u.unit, u.strength,
+      SELECT 'unscheduled', NULL, NULL, u.id, u.taken_at, u.quantity, u.unit, u.strength, u.strength_revision_id,
         u.revision
       FROM unscheduled_doses u
       WHERE u.owner_id = ${ownerId} AND u.medicine_id = ${medicineId} AND u.removed = 0
@@ -67,10 +68,19 @@ function takenDoses(ownerId: string, medicineId: string) {
           SELECT 1 FROM unscheduled_doses latest WHERE latest.owner_id = u.owner_id
           AND latest.id = u.id AND latest.revision > u.revision)
     ), dated AS (
-      SELECT kind, scheduleId, dueAt, id, takenAt, quantity,
-        COALESCE(taken.unit, (SELECT unit FROM medicine)) AS unit, strength, revision,
+      SELECT kind, scheduleId, dueAt, taken.id, takenAt,
+        ${projectedDoseQuantity(
+          sql`${ownerId}`,
+          sql`CASE kind WHEN 'scheduled'
+          THEN 'scheduled:'||scheduleId||':'||dueAt ELSE 'unscheduled:'||taken.id END`,
+          sql`taken.revision`,
+          sql`taken.quantity`,
+        )} AS quantity,
+        COALESCE(r.unit, taken.unit, (SELECT unit FROM medicine)) AS unit,
+        CASE WHEN r.id IS NULL THEN taken.strength ELSE r.strength END AS strength, revision,
         date(takenAt, '+3 hours') AS day
-      FROM taken
+      FROM taken LEFT JOIN medicine_strength_revisions r
+        ON r.owner_id=${ownerId} AND r.medicine_id=${medicineId} AND r.id=taken.periodId
     )`
 }
 

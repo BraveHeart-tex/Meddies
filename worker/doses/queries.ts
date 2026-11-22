@@ -1,5 +1,5 @@
 import type { DoseSnooze } from '../../src/features/snoozes/contract'
-import { sql } from 'drizzle-orm'
+import { sql, type SQLWrapper } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import { scheduledInstant } from '../../src/features/schedules/occurrences'
 import { doseRecords } from '../schema'
@@ -21,6 +21,18 @@ type OutcomeRow = {
   unit: string
 }
 
+// Mutation receipts use the raw dose rows. Snapshot and History reads apply repairs
+// only to the exact dose revision they show, and read the amended Strength period.
+export function projectedDoseQuantity(
+  ownerId: SQLWrapper,
+  key: SQLWrapper,
+  revision: SQLWrapper,
+  quantity: SQLWrapper,
+) {
+  return sql<number>`COALESCE((SELECT quantity FROM medicine_dose_quantity_repairs
+    WHERE owner_id=${ownerId} AND dose_key=${key} AND revision=${revision}), ${quantity})`
+}
+
 export const takenColumns = {
   scheduleId: doseRecords.scheduleId,
   dueAt: doseRecords.dueAt,
@@ -39,6 +51,7 @@ export async function listDoseOutcomes(db: DrizzleD1Database, ownerId: string, d
   const start = scheduledInstant(date, '00:00')
   const end = new Date(Date.parse(start) + 86_400_000).toISOString()
   const rows = await db.all<OutcomeRow>(sql`
+    WITH outcomes AS (
     SELECT schedule_id AS scheduleId, due_at AS dueAt, taken_at AS takenAt,
       quantity, outcome, NULL AS recordedAt, 0 AS revision, NULL AS actionId, strength_revision_id AS strengthRevisionId, strength, medicine_label AS medicineLabel, unit
     FROM dose_records
@@ -64,6 +77,15 @@ export async function listDoseOutcomes(db: DrizzleD1Database, ownerId: string, d
         WHERE latest.owner_id = c.owner_id AND latest.schedule_id = c.schedule_id
           AND latest.due_at = c.due_at
       )
+    )
+    SELECT o.scheduleId,o.dueAt,o.takenAt,
+      ${projectedDoseQuantity(sql`s.owner_id`, sql`'scheduled:'||o.scheduleId||':'||o.dueAt`, sql`o.revision`, sql`o.quantity`)} AS quantity,
+      o.outcome,o.recordedAt,o.revision,o.actionId,o.strengthRevisionId,
+      CASE WHEN r.id IS NULL THEN o.strength ELSE r.strength END AS strength,
+      COALESCE(r.label,o.medicineLabel) AS medicineLabel,COALESCE(r.unit,o.unit) AS unit
+    FROM outcomes o JOIN daily_schedules s ON s.owner_id=${ownerId} AND s.id=o.scheduleId
+    LEFT JOIN medicine_strength_revisions r ON r.owner_id=s.owner_id AND r.medicine_id=s.medicine_id
+      AND r.id=o.strengthRevisionId
   `)
   // Keep the historical null fields and zero revision on original snapshot rows.
   return rows.map((row) => ({

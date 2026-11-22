@@ -1,9 +1,17 @@
 import 'server-only'
 import { sendStorage } from '@/lib/medicine-storage'
 import { requireUser } from '@/features/auth/server'
-import { parseMedicineResponse, parseMedicineDeleteReceipt, type MedicineCommand } from './contract'
+import {
+  parseMedicineResponse,
+  parseMedicineDeleteReceipt,
+  parseMedicineRecord,
+  type MedicineCommand,
+} from './contract'
 import { ApplicationError } from '../../lib/application-error'
-import { createMedicineOperations } from './operations'
+import { createMedicineOperations, createTypeCorrectionOperations } from './operations'
+import { parseTypeCorrectionReview, type TypeCorrectionCommand } from './type-correction-contract'
+
+export { typeCorrectionBodyLimit } from './type-correction-contract'
 
 export async function send(command: MedicineCommand) {
   const data = (await sendStorage('/medicines', command)) as {
@@ -36,13 +44,32 @@ export async function send(command: MedicineCommand) {
   }
 }
 
-export const medicines = createMedicineOperations({
-  async requireUser() {
-    try {
-      return await requireUser()
-    } catch {
-      throw new ApplicationError('unauthorized', 401)
-    }
-  },
-  send,
+async function requireMedicineUser() {
+  try {
+    return await requireUser()
+  } catch {
+    throw new ApplicationError('unauthorized', 401)
+  }
+}
+
+async function sendTypeCorrection(command: TypeCorrectionCommand) {
+  const data = (await sendStorage('/medicine-type-correction', command)) as {
+    review?: unknown
+    medicines?: unknown
+  }
+  try {
+    if (command.operation === 'reviewTypeCorrection') return parseTypeCorrectionReview(data.review)
+    if (!Array.isArray(data.medicines) || data.medicines.some((row) => !row?.stock))
+      throw new Error('stock confirmation contract')
+    return data.medicines.map(parseMedicineRecord)
+  } catch {
+    console.error('medicine_gateway_failure')
+    throw new ApplicationError('unavailable', 503)
+  }
+}
+
+export const medicines = createMedicineOperations({ requireUser: requireMedicineUser, send })
+export const medicineTypeCorrection = createTypeCorrectionOperations({
+  requireUser: requireMedicineUser,
+  send: sendTypeCorrection,
 })

@@ -155,6 +155,12 @@ function entry(quantity: Quantity): QuantityEntry {
   return typeof quantity === 'string' ? medicineTypes[quantity] : quantity
 }
 
+/** Parameters for checking the same amount grid inside a database write. */
+export function quantityBounds(type: MedicineType) {
+  const { scale, max } = entry(type)
+  return { scale, max }
+}
+
 /** Whether a stored amount is positive, within the safe bound and on the unit's grid. */
 export function isQuantityFor(value: unknown, quantity: Quantity): value is number {
   const { scale, max } = entry(quantity)

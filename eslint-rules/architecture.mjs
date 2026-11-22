@@ -8,6 +8,7 @@ const neutral = new Set([
   'src/lib/json-request',
   'src/lib/calendar-date',
   'src/features/medicines/contract',
+  'src/features/medicines/type-correction-contract',
   'src/features/schedules/contract',
   'src/features/unscheduled-doses/contract',
   'src/features/device-registrations/contract',

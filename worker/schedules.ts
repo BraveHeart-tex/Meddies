@@ -1,8 +1,8 @@
 // Schedule persistence: immutable, owner-scoped Schedule versions.
 // - One initial version per medicine and one successor per version (migration 0008), so
 //   compare-and-append on `basedOnId` is atomic and a replaced version rejects further edits.
-// - Requests replay by version `id`: the same request returns the saved version, any other
-//   conflicts.
+// - Requests replay by version `id`: the same request returns its written amounts,
+//   even after a Type Detail correction. A different request conflicts.
 // - Edits take no start date. Clock to Interval requires `anchorDate`; an Interval edit
 //   without one keeps the Anchor date and must keep the Anchor time. `endDate` (the Last
 //   day) is always sent, null for none, and must be today or later in Istanbul and on or
@@ -53,6 +53,15 @@ const scheduleColumns = {
   ),
 }
 
+const scheduleReceiptColumns = {
+  ...scheduleColumns,
+  times: sql<
+    DailySchedule['times']
+  >`COALESCE(${dailySchedules.originalTimes}, ${dailySchedules.times})`.mapWith(
+    dailySchedules.times,
+  ),
+}
+
 async function listSchedules(db: DrizzleD1Database, ownerId: string): Promise<DailySchedule[]> {
   const rows = await db
     .select({
@@ -85,7 +94,7 @@ export async function saveSchedule(
 ): Promise<ScheduleResponses['save']> {
   const owner = eq(dailySchedules.ownerId, ownerId)
   const existing = await db
-    .select(scheduleColumns)
+    .select(scheduleReceiptColumns)
     .from(dailySchedules)
     .where(and(owner, eq(dailySchedules.id, schedule.id)))
     .get()
@@ -126,7 +135,7 @@ export async function saveSchedule(
     ON CONFLICT DO NOTHING`),
   )
   const saved = await db
-    .select(scheduleColumns)
+    .select(scheduleReceiptColumns)
     .from(dailySchedules)
     .where(and(owner, eq(dailySchedules.id, schedule.id)))
     .get()
@@ -149,7 +158,7 @@ export async function editSchedule(
   const request = JSON.stringify(action ? { ...edit, operation: action } : edit)
   const readSaved = () =>
     db
-      .select({ ...scheduleColumns, editRequest: dailySchedules.editRequest })
+      .select({ ...scheduleReceiptColumns, editRequest: dailySchedules.editRequest })
       .from(dailySchedules)
       .where(and(eq(dailySchedules.ownerId, ownerId), eq(dailySchedules.id, edit.id)))
       .get()
@@ -160,7 +169,11 @@ export async function editSchedule(
     return { schedules: [saved] }
   }
   const parent = await db
-    .select({ ...scheduleColumns, unit: userMedications.unit })
+    .select({
+      ...scheduleColumns,
+      unit: userMedications.unit,
+      timesAtRead: sql<string>`CAST(${dailySchedules.times} AS TEXT)`,
+    })
     .from(dailySchedules)
     .innerJoin(
       userMedications,
@@ -235,7 +248,11 @@ export async function editSchedule(
       weekdays, end_date, interval_hours, based_on_id, edit_request, stopped_at, paused_at, anchor_date)
     SELECT ${ownerId}, ${edit.id}, ${parent.medicineId}, ${startDate}, ${JSON.stringify(change.times)},
       ${now.toISOString()}, ${JSON.stringify(change.weekdays)}, ${change.endDate}, ${change.intervalHours ?? null}, ${edit.basedOnId}, ${request}, ${stopping ? now.toISOString() : null}, ${pausing ? now.toISOString() : null}, ${anchorDate}
-    WHERE NOT EXISTS (SELECT 1 FROM daily_schedules WHERE owner_id = ${ownerId} AND based_on_id = ${edit.basedOnId})
+    WHERE EXISTS(SELECT 1 FROM user_medications WHERE owner_id=${ownerId}
+      AND id=${parent.medicineId} AND unit=${parent.unit})
+      AND EXISTS (SELECT 1 FROM daily_schedules WHERE owner_id=${ownerId} AND id=${edit.basedOnId}
+        AND times=${parent.timesAtRead})
+      AND NOT EXISTS (SELECT 1 FROM daily_schedules WHERE owner_id = ${ownerId} AND based_on_id = ${edit.basedOnId})
     ON CONFLICT DO NOTHING
   `),
   )

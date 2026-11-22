@@ -50,6 +50,18 @@ const routes: Record<string, { body?: unknown; query?: string; worker?: false; r
     },
   },
   'medicines POST': { body: { id, label: 'Iron', strength: null, unit: 'tablet' } },
+  'medicines/type-correction POST': { body: { medicineId: id, unit: 'capsule' } },
+  'medicines/type-correction PATCH': {
+    body: {
+      actionId: basedOnId,
+      medicineId: id,
+      unit: 'capsule',
+      expectedRevision: 0,
+      reviewVersion: 1,
+      repairs: [],
+      stockCount: null,
+    },
+  },
   // Today reads today's and yesterday's records (#275).
   'schedules GET': { reads: 2 },
   'schedules POST': {

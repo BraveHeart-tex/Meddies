@@ -34,6 +34,10 @@ between dose amounts and container counts.
 These rules apply to Clock and Interval schedules, scheduled Taken quantities and their
 corrections, and Unscheduled doses and their changes. Numeric bounds preserve safe quantity
 arithmetic; there is no medical dose recommendation or arbitrary medical maximum.
+A Medicine type determines its Quantity unit. When a Detail correction changes Type,
+Meddies keeps every compatible number and requires an explicit valid replacement for each
+incompatible amount. This applies to current doses and every Schedule version, including
+earlier versions. Meddies never converts or rounds amounts to fit a different unit.
 
 Liquid amounts display decimals, such as `0.5 ml` and `1.5 ml`; `ml` never pluralizes. Tablet
 halves keep their existing half-glyph wording. Counted units use singular/plural wording,
@@ -120,16 +124,20 @@ See **Detail correction**, **Strength change** and **Archived medicine** (GLOSSA
   export keep them.
 - Strength is kept as effective-dated revisions, and every dose saves a snapshot of the strength
   in effect at its Taken time, or at its due time when it has none.
-- A **Detail correction** fixes details entered wrongly, including a mistyped strength. It amends
-  the revision it fixes, so every dose recorded under that revision shows the fixed value; the
-  server keeps the earlier value for export.
+- A **Detail correction** fixes details entered wrongly, including a mistyped strength.
+  Name and Strength amend the selected Strength period and its linked doses.
+  Type and Quantity unit apply to the whole Medicine across Strength periods, doses and
+  all Schedule versions. Review shows which amounts need explicit repairs before saving.
+  Dose identities, outcomes and Taken times and Schedule identities and timing stay intact.
+  The server retains earlier details and amounts for export (#55).
+- The Type correction, amount repairs, any fresh Stock count and Low-stock threshold clearing
+  save together. Cancellation, an invalid repair or a stale review leaves the Medicine as saved.
 - A **Strength change** records that the user now takes a different strength of the same Medicine.
   It adds a revision effective from the moment it names, never in the future and never before the
   latest Taken time already recorded for that Medicine, so no recorded dose changes strength.
   Later doses use the new strength.
 - When a late Taken time falls under a different strength revision than the one now in effect,
   the record drawer shows the strength that will be saved before the user saves.
-- The Medicine type and Quantity unit are locked once the Medicine has had a schedule or a dose.
 - Archiving a Medicine stops its schedule at its Edit time and cancels its unsent dose, food and
   refill reminders. Every dose, outcome and detail stays in History and export, and stock is
   unchanged. Unarchiving restores the Medicine without restarting anything; schedules restart only
@@ -191,8 +199,9 @@ See **Stock** and **Quantity unit** (GLOSSARY.md).
   saving.
 - Turning tracking off asks first. While off, Meddies does not count. Turning it back on asks
   for a fresh count with the field empty. Earlier counts stay on the server for export (#55).
-- While tracking is on, the Medicine type and Quantity unit cannot change. Turning tracking off
-  lifts this lock; the schedule-or-dose lock still applies.
+- A Detail correction that changes Type requires a fresh count in the corrected Quantity unit
+  when Stock is tracked. The count becomes the new reconciliation point and earlier Stock
+  movements keep their recorded amounts and units for export. When tracking is off, it stays off.
 - An Archived medicine keeps its stock unchanged and shows its count read-only; tracking cannot
   be turned on or off until it is restored. Deleting a Medicine deletes its stock.
 - Each on or off save has its own action ID and follows the
@@ -212,7 +221,7 @@ See **Stock** and **Quantity unit** (GLOSSARY.md).
 | Late dose         | Turn on at 10:00 with 30; log the 08:00 dose Taken 08:00 | Stock stays 30.                                      |
 | Off and on again  | Stock 24; turn off; later turn on                        | The count field starts empty; the new count stands.  |
 | Retry             | Turn-on save retried with the same action ID             | One starting count.                                  |
-| Type lock         | Stock on; Edit details                                   | Type cannot change until stock is turned off.        |
+| Type correction   | Correct a tracked Tablet to Capsule with a fresh count   | Stock uses the new count and keeps prior records.    |
 
 ### #47 - Approved intake stock rules (November 19, 2026)
 
@@ -347,10 +356,10 @@ See **Low-stock threshold** and **Stock** (GLOSSARY.md). In UI copy it is "Low-s
   Its drawer has the title "{label} low-stock alert", the field "Alert below" with the help "Shows
   when fewer than this are left.", the submit "Save alert", and "Turn off alert" while one is set.
 - Stopping stock tracking keeps the threshold; turning tracking back on evaluates the fresh count
-  against it (#10 D2). Changing the Medicine type clears the threshold, even if its number fits
-  the new Quantity unit; after restarting tracking, the user can set a new alert. An Archived
-  medicine keeps its threshold, shows no low notice and has no Low-stock alert. Deleting a
-  Medicine deletes its threshold.
+  against it (#10 D2). A Detail correction that changes Type clears the threshold in the same
+  save, even if its number fits the corrected Quantity unit. The user can set a new alert while
+  tracking is on. An Archived medicine keeps its threshold, shows no low notice and has no
+  Low-stock alert. Deleting a Medicine deletes its threshold.
 - Low-stock episodes and the refill push belong to #53 and #54; while stock is uncertain the notice
   follows #51. The notice shows only on Medication detail and the Medications list, not on Today.
 - Each threshold save has its own action ID and follows the

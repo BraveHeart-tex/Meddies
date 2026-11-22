@@ -26,7 +26,7 @@ import { ApplicationError } from '../src/lib/application-error'
 import { medicineEdits, userMedications } from './schema'
 
 // Stored records and receipts are server data, so decoding cannot reject browser input.
-function parseStoredResult<T>(record: string, parse: (value: unknown) => T): T {
+export function parseStoredResult<T>(record: string, parse: (value: unknown) => T): T {
   try {
     return parse(JSON.parse(record))
   } catch {

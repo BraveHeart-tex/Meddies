@@ -1,7 +1,7 @@
 // Unscheduled doses never create Occurrences. Immutable revisions retain exact action
 // retries before clock validation. Unique owner/action and dose/revision constraints
 // arbitrate concurrent saves; changes use an atomic compare-and-append.
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, getTableColumns, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import type {
   UnscheduledDose,
@@ -11,8 +11,9 @@ import type {
 import { istanbulDate, shiftDate } from '../../src/lib/calendar-date'
 import { isWritableQuantity } from '../../src/lib/quantity-policy'
 import { ApplicationError } from '../../src/lib/application-error'
-import { unscheduledDoses, userMedications } from '../schema'
+import { medicineStrengthRevisions, unscheduledDoses, userMedications } from '../schema'
 import { scheduledInstant } from '../../src/features/schedules/occurrences'
+import { projectedDoseQuantity } from './queries'
 
 type Row = typeof unscheduledDoses.$inferSelect
 function record(row: Row): UnscheduledDose {
@@ -33,9 +34,30 @@ function record(row: Row): UnscheduledDose {
 }
 
 export async function listUnscheduledDoses(db: DrizzleD1Database, ownerId: string, date: string) {
+  const periods = medicineStrengthRevisions
   const rows = await db
-    .select()
+    .select({
+      ...getTableColumns(unscheduledDoses),
+      quantity: projectedDoseQuantity(
+        unscheduledDoses.ownerId,
+        sql`'unscheduled:'||${unscheduledDoses.id}`,
+        unscheduledDoses.revision,
+        unscheduledDoses.quantity,
+      ),
+      strength: sql<string | null>`CASE WHEN ${periods.id} IS NULL
+        THEN ${unscheduledDoses.strength} ELSE ${periods.strength} END`,
+      medicineLabel: sql<string>`COALESCE(${periods.label},${unscheduledDoses.medicineLabel})`,
+      unit: sql<Row['unit']>`COALESCE(${periods.unit},${unscheduledDoses.unit})`,
+    })
     .from(unscheduledDoses)
+    .leftJoin(
+      periods,
+      and(
+        eq(periods.ownerId, unscheduledDoses.ownerId),
+        eq(periods.medicineId, unscheduledDoses.medicineId),
+        eq(periods.id, unscheduledDoses.strengthRevisionId),
+      ),
+    )
     .where(
       and(
         eq(unscheduledDoses.ownerId, ownerId),

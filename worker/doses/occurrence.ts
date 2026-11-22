@@ -25,6 +25,7 @@ export async function getOccurrence(
       confirmedAt: dailySchedules.confirmedAt,
       times: dailySchedules.times,
       unit: userMedications.unit,
+      medicineId: userMedications.id,
     })
     .from(dailySchedules)
     .innerJoin(

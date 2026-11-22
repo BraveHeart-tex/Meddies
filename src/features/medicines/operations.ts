@@ -17,6 +17,12 @@ import {
   type Medicine,
   type MedicineCommand,
 } from './contract'
+import {
+  parseTypeCorrection,
+  parseTypeCorrectionReviewInput,
+  type TypeCorrectionCommand,
+  type TypeCorrectionReview,
+} from './type-correction-contract'
 
 // Shared application boundary. Authentication is performed for every invocation.
 export function createMedicineOperations(dependencies: {
@@ -177,6 +183,51 @@ export function createMedicineOperations(dependencies: {
           throw new ApplicationError('unavailable', 503)
       }
       return rows
+    },
+  }
+}
+
+export function createTypeCorrectionOperations(dependencies: {
+  requireUser: () => Promise<{ id: string }>
+  send: (command: TypeCorrectionCommand) => Promise<Medicine[] | TypeCorrectionReview>
+}) {
+  return {
+    async review(input: unknown) {
+      const user = await dependencies.requireUser()
+      const review = parseTypeCorrectionReviewInput(input)
+      const result = await dependencies.send({
+        operation: 'reviewTypeCorrection',
+        ownerId: user.id,
+        review,
+      })
+      if (
+        Array.isArray(result) ||
+        result.medicineId !== review.medicineId ||
+        result.unit !== review.unit
+      )
+        throw new ApplicationError('unavailable', 503)
+      return result
+    },
+    async correct(input: unknown) {
+      const user = await dependencies.requireUser()
+      const correction = parseTypeCorrection(input)
+      const result = await dependencies.send({
+        operation: 'correctType',
+        ownerId: user.id,
+        correction,
+      })
+      if (!Array.isArray(result)) throw new ApplicationError('unavailable', 503)
+      const records = confirmedEdit(result, correction)
+      const { unit, stock } = records[0]
+      const count = stock.tracked ? stock.count : null
+      if (
+        unit !== correction.unit ||
+        count !== correction.stockCount ||
+        stock.threshold !== undefined ||
+        (stock.tracked && stock.intakePastCount)
+      )
+        throw new ApplicationError('unavailable', 503)
+      return records
     },
   }
 }

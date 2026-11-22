@@ -17,6 +17,11 @@ import {
   type MedicineCommand,
 } from '../src/features/medicines/contract'
 import {
+  type TypeCorrectionCommand,
+  parseTypeCorrection,
+  parseTypeCorrectionReviewInput,
+} from '../src/features/medicines/type-correction-contract'
+import {
   isScheduleDate,
   parseSchedule,
   parseScheduleEdit,
@@ -48,6 +53,7 @@ import type { CommandPath } from './http'
 
 export type WorkerCommand =
   | { path: '/medicines'; command: MedicineCommand }
+  | { path: '/medicine-type-correction'; command: TypeCorrectionCommand }
   | {
       path: '/schedules'
       command:
@@ -133,6 +139,27 @@ export function decodeCommand(path: CommandPath, value: unknown): WorkerCommand 
       default:
         throw new ApplicationError('validation', 400)
     }
+  }
+  if (path === '/medicine-type-correction') {
+    if (input.operation === 'reviewTypeCorrection')
+      return {
+        path,
+        command: {
+          operation: input.operation,
+          ownerId,
+          review: parseTypeCorrectionReviewInput(input.review),
+        },
+      }
+    if (input.operation === 'correctType')
+      return {
+        path,
+        command: {
+          operation: input.operation,
+          ownerId,
+          correction: parseTypeCorrection(input.correction),
+        },
+      }
+    throw new ApplicationError('validation', 400)
   }
   if (path === '/medicines') {
     switch (input.operation) {

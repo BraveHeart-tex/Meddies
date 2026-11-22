@@ -1,3 +1,5 @@
+import { typeCorrectionBodyLimit } from '../src/features/medicines/type-correction-contract'
+import { correctMedicineType, reviewMedicineType } from './medicine-type-correction'
 import { DrizzleQueryError } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { decodeCommand, type WorkerCommand } from './commands'
@@ -179,9 +181,22 @@ export function createWorker(
         event.errorCode = 'not_found'
         return path
       }
-      const decoded = decodeCommand(path, await readJsonRequest(request))
+      const decoded = decodeCommand(
+        path,
+        await readJsonRequest(
+          request,
+          // Next.js adds the operation and authenticated owner to the public request.
+          path === '/medicine-type-correction' ? typeCorrectionBodyLimit + 2048 : undefined,
+        ),
+      )
       event.operation = decoded.command.operation
       const db = drizzle(env.DB)
+      if (decoded.path === '/medicine-type-correction') {
+        const command = decoded.command
+        return command.operation === 'reviewTypeCorrection'
+          ? json({ review: await reviewMedicineType(db, command.ownerId, command.review) })
+          : json(await correctMedicineType(db, command.ownerId, command.correction, clock()))
+      }
       if (decoded.path === '/medicines') {
         const command = decoded.command
         switch (command.operation) {

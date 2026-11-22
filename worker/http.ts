@@ -20,6 +20,7 @@ export async function authenticateService(request: Request, secret: string | und
 
 const commandPaths = [
   '/medicines',
+  '/medicine-type-correction',
   '/schedules',
   '/device-registrations',
   '/quiet-hours',

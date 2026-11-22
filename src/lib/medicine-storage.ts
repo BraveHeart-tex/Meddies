@@ -4,6 +4,7 @@ import { ApplicationError } from '@/lib/application-error'
 export async function sendStorage(
   path:
     | '/medicines'
+    | '/medicine-type-correction'
     | '/schedules'
     | '/device-registrations'
     | '/quiet-hours'

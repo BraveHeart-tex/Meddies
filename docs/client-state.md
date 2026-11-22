@@ -40,6 +40,10 @@ browser storage is used. Losing it on reload, app closure or browser eviction is
   old count. A confirmed dose save, Unscheduled log, change or removal changes Stock without a
   revision, so it invalidates medicine reads; the fresh read cancels any older one in flight, so
   only the server's count shows.
+- **Type Detail correction** reviews the saved Medicine and its Schedule versions and doses before
+  submitting explicit repairs. A review is advisory. The save checks both the Medicine revision
+  and the review version so a dose or Schedule write can require a fresh review. An Unconfirmed
+  retry keeps the original action ID and submitted payload and returns its original receipt.
 - **Medicine archive** confirms only from a record bearing its action ID, revision + 1 and
   `archivedAt`. After cancelling older reads it publishes that record and the head Schedule
   version's stop successor (the server's, keyed by the action ID). Schedule versions only advance

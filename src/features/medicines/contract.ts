@@ -95,7 +95,7 @@ function parseMedicineDetails(value: unknown, access: Access): Medicine {
   const input = value as Record<string, unknown>
   if (
     typeof input.id !== 'string' ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.id) ||
+    !uuidPattern.test(input.id) ||
     typeof input.label !== 'string' ||
     !input.label.trim() ||
     input.label.trim().length > 120 ||
@@ -122,7 +122,7 @@ export function parseMedicineRecord(value: unknown): MedicineRecord {
     !Number.isSafeInteger(input.revision) ||
     (input.revision as number) < 0 ||
     (input.lastActionId !== null &&
-      (typeof input.lastActionId !== 'string' || !uuid.test(input.lastActionId))) ||
+      (typeof input.lastActionId !== 'string' || !uuidPattern.test(input.lastActionId))) ||
     typeof input.currentStrengthRevisionId !== 'string' ||
     !Array.isArray(input.strengthRevisions) ||
     !input.strengthRevisions.length ||
@@ -134,7 +134,12 @@ export function parseMedicineRecord(value: unknown): MedicineRecord {
     throw new ApplicationError('validation', 400)
   const strengthRevisions = input.strengthRevisions.map((value: unknown) => {
     const row = value as Record<string, unknown>
-    if (!row || typeof row.id !== 'string' || !uuid.test(row.id) || !isInstant(row.effectiveAt))
+    if (
+      !row ||
+      typeof row.id !== 'string' ||
+      !uuidPattern.test(row.id) ||
+      !isInstant(row.effectiveAt)
+    )
       throw new ApplicationError('validation', 400)
     const details = parseMedicineDetails({ ...row, id: row.id }, 'read')
     if (!Array.isArray(row.previousValues)) throw new ApplicationError('validation', 400)
@@ -173,7 +178,7 @@ export function parseMedicineResponse(value: unknown): Medicine | MedicineRecord
     : parseMedicineDetails(value, 'read')
 }
 
-const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+export const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 function parseStrength(value: unknown): string | null {
   if (value !== null && (typeof value !== 'string' || !value.trim() || value.length > 120))
     throw new ApplicationError('validation', 400)
@@ -198,14 +203,14 @@ export type StrengthChange = {
   timeZone: 'Europe/Istanbul'
 }
 
-function parseEditKey(value: unknown) {
+export function parseEditKey(value: unknown) {
   if (!value || typeof value !== 'object') throw new ApplicationError('validation', 400)
   const input = value as Record<string, unknown>
   if (
     typeof input.actionId !== 'string' ||
-    !uuid.test(input.actionId) ||
+    !uuidPattern.test(input.actionId) ||
     typeof input.medicineId !== 'string' ||
-    !uuid.test(input.medicineId) ||
+    !uuidPattern.test(input.medicineId) ||
     !Number.isSafeInteger(input.expectedRevision) ||
     (input.expectedRevision as number) < 0
   )
@@ -219,7 +224,7 @@ function parseEditKey(value: unknown) {
 export function parseDetailCorrection(value: unknown): DetailCorrection {
   const key = parseEditKey(value)
   const input = value as Record<string, unknown>
-  if (typeof input.strengthRevisionId !== 'string' || !uuid.test(input.strengthRevisionId))
+  if (typeof input.strengthRevisionId !== 'string' || !uuidPattern.test(input.strengthRevisionId))
     throw new ApplicationError('validation', 400)
   const medicine = parseMedicine({ ...input, id: key.medicineId })
   return {

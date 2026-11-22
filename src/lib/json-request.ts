@@ -1,6 +1,6 @@
 import { ApplicationError } from './application-error'
 
-export async function readJsonRequest(request: Request): Promise<unknown> {
+export async function readJsonRequest(request: Request, limit = 4096): Promise<unknown> {
   const reader = request.body?.getReader()
   if (!reader) throw new ApplicationError('validation', 400)
   let body = ''
@@ -10,7 +10,7 @@ export async function readJsonRequest(request: Request): Promise<unknown> {
     const chunk = await reader.read()
     if (chunk.done) break
     bytes += chunk.value.byteLength
-    if (bytes > 4096) {
+    if (bytes > limit) {
       await reader.cancel()
       throw new ApplicationError('validation', 413)
     }

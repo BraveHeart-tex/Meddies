@@ -27,6 +27,9 @@ export const userMedications = sqliteTable(
     startingCount: real('starting_count'),
     stockCount: real('stock_count'),
     lowStockThreshold: real('low_stock_threshold'),
+    quantityReviewRevision: integer('quantity_review_revision').notNull().default(0),
+    quantityScale: integer('quantity_scale'),
+    quantityMax: real('quantity_max'),
     stockStartedAt: text('stock_started_at'),
     creationRequest: text('creation_request'),
     creationResult: text('creation_result'),
@@ -50,6 +53,9 @@ export const dailySchedules = sqliteTable(
     medicineId: text('medicine_id').notNull(),
     startDate: text('start_date').notNull(),
     times: text('times', { mode: 'json' }).$type<{ time: string; quantity: number }[]>().notNull(),
+    originalTimes: text('original_times', { mode: 'json' }).$type<
+      { time: string; quantity: number }[]
+    >(),
     confirmedAt: text('confirmed_at').notNull(),
     weekdays: text('weekdays', { mode: 'json' })
       .$type<number[]>()
@@ -258,6 +264,56 @@ export const medicineEdits = sqliteTable(
       foreignColumns: [userMedications.ownerId, userMedications.id],
     }),
     check('medicine_edits_kind', sql`${table.kind} IN ('correctDetails','changeStrength')`),
+  ],
+)
+
+export const medicineTypeCorrections = sqliteTable(
+  'medicine_type_corrections',
+  {
+    ownerId: text('owner_id').notNull(),
+    actionId: text('action_id').notNull(),
+    medicineId: text('medicine_id').notNull(),
+    expectedRevision: integer('expected_revision').notNull(),
+    reviewRevision: integer('review_revision').notNull(),
+    fromUnit: text('from_unit').notNull(),
+    unit: text('unit').notNull(),
+    quantityScale: integer('quantity_scale').notNull(),
+    quantityMax: real('quantity_max').notNull(),
+    confirmedAt: text('confirmed_at').notNull(),
+    count: real('count'),
+    request: text('request').notNull(),
+    repairs: text('repairs').notNull(),
+    strengthRevisionId: text('strength_revision_id'),
+    label: text('label'),
+    strength: text('strength'),
+    previousDetails: text('previous_details'),
+    result: text('result'),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.actionId] }),
+    unique().on(table.ownerId, table.medicineId, table.expectedRevision),
+    foreignKey({
+      columns: [table.ownerId, table.medicineId],
+      foreignColumns: [userMedications.ownerId, userMedications.id],
+    }).onDelete('cascade'),
+  ],
+)
+
+export const medicineDoseQuantityRepairs = sqliteTable(
+  'medicine_dose_quantity_repairs',
+  {
+    ownerId: text('owner_id').notNull(),
+    medicineId: text('medicine_id').notNull(),
+    doseKey: text('dose_key').notNull(),
+    revision: integer('revision').notNull(),
+    quantity: real('quantity').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerId, table.doseKey, table.revision] }),
+    foreignKey({
+      columns: [table.ownerId, table.medicineId],
+      foreignColumns: [userMedications.ownerId, userMedications.id],
+    }).onDelete('cascade'),
   ],
 )
 
