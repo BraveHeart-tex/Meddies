@@ -9,6 +9,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { PrivateReadError } from '@/lib/session-check'
 import {
   medicineTypeLabel,
+  parseQuantity,
   quantityLabel,
   quantityProblem,
   quantityRule,
@@ -23,6 +24,8 @@ import {
 } from './type-correction-summary'
 import { MedicationIdentity } from './medication-sub-screen'
 import type { MedicineRecord } from './contract'
+import type { TypeCorrection } from './type-correction-contract'
+import type { useTypeCorrectionSave } from './use-type-correction-save'
 import { parseTypeCorrectionReview } from './type-correction-contract'
 
 /** Advisory read only. Entry values stay in the record form's Session draft. A fresh entry or
@@ -30,6 +33,11 @@ import { parseTypeCorrectionReview } from './type-correction-contract'
  */
 export function TypeCorrectionReviewScreen({
   medicine,
+  resumed,
+  correction,
+  details,
+  expectedRevision,
+  onReviewSaved,
   unit,
   onBack,
   onCancel,
@@ -39,6 +47,11 @@ export function TypeCorrectionReviewScreen({
   onStockCountChange,
 }: {
   medicine: MedicineRecord
+  resumed: ReturnType<typeof useTypeCorrectionSave>['submitted']
+  correction: ReturnType<typeof useTypeCorrectionSave>
+  expectedRevision: number
+  details: NonNullable<TypeCorrection['details']>
+  onReviewSaved: () => Promise<void>
   unit: WritableMedicineType
   onBack: () => void
   onCancel: () => void
@@ -64,19 +77,22 @@ export function TypeCorrectionReviewScreen({
         throw new Error('Review does not match chosen Type')
       return review
     },
+    enabled: !resumed,
     staleTime: 0,
     retry: false,
     gcTime: 0,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   })
-  const [step, setStep] = useState<'consequences' | 'stock' | 'summary' | number>('consequences')
+  const [step, setStep] = useState<'consequences' | 'stock' | 'summary' | number>(
+    resumed ? 'summary' : 'consequences',
+  )
   const [checkingEntries, setCheckingEntries] = useState(false)
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
     heading.current?.focus()
   }, [read.status, step])
-  const review = read.data
+  const review = resumed?.review ?? read.data
   const type = medicineTypeLabel(unit)
   const count = review?.conflicts.length ?? 0
   const doses = review?.conflicts.filter((item) => item.kind !== 'schedule').length ?? 0
@@ -140,9 +156,43 @@ export function TypeCorrectionReviewScreen({
   if (review && step === 'summary')
     return (
       <TypeCorrectionSummary
-        medicine={medicine}
+        medicine={resumed?.medicine ?? medicine}
         review={review}
-        count={stockCount}
+        count={
+          correction.confirmed ? String(correction.submitted?.command.stockCount ?? '') : stockCount
+        }
+        onLeave={correction.confirmed ? correction.clear : undefined}
+        pending={correction.pending}
+        problem={correction.problem}
+        confirmed={correction.confirmed}
+        onReviewSaved={onReviewSaved}
+        onSave={() => {
+          if (correction.problem === 'unconfirmed') {
+            void correction.retry()
+            return
+          }
+          const repairs = review.conflicts.map(({ key }) => ({
+            key,
+            quantity: parseQuantity(amounts[key] ?? ''),
+          }))
+          if (repairs.some(({ quantity }) => quantity === null)) {
+            returnToSummary()
+            return
+          }
+          void correction.submit({
+            medicine,
+            review,
+            command: {
+              medicineId: medicine.id,
+              expectedRevision,
+              reviewVersion: review.reviewVersion,
+              unit,
+              stockCount: review.stockTracked ? parseQuantity(stockCount) : null,
+              repairs: repairs.map(({ key, quantity }) => ({ key, quantity: quantity! })),
+              details,
+            },
+          })
+        }}
         onReviewAmounts={() => {
           setCheckingEntries(true)
           setStep(0)

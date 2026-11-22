@@ -1,4 +1,7 @@
 import { z } from 'zod'
+import { isTimeOfDay } from '@/lib/time-of-day'
+import { isScheduleDate } from '../schedules/contract'
+import { instantOf } from '../schedules/taken-form-schema'
 import {
   isWritableMedicineType,
   parseQuantity,
@@ -56,4 +59,44 @@ export const medicineFormDefaults: MedicineFormValues = {
   strength: '',
   unit: '',
   stock: '',
+}
+
+/** Record edits keep the base revision and raw Type correction draft through navigation. */
+export function medicineRecordSchema(
+  strength: boolean,
+  now: () => Date,
+  latestTakenAt: string | null | undefined,
+) {
+  return medicineDetailsSchema
+    .extend({
+      expectedRevision: z.number(),
+      repairUnit: z.string().default(''),
+      correctionStockCount: z.string().default(''),
+      repairs: z.record(z.string(), z.string()).default({}),
+      strength: strength
+        ? z
+            .string()
+            .trim()
+            .min(1, 'Enter the new strength.')
+            .max(120, 'Use 120 characters or fewer.')
+        : medicineDetailsSchema.shape.strength,
+      date: z.string().refine((value) => !strength || isScheduleDate(value), 'Choose a date.'),
+      time: z.string().refine((value) => !strength || isTimeOfDay(value), 'Choose a time.'),
+    })
+    .superRefine((values, context) => {
+      if (!strength || !isScheduleDate(values.date) || !isTimeOfDay(values.time)) return
+      const at = instantOf(`${values.date}T${values.time}`).getTime()
+      if (at > now().getTime())
+        context.addIssue({
+          code: 'custom',
+          path: ['time'],
+          message: 'Choose a time no later than now.',
+        })
+      if (latestTakenAt && at < Date.parse(latestTakenAt))
+        context.addIssue({
+          code: 'custom',
+          path: ['time'],
+          message: 'Choose a time no earlier than the latest dose recorded as Taken.',
+        })
+    })
 }

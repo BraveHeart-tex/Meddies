@@ -70,6 +70,7 @@ export function CorrectionFrame({ initial }: { initial: 'stock' | 'summary' | nu
             <TypeCorrectionSummary
               {...common}
               count={count}
+              onSave={() => undefined}
               onBack={() => {
                 setCheckingEntries(false)
                 setStep('stock')

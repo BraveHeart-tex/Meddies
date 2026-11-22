@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowRight, BellOff, ChevronLeft } from 'lucide-react'
+import { ArrowRight, BellOff, ChevronLeft, TriangleAlert } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { QuantityStepper } from '@/components/quantity-stepper'
 import {
@@ -19,6 +19,9 @@ import {
 } from '@/lib/quantity-policy'
 import type { MedicineRecord } from './contract'
 import type { TypeCorrectionReview } from './type-correction-contract'
+import type { SaveProblem } from '@/lib/session-saves'
+import { MedicationsLink } from './medications-nav'
+import { medicationRecordHref } from './routes'
 import { TypeTile } from './type-tile'
 
 export function CorrectionTypeChange({
@@ -55,9 +58,11 @@ function CorrectionScreen({
   medicine,
   title,
   onBack,
+  locked,
   children,
 }: Pick<CorrectionScreenProps, 'medicine' | 'onBack'> & {
   title: string
+  locked?: boolean
   children: React.ReactNode
 }) {
   const heading = useRef<HTMLHeadingElement>(null)
@@ -66,7 +71,7 @@ function CorrectionScreen({
   }, [title])
   return (
     <div className="flex flex-col gap-7 pb-5">
-      <Button variant="ghost" className="-ml-3 self-start" onClick={onBack}>
+      <Button variant="ghost" className="-ml-3 self-start" onClick={onBack} disabled={locked}>
         <ChevronLeft data-icon="inline-start" aria-hidden="true" />
         Back
       </Button>
@@ -190,16 +195,52 @@ export function TypeCorrectionSummary({
   review,
   count,
   onReviewAmounts,
+  onSave,
+  onReviewSaved,
+  onLeave,
+  pending,
+  problem,
+  confirmed,
   onBack,
   onCancel,
-}: CorrectionScreenProps & { count: string; onReviewAmounts: () => void }) {
+}: CorrectionScreenProps & {
+  medicine: CorrectionScreenProps['medicine'] & { id: string }
+  count: string
+  onReviewAmounts: () => void
+  onSave: () => void
+  onLeave?: () => void
+  onReviewSaved?: () => Promise<void>
+  pending?: boolean
+  problem?: SaveProblem
+  confirmed?: boolean
+}) {
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshFailed, setRefreshFailed] = useState(false)
+  const locked = pending || confirmed || problem === 'unconfirmed' || problem === 'conflict'
+  const message = problem && correctionProblems[problem]
+  async function reviewSaved() {
+    setRefreshing(true)
+    setRefreshFailed(false)
+    try {
+      await onReviewSaved?.()
+    } catch {
+      setRefreshFailed(true)
+    } finally {
+      setRefreshing(false)
+    }
+  }
   const { conflicts, stockTracked, unit, fromUnit } = review
   const doses = conflicts.filter(({ kind }) => kind !== 'schedule').length
   const schedules = conflicts.length - doses
   const threshold = medicine.stock.threshold
   const freshCount = parseQuantity(count)
   return (
-    <CorrectionScreen medicine={medicine} title="Review your changes" onBack={onBack}>
+    <CorrectionScreen
+      medicine={medicine}
+      title="Review your changes"
+      onBack={onBack}
+      locked={locked}
+    >
       <dl className="rounded-xl border bg-card px-4">
         <div className="flex flex-col gap-2 py-4">
           <dt className="text-body-sm text-muted-foreground">Type across all records</dt>
@@ -215,7 +256,12 @@ export function TypeCorrectionSummary({
               {schedules === 1 ? 'schedule' : 'schedules'}
             </dd>
             <dd className="col-start-2 row-span-2 row-start-1">
-              <Button variant="link" aria-label="Review entered amounts" onClick={onReviewAmounts}>
+              <Button
+                variant="link"
+                aria-label="Review entered amounts"
+                onClick={onReviewAmounts}
+                disabled={locked}
+              >
                 Review
               </Button>
             </dd>
@@ -254,12 +300,75 @@ export function TypeCorrectionSummary({
           </div>
         )}
       </dl>
-      <p className="text-body-sm text-muted-foreground">
-        These changes save together. Dose times and Taken or Skipped stay as they are.
-      </p>
-      <Button variant="ghost" onClick={onCancel}>
-        Cancel change
-      </Button>
+      {!pending && !problem && !confirmed && (
+        <p className="text-body-sm text-muted-foreground">
+          These changes save together. Dose times and Taken or Skipped stay as they are.
+        </p>
+      )}
+      <div className="flex flex-col gap-3">
+        {pending && (
+          <p role="status" className="text-body-sm">
+            Saving your Type, amounts and Stock together.
+          </p>
+        )}
+        {message && (
+          <Alert variant="destructive">
+            <TriangleAlert aria-hidden="true" />
+            <AlertTitle>{message.title}</AlertTitle>
+            <AlertDescription>{message.description}</AlertDescription>
+          </Alert>
+        )}
+        {refreshFailed && <p role="alert">Couldn’t load the saved medication. Try again.</p>}
+        {confirmed ? (
+          <p role="status" className="text-body-sm">
+            Details saved
+          </p>
+        ) : (
+          <Button
+            size="lg"
+            disabled={pending || refreshing}
+            onClick={problem === 'conflict' ? () => void reviewSaved() : onSave}
+          >
+            {pending ? 'Saving…' : (message?.action ?? 'Save details')}
+          </Button>
+        )}
+        {problem === 'unconfirmed' || confirmed ? (
+          <MedicationsLink
+            href={medicationRecordHref(medicine.id)}
+            onShow={onLeave}
+            className={buttonVariants({ variant: 'outline' })}
+          >
+            Back to medication
+          </MedicationsLink>
+        ) : (
+          !pending && (
+            <Button variant="ghost" onClick={onCancel} disabled={refreshing}>
+              Cancel change
+            </Button>
+          )
+        )}
+      </div>
     </CorrectionScreen>
   )
 }
+
+const correctionProblems = {
+  unconfirmed: {
+    title: 'That might not have saved.',
+    description:
+      'Your details are still here. Check your connection and retry with the same details.',
+    action: 'Retry save',
+  },
+  rejected: {
+    title: 'Your changes weren’t saved.',
+    description:
+      'Nothing changed. Your details are still here. Check the amounts before trying again.',
+    action: 'Try saving again',
+  },
+  conflict: {
+    title: 'This medication changed elsewhere.',
+    description:
+      'Your changes weren’t saved. Review the saved details and check every amount and your Stock count again.',
+    action: 'Review saved medication',
+  },
+} satisfies Record<SaveProblem, { title: string; description: string; action: string }>

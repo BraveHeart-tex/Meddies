@@ -18,8 +18,6 @@ import { useSessionFormDraft } from '@/lib/use-session-form-draft'
 import { saveMessages } from '@/lib/save-messages'
 import { formatShortDay, formatTime } from '@/lib/calendar-date'
 import { cn } from '@/lib/utils'
-import { isTimeOfDay } from '@/lib/time-of-day'
-import { isScheduleDate } from '../schedules/contract'
 import { useSchedulingClock } from '../schedules/scheduling-clock'
 import { useCurrentMinute } from '../schedules/use-current-minute'
 import { instantOf } from '../schedules/taken-form-schema'
@@ -27,16 +25,17 @@ import { MedicationIdentity } from './medication-sub-screen'
 import type { MedicineRecord } from './contract'
 import { detailPeriodSentence } from './detail-period'
 import { DetailCorrectionFields } from './detail-correction-fields'
-import { medicineDetailsSchema } from './medicine-form-schema'
+import { medicineRecordSchema } from './medicine-form-schema'
 import { TypeCorrectionReviewScreen } from './type-correction-review'
 import type { WritableMedicineType } from '@/lib/quantity-policy'
+import { useTypeCorrectionSave } from './use-type-correction-save'
 import { useMedicineRecordSave } from './use-medicine-record-save'
 
 /** Fix one period, or explicitly start another. Raw drafts and attempts outlive this form;
  * changing bounds never resets dirty fields. Conflict review is an explicit fresh-read boundary.
  */
 export function MedicineRecordForm({
-  medicine,
+  medicine: savedMedicine,
   mode,
   periodId,
   onSaved,
@@ -49,7 +48,14 @@ export function MedicineRecordForm({
   onCancel: () => void
 }) {
   const heading = useRef<HTMLHeadingElement>(null)
-  const [reviewUnit, setReviewUnit] = useState<WritableMedicineType | null>(null)
+  const [recovered, setRecovered] = useState<MedicineRecord>()
+  const medicine =
+    recovered && recovered.revision >= savedMedicine.revision ? recovered : savedMedicine
+  const correction = useTypeCorrectionSave(medicine, mode === 'fix' ? periodId : '-')
+  const [resumed, setResumed] = useState(() => (mode === 'fix' ? correction.submitted : undefined))
+  const [reviewUnit, setReviewUnit] = useState<WritableMedicineType | null>(
+    resumed?.command.unit ?? null,
+  )
   useEffect(() => {
     if (!reviewUnit) heading.current?.focus()
   }, [reviewUnit])
@@ -67,38 +73,7 @@ export function MedicineRecordForm({
   const strength = mode === 'strength'
   const period = medicine.strengthRevisions.find((r) => r.id === periodId)!
   const save = useMedicineRecordSave(medicine, mode, periodId, onSaved)
-  const schema = medicineDetailsSchema
-    .extend({
-      expectedRevision: z.number(),
-      repairUnit: z.string().default(''),
-      correctionStockCount: z.string().default(''),
-      repairs: z.record(z.string(), z.string()).default({}),
-      strength: strength
-        ? z
-            .string()
-            .trim()
-            .min(1, 'Enter the new strength.')
-            .max(120, 'Use 120 characters or fewer.')
-        : medicineDetailsSchema.shape.strength,
-      date: z.string().refine((value) => !strength || isScheduleDate(value), 'Choose a date.'),
-      time: z.string().refine((value) => !strength || isTimeOfDay(value), 'Choose a time.'),
-    })
-    .superRefine((values, context) => {
-      if (!strength || !isScheduleDate(values.date) || !isTimeOfDay(values.time)) return
-      const at = instantOf(`${values.date}T${values.time}`).getTime()
-      if (at > clock.now().getTime())
-        context.addIssue({
-          code: 'custom',
-          path: ['time'],
-          message: 'Choose a time no later than now.',
-        })
-      if (medicine.latestTakenAt && at < Date.parse(medicine.latestTakenAt))
-        context.addIssue({
-          code: 'custom',
-          path: ['time'],
-          message: 'Choose a time no earlier than the latest dose recorded as Taken.',
-        })
-    })
+  const schema = medicineRecordSchema(strength, clock.now, medicine.latestTakenAt)
   const defaults = {
     label: period.label,
     strength: strength ? '' : (period.strength ?? ''),
@@ -177,6 +152,29 @@ export function MedicineRecordForm({
       if (live.current) setReviewing(false)
     }
   }
+  async function reviewSavedCorrection() {
+    const fresh = await correction.readSaved()
+    if (!live.current) return
+    const freshPeriod = fresh.strengthRevisions.find(({ id }) => id === periodId)
+    if (!freshPeriod || fresh.archivedAt) {
+      draft.discard()
+      correction.clear()
+      onCancel()
+      return
+    }
+    form.reset({
+      ...defaults,
+      label: freshPeriod.label,
+      strength: freshPeriod.strength ?? '',
+      unit: isWritableMedicineType(fresh.unit) ? fresh.unit : '',
+      expectedRevision: fresh.revision,
+    })
+    draft.discard()
+    setRecovered(fresh)
+    correction.clear()
+    setResumed(undefined)
+    setReviewUnit(null)
+  }
   return (
     <>
       {reviewUnit ? (
@@ -187,13 +185,26 @@ export function MedicineRecordForm({
             strength: form.getValues('strength') || null,
           }}
           unit={reviewUnit}
+          resumed={resumed}
+          correction={correction}
+          expectedRevision={form.getValues('expectedRevision')}
+          details={{
+            strengthRevisionId: periodId,
+            label: form.getValues('label').trim(),
+            strength: form.getValues('strength').trim() || null,
+          }}
+          onReviewSaved={reviewSavedCorrection}
           amounts={repairs ?? {}}
           stockCount={correctionStockCount ?? ''}
           onStockCountChange={(value) => form.setValue('correctionStockCount', value)}
           onAmountChange={(key, value) =>
             form.setValue('repairs', { ...form.getValues('repairs'), [key]: value })
           }
-          onBack={() => setReviewUnit(null)}
+          onBack={() => {
+            if (correction.problem === 'rejected') correction.clear()
+            setResumed(undefined)
+            setReviewUnit(null)
+          }}
           onCancel={cancel}
         />
       ) : (
@@ -372,6 +383,7 @@ export function MedicineRecordForm({
         onDiscard={() => {
           draft.discard()
           save.clear()
+          correction.clear()
           setDiscard(false)
           onCancel()
         }}

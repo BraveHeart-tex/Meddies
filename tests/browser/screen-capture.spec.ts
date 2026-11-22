@@ -276,13 +276,30 @@ test.describe('Edit details groups', () => {
     const captureCorrection = async (name: string) => {
       expect(await scrollsHorizontally(page)).toBe(false)
       await page.getByRole('button').first().scrollIntoViewIfNeeded()
+      await page.mouse.move(0, 0)
       await captureSettled(page, {
         path: resolve(out!, `${name}-402.png`),
         style: 'nextjs-portal { display: none !important; }',
       })
     }
     await captureCorrection('type-entry-earlier')
+    let releaseSave!: () => void
+    const heldSave = new Promise<void>((resolve) => (releaseSave = resolve))
+    let saveCount = 0
+    let reviewVersion = 0
     await page.route(`**${reviewPath}`, async (route) => {
+      if (route.request().method() === 'PATCH') {
+        saveCount += 1
+        if (saveCount === 1) {
+          await heldSave
+          await route.abort('failed')
+        } else if (route.request().postDataJSON().reviewVersion !== reviewVersion) {
+          await route.fulfill({ status: 409, json: { error: 'conflict' } })
+        } else {
+          await route.fulfill({ status: 400, json: { error: 'validation' } })
+        }
+        return
+      }
       await route.fulfill({
         json: {
           review: {
@@ -290,7 +307,7 @@ test.describe('Edit details groups', () => {
             fromUnit: 'tablet',
             unit: 'capsule',
             revision: 0,
-            reviewVersion: 0,
+            reviewVersion,
             stockTracked: true,
             compatibleAmounts: 7,
             conflicts: Array.from({ length: 26 }, (_, index) =>
@@ -368,6 +385,19 @@ test.describe('Edit details groups', () => {
     await expect(page.getByRole('heading', { name: 'Review your changes' })).toBeFocused()
     await expect(page.getByText('24 doses · 2 schedules')).toBeVisible()
     await captureCorrection('type-final-review-tracked')
+    await page.getByRole('button', { name: 'Save details' }).click()
+    await expect(page.getByRole('button', { name: 'Saving…' })).toBeDisabled()
+    await captureCorrection('type-save-pending')
+    releaseSave()
+    await expect(page.getByText('That might not have saved.')).toBeVisible()
+    await captureCorrection('type-save-unconfirmed')
+    await page.getByRole('button', { name: 'Retry save' }).click()
+    await expect(page.getByText('Your changes weren’t saved.')).toBeVisible()
+    await captureCorrection('type-save-rejected')
+    reviewVersion += 1
+    await page.getByRole('button', { name: 'Try saving again' }).click()
+    await expect(page.getByRole('button', { name: 'Review saved medication' })).toBeVisible()
+    await captureCorrection('type-save-stale')
 
     await page.unroute(`**${reviewPath}`)
     await page.route(`**${reviewPath}`, (route) =>

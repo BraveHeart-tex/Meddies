@@ -26,6 +26,7 @@
     - text: Below 5 tablets → Off
   - paragraph
     - text: These changes save together. Dose times and Taken or Skipped stay as they are.
+  - button "Save details"
   - button "Cancel change"
 - navigation "Primary"
   - list

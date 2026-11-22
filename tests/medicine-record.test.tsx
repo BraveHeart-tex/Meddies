@@ -1120,3 +1120,140 @@ test('Type repair Keep editing and remount retain the draft while Discard change
   expect(onSaved).not.toHaveBeenCalled()
   expect(client.getQueryData(medicineKeys.list())).toEqual([medicine])
 })
+
+// A lost response must preserve the entire atomic command across a route remount.
+test('Type correction locks its submitted draft and retries the identical command after navigation', async () => {
+  serveRepairQueue(true)
+  const record: MedicineRecord = { ...medicine, stock: { tracked: true, count: 12, threshold: 3 } }
+  const commands: Record<string, unknown>[] = []
+  let release!: () => void
+  const held = new Promise<void>((resolve) => (release = resolve))
+  let saved: MedicineRecord = record
+  server.use(
+    http.get('/api/medicines', () => HttpResponse.json({ medicines: [saved] })),
+    http.patch('/api/medicines/type-correction', async ({ request }) => {
+      const command = (await request.json()) as Record<string, unknown>
+      commands.push(command)
+      if (commands.length === 1) await held
+      else saved = { ...record, revision: 2, lastActionId: command.actionId as string }
+      return HttpResponse.error()
+    }),
+  )
+  const { user, client, onSaved, onCancel, unmount } = open('fix', record)
+  await enterRepairQueue(user)
+  for (const quantity of ['2', '3', '4', '5']) {
+    await user.type(screen.getByRole('textbox', { name: 'Amount' }), quantity)
+    await user.click(
+      screen.getByRole('button', { name: quantity === '5' ? 'Continue to Stock' : 'Continue' }),
+    )
+  }
+  await user.type(screen.getByRole('textbox', { name: 'Current count' }), '16')
+  await user.click(screen.getByRole('button', { name: 'Review changes' }))
+  await user.click(screen.getByRole('button', { name: 'Save details' }))
+  expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Review entered amounts' })).toBeDisabled()
+  expect(screen.queryByRole('button', { name: 'Cancel change' })).toBeNull()
+  await waitFor(() =>
+    expect(commands).toEqual([
+      {
+        actionId: expect.any(String),
+        medicineId: record.id,
+        expectedRevision: 1,
+        reviewVersion: 5,
+        unit: 'capsule',
+        stockCount: 16,
+        repairs: [
+          { key: 'dose:scheduled', quantity: 2 },
+          { key: 'dose:unscheduled', quantity: 3 },
+          { key: 'schedule:current', quantity: 4 },
+          { key: 'schedule:earlier', quantity: 5 },
+        ],
+        details: {
+          strengthRevisionId: record.currentStrengthRevisionId,
+          label: 'Magnesium',
+          strength: '400 mg',
+        },
+      },
+    ]),
+  )
+  unmount()
+  release()
+  render(
+    <QueryClientProvider client={client}>
+      <SchedulingClockProvider serverNow="2026-11-15T07:00:00.000Z">
+        <MedicineRecordForm
+          medicine={record}
+          mode="fix"
+          periodId={record.currentStrengthRevisionId}
+          onSaved={onSaved}
+          onCancel={onCancel}
+        />
+      </SchedulingClockProvider>
+    </QueryClientProvider>,
+  )
+  expect(await screen.findByText('That might not have saved.')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Retry save' }))
+  await waitFor(() => expect(commands).toHaveLength(2))
+  expect(commands[1]).toEqual(commands[0])
+  expect(await screen.findByText('Details saved')).toBeVisible()
+  expect(onSaved).not.toHaveBeenCalled()
+  expect(client.getQueryData(medicineKeys.list())).toBeUndefined()
+})
+
+// Definite rejection must keep the draft editable, and a changed preflight must
+// prevent the edited attempt from silently applying to a new set of saved facts.
+test('Type correction keeps rejected entries editable and restarts stale review from saved facts', async () => {
+  serveRepairQueue(true)
+  const record: MedicineRecord = { ...medicine, stock: { tracked: true, count: 12 } }
+  const commands: Record<string, unknown>[] = []
+  const fresh = {
+    ...record,
+    label: 'Saved Magnesium',
+    strengthRevisions: record.strengthRevisions.map((period) => ({
+      ...period,
+      label: 'Saved Magnesium',
+    })),
+  }
+  server.use(
+    http.get('/api/medicines', () => HttpResponse.json({ medicines: [fresh] })),
+    http.patch('/api/medicines/type-correction', async ({ request }) => {
+      commands.push((await request.json()) as Record<string, unknown>)
+      return HttpResponse.json({}, { status: commands.length === 1 ? 400 : 409 })
+    }),
+  )
+  const { user, client } = open('fix', record)
+  client.setQueryData(medicineKeys.list(), [record])
+  await enterRepairQueue(user)
+  for (const quantity of ['2', '3', '4', '5']) {
+    await user.type(screen.getByRole('textbox', { name: 'Amount' }), quantity)
+    await user.click(
+      screen.getByRole('button', { name: quantity === '5' ? 'Continue to Stock' : 'Continue' }),
+    )
+  }
+  await user.type(screen.getByRole('textbox', { name: 'Current count' }), '16')
+  await user.click(screen.getByRole('button', { name: 'Review changes' }))
+  await user.click(screen.getByRole('button', { name: 'Save details' }))
+  expect(await screen.findByText('Your changes weren’t saved.')).toBeVisible()
+  expect(client.getQueryData(medicineKeys.list())).toEqual([record])
+  await user.click(screen.getByRole('button', { name: 'Back' }))
+  const count = screen.getByRole('textbox', { name: 'Current count' })
+  expect(count).toHaveValue('16')
+  await user.clear(count)
+  await user.type(count, '18')
+  await user.click(screen.getByRole('button', { name: 'Review changes' }))
+  await user.click(screen.getByRole('button', { name: 'Try saving again' }))
+  expect(await screen.findByText('This medication changed elsewhere.')).toBeVisible()
+  expect(commands[1]?.actionId).not.toBe(commands[0]?.actionId)
+  expect(commands[1]).toMatchObject({ stockCount: 18, reviewVersion: 5 })
+  expect(client.getQueryData(medicineKeys.list())).toEqual([record])
+  await user.click(screen.getByRole('button', { name: 'Review saved medication' }))
+  await waitFor(() =>
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Saved Magnesium'),
+  )
+  expect(screen.getByRole('combobox', { name: 'Type' })).toHaveTextContent('Tablet')
+  expect(screen.getByRole('heading', { name: 'Edit details' })).toHaveFocus()
+  await enterRepairQueue(user)
+  expect(screen.getByRole('textbox', { name: 'Amount' })).toHaveValue('')
+  expect(commands).toHaveLength(2)
+})
