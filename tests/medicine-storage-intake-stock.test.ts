@@ -14,7 +14,7 @@ import {
   stockBackfill,
 } from './helpers/medicine-storage-runtime'
 
-startWorkerRuntime()
+startWorkerRuntime({ history: ['0025_stock_tracking.sql'] })
 
 // Istanbul 09:00-20:00 on 2026-11-19 is 06:00Z-17:00Z; stock starts at 10:00:40Z.
 const due = (hourUtc: number) => `2026-11-19T${String(hourUtc).padStart(2, '0')}:00:00.000Z`

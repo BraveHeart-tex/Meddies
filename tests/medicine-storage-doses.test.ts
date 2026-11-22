@@ -25,7 +25,7 @@ import {
 } from './helpers/medicine-storage-runtime'
 
 // Medicines, daily and Interval schedules, dose outcomes, corrections and History on real D1.
-startWorkerRuntime()
+startWorkerRuntime({ history: ['0003_dose_records.sql'] })
 
 test('real D1 save survives reload; concurrent retries have one effect and remain owner scoped', async () => {
   const command = { operation: 'save', ownerId: 'google:alice', medicine }

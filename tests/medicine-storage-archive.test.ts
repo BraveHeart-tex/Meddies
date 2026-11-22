@@ -13,7 +13,7 @@ import { startWorkerRuntime, runtime, secret, legacy } from './helpers/medicine-
 // Archive and restore (#322, #323) on real D1. Archive stops the schedule at the Edit
 // time; restore keeps it stopped. Both store atomic receipts. No reminder sender exists
 // yet (#30, #38, #53); these tests prove the persisted facts and occurrence boundary.
-startWorkerRuntime()
+startWorkerRuntime({ history: ['0003_dose_records.sql'] })
 
 async function fixture() {
   let now = new Date('2026-11-02T04:00:00.000Z')

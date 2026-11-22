@@ -11,7 +11,9 @@ import {
   stockBackfill,
 } from './helpers/medicine-storage-runtime'
 
-startWorkerRuntime()
+startWorkerRuntime({
+  history: ['0003_dose_records.sql', '0007_interval_schedules.sql', '0025_stock_tracking.sql'],
+})
 
 const date = '2026-11-05'
 const dueAt = date + 'T06:00:00.000Z'

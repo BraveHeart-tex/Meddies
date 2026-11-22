@@ -1,6 +1,7 @@
 // Shared real-D1 runtime for the medicine storage suites: each file calls startWorkerRuntime()
-// for its own workerd and D1, so Vitest runs the files in parallel. Migrations seed legacy
-// rows that the migration cases read back.
+// for its own workerd and D1, so Vitest runs the files in parallel. Ordinary suites apply
+// the full migration chain without fixture rows. Migration suites opt in to historical
+// inputs, inserted by afterMigration against the schema at their original boundaries.
 import type {
   ScheduleCommand,
   ScheduleResponse,
@@ -135,7 +136,13 @@ async function seedStockBackfill(db: Awaited<ReturnType<Miniflare['getD1Database
   )
 }
 
-export function startWorkerRuntime() {
+type HistoricalMigration =
+  | '0003_dose_records.sql'
+  | '0007_interval_schedules.sql'
+  | '0012_unscheduled_doses.sql'
+  | '0025_stock_tracking.sql'
+
+export function startWorkerRuntime({ history = [] }: { history?: HistoricalMigration[] } = {}) {
   beforeAll(async () => {
     runtime = new Miniflare(
       convertV4MiniflareOptions({
@@ -149,6 +156,7 @@ export function startWorkerRuntime() {
     const db = await runtime.getD1Database('DB')
     await applyD1Migrations(db, {
       async afterMigration(file) {
+        if (!history.some((boundary) => boundary === file)) return
         if (file === '0025_stock_tracking.sql') await seedStockBackfill(db)
         if (file === '0012_unscheduled_doses.sql') {
           await db

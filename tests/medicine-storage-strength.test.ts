@@ -5,7 +5,7 @@ import { createWorker } from '../worker/index'
 import { parseMedicineRecord } from '../src/features/medicines/contract'
 import { startWorkerRuntime, runtime, secret, legacy } from './helpers/medicine-storage-runtime'
 
-startWorkerRuntime()
+startWorkerRuntime({ history: ['0003_dose_records.sql', '0012_unscheduled_doses.sql'] })
 
 async function fixture() {
   let now = new Date('2026-11-05T12:00:00.000Z')

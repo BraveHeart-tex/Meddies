@@ -17,7 +17,7 @@ import {
 } from './helpers/medicine-storage-runtime'
 
 // Schedule versions, edits and Last day on real D1.
-startWorkerRuntime()
+startWorkerRuntime({ history: ['0003_dose_records.sql', '0007_interval_schedules.sql'] })
 
 /** Today's own doses; yesterday's unresolved backlog in To log (#275) is covered elsewhere. */
 const todays = (snapshot: { today: { date: string; doses: DoseOccurrence[] } }) =>
