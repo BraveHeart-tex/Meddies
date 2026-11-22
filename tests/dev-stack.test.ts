@@ -101,6 +101,17 @@ async function canBind(port: number) {
   return true
 }
 
+function unavailablePort(t: TestContext, port: number) {
+  assert.ok(!process.env.CI, `Required dev-stack test port ${port} is unavailable in CI`)
+  t.skip()
+}
+
+async function requirePorts(t: TestContext) {
+  for (const port of [3000, 8787]) {
+    if (!(await canBind(port))) unavailablePort(t, port)
+  }
+}
+
 test(
   'status reports missing local configuration without printing secret values',
   budget({ commands: 2 }),
@@ -119,7 +130,7 @@ test(
   'start, status, repeated start, stop, and repeated stop preserve local D1 state',
   budget({ starts: 2, commands: 4 }),
   async (t) => {
-    if (!(await canBind(3000)) || !(await canBind(8787))) return t.skip()
+    await requirePorts(t)
     const { cwd, env } = await fixture(t)
     const started = await run(['start'], cwd, env, startDeadline)
     assert.equal(started.code, 0, started.output)
@@ -149,7 +160,7 @@ test(
   'migration failure reports its stage and leaves no owned runner',
   budget({ commands: 3 }),
   async (t) => {
-    if (!(await canBind(3000)) || !(await canBind(8787))) return t.skip()
+    await requirePorts(t)
     const { cwd, env } = await fixture(t, { TEST_MIGRATION_FAIL: '1' })
     const result = await run(['start'], cwd, env)
     assert.notEqual(result.code, 0)
@@ -163,7 +174,7 @@ test(
   'early Next exit reports its stage and cleans up Worker',
   budget({ starts: 1, commands: 2 }),
   async (t) => {
-    if (!(await canBind(3000)) || !(await canBind(8787))) return t.skip()
+    await requirePorts(t)
     const { cwd, env } = await fixture(t, { TEST_APP_EXIT: '1' })
     const result = await run(['start'], cwd, env, startDeadline)
     assert.notEqual(result.code, 0)
@@ -178,7 +189,7 @@ test(
   'exited app wrapper cannot leave its service group behind',
   budget({ starts: 1, commands: 1 }),
   async (t) => {
-    if (!(await canBind(3000)) || !(await canBind(8787))) return t.skip()
+    await requirePorts(t)
     const { cwd, env } = await fixture(t, { TEST_APP_WRAPPER_EXIT: '1' })
     const result = await run(['start'], cwd, env, startDeadline)
     assert.notEqual(result.code, 0)
@@ -200,7 +211,7 @@ test(
         server.listen(3000, '127.0.0.1', resolve)
       })
     } catch {
-      t.skip()
+      unavailablePort(t, 3000)
       return
     }
     t.onTestFinished(() => new Promise<void>((resolve) => server.close(() => resolve())))

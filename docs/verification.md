@@ -10,7 +10,9 @@ Runs lint, format check and typecheck in parallel, then, in order, the unit and 
 tests, the build and the integration tests: run alongside, the build and integration starve
 the component tests of CPU. A static-check failure stops before the second stage; second-stage
 checks all run and report even when an earlier one fails, except that a failed build skips
-integration. A warning names dev-stack tests skipped because fixed ports were busy.
+integration. Locally, a warning names dev-stack tests skipped because fixed ports were busy.
+In CI, each dev-stack case fails if its required fixed ports cannot be bound, so a passing
+run proves the lifecycle and cleanup checks executed.
 It runs alongside `pnpm dev`. Its typecheck and build stages fail fast while a dev-mode journey,
 `pnpm lab:capture` or another build holds the
 [generated Next.js files lock](../tests/browser/README.md#running).
