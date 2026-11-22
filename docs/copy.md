@@ -115,6 +115,13 @@ Medicines covered, in label order, as "Aspirin, Metformin and Vitamin D":
 - **Several follow-up reminders at once:** generic title / "{names} not logged yet. Open Meddies
   when you're ready to log them."
 
+## Refill push wording
+
+- Generic title: "Check your stock"
+- With Medication names on: "Check stock for {name}", using the current Medicine label.
+
+Both versions use a title only.
+
 ## Snooze wording
 
 The dose drawer offers "Snooze 40 min" beside "Cancel". While saving it reads

@@ -50,6 +50,7 @@ Separate the **scheduled dose**, **delivery attempt**, **provider acknowledgemen
 - An optional per-medicine food heads-up uses a user-specified whole-minute lead of **1-120** before each dose; disabled is distinct from zero. One heads-up only; no follow-ups, meal logging or dose-time movement. Drop at dose time, in quiet hours, or after early confirmed Taken/Skipped.
 - Refill pushes follow the #10 per-medicine low-stock episode budget in topic 03. They are **not stopped by dose pause**; quiet-hour deferral rechecks the current eligible episode at 08:00 or later rather than sending stale work.
 - Use generic lock-screen notification text by default; displaying medicine names (including refill alerts) requires explicit user opt-in.
+- A refill push opens the Medications list. Use the [refill push wording](../copy.md#refill-push-wording) with either Medication names setting.
 - Recheck expiration, cancellation, preferences and eligibility before submission. Record intended sends and delivery attempts separately. Do not claim exactly-once push receipt, silent iOS background execution or Focus bypass.
 
 ## Remaining delivery and integration decisions
