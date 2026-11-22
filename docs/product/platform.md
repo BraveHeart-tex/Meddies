@@ -67,7 +67,7 @@ Keep shared application behavior independent of invocation transport; avoid gene
 - **Behavioral:** Verify shared application operations for schedules, dose records, reminders, inventory and online retry/recovery with controlled time and observable state, not only internal function calls.
 - **Integration:** Exercise real database migration/constraints, atomic intake+stock, concurrent claims, authentication/ownership, provider submission, and encrypted backup restoration.
 - **User and device:** A focused set of browser accessibility, cached-navigation and online uncertainty/conflict journeys plus mandatory real-iPhone closed-app/locked-device notification and deep-link tests. Browser or simulator tests do not establish iPhone push delivery.
-- **Failures:** Cover retries, partial acceptance, stock conflicts, stale reminder processing, backup failures, history/account deletion, and deleted-account suppression on restore. Topic 02 governs session and export/deletion expectations.
+- **Failures:** Cover retries, partial acceptance, stale dose writes against tracked Stock, stale reminder processing, backup failures, history/account deletion, and deleted-account suppression on restore. Topic 02 governs session and export/deletion expectations.
 
 ## Evidence limits
 
