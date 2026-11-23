@@ -28,9 +28,12 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
    _Done when_ the issue is In progress and `base` is recorded. A refusal (closed issue or
    open blocker) stops the run: report it and ask.
 
-2. **Map states.** Read the ticket, [DESIGN.md](../../../DESIGN.md), [PRODUCT.md](../../../PRODUCT.md),
-   [docs/copy.md](../../../docs/copy.md) and the lab rules. List every screen and state the
-   ticket's rules and criteria name, plus the approved frames to reuse.
+2. **Map states.** Read the ticket and name its target screen. Load context once per
+   [UI build routing](../implement-issue/SKILL.md#ui-build-routing); it covers
+   [PRODUCT.md](../../../PRODUCT.md) and [DESIGN.md](../../../DESIGN.md), so neither is
+   opened twice. Then read the [docs/copy.md](../../../docs/copy.md) and lab rule sections
+   the states need. List every screen and state the ticket's rules and criteria name, plus
+   the approved frames to reuse.
    _Done when_ each criterion maps to at least one listed state.
 
 3. **Build three directions.** Each direction is a set of lab frames from production

@@ -52,8 +52,9 @@ Work **lean** throughout:
 
 3. **Find the owner and its rules.** Start from the approved scope. First locate the owning
    code: the files the issue's Ownership or Current state names, else find them with `rg`,
-   and read them. Then open the sections that govern it: every spec section, rule and design
-   frame the issue cites, plus the [AGENTS.md](../../../AGENTS.md#docs) row sections that
+   and read them. UI work then loads context per [UI build routing](#ui-build-routing).
+   Then open the sections that govern it: every spec section, rule and design frame the
+   issue cites, plus the [AGENTS.md](../../../AGENTS.md#docs) row sections that
    apply to the owner (authorization, layers, schema changes, saves and retries). Open
    sections, not whole docs.
    _Done when_ the owner is read and each acceptance criterion maps to the rule or frame
@@ -112,21 +113,22 @@ Work **lean** throughout:
 
 ## UI build routing
 
-- **Approved frames:** build the cited frame IDs, exact copy and acceptance criteria from
-  the existing production components and approved lab parts. Use those as the brief for
-  supporting skills and review; keep exploration within the implementation needed to meet
-  them. Select supporting references for the actual surface and change; keep optional
-  redesign and alternative-direction exploration outside a prescribed build.
-- **Unresolved design:** if the frames and rules leave a design decision open, stop the
-  affected build and ask, proposing a design ticket through
-  [design-ticket](../design-ticket/SKILL.md). Resume when its approved hand-off resolves the
-  decision; the build does not choose a new direction itself.
-- **Supporting guidance:** apply the available skills' triggers and mandatory instructions.
-  For UI implementation, use `impeccable` with the approved brief and target surface; for
-  shadcn components, use `shadcn` for the relevant component APIs and composition rules.
-  Read each applicable skill once, then reach only references required by that skill or
-  the concrete implementation question. Reuse loaded project context and references;
-  complete any mandatory setup, context loading and reference reads even when they overlap
-  repo docs. This routing narrows optional exploration, never higher-priority requirements.
+- **Brief:** with approved frames, the cited frame IDs and the issue are the brief: build
+  their exact copy and criteria from production components and approved lab parts, with no
+  alternative directions. A design decision the frames and rules leave open stops that
+  build: ask, proposing a design ticket through [design-ticket](../design-ticket/SKILL.md),
+  and resume from its approved hand-off.
+- **Context once:** name the target file or route, then run each applicable skill's required
+  setup once for it (`impeccable`: its `context --target <path>`) before opening UI docs.
+  Use what it delivers or directs you to read, once; open nothing it covers again, AGENTS.md
+  rows included. Read directly what it omits, and the skill's fallback when setup fails. Run
+  setup in its own call, apart from source reads, so a truncated result shows what was cut.
+- **Supplements:** each further read answers a named question. Answer component questions
+  from the affected code and its `src/components/ui` source; load external skill or API
+  guidance (`shadcn`, registry, docs) when that skill's mandatory rules cover the change or
+  local code leaves the question open.
+- Required skill steps, approval, exact copy, accessibility, security and
+  [visual verification](../../../docs/verification.md#visual-verification) baseline and
+  final evidence still apply.
 
 Report: what changed, what failed, what's next.
