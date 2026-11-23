@@ -28,6 +28,11 @@ type CameraScannerProps = ComponentProps<typeof CameraScanner>
 
 const noLibraryControls: CameraScannerProps['components'] = { finder: false, torch: false }
 const fillCard: CameraScannerProps['styles'] = { container: { aspectRatio: 'auto' } }
+// The library sizes its pause-frame canvas (its first canvas) to the card with no `object-fit`,
+// so the frozen frame would stretch. Cover crops it like the live video.
+const coverPauseFrame: CameraScannerProps['classNames'] = {
+  container: '[&>canvas:first-of-type]:object-cover',
+}
 
 // `unknown` and `type-error` also cover a detector failure, where the camera itself is still on.
 const cameraOffKinds = new Set<IScannerError['kind']>([
@@ -212,6 +217,7 @@ export function BarcodeScanner({
                     formats={barcodeFormats}
                     components={noLibraryControls}
                     styles={fillCard}
+                    classNames={coverPauseFrame}
                     sound={false}
                   />
                   <div
