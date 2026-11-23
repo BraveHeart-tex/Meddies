@@ -1,5 +1,5 @@
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, expect, onTestFinished, test, vi } from 'vitest'
@@ -218,5 +218,124 @@ test('closing the Scanner during a lookup fills nothing when the answer arrives'
   await act(async () => answer(HttpResponse.json(match)))
   await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
   expect(name()).toHaveValue('')
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+})
+
+// #474 Partial and unsupported-form matches (473·B1-B4).
+const note = "Meddies doesn't track this form yet. You can still save it with the closest type."
+const partial = { ...match, name: 'DELIX FORTE', strength: '5 mg/5 mg', type: null }
+const nameOnly = { ...match, name: 'SYSTANE ULTRA', strength: null, type: null }
+const unsupported = {
+  ...match,
+  name: 'HIRUDOID FORTE',
+  strength: '0.445%',
+  type: null,
+  supportedForm: false,
+}
+const stock = () => screen.getByRole('textbox', { name: 'Stock' })
+
+test.each([
+  ['a partial match (473·B1)', partial, '5 mg/5 mg'],
+  ['a Name-only match (473·B2)', nameOnly, ''],
+])(
+  '%s fills only what it returned, leaves Type unset and saves nothing until Save',
+  async (_, answer, filledStrength) => {
+    lookupAnswers(() => HttpResponse.json(answer))
+    const user = openDrawer()
+    await scanBarcode(user)
+    await waitFor(() => expect(scanner()).not.toBeInTheDocument())
+    expect(screen.getByRole('status')).toHaveTextContent('Barcode readCheck these match your pack')
+    expect(name()).toHaveValue(answer.name)
+    expect(strength()).toHaveValue(filledStrength)
+    expect(type()).toHaveTextContent('Choose')
+    expect(stock()).toHaveValue('')
+    expect(screen.queryByText(note)).not.toBeInTheDocument()
+    expect(type()).not.toHaveAccessibleDescription(note)
+
+    await user.type(name(), ' 2')
+    await user.type(strength(), '0')
+    await user.click(type())
+    await user.click(await screen.findByRole('option', { name: 'Drops' }))
+    expect(posts).toEqual([])
+    await user.click(screen.getByRole('button', { name: 'Save medication' }))
+    await waitFor(() => expect(posts).toHaveLength(1))
+    expect(posts[0]).toMatchObject({
+      label: `${answer.name} 2`,
+      strength: `${filledStrength}0`,
+      unit: 'drops',
+    })
+  },
+)
+
+test('an unsupported form fills Name and Strength and notes it under Type, also with the menu open (473·B3, B4)', async () => {
+  lookupAnswers(() => HttpResponse.json(unsupported))
+  const user = openDrawer()
+  await scanBarcode(user)
+  await waitFor(() => expect(scanner()).not.toBeInTheDocument())
+  expect(screen.getByRole('status')).toHaveTextContent('Barcode readCheck these match your pack')
+  expect(name()).toHaveValue('HIRUDOID FORTE')
+  expect(strength()).toHaveValue('0.445%')
+  expect(type()).toHaveTextContent('Choose')
+  expect(type()).toHaveAccessibleDescription(note)
+  expect(screen.getByText(note)).toBeVisible()
+  expect(posts).toEqual([])
+
+  await user.click(type())
+  expect(await screen.findByRole('listbox')).toBeVisible()
+  expect(screen.getByText(note)).toBeVisible()
+  await user.click(screen.getByRole('option', { name: 'Liquid' }))
+  expect(type()).toHaveTextContent('Liquid')
+  expect(type()).toHaveAccessibleDescription(note)
+  expect(posts).toEqual([])
+})
+
+test('the unsupported-form note goes with Scan again for a supported form', async () => {
+  let answer: object = unsupported
+  lookupAnswers(() => HttpResponse.json(answer))
+  const user = openDrawer()
+  await scanBarcode(user)
+  expect(await screen.findByText(note)).toBeVisible()
+
+  // The stand-in reads the same barcode again, so drop its cached lookup.
+  answer = partial
+  client.clear()
+  await user.click(screen.getByRole('button', { name: 'Scan again' }))
+  await user.click(await screen.findByRole('button', { name: 'Read barcode' }))
+  await waitFor(() => expect(name()).toHaveValue('DELIX FORTE'))
+  expect(screen.queryByText(note)).not.toBeInTheDocument()
+  expect(type()).not.toHaveAccessibleDescription(note)
+  expect(screen.getByRole('status')).toHaveTextContent('Barcode read')
+})
+
+test('the unsupported-form note goes with Clear form and with a save', async () => {
+  lookupAnswers(() => HttpResponse.json(unsupported))
+  server.use(
+    http.post('/api/medicines', async ({ request }) => {
+      const payload = await request.json()
+      posts.push(payload)
+      return HttpResponse.json({ medicines: [payload] })
+    }),
+  )
+  // Clear form shows only for a restored session draft.
+  let user = openDrawer()
+  await user.type(name(), 'Draft')
+  cleanup()
+  user = openDrawer()
+  expect(screen.getByText('Unsaved details restored.')).toBeVisible()
+  await scanBarcode(user)
+  expect(await screen.findByText(note)).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Clear form' }))
+  expect(screen.queryByText(note)).not.toBeInTheDocument()
+  expect(name()).toHaveValue('')
+  expect(scanRow()).toBeEnabled()
+
+  await scanBarcode(user)
+  expect(await screen.findByText(note)).toBeVisible()
+  await user.click(type())
+  await user.click(await screen.findByRole('option', { name: 'Liquid' }))
+  await user.click(screen.getByRole('button', { name: 'Save medication' }))
+  await waitFor(() => expect(posts).toHaveLength(1))
+  await waitFor(() => expect(name()).toHaveValue(''))
+  expect(screen.queryByText(note)).not.toBeInTheDocument()
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })

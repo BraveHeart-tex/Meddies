@@ -58,10 +58,16 @@ const rowHelp = 'col-span-full pb-3 text-caption'
 const stockHelp = (plural: string | null) =>
   `How many ${plural ? `${plural} ` : ''}you have now. Leave empty to skip tracking.`
 
+/** Type's help line after a scan of a pack form Meddies doesn't track (473·B3). */
+const unsupportedFormNote =
+  "Meddies doesn't track this form yet. You can still save it with the closest type."
+
 /**
  * Add medicine form: the production reference for React Hook Form (docs/forms.md).
  * Editing values are kept as session drafts; `onSaved` runs only after the server confirms.
- * A scan match fills Name, Type and Strength as editable values and saves nothing.
+ * A scan match fills Name, Type and Strength as editable values and saves nothing; a value the
+ * lookup lacks leaves its row empty. A pack form Meddies doesn't track adds a note under Type
+ * (473·B3) that lasts until the next match, Clear form or a save.
  */
 export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => void }) {
   const form = useForm<MedicineFormValues, unknown, MedicineFormOutput>({
@@ -73,11 +79,12 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
   const unit = useWatch({ control: form.control, name: 'unit' })
   const plural = unit ? unitName(null, unit) : null
   const offline = useKnownOffline()
-  // Whether the details came from a scan, for `B·Barcode read`; a reset form starts unscanned.
-  const [scanned, setScanned] = useState(false)
+  // The latest scan match, for `B·Barcode read` and the form note; a reset form starts unscanned.
+  const [scan, setScan] = useState<{ supportedForm: boolean } | null>(null)
+  const unsupportedForm = scan?.supportedForm === false
   const saveState = useMedicineSave((saved) => {
     form.reset(medicineFormDefaults)
-    setScanned(false)
+    setScan(null)
     draft.dismissRestoreNotice()
     onSaved(saved)
   })
@@ -88,7 +95,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
     form.setValue('unit', match.type ?? '', options)
     form.setValue('strength', match.strength ?? '', options)
     if (form.formState.isSubmitted) void form.trigger('stock')
-    setScanned(true)
+    setScan({ supportedForm: match.supportedForm })
   }
   async function save(values: MedicineFormOutput) {
     await saveState.submit(values)
@@ -107,7 +114,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
       aria-busy={isSubmitting}
       className="flex flex-col gap-3.5"
     >
-      <MedicineScan read={scanned} disabled={locked || offline} onMatch={fill} />
+      <MedicineScan read={scan !== null} disabled={locked || offline} onMatch={fill} />
       {draft.restored && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-body-sm text-muted-foreground">{saveMessages.draftRestored}</p>
@@ -119,7 +126,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
               if (saveState.pending) return
               saveState.clear()
               form.reset(medicineFormDefaults)
-              setScanned(false)
+              setScan(null)
               draft.discard()
             }}
           >
@@ -177,7 +184,14 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
                       onBlur={field.onBlur}
                       icon={ChevronsUpDownIcon}
                       aria-labelledby="medicine-unit-label"
-                      aria-describedby={fieldState.invalid ? 'medicine-unit-error' : undefined}
+                      aria-describedby={
+                        [
+                          fieldState.invalid && 'medicine-unit-error',
+                          unsupportedForm && 'medicine-unit-note',
+                        ]
+                          .filter(Boolean)
+                          .join(' ') || undefined
+                      }
                       aria-invalid={fieldState.invalid}
                       className='grid min-h-14 grid-cols-[5.75rem_minmax(0,1fr)_1.375rem] gap-0 rounded-none border-0 bg-transparent px-4 text-body-lg focus-visible:-outline-offset-2 aria-invalid:ring-0 [&_svg:not([class*="size-"])]:size-5.5'
                     >
@@ -213,6 +227,15 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
                     className="px-4 pb-3 font-extrabold"
                     errors={[fieldState.error]}
                   />
+                  {unsupportedForm && (
+                    <FieldDescription
+                      id="medicine-unit-note"
+                      className="flex gap-2 px-4 pb-3 text-caption text-foreground [&>svg]:mt-0.5 [&>svg]:size-4 [&>svg]:shrink-0"
+                    >
+                      <InfoIcon aria-hidden="true" />
+                      <span>{unsupportedFormNote}</span>
+                    </FieldDescription>
+                  )}
                 </Field>
               )}
             />
