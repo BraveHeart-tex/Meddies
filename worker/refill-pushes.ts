@@ -5,7 +5,10 @@
 // it, and interruption leaves it spent. A known retryable failure permits a new attempt.
 // The first enabled scheduler run forfeits existing budgets atomically (#458).
 // Quiet hours defer selection and claims; each write checks the current account preference.
+// A run starts a target only while its claim and settlement fit the scheduler's D1 budget (#461);
+// a deferred target has no attempt and stays eligible for the next run.
 import { isQuietTime } from '../src/features/quiet-hours/contract'
+import type { Admits } from './d1-budget'
 
 export async function activateRefillPushes(db: D1Database): Promise<void> {
   await db.prepare('INSERT OR IGNORE INTO refill_push_activation(id) VALUES (1)').run()
@@ -19,6 +22,9 @@ export type RefillProvider = {
 }
 
 const BATCH_SIZE = 25
+// Target selection and the candidate read, then one claim and one settlement per target.
+const SETUP_CALLS = 2
+const TARGET_CALLS = 2
 const quietHoursOff = `NOT EXISTS (
   SELECT 1 FROM account_preferences p WHERE p.owner_id = e.owner_id AND p.quiet_hours = 1
 )`
@@ -33,7 +39,9 @@ export async function runRefillPushes(
   db: D1Database,
   provider: RefillProvider,
   clock: () => Date,
+  admits: Admits = () => true,
 ): Promise<void> {
+  if (!admits(SETUP_CALLS + TARGET_CALLS)) return
   const inQuietHours = () => Number(isQuietTime(clock().toISOString()))
   await db
     .prepare(
@@ -57,6 +65,7 @@ export async function runRefillPushes(
     .all<Target>()
 
   for (const target of targets) {
+    if (!admits(TARGET_CALLS)) break
     let attemptId: number | undefined
     const outcome = await provider.submitRefill(async () => {
       const attempt = await db

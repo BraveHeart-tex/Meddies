@@ -34,8 +34,14 @@ import {
 import { readQuietHours, setQuietHours } from './quiet-hours'
 import { readMedicationNames, setMedicationNames } from './medication-names'
 import { snoozeDose } from './snoozes'
-import { isHealthyRun, runDueReminders, type ReminderProvider } from './due-reminders'
+import {
+  HEALTHY_RUN_CALLS,
+  isHealthyRun,
+  runDueReminders,
+  type ReminderProvider,
+} from './due-reminders'
 import { activateRefillPushes, runRefillPushes, type RefillProvider } from './refill-pushes'
+import { D1_CALL_LIMIT, meterD1 } from './d1-budget'
 import { createFcmProvider } from './fcm'
 import { ApplicationError } from '../src/lib/application-error'
 
@@ -112,6 +118,8 @@ function fcmProvider({ FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY }: Env)
  * Settlement failures count failed instants. Failed run delivery counts stay unknown
  * because earlier submissions may already have happened.
  * Only a Healthy run pings HEARTBEAT_URL, without data, in deferred bounded work.
+ * One D1 budget (worker/d1-budget.ts) spans the run: refill activation, dose reminders, refill
+ * pushes and, reserved up front, the Healthy run check.
  */
 export function createWorker(
   clock: () => Date = () => new Date(),
@@ -135,13 +143,23 @@ export function createWorker(
     try {
       provider ??= reminderProvider(env)
       const { submitRefill } = provider
-      if (submitRefill) await activateRefillPushes(env.DB)
-      const run = await runDueReminders(drizzle(env.DB), provider, clock, undefined, () => {
-        event.settlementFailures++
-      })
+      const d1 = meterD1(env.DB)
+      const reserved = env.HEARTBEAT_URL ? HEALTHY_RUN_CALLS : 0
+      const admits = (calls: number) => d1.used() + calls + reserved <= D1_CALL_LIMIT
+      if (submitRefill) await activateRefillPushes(d1.db)
+      const run = await runDueReminders(
+        drizzle(d1.db),
+        provider,
+        clock,
+        undefined,
+        () => {
+          event.settlementFailures++
+        },
+        admits,
+      )
       if (submitRefill)
-        await runRefillPushes(env.DB, { submitRefill: submitRefill.bind(provider) }, clock)
-      if (env.HEARTBEAT_URL && (await isHealthyRun(drizzle(env.DB), clock()))) {
+        await runRefillPushes(d1.db, { submitRefill: submitRefill.bind(provider) }, clock, admits)
+      if (env.HEARTBEAT_URL && (await isHealthyRun(drizzle(d1.db), clock()))) {
         const ping = pingHeartbeat(env.HEARTBEAT_URL)
         context?.waitUntil(ping)
       }

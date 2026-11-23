@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
+import { sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { beforeAll, test, vi } from 'vitest'
 import { saveDeviceRegistration } from '../worker/device-registrations'
@@ -11,6 +12,8 @@ import {
   type ReminderProvider,
 } from '../worker/due-reminders'
 import { createWorker } from '../worker/index'
+import { meterD1 } from '../worker/d1-budget'
+import { activateRefillPushes, type RefillProvider } from '../worker/refill-pushes'
 import { setQuietHours } from '../worker/quiet-hours'
 import { setMedicationNames } from '../worker/medication-names'
 import { snoozeDose } from '../worker/snoozes'
@@ -1634,7 +1637,20 @@ test('Last day drops Follow-up reminders and Snoozes from midnight without recor
   }
 })
 
-test('The largest reminder batch stays within 50 D1 queries including the Healthy run check', async () => {
+test('The D1 meter counts raw statements, Drizzle calls and each batch once', async () => {
+  const metered = meterD1(db)
+  await metered.db.prepare('SELECT ?').bind(1).first()
+  await metered.db.batch([metered.db.prepare('SELECT 1'), metered.db.prepare('SELECT 2')])
+  await drizzle(metered.db).all(sql`SELECT 1`)
+  await drizzle(metered.db).batch([
+    drizzle(metered.db).run(sql`SELECT 1`),
+    drizzle(metered.db).run(sql`SELECT 2`),
+  ])
+  assert.equal(metered.used(), 4)
+})
+
+test('A saturated scheduler invocation stays within 50 D1 calls with activation, refill pushes and the Healthy run check', async () => {
+  await activateRefillPushes(db)
   const o = await owner(
     '2027-04-01',
     ['08:15', '08:20', '08:25', '09:00', '09:10', '09:20'],
@@ -1647,29 +1663,81 @@ test('The largest reminder batch stays within 50 D1 queries including the Health
     { actionId: randomUUID(), medicationNames: true },
     new Date('2027-04-01T04:00:00Z'),
   )
-  let queries = 0
-  const counted = drizzle(db, { logger: { logQuery: () => queries++ } })
+  // Three low-stock episodes with twelve Device registrations each: 36 refill targets.
+  for (let index = 0; index < 3; index++) {
+    const id = randomUUID()
+    const saved = await call({
+      operation: 'save',
+      ownerId: o.ownerId,
+      medicine: { ...medicine, id, startingCount: 2 },
+    })
+    assert.equal(saved.status, 200)
+    const low = await call({
+      operation: 'stockThreshold',
+      ownerId: o.ownerId,
+      stock: {
+        actionId: randomUUID(),
+        medicineId: id,
+        expectedRevision: 0,
+        unit: 'tablet',
+        threshold: 5,
+      },
+    })
+    assert.equal(low.status, 200, await low.text())
+  }
   const at = new Date('2027-04-01T06:30:00.000Z')
   const { provider, sent } = fake((message) =>
     message.token === o.tokens[0]
       ? { outcome: 'rejected', code: 'UNREGISTERED' }
       : { outcome: 'accepted' },
   )
-  const result = await runDueReminders(counted, provider, () => at, 10_000)
-  await isHealthyRun(counted, at)
-  assert.ok(queries <= 50, `${queries} D1 queries exceed the Workers Free limit`)
-  assert.equal(result.submitted, 36, 'three whole instants, each covering twelve Occurrences')
-  assert.equal(new Set(sent.map((message) => message.dueAt)).size, 3)
-  assert.ok(sent.every((message) => message.labels?.length === 12))
-  assert.equal((await registrations(o.ownerId)).length, 11)
-  queries = 0
-  assert.equal(
-    (await runDueReminders(counted, provider, () => at)).submitted,
-    36,
-    'remaining Follow-up reminders wait for the next run',
-  )
-  await isHealthyRun(counted, at)
-  assert.ok(queries <= 50, `${queries} D1 queries exceed the Workers Free limit`)
+  const refills: string[] = []
+  const submitRefill: RefillProvider['submitRefill'] = async (begin) => {
+    const message = await begin()
+    if (!message) return
+    refills.push(message.token)
+    return 'accepted'
+  }
+  const heartbeat = vi.fn(async () => new Response(null))
+  vi.stubGlobal('fetch', heartbeat)
+  const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+  try {
+    const invocation = async () => {
+      const binding = meterD1(db)
+      const pings: Promise<unknown>[] = []
+      await createWorker(
+        () => at,
+        () => ({ ...provider, submitRefill }),
+      ).scheduled(
+        undefined,
+        { ...bindings(), DB: binding.db, HEARTBEAT_URL: 'https://heartbeat.invalid/ping' },
+        { waitUntil: (ping) => pings.push(ping) },
+      )
+      await Promise.all(pings)
+      return binding.used()
+    }
+    const calls = await invocation()
+    assert.ok(calls <= 50, `${calls} D1 calls exceed the Workers Free limit`)
+    const submitted = () => log.mock.calls.at(-1)?.[0].submitted
+    assert.equal(submitted(), 36, 'three whole instants, each covering twelve Occurrences')
+    assert.equal(new Set(sent.map((message) => message.dueAt)).size, 3)
+    assert.ok(sent.every((message) => message.labels?.length === 12))
+    assert.equal((await registrations(o.ownerId)).length, 11)
+    assert.ok(refills.length > 0, 'leftover capacity still submits refill pushes')
+    assert.ok(refills.length < 36, 'the budget defers the remaining refill targets')
+    const attempts = await db
+      .prepare('SELECT outcome, COUNT(*) AS n FROM refill_delivery_attempts GROUP BY outcome')
+      .all<{ outcome: string; n: number }>()
+    assert.deepEqual(attempts.results, [{ outcome: 'accepted', n: refills.length }])
+    assert.equal(heartbeat.mock.calls.length, 1, 'the Healthy run check ran and pinged')
+
+    const second = await invocation()
+    assert.ok(second <= 50, `${second} D1 calls exceed the Workers Free limit`)
+    assert.equal(submitted(), 36, 'remaining Follow-up reminders wait for the next run')
+  } finally {
+    log.mockRestore()
+    vi.unstubAllGlobals()
+  }
 })
 
 test('A failed settlement rolls back Delivery attempts and Device registration removals while other instants deliver', async () => {

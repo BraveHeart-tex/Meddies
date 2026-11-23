@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto'
 import { afterEach, test } from 'vitest'
 import { createFcmProvider, fcmTokenUrl } from '../worker/fcm'
 import { createWorker } from '../worker/index'
-import { runRefillPushes, type RefillProvider } from '../worker/refill-pushes'
+import { meterD1 } from '../worker/d1-budget'
+import { activateRefillPushes, runRefillPushes, type RefillProvider } from '../worker/refill-pushes'
 import { clearD1Database } from './helpers/d1-migrations.mjs'
 import {
   readLowStockEpisode,
@@ -390,4 +391,60 @@ test('At 08:00, equality leaves only the replacement episode eligible, and submi
   assert.deepEqual(run.sent, ['replaced'])
   assert.deepEqual(await canceled.attempts(), [])
   assert.deepEqual(await replaced.attempts(), [])
+})
+
+test('A scheduler run settles every admitted refill submission within 50 D1 calls and defers the rest unclaimed', async () => {
+  const db = await runtime.getD1Database('DB')
+  await activateRefillPushes(db)
+  const f = await fixture()
+  const installations = Array.from({ length: 25 }, (_, index) => `device-${index}`)
+  for (const id of installations) await f.register(id)
+  const sent: string[] = []
+  const worker = createWorker(
+    () => now,
+    () => ({
+      submit: async () => ({ outcome: 'accepted' }),
+      async submitRefill(begin) {
+        const message = await begin()
+        if (!message) return
+        sent.push(message.token)
+        return 'accepted'
+      },
+    }),
+  )
+  const invocation = async () => {
+    const binding = meterD1(db)
+    await worker.scheduled(undefined, { ...f.env, DB: binding.db })
+    return binding.used()
+  }
+  const deferred = async () =>
+    (
+      await db
+        .prepare('SELECT installation_id FROM eligible_refill_targets WHERE episode_id = ?')
+        .bind(f.episodeId)
+        .all<{ installation_id: string }>()
+    ).results.map((row) => row.installation_id)
+
+  const calls = await invocation()
+  assert.ok(calls <= 50, `${calls} D1 calls exceed the Workers Free limit`)
+  assert.ok(calls >= 49, 'the run stops only when another target no longer fits')
+  assert.ok(sent.length > 0 && sent.length < installations.length)
+  const attempts = await f.attempts()
+  assert.deepEqual(
+    attempts.map((row) => [row.installation_id, row.outcome]),
+    sent.map((token) => [token, 'accepted']),
+    'every started submission, including the last, has its settlement persisted',
+  )
+  const waiting = installations.filter((id) => !sent.includes(id))
+  assert.deepEqual(
+    (await deferred()).toSorted(),
+    waiting.toSorted(),
+    'deferred targets stay eligible',
+  )
+
+  assert.ok((await invocation()) <= 50)
+  assert.deepEqual(sent.toSorted(), installations.toSorted())
+  assert.ok((await f.attempts()).every((row) => row.outcome === 'accepted'))
+  assert.equal((await f.attempts()).length, installations.length)
+  assert.deepEqual(await deferred(), [])
 })

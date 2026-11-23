@@ -57,7 +57,8 @@
 // this module logs nothing. Each instant's Delivery attempts, registration removals and settlement
 // share one D1 transaction. A failed instant retains its lease and does not stop the others. No new
 // instant or provider submission starts in the last 30 seconds of this run's five-minute lease;
-// unstarted claims remain pending for lease recovery. Provider submission stays outside the
+// unstarted claims remain pending for lease recovery. The same holds when the next instant's D1
+// calls would exceed the scheduler budget (#461). Provider submission stays outside the
 // transaction, so an interrupted or failed write can still cause a later duplicate.
 // The FCM provider is worker/fcm.ts.
 import { and, eq, gte, isNull, lt, lte, or, sql } from 'drizzle-orm'
@@ -67,6 +68,7 @@ import { scheduleSlotsOn } from '../src/features/schedules/occurrences'
 import { isQuietTime } from '../src/features/quiet-hours/contract'
 import { readQuietHours } from './quiet-hours'
 import { readMedicationNames } from './medication-names'
+import type { Admits } from './d1-budget'
 import {
   dailySchedules,
   deliveryAttempts,
@@ -135,9 +137,13 @@ const OCCURRENCE_LOOKBACK_MS = REMINDER_WINDOW_MS + FOLLOW_UP_INTERVAL_MS + SNOO
 const LEASE_MS = 5 * 60_000
 // Leave 30 seconds for the FCM token request + submission (10 seconds each) and settlement.
 const LEASE_MARGIN_MS = 30_000
-// At most 9 setup statements + 3 * 11 delivery statements + 1 Healthy run read = 43.
-// JSON-backed set operations keep that bound independent of Occurrences and registrations.
+// D1 calls (worker/d1-budget.ts): 6 setup + at most 9 per instant (its reads and one settlement
+// batch), so a full run takes at most 33. JSON-backed set operations keep that bound independent of
+// Occurrences and registrations. An instant starts only while its calls fit the scheduler budget.
 const DUE_REMINDER_BATCH = 3
+const INSTANT_CALLS = 9
+/** The Healthy run check is one D1 call. */
+export const HEALTHY_RUN_CALLS = 1
 const UNREGISTERED_CODES = new Set(['UNREGISTERED', 'NOT_FOUND'])
 
 type Reminder = { ownerId: string; scheduleId: string; dueAt: string; reminder: ReminderNumber }
@@ -190,6 +196,7 @@ export async function runDueReminders(
   clock: () => Date,
   batch = DUE_REMINDER_BATCH,
   onSettlementFailure?: () => void,
+  admits: Admits = () => true,
 ): Promise<DueReminderRun> {
   const seconds = () => new Date(Math.floor(clock().getTime() / 1000) * 1000)
   const now = seconds()
@@ -330,7 +337,7 @@ export async function runDueReminders(
   }
   const run: DueReminderRun = { submitted: 0, dropped: 0, retrying: 0 }
   for (const reminders of instants.values()) {
-    if (clock().getTime() >= cutoff) break
+    if (clock().getTime() >= cutoff || !admits(INSTANT_CALLS)) break
     try {
       for (const result of await deliver(db, provider, seconds, token, context, reminders))
         if (result) run[result]++
