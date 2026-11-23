@@ -16,6 +16,7 @@ const neutral = new Set([
   'src/features/medication-names/contract',
   'src/features/snoozes/contract',
   'src/features/dose-history/contract',
+  'src/features/catalog-products/contract',
   'src/features/schedules/occurrences',
   'src/features/schedules/weekdays',
   'src/features/schedules/reminder-link',
@@ -44,6 +45,7 @@ const serverOwners = new Set([
   'src/features/medication-names/server',
   'src/features/snoozes/server',
   'src/features/dose-history/server',
+  'src/features/catalog-products/server',
 ])
 const stem = (value) => value.replace(/\.(?:[cm]?[jt]sx?)$/, '')
 const wiring = (value) => /^src\/features\/[^/]+\/server$/.test(value)
@@ -134,6 +136,7 @@ const architecture = {
           'src/features/medication-names/server',
           'src/features/snoozes/server',
           'src/features/dose-history/server',
+          'src/features/catalog-products/server',
           gatewayTest,
         ].includes(file)
       )

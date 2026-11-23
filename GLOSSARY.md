@@ -18,6 +18,11 @@ What a Medicine's dose amount counts or measures, such as tablets, capsules, ml,
 It is separate from the Medicine's strength and the container it comes in.
 _Avoid_: type, when naming the Quantity unit; strength unit
 
+**Catalog product**:
+A packaged medicine in Meddies' Turkish catalog, found by scanning its barcode, whose name,
+strength and Medicine type can fill Add medicine. A Medicine never links to it.
+_Avoid_: catalog medicine, product, drug, when naming the catalog record
+
 **Detail correction**:
 An edit that fixes a Medicine's wrongly entered details, such as a mistyped strength. Every dose
 shows the fixed details; the server keeps the earlier values.

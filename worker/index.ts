@@ -34,6 +34,7 @@ import {
 import { readQuietHours, setQuietHours } from './quiet-hours'
 import { readMedicationNames, setMedicationNames } from './medication-names'
 import { snoozeDose } from './snoozes'
+import { lookupCatalogProduct } from './catalog-products'
 import {
   HEALTHY_RUN_CALLS,
   isHealthyRun,
@@ -289,6 +290,8 @@ export function createWorker(
         const { ownerId, request } = decoded.command
         return json(await snoozeDose(db, ownerId, request, clock()))
       }
+      if (decoded.path === '/catalog-products')
+        return json(await lookupCatalogProduct(db, decoded.command.gtin))
       if (decoded.path === '/dose-history') {
         const { ownerId, medicineId, before } = decoded.command
         return json(await readDoseHistory(db, ownerId, { medicineId, before }, clock()))

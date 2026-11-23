@@ -55,8 +55,8 @@ HTTP 503; missing database configuration renders an explicit unavailable state.
 ## Worker
 
 The Worker trusts the shared capability as proof that Next.js authenticated the user. It
-has no public browser API and no arbitrary SQL endpoint, and scopes every operation by
-owner.
+has no public browser API and no arbitrary SQL endpoint, and scopes every operation on personal
+rows by owner.
 
 - `worker/index.ts` owns the HTTP lifecycle, D1 and clock wiring and explicit dispatch, and
   wires the cron trigger and the scheduler command to dose reminders and refill pushes.
@@ -70,7 +70,8 @@ owner.
   Dose history read.
   `device-registrations.ts` owns Device registration writes and reads, `quiet-hours.ts` the
   account's Quiet hours reads and sets, and `medication-names.ts` its Medication names reads and
-  sets. `snoozes.ts` owns the Snooze command. `due-reminders.ts` owns the due-reminder operation,
+  sets. `snoozes.ts` owns the Snooze command. `catalog-products.ts` owns the Catalog product
+  lookup, which reads no personal rows. `due-reminders.ts` owns the due-reminder operation,
   its Original reminder, Follow-up reminder and Snooze claims and Delivery attempts, and the
   provider port. `refill-pushes.ts` owns low-stock episode targeting and refill Delivery
   attempts, including Quiet hours deferral and the one-time launch cutoff. `fcm.ts` implements both
@@ -231,6 +232,13 @@ owner.
   Follow-up reminder and its action UUID, so a retry returns its original outcome and a reused
   action ID naming another dose returns conflict. The due-reminder operation sends it and drops
   the automatic reminders it rules out at send time.
+- **Catalog products:** `GET /api/catalog-products?barcode=` normalizes a scanned barcode value
+  (EAN-8, UPC-A, EAN-13 or GTIN-14) to a left-padded GTIN-14 and reads the `catalog_products` row
+  keyed by it, answering `{ outcome: 'match', name, strength, type, supportedForm }` or
+  `{ outcome: 'noMatch' }`; a failed check digit is noMatch without a Worker call. A value Add
+  medicine would reject reads as null; `unresolved` and `unsupported` rows read `type: null`, and
+  `unsupported` also `supportedForm: false`. The table has no foreign keys to or from personal
+  tables, and lookups log no barcode values.
 
 Client retry and action-ID rules: [client state](client-state.md#saves).
 

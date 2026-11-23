@@ -23,6 +23,7 @@ const registration = { installationId, token: `${installationId}:APA91b${'A'.rep
 // `body` is a valid request, so a signed-in call reaches the Worker. `worker: false`
 // marks a route that never calls it; `reads` counts Worker calls per request (default 1).
 const routes: Record<string, { body?: unknown; query?: string; worker?: false; reads?: number }> = {
+  'catalog-products GET': { query: '?barcode=8699809018853' },
   'device-registration GET': { query: `?installationId=${installationId}` },
   'device-registration PUT': { body: registration },
   'device-registration PATCH': { body: registration },

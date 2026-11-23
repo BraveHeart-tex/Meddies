@@ -48,6 +48,7 @@ import {
   parseDoseHistoryRequest,
   type DoseHistoryCommand,
 } from '../src/features/dose-history/contract'
+import { parseGtin, type CatalogProductCommand } from '../src/features/catalog-products/contract'
 import { ApplicationError } from '../src/lib/application-error'
 import type { CommandPath } from './http'
 
@@ -65,6 +66,7 @@ export type WorkerCommand =
   | { path: '/medication-names'; command: MedicationNamesCommand }
   | { path: '/snoozes'; command: SnoozeCommand }
   | { path: '/dose-history'; command: DoseHistoryCommand }
+  | { path: '/catalog-products'; command: CatalogProductCommand }
 
 // Decode domain fields only after the service capability, route and owner checks.
 // Shared parsers retain defaults, ignored extra fields and legacy accepted inputs.
@@ -73,6 +75,10 @@ export function decodeCommand(path: CommandPath, value: unknown): WorkerCommand 
   if (!input || typeof input.ownerId !== 'string' || !/^google:.{1,248}$/.test(input.ownerId))
     throw new ApplicationError('validation', 400)
   const ownerId = input.ownerId
+  if (path === '/catalog-products') {
+    if (input.operation !== 'lookup') throw new ApplicationError('validation', 400)
+    return { path, command: { operation: 'lookup', ownerId, gtin: parseGtin(input.gtin) } }
+  }
   if (path === '/dose-history') {
     if (input.operation !== 'read') throw new ApplicationError('validation', 400)
     return { path, command: { operation: 'read', ownerId, ...parseDoseHistoryRequest(input) } }

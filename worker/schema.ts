@@ -11,6 +11,7 @@ import {
   integer,
 } from 'drizzle-orm/sqlite-core'
 import { writableMedicineTypes } from '../src/lib/quantity-policy'
+import { catalogStatuses } from '../src/features/catalog-products/contract'
 import { sql } from 'drizzle-orm'
 
 export const userMedications = sqliteTable(
@@ -622,5 +623,28 @@ export const intakeStockMovements = sqliteTable(
       foreignColumns: [userMedications.ownerId, userMedications.id],
     }).onDelete('cascade'),
     check('intake_stock_movements_count_change', sql`${table.countChange} <> 0`),
+  ],
+)
+
+// Shared reference rows keyed by GTIN-14 (0037); no foreign keys to or from personal tables.
+export const catalogProducts = sqliteTable(
+  'catalog_products',
+  {
+    gtin: text('gtin').primaryKey().notNull(),
+    originalName: text('original_name').notNull(),
+    name: text('name'),
+    strength: text('strength'),
+    type: text('type'),
+    status: text('status', { enum: catalogStatuses }).notNull(),
+  },
+  (table) => [
+    check(
+      'catalog_products_gtin',
+      sql`length(${table.gtin}) = 14 AND ${table.gtin} NOT GLOB '*[^0-9]*'`,
+    ),
+    check(
+      'catalog_products_status',
+      sql`${table.status} IN ('classified', 'unresolved', 'unsupported')`,
+    ),
   ],
 )

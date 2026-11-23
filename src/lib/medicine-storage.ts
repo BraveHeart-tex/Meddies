@@ -10,7 +10,8 @@ export async function sendStorage(
     | '/quiet-hours'
     | '/medication-names'
     | '/snoozes'
-    | '/dose-history',
+    | '/dose-history'
+    | '/catalog-products',
   command: unknown,
 ): Promise<unknown> {
   const secret = process.env.MEDICINES_WORKER_SECRET

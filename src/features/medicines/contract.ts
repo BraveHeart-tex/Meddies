@@ -90,17 +90,20 @@ export function parseMedicine(value: unknown): MedicineInput {
   return medicine
 }
 
+/** A Name or Strength within the 120-character limit once trimmed, as Add medicine checks it. */
+export function isMedicineText(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length <= 120
+}
+
 function parseMedicineDetails(value: unknown, access: Access): Medicine {
   if (!value || typeof value !== 'object') throw new ApplicationError('validation', 400)
   const input = value as Record<string, unknown>
   if (
     typeof input.id !== 'string' ||
     !uuidPattern.test(input.id) ||
-    typeof input.label !== 'string' ||
+    !isMedicineText(input.label) ||
     !input.label.trim() ||
-    input.label.trim().length > 120 ||
-    (input.strength != null &&
-      (typeof input.strength !== 'string' || input.strength.trim().length > 120)) ||
+    (input.strength != null && !isMedicineText(input.strength)) ||
     !(access === 'write' ? isWritableMedicineType : isMedicineType)(input.unit)
   )
     throw new ApplicationError('validation', 400)
