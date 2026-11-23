@@ -7,6 +7,7 @@
 export const toolingTests = [
   'tests/architecture-build.test.ts',
   'tests/browser-measure.test.ts',
+  'tests/catalog-migration.test.ts',
   'tests/create-issue.test.ts',
   'tests/dev-server.test.ts',
   'tests/dev-stack.test.ts',

@@ -258,6 +258,14 @@ migration 0017's `user_medications` rebuild now that stock movements, stock acti
 receipts and intake stock movements cascade from it. Use additive changes instead;
 seed existing rows before later migrations in tests to prove they survive.
 
+Catalog products are refreshed by data migration, not by hand. Replace
+`worker/catalog-products.csv` and run `pnpm catalog:migration`: it rejects the whole file
+on any invalid row, prints added, removed and changed GTINs against the committed CSV, and
+writes the next `NNNN_catalog_data_<YYYY-MM-DD>.sql`, which deletes every Catalog product
+and inserts the file in statements under D1's 100 KB limit. Roll back by generating a new
+data migration from the previous CSV commit; the release's D1 Time Travel bookmark is the
+emergency path. Tests skip data migrations unless they opt in with `catalogData`.
+
 ## Automated dependency checks
 
 `pnpm lint` runs ESLint plus `scripts/check-architecture.mjs`, an architecture-only pass that

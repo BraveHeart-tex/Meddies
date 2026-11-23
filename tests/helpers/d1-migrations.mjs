@@ -3,16 +3,31 @@ import { unstable_splitSqlQuery } from 'wrangler'
 
 const directory = new URL('../../worker/migrations/', import.meta.url)
 
-export async function applyD1Migrations(db, { afterMigration } = {}) {
-  const files = (await readdir(directory, { withFileTypes: true }))
+/** Catalog data migrations (`NNNN_catalog_data_<date>.sql`, #472) each hold the whole catalog. */
+export const catalogDataMigration = /^\d+_catalog_data_\d{4}-\d{2}-\d{2}\.sql$/
+
+/** Migration file names in order; catalog data migrations only when `catalogData` is set. */
+export async function d1MigrationFiles({ catalogData = false } = {}) {
+  return (await readdir(directory, { withFileTypes: true }))
     .filter((entry) => entry.isFile() && /^\d+.*\.sql$/.test(entry.name))
     .map((entry) => entry.name)
+    .filter((file) => catalogData || !catalogDataMigration.test(file))
     .sort()
+}
 
-  for (const file of files) {
-    const sql = await readFile(new URL(file, directory), 'utf8')
-    const statements = unstable_splitSqlQuery(sql)
-    if (statements.length) await db.batch(statements.map((statement) => db.prepare(statement)))
+export async function applyD1Migration(db, file) {
+  const sql = await readFile(new URL(file, directory), 'utf8')
+  const statements = unstable_splitSqlQuery(sql)
+  if (statements.length) await db.batch(statements.map((statement) => db.prepare(statement)))
+}
+
+/**
+ * Apply the migration chain. Catalog data migrations are skipped unless a test opts in with
+ * `catalogData`, so suite time does not grow with the catalog.
+ */
+export async function applyD1Migrations(db, { afterMigration, catalogData = false } = {}) {
+  for (const file of await d1MigrationFiles({ catalogData })) {
+    await applyD1Migration(db, file)
     await afterMigration?.(file)
   }
 }
