@@ -89,6 +89,38 @@ const fromKey = 'medicationsFrom'
 const fromBeforeKey = 'medicationsFromBefore'
 
 /**
+ * Next.js rewrites the current entry after some router updates, such as a retry after Back or
+ * Forward, without the custom state it holds (#471). Carry the origin across a Next.js write
+ * (`__NA`) that keeps the same URL; a write to another URL is a new view and starts without it.
+ */
+function keepOriginAcrossNextRewrites() {
+  if (typeof window === 'undefined') return
+  const replaceState = window.history.replaceState.bind(window.history)
+  window.history.replaceState = function (
+    data: unknown,
+    unused: string,
+    url?: string | URL | null,
+  ) {
+    const current: unknown = window.history.state
+    if (
+      data &&
+      typeof data === 'object' &&
+      '__NA' in data &&
+      !(fromKey in data) &&
+      current &&
+      typeof current === 'object' &&
+      fromKey in current &&
+      new URL(url ?? window.location.href, window.location.href).href === window.location.href
+    ) {
+      const { [fromKey]: from, [fromBeforeKey]: fromBefore } = current as Record<string, unknown>
+      data = { ...data, [fromKey]: from, [fromBeforeKey]: fromBefore }
+    }
+    return replaceState(data, unused, url)
+  }
+}
+keepOriginAcrossNextRewrites()
+
+/**
  * Returns from a schedule form after saving or an explicit unsaved exit (DESIGN.md "Components").
  * A form pushed from its medication's page, or from the Manage view pushed from that page, goes
  * back to the page's entry, so one Back then leaves it; any other form (a direct link, a router
