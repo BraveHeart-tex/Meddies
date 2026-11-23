@@ -12,7 +12,7 @@ One person: the initial user, a private individual who manages her own medicatio
 
 ## Product Purpose
 
-Meddies helps her remember medication, record what she actually took, notice low stock and remember to eat before selected doses. Mission: "Never miss a dose. Never run out. Feel in control." This is the mission, not a delivery or clinical guarantee. Success means daily use she can trust: the app's record matches reality, and it never claims more than it knows.
+Meddies helps her remember medication, record what she actually took and notice low stock. Mission: "Never miss a dose. Never run out. Feel in control." This is the mission, not a delivery or clinical guarantee. Success means daily use she can trust: the app's record matches reality, and it never claims more than it knows.
 
 ## Positioning
 

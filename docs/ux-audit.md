@@ -226,7 +226,7 @@ The Skipped review already uses _I took it instead_.
 
 - **Evidence (live and source):** the Type menu teaches that tablets are round and capsules are
   capsule-shaped. Saved tiles pick tint and shape from the last character of the ID
-  ([medication-tile.tsx:44](../src/features/medicines/medication-tile.tsx#L44)), so Paracetamol (a
+  ([medication-tile.tsx:45](https://github.com/BraveHeart-tex/Meddies/blob/e5125d134417fcedddd857c16fc2a7f240834fdc/src/features/medicines/medication-tile.tsx#L45)), so Paracetamol (a
   tablet) shows a capsule and Omega 3 (a capsule) a round dot. Confirmed.
 - **Fix:** derive the shape from the unit and keep the tint per medication. DESIGN.md says tiles
   "keep their brand shapes"; this keeps them while making them truthful.
