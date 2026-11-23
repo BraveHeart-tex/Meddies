@@ -18,7 +18,7 @@ The expected initial audience is a single private user, but the product should b
 
 ## Current frontend and connectivity scope - November 6, 2026
 
-Writes require connectivity, and the open session keeps loaded data, drafts and save recovery in memory; the [session contract](./ux-journeys.md#session-contract) in topic 02 has the details. PWA installation and closed-app push stay in scope; persistent offline use is [deferred](./deferred.md).
+Writes require connectivity, and the open session keeps loaded data, drafts and save recovery in memory; the [session contract](./ux-journeys.md#session-contract) in topic 02 has the details. PWA installation and closed-app push are in scope.
 
 ## MVP capability boundaries
 
@@ -40,4 +40,4 @@ Clarity and reliable medication records take precedence over reward mechanics. T
 
 ## Explicit private-MVP exclusions
 
-No public registration or multi-tenant/caregiver features; medical advice, drug-interaction or dosage recommendations; Medicine types or Quantity units outside [Medicine types and quantity units](./medication-domain.md#medicine-types-and-quantity-units); taper or alternating-cycle schedules; recurrence anchored to actual intake or automatic travel-timezone adaptation; email reminder delivery, meal logging, unlimited follow-ups or inferred missed intake; persistent offline viewing, queued offline dose writes, offline setup/schedule editing/snooze, guaranteed closed-app background sync, real-time cross-device synchronization, advertising analytics or speculative infrastructure. Barcode-assisted lookup follows the manual-medicine core and requires independent rights/device validation.
+No public registration or multi-tenant/caregiver features; medical advice, drug-interaction or dosage recommendations; Medicine types or Quantity units outside [Medicine types and quantity units](./medication-domain.md#medicine-types-and-quantity-units); taper or alternating-cycle schedules; recurrence anchored to actual intake or automatic travel-timezone adaptation; email reminder delivery, unlimited follow-ups or inferred missed intake; real-time cross-device synchronization, advertising analytics or speculative infrastructure. Barcode-assisted lookup follows the manual-medicine core and requires independent rights/device validation.

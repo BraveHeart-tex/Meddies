@@ -12,7 +12,7 @@ The entities below are conceptual distinctions, not an approved database schema.
 - Taken consumes the explicitly recorded quantity; Skipped consumes nothing. Corrections, refills and retries reconcile stock once. A count correction is a reconciliation point: a Taken dose whose Taken time is before the latest count correction never changes current stock. A refill adds to stock and is a reconciliation point only while more was taken than counted ([#48 rules](#48---approved-refill-rules-november-21-2026)). A zero/insufficient count never blocks truthful intake; displayed stock is non-negative with a correction prompt.
 - Optimistic dose outcomes are unconfirmed presentation only. Server records remain authoritative; success announcements, reminder cancellation and confirmed stock require server receipt. Rejection and uncertain receipt follow the topic 02 [session contract](./ux-journeys.md#session-contract).
 - Stable occurrence IDs, schedule versions, action IDs and revisions preserve dose history and prevent duplicate effects. If two online saves disagree about the same dose, reject the stale save and show the saved outcome for review before a fresh correction. A rejected save leaves Stock and reminders governed by the saved record.
-- Unscheduled intake does not reschedule future expected doses. Server history remains until deliberate history/account deletion; deleting history does not reverse past inventory consumption. Full deletion and current online/session scope (including deferred offline capability) belong to [02 - UX & User Journeys](./ux-journeys.md).
+- Unscheduled intake does not reschedule future expected doses. Server history remains until deliberate history/account deletion; deleting history does not reverse past inventory consumption. Full deletion and the session contract belong to [02 - UX & User Journeys](./ux-journeys.md).
 
 Low-stock thresholds follow [#52](#52---approved-low-stock-alert-rules-november-21-2026); re-arming and
 refill pushes follow #10 below.
@@ -62,7 +62,7 @@ See **Unscheduled dose** and **History date** (GLOSSARY.md).
 - When the saved intake falls on a day other than today, the save message names that day.
 - From Today or History the user can change its intake time and quantity under the same rules, or remove it after a confirm step. A removed Unscheduled dose leaves Today and History; the server keeps its revisions for retry safety and export, and stock treats it as never taken (#47).
 - Meddies records what the user reports and gives no advice: no suggestion to take an extra dose, no warning about earlier doses and no limit on how many are logged.
-- Each log is its own action with its own action ID: an identical retry returns the saved dose, and two logs at the same minute are two doses. Saves follow the [session contract](./ux-journeys.md#session-contract); stock effects belong to #47 and offline logging stays deferred (D3 in [deferred](./deferred.md)).
+- Each log is its own action with its own action ID: an identical retry returns the saved dose, and two logs at the same minute are two doses. Saves follow the [session contract](./ux-journeys.md#session-contract); stock effects belong to #47.
 
 | Example           | Setup                                                         | Expected                                                                                       |
 | ----------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
@@ -138,8 +138,8 @@ See **Detail correction**, **Strength change** and **Archived medicine** (GLOSSA
   Later doses use the new strength.
 - When a late Taken time falls under a different strength revision than the one now in effect,
   the record drawer shows the strength that will be saved before the user saves.
-- Archiving a Medicine stops its schedule at its Edit time and cancels its unsent dose, food and
-  refill reminders. Every dose, outcome and detail stays in History and export, and stock is
+- Archiving a Medicine stops its schedule at its Edit time and cancels its unsent dose and refill
+  reminders. Every dose, outcome and detail stays in History and export, and stock is
   unchanged. Unarchiving restores the Medicine without restarting anything; schedules restart only
   through an explicit schedule change.
 - Only a Medicine that has never had a schedule or a dose can be deleted.
@@ -416,9 +416,8 @@ An optional Last day includes its final Istanbul calendar day. No new occurrence
 | ID  | Approved rule                                                                                                                                                                                                                                                                                                                             | Rationale                                                                                                                          |
 | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | D1  | Every X hours accepts whole hours from 1 through 24, inclusive. Reject fractions, zero, negative values and values above 24.                                                                                                                                                                                                              | Simple bounded MVP input; includes non-divisors of 24 without changing elapsed recurrence. This is input scope, not dosage advice. |
-| D2  | Enabled food reminders accept whole minutes from 1 through 120, inclusive. Disabled is separate from zero. Reject fractions and values outside the range.                                                                                                                                                                                 | Allows precise user-entered heads-up timing with a bounded window; no clinically chosen default.                                   |
 | D3  | Let C be the server-confirmed edit effective instant. Preserve old occurrences with due time <= C, including their identity and records. Replace only occurrences due > C; new-version occurrences must also be due > C. Cancel unsent reminders tied to replaced occurrences. Retained occurrences retain existing reminder eligibility. | Equality belongs to the already-due dose, independent of scheduler processing order. No duplicate dose at C.                       |
-| D4  | End date E stops both new occurrences and all unsent dose-related reminders at 00:00 on E + 1 day in Europe/Istanbul. Includes automatic follow-ups, explicit snoozes and food reminders. Preserve every earlier occurrence and record for logging/correction.                                                                            | Makes the course end a clear stop boundary; avoids reminders continuing into the next day. No refill-policy change.                |
+| D4  | End date E stops both new occurrences and all unsent dose-related reminders at 00:00 on E + 1 day in Europe/Istanbul. Includes automatic follow-ups and explicit snoozes. Preserve every earlier occurrence and record for logging/correction.                                                                                            | Makes the course end a clear stop boundary; avoids reminders continuing into the next day. No refill-policy change.                |
 
 An occurrence due after C that already has a Taken or Skipped outcome (recorded early on its
 day) is not replaced: it stays with the earlier schedule version, keeping its identity and record,
@@ -426,8 +425,7 @@ alongside the new version's occurrences.
 
 An edit changing the end date still follows D3: it cannot erase an already-due
 occurrence. D4 suppresses its remaining sends if the new end boundary has passed.
-Food reminders already submitted for a replaced future occurrence cannot be
-retracted. Topic 04 governs notification submission, snooze and food reminder delivery.
+See [topic 04](./reminders.md#reminder-policy---approved-contract) for notification submission and snooze rules.
 
 #### #25 - Approved Last day rules (November 10, 2026)
 
@@ -446,7 +444,7 @@ See **Stop a schedule** (GLOSSARY.md).
 - Stopping a schedule is a schedule change: a new Schedule version at the Edit time (D3). Occurrences due at or before it, and any later occurrence that already has an outcome, stay with the earlier version and can still be logged and corrected. None after it are expected.
 - The stopped schedule is an **Ended schedule** dated the stop day (Istanbul). It restarts only through a schedule change with no Last day; occurrences return only after that change's Edit time.
 - Any schedule not already Ended can be stopped, including one with a later Last day or one not yet started. Stopping an Ended schedule is rejected.
-- Stopping cancels every unsent dose-related reminder for occurrences after the Edit time, including follow-ups, snoozes and food reminders.
+- Stopping cancels every unsent dose-related reminder for occurrences after the Edit time, including follow-ups and snoozes.
 - Previews and next-dose summaries never show a dose after the stop. Stopping changes nothing on Today. Logging intake without a schedule belongs to #28.
 
 #### #26 - Approved pause and resume rules (November 12, 2026)
@@ -467,9 +465,6 @@ describe unsent reminders.
 | --------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Interval range              | X = 1, 7, 24 hours; X = 0, -1, 1.5, 25                                           | First three accepted; remaining values rejected (D1).                                                                                                                 |
 | Midnight / late intake      | Anchor Nov 3 22:00, X = 7; first dose logged Taken at 23:15                      | Due Nov 3 22:00, Nov 4 05:00, 12:00, 19:00, Nov 5 02:00. Logging does not shift them.                                                                                 |
-| Food range                  | Lead = 1, 30, 120 minutes; lead = 0, -1, 0.5, 121                                | First three accepted; remaining values rejected (D2).                                                                                                                 |
-| Food midnight               | Nov 4 00:15 dose, 30-minute lead                                                 | Food target Nov 3 23:45. With quiet hours enabled it is dropped; dose stays 00:15.                                                                                    |
-| Food expiry                 | Nov 3 09:00 dose, 30-minute lead; food job first processed at 09:00              | Food target was 08:30; now expired. Dose remains 09:00.                                                                                                               |
 | Edit before due             | Old daily 09:00; C = Nov 3 08:59:59; change to 10:00                             | Old Nov 3 09:00 replaced and its pending reminders canceled; new Nov 3 10:00 expected (D3).                                                                           |
 | Edit exactly due            | Same edit, C = Nov 3 09:00:00                                                    | Preserve old 09:00 occurrence and history; new 10:00 expected. Old follow-ups remain subject to normal cancellation and expiry (D3).                                  |
 | Edit after due              | Same edit, C = Nov 3 09:00:01                                                    | Preserve 09:00; new 10:00 expected. Earlier Taken/Skipped remains unchanged (D3).                                                                                     |

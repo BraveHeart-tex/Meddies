@@ -23,7 +23,7 @@ A reminder is never confused with confirmed intake. Every dose outcome is explic
 - Private Google sign-in limited to one allowlisted account. English interface. Schedules and times are in Türkiye time (Europe/Istanbul) and shown in 24-hour format, whatever the device timezone.
 - Main areas: Today (the next action and unresolved doses), Medications (manual setup and schedules), History (past outcomes and corrections), Settings.
 - Closed-app push reminders with bounded follow-ups, snooze, optional quiet hours and generic lock-screen content by default.
-- Writes require connectivity. Loaded views, drafts and save recovery stay in memory for the session ([session contract](docs/product/ux-journeys.md#session-contract)); persistent offline use is deferred.
+- Writes require connectivity. Loaded views, drafts and save recovery stay in memory for the session ([session contract](docs/product/ux-journeys.md#session-contract)).
 
 ## Capabilities and Constraints
 
@@ -32,7 +32,6 @@ A reminder is never confused with confirmed intake. Every dose outcome is explic
 - Fix wrongly entered medicine details, record a strength change, or archive a medicine; history keeps the details each dose was recorded with.
 - Record Taken or Skipped, correct outcome, time or quantity, and log unscheduled intake without moving reminders. Late doses stay loggable from History.
 - Optional stock tracking: Taken subtracts, Skipped does not, refills and count corrections, per-medicine low-stock threshold, never negative.
-- Optional per-medicine food reminder with a lead time. It never changes dose timing.
 - Setup, schedule changes and snooze save only after server confirmation. Online stale revisions and conflicting outcomes require explicit recovery, never silent overwrites.
 - History export, deliberate history deletion and account deletion.
 - Stack: Next.js App Router on Vercel, Cloudflare Worker with D1, Auth.js ([architecture](docs/architecture.md)).

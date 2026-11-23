@@ -97,7 +97,7 @@ No decision point shows more than 4 options except the hour (24) and minute (60)
 | Settings         | Inset list, sign-out                                                                                                                                                                                                 | Live          |
 | Sign-in          | Root sign-in, `/sign-in/error`, `/sign-in` (404), 404                                                                                                                                                                | Live          |
 | Barcode scanner  | Approved frame `193·B·Scanner`, camera-off state, `barcode-scanner.tsx`                                                                                                                                              | Lab, Source   |
-| Not built yet    | Stock tracking, refill, low stock, food reminder, Liquid/Inhaler/Drops, reminders and quiet hours, export, history and account deletion (#29-57, #197, #266, #267). Copy that promises them was checked (F10).       | Not inspected |
+| Not built yet    | Stock tracking, refill, low stock, Liquid/Inhaler/Drops, reminders and quiet hours, export, history and account deletion (#29-37, #45-57, #197, #266, #267). Copy that promises them was checked (F10).              | Not inspected |
 
 ## 3. Prioritized findings
 

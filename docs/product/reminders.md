@@ -40,14 +40,13 @@ Separate the **scheduled dose**, **delivery attempt**, **provider acknowledgemen
 
 ### Suppression, quiet hours and expiry
 
-- Optional quiet hours run 23:00 inclusive to 08:00 exclusive, Europe/Istanbul. Original dose reminders still target their chosen times; follow-ups, snoozes and food reminders targeted inside quiet hours are **dropped**, not queued for morning. Dropped slots do not replenish.
-- Stop future unsent dose and associated food reminders after the server receives Taken/Skipped. Pause and a newer same-medicine occurrence also suppress the older pending sends; the old occurrence remains in history. Optimistic/unconfirmed changes do not establish server receipt and cannot establish reminder cancellation. Offline writes are deferred; reminders may continue until an online action reaches the server.
-- At 00:00 Europe/Istanbul after a course's inclusive final day, no further occurrence or unsent dose-related reminder (including food and snooze) may be sent. Preserve already-due history; see #8 in [03 - Medication & Dose Domain](./medication-domain.md).
+- Optional quiet hours run 23:00 inclusive to 08:00 exclusive, Europe/Istanbul. Original dose reminders still target their chosen times; follow-ups and snoozes targeted inside quiet hours are **dropped**, not queued for morning. Dropped slots do not replenish.
+- Stop future unsent dose reminders after the server receives Taken/Skipped. Pause and a newer same-medicine occurrence also suppress the older pending sends; the old occurrence remains in history. Reminders may continue while a save is unconfirmed.
+- At 00:00 Europe/Istanbul after a course's inclusive final day, no further occurrence or unsent dose-related reminder (including snoozes) may be sent. Preserve already-due history; see #8 in [03 - Medication & Dose Domain](./medication-domain.md).
 - Submitted notifications cannot be recalled. Provider acceptance is not confirmed user receipt, and neither delivery nor tapping confirms medication ingestion.
 
-### Food reminders, refill and privacy
+### Refill reminders and privacy
 
-- An optional per-medicine food heads-up uses a user-specified whole-minute lead of **1-120** before each dose; disabled is distinct from zero. One heads-up only; no follow-ups, meal logging or dose-time movement. Drop at dose time, in quiet hours, or after early confirmed Taken/Skipped.
 - Refill pushes follow the #10 per-medicine low-stock episode budget in topic 03. They are **not stopped by dose pause**; quiet-hour deferral rechecks the current eligible episode at 08:00 or later rather than sending stale work.
 - Use generic lock-screen notification text by default; displaying medicine names (including refill alerts) requires explicit user opt-in.
 - A refill push opens the Medications list. Use the [refill push wording](../copy.md#refill-push-wording) with either Medication names setting.
@@ -192,8 +191,7 @@ eligibility; all doses remain unconfirmed unless specified.
   up at 08:00. Original reminders still submit at their due instant.
 - The check is a send-time recheck of the current preference, so a change applies to reminders
   already recorded but unsent; setting it writes no reminder rows.
-- Snoozes (#36), food reminders (#39) and refill pushes (#54) apply the same window by their own
-  rules above.
+- Snoozes (#36) and refill pushes (#54) apply the same window by their own rules above.
 
 ## #37 - Approved medication names rules (November 17, 2026)
 
@@ -207,8 +205,8 @@ eligibility; all doses remain unconfirmed unless specified.
   hold one.
 - The check is a send-time recheck of the current preference and labels, so a change or a renamed
   Medicine applies to reminders already recorded but unsent; setting it writes no reminder rows.
-- Snoozes (#36) use the named Follow-up reminder wording. Food reminders (#39) and refill pushes
-  (#54) read the same preference; their named wording belongs to those tickets.
+- Snoozes (#36) use the named Follow-up reminder wording. Refill pushes (#54) use the same
+  preference and follow the [refill push wording](../copy.md#refill-push-wording).
 
 ## #36 - Approved snooze rules (November 17, 2026)
 

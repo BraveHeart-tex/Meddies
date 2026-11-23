@@ -180,7 +180,7 @@ _Avoid_: remind me later, delay
 
 **Quiet hours**:
 An optional account-wide window, 23:00 to 08:00 Europe/Istanbul and off by default, in which
-Follow-up reminders, snoozes and food reminders are dropped and refill pushes wait until 08:00.
+Follow-up reminders and snoozes are dropped. Refill pushes wait until 08:00.
 Original reminders still go out.
 _Avoid_: do not disturb, mute, night mode
 
@@ -216,7 +216,7 @@ _Avoid_: uncertain save, uncertain receipt, failed save
 **Session draft**:
 Unsubmitted form values kept in memory for the current session, cleared by a confirmed save or an
 explicit discard.
-_Avoid_: saved draft, offline draft, autosave
+_Avoid_: saved draft, autosave
 
 ## Session
 
