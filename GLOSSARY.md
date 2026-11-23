@@ -190,10 +190,9 @@ acceptance is not delivery, and never intake.
 _Avoid_: send result, push result
 
 **Healthy run**:
-A due-reminder run that completes with no Delivery attempts in the last 80 minutes, at least
-one accepted attempt, or a rejection that only reports the device gone (`UNREGISTERED` or
-`NOT_FOUND`). The window includes both boundaries and this run's attempts. Only a Healthy run
-sends the heartbeat ping.
+A completed due-reminder run whose recent Delivery attempts, if any, include a provider
+acceptance or report only devices that are gone. Only a Healthy run sends the heartbeat ping.
+The exact predicate is in [Reminder processing heartbeat](docs/deployment.md#reminder-processing-heartbeat).
 _Avoid_: successful run, heartbeat run
 
 **Reminder link**:

@@ -145,7 +145,10 @@ owner.
   Archive keeps the threshold without marking Stock low.
   Stock uses the shared quantity grid and safe bound with zero allowed. Starting counts
   are reconciliation movements with their server time and Quantity unit, retained when
-  tracking turns off. Stock locks the Type while on; archive preserves it read-only.
+  tracking turns off. Once a Medicine has had a Schedule, a dose or tracked Stock,
+  `correctDetails` refuses a Type change; only the dedicated Type correction
+  (`/api/medicines/type-correction`, under Medicines above) changes it, and it refuses an
+  archived Medicine. Archive keeps Stock read-only.
   Add medicine accepts an optional `startingCount`; the Medicine, movement and immutable
   creation receipt commit together. Stock action receipts replay exactly before state
   validation. Medicine deletion cascades to stock movements and action receipts.
