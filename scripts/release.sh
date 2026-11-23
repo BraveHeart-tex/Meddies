@@ -9,16 +9,18 @@ report_failure() {
   fi
 }
 trap report_failure ERR
+# Bare `[[ ... ]]` assertions end in `|| false`: before bash 4.1 (macOS /bin/bash 3.2) a
+# failing `[[ ]]` triggers neither `set -e` nor the ERR trap.
 for name in GITHUB_SHA CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID MEDICINES_WORKER_URL PRODUCTION_APP_URL WORKER_ACCESS_CLIENT_ID WORKER_ACCESS_CLIENT_SECRET; do
   if [[ -z "${!name:-}" ]]; then
     printf 'Missing release configuration: %s\n' "$name" >&2
     false
   fi
 done
-[[ "${RELEASE_SETUP_CONFIRMED:-}" == true ]]
-[[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]
-[[ "$MEDICINES_WORKER_URL" =~ ^https://[a-zA-Z0-9.-]+$ ]]
-[[ "$PRODUCTION_APP_URL" =~ ^https://[a-zA-Z0-9.-]+$ ]]
+[[ "${RELEASE_SETUP_CONFIRMED:-}" == true ]] || false
+[[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]] || false
+[[ "$MEDICINES_WORKER_URL" =~ ^https://[a-zA-Z0-9.-]+$ ]] || false
+[[ "$PRODUCTION_APP_URL" =~ ^https://[a-zA-Z0-9.-]+$ ]] || false
 
 deployment_file=$(mktemp)
 worker_response_file=$(mktemp)
@@ -57,7 +59,7 @@ printf 'Release %s: app\n' "$GITHUB_SHA"
 pnpm exec vercel deploy --prod --yes --token "$VERCEL_TOKEN" \
   --meta "githubCommitSha=$GITHUB_SHA" --meta githubCommitRef=main > "$deployment_file"
 deployment_url=$(tail -n 1 "$deployment_file")
-[[ "$deployment_url" =~ ^https://[a-zA-Z0-9.-]+\.vercel\.app$ ]]
+[[ "$deployment_url" =~ ^https://[a-zA-Z0-9.-]+\.vercel\.app$ ]] || false
 
 stage=smoke
 printf 'Release %s: smoke\n' "$GITHUB_SHA"
@@ -91,13 +93,13 @@ JS
 # require its JSON 401, not an Access-generated 401. No medicine data is read or written.
 app_status=$(curl --silent --show-error --fail --retry 5 --retry-all-errors --retry-delay 2 \
   --connect-timeout 10 --max-time 30 --output /dev/null --write-out '%{http_code}' "$PRODUCTION_APP_URL/")
-[[ "$app_status" == 200 ]]
+[[ "$app_status" == 200 ]] || false
 worker_status=$(curl --silent --show-error --retry 5 --retry-connrefused --retry-delay 2 \
   --connect-timeout 10 --max-time 30 --output "$worker_response_file" --write-out '%{http_code}' \
   --header "CF-Access-Client-Id: $WORKER_ACCESS_CLIENT_ID" \
   --header "CF-Access-Client-Secret: $WORKER_ACCESS_CLIENT_SECRET" \
   "${MEDICINES_WORKER_URL%/}/medicines")
-[[ "$worker_status" == 401 ]]
+[[ "$worker_status" == 401 ]] || false
 node - "$worker_response_file" <<'JS'
 const fs = require('node:fs')
 try {

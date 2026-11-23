@@ -32,6 +32,10 @@ fi
 if [[ "$stage" == bookmark ]]; then
   printf '%s\\n' '{"bookmark":"${bookmark}","extra":"synthetic-secret"}'
 fi
+if [[ "$stage" == app && "$FAIL_STAGE" == invalid-deployment-url ]]; then
+  echo https://synthetic.example.test
+  exit 0
+fi
 if [[ "$stage" == app ]]; then echo https://synthetic.vercel.app; fi
 if [[ "$stage" == smoke ]]; then
   echo 'Error: User not found.' >&2
@@ -68,7 +72,7 @@ case "$*" in
     ;;
   *)
     [[ "$*" != *'CF-Access-'* ]] || exit 23
-    printf 200
+    if [[ "$FAIL_STAGE" == app-status ]]; then printf 503; else printf 200; fi
     ;;
 esac
 `,
@@ -171,22 +175,39 @@ test('release requires both Access secrets before any production mutation and wi
   }
 })
 
+// Each override fails one bare preflight `[[ ]]` assertion.
+for (const [name, value] of [
+  ['RELEASE_SETUP_CONFIRMED', ''],
+  ['GITHUB_SHA', '0000000000000000000000000000000000000000'],
+  ['MEDICINES_WORKER_URL', 'http://worker.example.test'],
+  ['PRODUCTION_APP_URL', 'https://production.example.test/path'],
+] as const) {
+  test(`invalid ${name} fails preflight before any production mutation`, async (t) => {
+    const f = await fixture(t)
+    const result = f.run('', { [name]: value })
+    assert.notEqual(result.status, 0)
+    assert.match(result.stderr, /Release \w+ failed at preflight/)
+    await assert.rejects(f.commands(), { code: 'ENOENT' })
+  })
+}
+
 for (const [stage, commandCount] of [
   ['bookmark', 1],
   ['invalid-bookmark', 1],
   ['migrations', 2],
   ['worker', 3],
   ['app', 4],
+  ['invalid-deployment-url', 4],
   ['smoke', 5],
 ] as const) {
+  const reported = { 'invalid-bookmark': 'bookmark', 'invalid-deployment-url': 'app' }[
+    stage as string
+  ]
   test(`${stage} failure stops later stages and identifies commit and recovery`, async (t) => {
     const f = await fixture(t)
     const result = f.run(stage)
     assert.notEqual(result.status, 0)
-    assert.match(
-      result.stderr,
-      new RegExp(`Release ${sha} failed at ${stage === 'invalid-bookmark' ? 'bookmark' : stage}`),
-    )
+    assert.match(result.stderr, new RegExp(`Release ${sha} failed at ${reported ?? stage}`))
     assert.match(result.stderr, /docs\/deployment.md recovery/)
     assert.equal((await f.commands()).length, commandCount)
     const summary = await f.summary()
@@ -239,6 +260,7 @@ for (const [failure, count] of [
   ['wrong-project', 5],
   ['wrong-commit', 5],
   ['http', 6],
+  ['app-status', 6],
   ['access-denied', 7],
   ['access-redirect', 7],
 ] as const) {
