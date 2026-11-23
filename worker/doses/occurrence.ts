@@ -19,6 +19,7 @@ export async function getOccurrence(
       stoppedAt: dailySchedules.stoppedAt,
       pausedAt: dailySchedules.pausedAt,
       startDate: dailySchedules.startDate,
+      anchorDate: dailySchedules.anchorDate,
       weekdays: dailySchedules.weekdays,
       endDate: dailySchedules.endDate,
       intervalHours: dailySchedules.intervalHours,

@@ -1,12 +1,19 @@
 import assert from 'node:assert/strict'
 import { endedOn, pausedOn } from '../src/features/schedules/last-day'
 import { randomUUID } from 'node:crypto'
+import { sql } from 'drizzle-orm'
+import { drizzle } from 'drizzle-orm/d1'
 import { test } from 'vitest'
+import { saveDeviceRegistration } from '../worker/device-registrations'
+import { createWorker } from '../worker/index'
+import { snoozeDose } from '../worker/snoozes'
 import type { MedicineRecord } from '../src/features/medicines/contract'
 import { createScheduleOperations } from '../src/features/schedules/operations'
 import {
   call,
   readLowStockEpisode,
+  runtime,
+  secret,
   startWorkerRuntime,
   versionFixture,
 } from './helpers/medicine-storage-runtime'
@@ -381,6 +388,165 @@ test('Resume interval requires a new Anchor and preserves its seven-hour routine
   await assert.rejects(() => f.operations.resume({ ...request, anchorTime: '12:00' }), {
     status: 409,
   })
+})
+
+/** A tracked-stock seven-hour Interval schedule, saved on November 2 at 08:00 Istanbul. */
+async function intervalWithStock() {
+  const f = await versionFixture()
+  const id = randomUUID()
+  const { ownerId, medicineId } = f
+  const d1 = await runtime.getD1Database('DB')
+  const db = drizzle(d1)
+  // In-process at save time: `call` uses the real clock, which would start Stock after the doses.
+  const worker = createWorker(() => new Date('2026-11-02T04:00:00.000Z'))
+  const send = async (command: object) => {
+    const response = await worker.fetch(
+      new Request('http://worker/medicines', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${secret}` },
+        body: JSON.stringify({ ownerId, ...command }),
+      }),
+      { DB: d1, MEDICINES_WORKER_SECRET: secret },
+    )
+    assert.equal(response.status, 200, response.ok ? undefined : await response.text())
+    return (await response.json()) as { medicines: MedicineRecord[] }
+  }
+  const read = async () => (await send({ operation: 'list' })).medicines[0]
+  await f.operations.save({
+    id,
+    medicineId,
+    startDate: '2026-11-02',
+    times: [{ time: '08:00', quantity: 2 }],
+    intervalHours: 7,
+  })
+  await send({
+    operation: 'stockOn',
+    stock: {
+      actionId: randomUUID(),
+      medicineId,
+      expectedRevision: (await read()).revision,
+      unit: 'tablet',
+      startingCount: 20,
+    },
+  })
+  const count = async () => {
+    const stock = (await read()).stock
+    return stock?.tracked ? stock.count : null
+  }
+  const written = async () =>
+    db.all<{ table: string; n: number }>(sql`
+      SELECT 'taken' AS "table", COUNT(*) AS n FROM dose_records WHERE owner_id = ${ownerId}
+      UNION ALL SELECT 'skipped', COUNT(*) FROM skipped_dose_records WHERE owner_id = ${ownerId}
+      UNION ALL SELECT 'snoozes', COUNT(*) FROM snoozes WHERE owner_id = ${ownerId}
+      UNION ALL SELECT 'movements', COUNT(*) FROM intake_stock_movements WHERE owner_id = ${ownerId}`)
+  return { ...f, id, db, count, written }
+}
+
+test('A resumed Interval schedule validates outcomes, corrections and Snooze on its Anchor', async () => {
+  const f = await intervalWithStock()
+  f.setNow('2026-11-03T07:00:00.000Z')
+  const [paused] = await f.operations.pause({ id: randomUUID(), basedOnId: f.id })
+  f.setNow('2026-11-05T07:00:00.000Z')
+  const [resumed] = await f.operations.resume({
+    id: randomUUID(),
+    basedOnId: paused.id,
+    anchorDate: '2026-11-05',
+    anchorTime: '11:00',
+  })
+  assert.equal(resumed.startDate, '2026-11-02')
+  await saveDeviceRegistration(
+    f.db,
+    f.ownerId,
+    { installationId: randomUUID(), token: `token-${randomUUID()}` },
+    new Date('2026-11-05T07:00:00.000Z'),
+  )
+  const scheduleId = resumed.id
+  const snooze = (dueAt: string, at: string) =>
+    snoozeDose(f.db, f.ownerId, { actionId: randomUUID(), scheduleId, dueAt }, new Date(at))
+  // Anchor grid: 08:00Z, 15:00Z. 12:00Z sits on the retained start date's grid only.
+  const onAnchor = await snooze('2026-11-05T08:00:00.000Z', '2026-11-05T08:10:00.000Z')
+  assert.equal(onAnchor.outcome, 'snoozed')
+
+  const offGrid = '2026-11-05T12:00:00.000Z'
+  f.setNow('2026-11-05T12:10:00.000Z')
+  const afterSnooze = await f.written()
+  assert.deepEqual(await snooze(offGrid, '2026-11-05T12:10:00.000Z'), {
+    outcome: 'rejected',
+    reason: 'notFound',
+  })
+  await assert.rejects(
+    () =>
+      f.operations.recordTaken({
+        scheduleId,
+        dueAt: offGrid,
+        takenAt: '2026-11-05T12:05:00.000Z',
+        quantity: 2,
+      }),
+    /validation/,
+  )
+  await assert.rejects(
+    () => f.operations.recordSkipped({ scheduleId, dueAt: offGrid }),
+    /validation/,
+  )
+  assert.deepEqual(await f.written(), afterSnooze)
+  assert.equal(await f.count(), 20)
+
+  f.setNow('2026-11-05T15:10:00.000Z')
+  const taken = await f.operations.recordTaken({
+    scheduleId,
+    dueAt: '2026-11-05T08:00:00.000Z',
+    takenAt: '2026-11-05T08:30:00.000Z',
+    quantity: 2,
+  })
+  assert.equal(taken.outcome, 'Taken')
+  assert.equal(await f.count(), 18)
+  const skipped = await f.operations.recordSkipped({
+    scheduleId,
+    dueAt: '2026-11-05T15:00:00.000Z',
+  })
+  assert.equal(skipped.outcome, 'Skipped')
+  const corrected = await f.operations.correctOutcome({
+    scheduleId,
+    dueAt: '2026-11-05T15:00:00.000Z',
+    actionId: randomUUID(),
+    expectedRevision: 0,
+    expectedOutcome: 'Skipped',
+    outcome: 'Taken',
+    takenAt: '2026-11-05T15:05:00.000Z',
+    quantity: 2,
+  })
+  assert.equal(corrected.outcome, 'Taken')
+  assert.equal(await f.count(), 16)
+  assert.deepEqual(
+    (await f.operations.history('2026-11-05')).map((d) => [d.dueAt, d.status]),
+    [
+      ['2026-11-05T08:00:00.000Z', 'Taken'],
+      ['2026-11-05T15:00:00.000Z', 'Taken'],
+    ],
+  )
+})
+
+test('A legacy Interval schedule with no Anchor date keeps its start-date Occurrences', async () => {
+  const f = await intervalWithStock()
+  const [row] = await f.db.all<{ anchorDate: string | null }>(
+    sql`SELECT anchor_date AS anchorDate FROM daily_schedules WHERE id = ${f.id}`,
+  )
+  assert.equal(row.anchorDate, null)
+  f.setNow('2026-11-02T12:10:00.000Z')
+  const before = await f.written()
+  await assert.rejects(
+    () => f.operations.recordSkipped({ scheduleId: f.id, dueAt: '2026-11-02T08:00:00.000Z' }),
+    /validation/,
+  )
+  assert.deepEqual(await f.written(), before)
+  const taken = await f.operations.recordTaken({
+    scheduleId: f.id,
+    dueAt: '2026-11-02T12:00:00.000Z',
+    takenAt: '2026-11-02T12:05:00.000Z',
+    quantity: 2,
+  })
+  assert.equal(taken.outcome, 'Taken')
+  assert.equal(await f.count(), 18)
 })
 
 test('Resume before start keeps weekdays, start date and Last day', async () => {
