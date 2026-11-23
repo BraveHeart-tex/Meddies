@@ -2,6 +2,8 @@
 
 import { useState, type ReactNode } from 'react'
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
+import type { CatalogLookup } from '@/features/catalog-products/contract'
+import { catalogProductKeys } from '@/features/catalog-products/queries'
 import type { MedicationNames } from '@/features/medication-names/contract'
 import { medicationNamesKeys } from '@/features/medication-names/queries'
 import type { Medicine } from '@/features/medicines/contract'
@@ -23,6 +25,8 @@ export type QueryFixtures = {
   quietHours?: QuietHours
   /** The account's saved Medication names. */
   medicationNames?: MedicationNames
+  /** Catalog product lookups by scanned barcode value; any other barcode's lookup fails. */
+  catalogLookups?: Record<string, CatalogLookup>
 }
 
 /**
@@ -37,6 +41,7 @@ export function fixtureQueryClient({
   history = {},
   quietHours,
   medicationNames,
+  catalogLookups = {},
 }: QueryFixtures) {
   const client = createQueryClient()
   const defaults = client.defaultQueryOptions.bind(client)
@@ -51,6 +56,8 @@ export function fixtureQueryClient({
   if (quietHours) client.setQueryData(quietHoursKeys.status(), quietHours, { updatedAt })
   if (medicationNames)
     client.setQueryData(medicationNamesKeys.status(), medicationNames, { updatedAt })
+  for (const [barcode, lookup] of Object.entries(catalogLookups))
+    client.setQueryData(catalogProductKeys.lookup(barcode), lookup, { updatedAt })
   for (const [date, doses] of Object.entries(history))
     client.setQueryData(scheduleKeys.history(date), doses, { updatedAt })
   return client

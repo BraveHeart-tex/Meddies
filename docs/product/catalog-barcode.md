@@ -6,7 +6,7 @@ Discovery and preferred data direction, subject to source quality, licensing and
 
 For the user-facing barcode flow, the app initially needs **a medication/product name**, not a complete clinical drug monograph or ingredient database.
 
-Intended later flow:
+Flow, from _Scan the pack_ in Add medicine:
 
 1. User scans the medicine package barcode or DataMatrix.
 2. Extract/normalize the available product identifier (e.g. GTIN, where present).
@@ -15,7 +15,7 @@ Intended later flow:
 5. Continue to the user's own schedule and stock setup.
 6. Allow manual entry when lookup is missing, ambiguous or unsupported.
 
-**Manual medication creation is the MVP starting point.** Barcode-assisted entry belongs to a later vertical slice.
+**Manual medication creation stays the default.** A scan only fills the Add medicine form, every filled value stays editable, and nothing saves until _Save medication_.
 
 ## Approved catalog boundary
 

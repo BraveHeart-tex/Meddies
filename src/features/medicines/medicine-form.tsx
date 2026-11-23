@@ -2,6 +2,7 @@
 
 import { medicineTypeOptions, strengthHelp, unitName } from '@/lib/quantity-policy'
 
+import { useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ChevronsUpDownIcon, InfoIcon } from 'lucide-react'
@@ -28,6 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import type { CatalogMatch } from '@/features/catalog-products/contract'
+import { MedicineScan } from './medicine-scan'
 import { TypeTile } from './type-tile'
 import type { Medicine } from './contract'
 import { saveMessages } from '@/lib/save-messages'
@@ -58,6 +61,7 @@ const stockHelp = (plural: string | null) =>
 /**
  * Add medicine form: the production reference for React Hook Form (docs/forms.md).
  * Editing values are kept as session drafts; `onSaved` runs only after the server confirms.
+ * A scan match fills Name, Type and Strength as editable values and saves nothing.
  */
 export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => void }) {
   const form = useForm<MedicineFormValues, unknown, MedicineFormOutput>({
@@ -69,11 +73,23 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
   const unit = useWatch({ control: form.control, name: 'unit' })
   const plural = unit ? unitName(null, unit) : null
   const offline = useKnownOffline()
+  // Whether the details came from a scan, for `B·Barcode read`; a reset form starts unscanned.
+  const [scanned, setScanned] = useState(false)
   const saveState = useMedicineSave((saved) => {
     form.reset(medicineFormDefaults)
+    setScanned(false)
     draft.dismissRestoreNotice()
     onSaved(saved)
   })
+  function fill(match: CatalogMatch) {
+    // Names stay as the catalog holds them; an unknown value leaves its row for typing.
+    const options = { shouldDirty: true, shouldValidate: form.formState.isSubmitted }
+    form.setValue('label', match.name ?? '', options)
+    form.setValue('unit', match.type ?? '', options)
+    form.setValue('strength', match.strength ?? '', options)
+    if (form.formState.isSubmitted) void form.trigger('stock')
+    setScanned(true)
+  }
   async function save(values: MedicineFormOutput) {
     await saveState.submit(values)
   }
@@ -91,6 +107,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
       aria-busy={isSubmitting}
       className="flex flex-col gap-3.5"
     >
+      <MedicineScan read={scanned} disabled={locked || offline} onMatch={fill} />
       {draft.restored && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-body-sm text-muted-foreground">{saveMessages.draftRestored}</p>
@@ -102,6 +119,7 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
               if (saveState.pending) return
               saveState.clear()
               form.reset(medicineFormDefaults)
+              setScanned(false)
               draft.discard()
             }}
           >

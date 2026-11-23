@@ -2,9 +2,10 @@
 
 import { Dialog } from '@base-ui/react/dialog'
 import type { IDetectedBarcode, IScannerError, IScannerHandle } from '@yudiel/react-qr-scanner'
-import { CameraOff, Flashlight, Keyboard, X } from 'lucide-react'
+import { CameraOff, Flashlight, InfoIcon, Keyboard, RotateCcw, X } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import { type ComponentProps, useEffect, useRef, useState } from 'react'
+import { type ComponentProps, type RefObject, useEffect, useRef, useState } from 'react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { barcodeFormats, barcodeValue } from './barcode-value'
@@ -47,6 +48,14 @@ const frameCorners = [
   '-right-0.5 -bottom-0.5 rounded-br-[1.5rem] border-r-[4.5px] border-b-[4.5px]',
 ]
 
+/** How long the camera runs with no read before the guidance asks for a flatter, closer pack. */
+const stallMs = 8000
+
+/** What the caller made of a read: a match closes the Scanner, the rest freeze it with an alert. */
+export type ScannerReadOutcome = 'match' | 'noMatch' | 'failed'
+
+type Phase = 'scanning' | 'looking' | Exclude<ScannerReadOutcome, 'match'>
+
 type TorchCapabilities = MediaTrackCapabilities & { torch?: boolean }
 type TorchConstraintSet = MediaTrackConstraintSet & { torch?: boolean }
 
@@ -57,39 +66,67 @@ function torchTrack(stream: MediaStream): MediaStreamTrack | null {
 }
 
 /**
- * Full-cover camera (`B·Scanner`) that reports one barcode through `onRead`. The caller unmounts it
- * on read or close, and unmounting stops every camera track.
+ * Full-cover camera (`193·B·Scanner`) that reports one barcode through `onRead` and freezes on it
+ * while the caller looks it up. A `match` is the caller's to close; `noMatch` shows `B·No match`
+ * and `failed` a lookup alert that never claims the barcode is unknown, both with Scan again.
+ * The caller unmounts it on match or close, and unmounting or freezing stops every camera track.
  */
 export function BarcodeScanner({
   onRead,
   onClose,
+  finalFocus,
 }: {
-  onRead: (value: string) => void
+  onRead: (value: string) => Promise<ScannerReadOutcome>
   onClose: () => void
+  /** Where focus goes when the Scanner closes, in place of the control that opened it. */
+  finalFocus?: RefObject<HTMLElement | null>
 }) {
   const [cameraOff, setCameraOff] = useState(false)
   const [torch, setTorch] = useState<MediaStreamTrack | null>(null)
   const [torchOn, setTorchOn] = useState(false)
+  const [phase, setPhase] = useState<Phase>('scanning')
+  const [barcode, setBarcode] = useState('')
+  const [stalled, setStalled] = useState(false)
   const scanner = useRef<IScannerHandle>(null)
   const hasRead = useRef(false)
   const titleRef = useRef<HTMLHeadingElement>(null)
+  const paused = phase !== 'scanning'
+  const stopped = phase === 'noMatch' || phase === 'failed'
 
   // The library has no camera-ready callback; it exposes the stream once capabilities settle.
+  // The stall clock starts then, and restarts with the camera after Scan again.
   useEffect(() => {
-    if (cameraOff) return
+    if (cameraOff || paused) return
+    let stall: ReturnType<typeof setTimeout> | undefined
     const poll = setInterval(() => {
       const stream = scanner.current?.getStream()
       if (!stream) return
       clearInterval(poll)
       setTorch(torchTrack(stream))
+      stall = setTimeout(() => setStalled(true), stallMs)
     }, 200)
-    return () => clearInterval(poll)
-  }, [cameraOff])
+    return () => {
+      clearInterval(poll)
+      clearTimeout(stall)
+    }
+  }, [cameraOff, paused])
 
-  function handleScan([code]: IDetectedBarcode[]) {
+  async function handleScan([code]: IDetectedBarcode[]) {
     if (!code || hasRead.current) return
     hasRead.current = true
-    onRead(barcodeValue(code))
+    const value = barcodeValue(code)
+    setBarcode(value)
+    setPhase('looking')
+    setStalled(false)
+    setTorch(null)
+    setTorchOn(false)
+    const outcome = await onRead(value)
+    if (outcome !== 'match') setPhase(outcome)
+  }
+
+  function scanAgain() {
+    hasRead.current = false
+    setPhase('scanning')
   }
 
   function handleError(error: IScannerError) {
@@ -118,6 +155,7 @@ export function BarcodeScanner({
       <Dialog.Portal>
         <Dialog.Popup
           initialFocus={titleRef}
+          finalFocus={finalFocus}
           className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background px-5 pt-[calc(0.5rem+env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))] outline-none"
         >
           <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col gap-4">
@@ -135,7 +173,7 @@ export function BarcodeScanner({
               >
                 Scan the pack
               </Dialog.Title>
-              {torch && !cameraOff && (
+              {torch && !cameraOff && !paused && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -149,7 +187,13 @@ export function BarcodeScanner({
               )}
             </div>
 
-            <div className="relative h-119 min-h-60 overflow-hidden rounded-3xl bg-camera-ground">
+            <div
+              aria-busy={phase === 'looking'}
+              className={cn(
+                'relative min-h-60 shrink-0 overflow-hidden rounded-3xl bg-camera-ground',
+                stopped ? 'h-100' : 'h-119',
+              )}
+            >
               {cameraOff ? (
                 <div className="grid size-full place-items-center text-white">
                   <CameraOff aria-hidden="true" className="size-8" />
@@ -158,8 +202,9 @@ export function BarcodeScanner({
                 <>
                   <CameraScanner
                     ref={scanner}
-                    onScan={handleScan}
+                    onScan={(codes) => void handleScan(codes)}
                     onError={handleError}
+                    paused={paused}
                     formats={barcodeFormats}
                     components={noLibraryControls}
                     styles={fillCard}
@@ -170,7 +215,14 @@ export function BarcodeScanner({
                     className="pointer-events-none absolute top-1/2 left-1/2 h-40 w-74 max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-[1.5rem] shadow-[0_0_0_1000px_var(--color-camera-scrim)]"
                   >
                     {frameCorners.map((corner) => (
-                      <span key={corner} className={cn('absolute size-9.5 border-white', corner)} />
+                      <span
+                        key={corner}
+                        className={cn(
+                          'absolute size-9.5',
+                          stopped ? 'border-camera-frame-stopped' : 'border-white',
+                          corner,
+                        )}
+                      />
                     ))}
                   </div>
                 </>
@@ -184,21 +236,51 @@ export function BarcodeScanner({
               >
                 Camera unavailable. Enter the medication details instead.
               </p>
+            ) : stopped ? (
+              <Alert className="shrink-0 border-0 bg-dose-unlogged text-dose-unlogged-foreground *:[svg]:size-5.5">
+                <InfoIcon aria-hidden="true" />
+                <AlertTitle className="text-body-lg">
+                  {phase === 'noMatch'
+                    ? "Meddies doesn't know this barcode yet"
+                    : "Couldn't look up this barcode"}
+                </AlertTitle>
+                <AlertDescription className="text-body-sm text-foreground">
+                  {phase === 'noMatch'
+                    ? `You can type the details from the pack. Barcode ${barcode}.`
+                    : 'Scan again, or type the details from the pack.'}
+                </AlertDescription>
+              </Alert>
             ) : (
               <div className="flex shrink-0 flex-col gap-3.5 px-4 py-1 text-center">
-                <p className="text-heading font-extrabold">Hold the barcode inside the frame</p>
+                <p aria-live="polite" className="text-heading font-extrabold">
+                  {stalled
+                    ? 'Hold the barcode flat and close, in good light. Or type the details.'
+                    : 'Hold the barcode inside the frame'}
+                </p>
               </div>
             )}
 
-            <Button
-              variant="outline"
-              size="drawer"
-              className="mt-auto w-full shrink-0"
-              onClick={onClose}
-            >
-              <Keyboard aria-hidden="true" data-icon="inline-start" />
-              Type it in instead
-            </Button>
+            {stopped ? (
+              <div className="mt-auto flex shrink-0 flex-col gap-1">
+                <Button size="drawer" className="w-full" onClick={onClose}>
+                  Type it in
+                </Button>
+                <Button variant="ghost" className="min-h-11 w-full" onClick={scanAgain}>
+                  <RotateCcw aria-hidden="true" data-icon="inline-start" />
+                  Scan again
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="drawer"
+                className="mt-auto w-full shrink-0"
+                onClick={onClose}
+              >
+                <Keyboard aria-hidden="true" data-icon="inline-start" />
+                Type it in instead
+              </Button>
+            )}
           </div>
         </Dialog.Popup>
       </Dialog.Portal>

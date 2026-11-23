@@ -1,6 +1,7 @@
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { hydrated, scrollsHorizontally, stylesheetsLoaded } from './actions'
+import type { Page } from '@playwright/test'
 import { captureCases } from './capture'
 import { expect, test } from './fixtures'
 
@@ -77,51 +78,151 @@ test('capture lab frames by slug prefix', { tag: '@visual' }, async ({ page }) =
   expect(problems, `Frames captured to ${out}`).toEqual([])
 })
 
-// Scanner framing, unavailable copy and manual fallback at the default viewport.
-test('capture Scanner states and manual fallback', { tag: '@visual' }, async ({ page }) => {
+// The Scanner from Add medicine at the default viewport: the Scan row, framing, a stalled read,
+// camera unavailable, No match and Barcode read, and the manual fallback back to the Drawer.
+// A canvas shows a fixture barcode to the decoder, and the frame's seeded lookups answer it:
+// the EAN-13 matches and the GS1 DataMatrix is unknown.
+const scannerCameras = {
+  'ean-13': 'tests/fixtures/barcodes/ean-13.png',
+  datamatrix: 'tests/fixtures/barcodes/gs1-datamatrix.png',
+}
+type ScannerCamera = keyof typeof scannerCameras | 'none' | 'blank' | 'unavailable'
+
+const scannerStates = [
+  { state: 'framing', camera: 'none', text: 'Hold the barcode inside the frame' },
+  {
+    state: 'stalled',
+    camera: 'blank',
+    text: 'Hold the barcode flat and close, in good light. Or type the details.',
+  },
+  {
+    state: 'unavailable',
+    camera: 'unavailable',
+    text: 'Camera unavailable. Enter the medication details instead.',
+  },
+  {
+    state: 'no-match',
+    camera: 'datamatrix',
+    text: "Meddies doesn't know this barcode yet",
+    manual: 'Type it in',
+  },
+] as const
+
+function scannerCapture() {
   const out = process.env.MEDDIES_VISUAL_OUT
   // eslint-disable-next-line playwright/no-skipped-test -- local design review opt-in
   test.skip(
     !out || process.env.MEDDIES_LAB_PREFIX !== '193-b-scanner',
     'Run pnpm lab:capture 193-b-scanner',
   )
-  await mkdir(out!, { recursive: true })
-  await page.addInitScript(() => {
+  return out!
+}
+
+/** Opens the built frame with a stand-in camera. */
+async function openScannerFrame(page: Page, camera: ScannerCamera) {
+  const image =
+    camera in scannerCameras ? scannerCameras[camera as keyof typeof scannerCameras] : null
+  const png = image ? (await readFile(resolve(image))).toString('base64') : null
+  await page.addInitScript((png) => {
+    const camera = new URLSearchParams(location.search).get('camera')
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
       value: {
-        getUserMedia: () =>
-          new URLSearchParams(location.search).get('camera') === 'unavailable'
-            ? Promise.reject(new DOMException('No camera', 'NotFoundError'))
-            : new Promise(() => {}),
+        getUserMedia: async () => {
+          if (camera === 'unavailable') throw new DOMException('No camera', 'NotFoundError')
+          if (!png && camera !== 'blank') return new Promise(() => {})
+          const canvas = document.createElement('canvas')
+          canvas.width = 640
+          canvas.height = 480
+          const context = canvas.getContext('2d')!
+          const image = new Image()
+          if (png) {
+            image.src = `data:image/png;base64,${png}`
+            await image.decode()
+          }
+          const draw = () => {
+            context.fillStyle = '#fff'
+            context.fillRect(0, 0, canvas.width, canvas.height)
+            if (png)
+              context.drawImage(
+                image,
+                (canvas.width - image.width) / 2,
+                (canvas.height - image.height) / 2,
+              )
+          }
+          draw()
+          setInterval(draw, 100)
+          return canvas.captureStream(10)
+        },
       },
     })
-  })
-  for (const state of ['framing', 'unavailable']) {
-    await page.setViewportSize(captureCases.phone.viewport)
-    await page.goto(`/lab/193-b-scanner?camera=${state}`)
-    await expect(page.getByRole('heading', { name: 'Scan the pack' })).toBeVisible()
-    await expect.poll(() => hydrated(page)).toBe(true)
-    await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
-    await page.addStyleTag({ content: hideDevOverlay })
-    await expect(
-      page.getByText(
-        state === 'unavailable'
-          ? 'Camera unavailable. Enter the medication details instead.'
-          : 'Hold the barcode inside the frame',
-        { exact: true },
-      ),
-    ).toBeVisible()
-    const manual = page.getByRole('button', { name: 'Type it in instead' })
-    await manual.scrollIntoViewIfNeeded()
-    await expect(manual).toBeInViewport()
-    expect(await scrollsHorizontally(page)).toBe(false)
-    await page.screenshot({
-      path: resolve(out!, `193-b-scanner-${state}-402x874.png`),
-      animations: 'disabled',
-      fullPage: true,
-    })
-    await manual.click()
-    await expect(page.getByText('Scanner closed')).toBeVisible()
+  }, png)
+  await page.setViewportSize(captureCases.phone.viewport)
+  await page.goto(`/lab/193-b-scanner?camera=${camera}`)
+  const drawer = page.getByRole('dialog', { name: 'Add medication' })
+  await expect(drawer).toBeVisible()
+  await expect.poll(() => hydrated(page)).toBe(true)
+  await expect.poll(() => stylesheetsLoaded(page)).toBe(true)
+  await page.addStyleTag({ content: hideDevOverlay })
+  await expect(
+    drawer.getByText(
+      'Meddies uses the camera only to read the barcode. Nothing saves until you do.',
+    ),
+  ).toBeVisible()
+  return {
+    drawer,
+    scanner: page.getByRole('dialog', { name: 'Scan the pack' }),
+    capture: async (out: string, state: string) => {
+      const { width, height } = captureCases.phone.viewport
+      expect(await scrollsHorizontally(page)).toBe(false)
+      await page.screenshot({
+        path: resolve(out, `193-b-scanner-${state}-${width}x${height}.png`),
+        animations: 'disabled',
+        fullPage: true,
+      })
+    },
   }
+}
+
+test('capture the Scan row in Add medicine', { tag: '@visual' }, async ({ page }) => {
+  const out = scannerCapture()
+  await mkdir(out, { recursive: true })
+  const { drawer, capture } = await openScannerFrame(page, 'none')
+  await expect(drawer.getByRole('button', { name: 'Scan the pack' })).toBeEnabled()
+  await capture(out, 'drawer')
+})
+
+for (const { state, camera, text, ...scan } of scannerStates)
+  test(
+    `capture the Scanner ${state} and its manual fallback`,
+    { tag: '@visual' },
+    async ({ page }) => {
+      const out = scannerCapture()
+      await mkdir(out, { recursive: true })
+      const { drawer, scanner, capture } = await openScannerFrame(page, camera)
+      await drawer.getByRole('button', { name: 'Scan the pack' }).click()
+      await expect(scanner.getByRole('heading', { name: 'Scan the pack' })).toBeVisible()
+      await expect(scanner.getByText(text, { exact: true })).toBeVisible({ timeout: 15_000 })
+      const manual = scanner.getByRole('button', {
+        name: 'manual' in scan ? scan.manual : 'Type it in instead',
+        exact: true,
+      })
+      await manual.scrollIntoViewIfNeeded()
+      await expect(manual).toBeInViewport()
+      await capture(out, state)
+      await manual.click()
+      await expect(scanner).toBeHidden()
+      await expect(drawer.getByRole('textbox', { name: 'Name' })).toHaveValue('')
+    },
+  )
+
+test('capture Barcode read after a full match', { tag: '@visual' }, async ({ page }) => {
+  const out = scannerCapture()
+  await mkdir(out, { recursive: true })
+  const { drawer, scanner, capture } = await openScannerFrame(page, 'ean-13')
+  await drawer.getByRole('button', { name: 'Scan the pack' }).click()
+  await expect(scanner).toBeHidden({ timeout: 15_000 })
+  await expect(drawer.getByRole('status')).toHaveText(/Barcode read/)
+  await expect(drawer.getByRole('textbox', { name: 'Name' })).toHaveValue('MAJEZIK')
+  await capture(out, 'barcode-read')
 })

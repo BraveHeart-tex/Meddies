@@ -1,0 +1,26 @@
+- dialog "Add medication"
+  - button "Close"
+  - heading "Add medication" [level=2]
+  - button "Scan the pack"
+  - paragraph
+    - text: Meddies uses the camera only to read the barcode. Nothing saves until you do.
+  - group
+    - text: Medication details
+    - group
+      - text: Name
+      - textbox "Name"
+    - group
+      - combobox "Type"
+        - text: Type
+        - text: Choose
+    - group
+      - text: Strength
+      - textbox "Strength"
+      - paragraph
+        - text: On the pack, e.g. 200 mg. Not your dose amount.
+    - group
+      - text: Stock
+      - textbox "Stock"
+      - paragraph
+        - text: How many you have now. Leave empty to skip tracking.
+  - button "Save medication"

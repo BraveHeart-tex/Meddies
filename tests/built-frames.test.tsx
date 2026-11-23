@@ -29,10 +29,11 @@ test.each(builtFrames.map((frame) => [frame.citation, frame] as const))(
   '%s matches its outline and reads nothing from the network',
   async (_citation, frame) => {
     const fetch = vi.spyOn(globalThis, 'fetch')
-    const { container } = render(frame.render())
+    render(frame.render())
     // Let mount reads, if any, start.
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
     expect(fetch).not.toHaveBeenCalled()
-    await expect(outline(container)).toMatchFileSnapshot(`./outlines/${frame.slug}.txt`)
+    // The body, so portaled Drawers and dialogs a frame opens are part of its outline.
+    await expect(outline(document.body)).toMatchFileSnapshot(`./outlines/${frame.slug}.txt`)
   },
 )

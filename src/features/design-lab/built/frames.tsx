@@ -16,6 +16,7 @@ import { FixtureQuery } from '../fixture-query'
 import type { BuiltFrame } from '../frames'
 import { amoxicillin, NOW, routine, SESSION_EXPIRES, TODAY } from '../lab-fixtures'
 import { LabNotificationsOff } from '../lab-notifications'
+import { scannerLookups } from './scanner-model'
 
 /**
  * Design-critical screens rendered from production code, one frame each
@@ -80,6 +81,23 @@ export const builtFrames = [
           <ScreenStack>
             <MedicationsHeader />
             <MedicationsScreen initialNow={NOW} serverEntry />
+          </ScreenStack>
+        </AppShell>
+      </FixtureQuery>
+    ),
+  },
+  {
+    slug: '193-b-scanner',
+    title: 'Scanner',
+    citation: '193·B·Scanner',
+    route: '/medications?add',
+    // Add medicine over the list, where the Scan the pack row opens the Scanner.
+    render: () => (
+      <FixtureQuery {...routine} catalogLookups={scannerLookups}>
+        <AppShell current="/medications">
+          <ScreenStack>
+            <MedicationsHeader />
+            <MedicinePanel scheduleMode="add" initialNow={NOW} serverEntry />
           </ScreenStack>
         </AppShell>
       </FixtureQuery>
