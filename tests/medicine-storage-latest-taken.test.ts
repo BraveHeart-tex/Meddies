@@ -319,11 +319,6 @@ test('the lookup searches only its owner and Medicine as unrelated history grows
   }
 
   const change = await strengthChangeRows(first)
-  // lastActionId still reads every receipt row (outside this lookup), so drop the extra one.
-  await db
-    .prepare('DELETE FROM medicine_edits WHERE owner_id=? AND medicine_id=?')
-    .bind(o.ownerId, first)
-    .run()
   const baseline = await readRows(second)
   for (const [round, size] of [40, 80].entries()) {
     if (round === 0) {
