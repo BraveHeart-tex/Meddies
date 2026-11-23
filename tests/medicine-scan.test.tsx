@@ -339,3 +339,143 @@ test('the unsupported-form note goes with Clear form and with a save', async () 
   expect(screen.queryByText(note)).not.toBeInTheDocument()
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
+
+// #475 The match sound. jsdom has no Web Audio, so these tests stand in an AudioContext; without
+// one, as in every test above, the Scanner works and stays silent.
+type SoundTrouble = 'notReady' | 'blocked' | 'decodeFails' | 'startThrows'
+
+function fakeAudio(trouble?: SoundTrouble) {
+  const sound = { requests: 0, decoded: false, gains: [] as number[], starts: 0 }
+  class FakeAudioContext {
+    state: AudioContextState = 'suspended'
+    destination = {}
+    async resume() {
+      if (trouble === 'blocked') throw new DOMException('Needs a gesture', 'NotAllowedError')
+      this.state = 'running'
+    }
+    async close() {
+      this.state = 'closed'
+    }
+    async decodeAudioData() {
+      if (trouble === 'decodeFails') throw new DOMException('Bad file', 'EncodingError')
+      sound.decoded = true
+      return {}
+    }
+    createGain() {
+      const node = { gain: { value: 1 }, connect: (next: unknown) => next }
+      return node
+    }
+    createBufferSource() {
+      return {
+        buffer: null,
+        connect: (gain: { gain: { value: number } }) => {
+          sound.gains.push(gain.gain.value)
+          return gain
+        },
+        start: () => {
+          if (trouble === 'startThrows') throw new DOMException('Gone', 'InvalidStateError')
+          sound.starts++
+        },
+      }
+    }
+  }
+  vi.stubGlobal('AudioContext', FakeAudioContext)
+  const session = { type: 'auto' }
+  Object.defineProperty(navigator, 'audioSession', { value: session, configurable: true })
+  let release = () => {}
+  server.use(
+    http.get('/sounds/scan-match.wav', () => {
+      sound.requests++
+      if (trouble !== 'notReady') return new HttpResponse(new ArrayBuffer(8))
+      return new Promise<Response>((resolve) => {
+        release = () => resolve(new HttpResponse(null, { status: 404 }))
+      })
+    }),
+  )
+  onTestFinished(() => {
+    release()
+    vi.unstubAllGlobals()
+    Reflect.deleteProperty(navigator, 'audioSession')
+  })
+  return { sound, session }
+}
+
+async function scanWithSound(
+  user: ReturnType<typeof userEvent.setup>,
+  sound: { requests: number; decoded: boolean },
+  open = scanRow,
+) {
+  await user.click(open())
+  await waitFor(() => expect(sound.requests).toBeGreaterThan(0))
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+  await user.click(await screen.findByRole('button', { name: 'Read barcode' }))
+}
+
+test('a Catalog match, also for an unsupported form, plays the match sound once, and again after Scan again', async () => {
+  let answer: object = unsupported
+  lookupAnswers(() => HttpResponse.json(answer))
+  const { sound, session } = fakeAudio()
+  const user = openDrawer()
+  await scanWithSound(user, sound)
+  await waitFor(() => expect(scanner()).not.toBeInTheDocument())
+  expect(name()).toHaveValue('HIRUDOID FORTE')
+  expect(sound.decoded).toBe(true)
+  expect(sound.starts).toBe(1)
+  expect(sound.gains).toEqual([0.6])
+  expect(session.type).toBe('ambient')
+
+  answer = match
+  client.clear()
+  await scanWithSound(user, sound, () => screen.getByRole('button', { name: 'Scan again' }))
+  await waitFor(() => expect(name()).toHaveValue('MAJEZIK'))
+  expect(sound.starts).toBe(2)
+  // Decoded once, when the Scanner first opened.
+  expect(sound.requests).toBe(1)
+})
+
+test.each([
+  ['no match', () => HttpResponse.json({ outcome: 'noMatch' })],
+  ['a failed lookup', () => HttpResponse.json({ error: 'unavailable' }, { status: 503 })],
+])('%s plays nothing, also after Scan again', async (_, answer) => {
+  lookupAnswers(answer)
+  const { sound } = fakeAudio()
+  const user = openDrawer()
+  await scanWithSound(user, sound)
+  await screen.findByRole('alert')
+  await user.click(screen.getByRole('button', { name: 'Scan again' }))
+  await user.click(await screen.findByRole('button', { name: 'Read barcode' }))
+  await screen.findByRole('alert')
+  expect(sound.decoded).toBe(true)
+  expect(sound.starts).toBe(0)
+})
+
+test('a lookup that ends after Close plays nothing', async () => {
+  let answer!: (response: Response) => void
+  lookupAnswers(() => new Promise<Response>((resolve) => (answer = resolve)))
+  const { sound } = fakeAudio()
+  const user = openDrawer()
+  await scanWithSound(user, sound)
+  await waitFor(() => expect(answer).toBeDefined())
+  await user.click(screen.getByRole('button', { name: 'Close scanner' }))
+  await waitFor(() => expect(scanner()).not.toBeInTheDocument())
+  await act(async () => answer(HttpResponse.json(match)))
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+  expect(name()).toHaveValue('')
+  expect(sound.starts).toBe(0)
+})
+
+test.each<[string, SoundTrouble]>([
+  ['not loaded yet', 'notReady'],
+  ['blocked', 'blocked'],
+  ['failing to decode', 'decodeFails'],
+  ['failing to start', 'startThrows'],
+])('a match sound %s stays silent and the match still fills at once', async (_, trouble) => {
+  lookupAnswers(() => HttpResponse.json(match))
+  const { sound } = fakeAudio(trouble)
+  const user = openDrawer()
+  await scanWithSound(user, sound)
+  await waitFor(() => expect(scanner()).not.toBeInTheDocument())
+  expect(name()).toHaveValue('MAJEZIK')
+  expect(screen.getByRole('status')).toHaveTextContent('Barcode read')
+  expect(sound.starts).toBe(0)
+})

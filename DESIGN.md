@@ -94,6 +94,7 @@ Use synthetic data in production routes. Review Today with a next occurrence and
 
 - The logo is Two capsules, a heart of two capsules on berry; the master is [docs/brand/two-capsules.svg](docs/brand/two-capsules.svg). Use it for app icons, favicons and sign-in, and keep its vertical centre seam: overlapping capsules read as a check mark, which means Taken.
 - Elsewhere write "Meddies" as the wordmark in Nunito 800. Draw no other marks.
+- The only sound is the match sound, two soft rising mallet notes that echo the logo, played when a scan finds a Catalog match ([catalog-barcode.md](docs/product/catalog-barcode.md#scope)); its generator and master are in [docs/brand/](docs/brand/scan_sounds.py).
 
 ## Sources
 

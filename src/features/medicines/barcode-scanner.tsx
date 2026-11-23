@@ -74,10 +74,13 @@ function torchTrack(stream: MediaStream): MediaStreamTrack | null {
 export function BarcodeScanner({
   onRead,
   onClose,
+  onScanAgain,
   finalFocus,
 }: {
   onRead: (value: string) => Promise<ScannerReadOutcome>
   onClose: () => void
+  /** Runs inside the Scan again tap, for work that needs a user gesture. */
+  onScanAgain?: () => void
   /** Where focus goes when the Scanner closes, in place of the control that opened it. */
   finalFocus?: RefObject<HTMLElement | null>
 }) {
@@ -125,6 +128,7 @@ export function BarcodeScanner({
   }
 
   function scanAgain() {
+    onScanAgain?.()
     hasRead.current = false
     setPhase('scanning')
   }

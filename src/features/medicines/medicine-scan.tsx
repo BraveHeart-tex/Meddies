@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button'
 import type { CatalogMatch } from '@/features/catalog-products/contract'
 import { catalogProductKeys, fetchCatalogLookup } from '@/features/catalog-products/queries'
 import { BarcodeScanner, type ScannerReadOutcome } from './barcode-scanner'
+import { useMatchSound } from './match-sound'
 
 /**
  * Add medicine's first row (docs/product/catalog-barcode.md#scope): *Scan the pack* with the camera
  * help line under it, seen before the camera prompt, opens the Scanner. A read looks up its Catalog
  * product (#196); a match hands it to `onMatch`, which only fills the form, and the row turns into
- * `B·Barcode read` while `read` holds. No match and a failed lookup stay on the Scanner.
+ * `B·Barcode read` while `read` holds. No match and a failed lookup stay on the Scanner. Each match
+ * plays the match sound after the fill (#475); the taps that open the Scanner unlock and load it.
  */
 export function MedicineScan({
   read,
@@ -29,6 +31,12 @@ export function MedicineScan({
   // Each Scanner read or close moves this on, so a lookup that ends after Close fills nothing.
   const lookups = useRef(0)
   const rowRef = useRef<HTMLDivElement>(null)
+  const matchSound = useMatchSound()
+
+  function openScanner() {
+    matchSound.prepare()
+    setScanning(true)
+  }
 
   async function lookUp(barcode: string): Promise<ScannerReadOutcome> {
     const lookup = ++lookups.current
@@ -44,6 +52,7 @@ export function MedicineScan({
       if (result.outcome === 'noMatch') return 'noMatch'
       onMatch(result)
       setScanning(false)
+      matchSound.play()
       return 'match'
     } catch {
       return 'failed'
@@ -79,7 +88,7 @@ export function MedicineScan({
             variant="ghost"
             disabled={disabled}
             className="shrink-0 text-dose-taken-foreground"
-            onClick={() => setScanning(true)}
+            onClick={openScanner}
           >
             Scan again
           </Button>
@@ -91,7 +100,7 @@ export function MedicineScan({
             disabled={disabled}
             aria-labelledby="medicine-scan-title"
             aria-describedby="medicine-scan-caption medicine-scan-help"
-            onClick={() => setScanning(true)}
+            onClick={openScanner}
             className="flex min-h-15 w-full items-center gap-3 rounded-xl border bg-card py-2 pr-3.5 pl-2 text-left outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
           >
             <span className="grid size-11 shrink-0 place-items-center rounded-sm bg-accent text-accent-foreground [&>svg]:size-5.5">
@@ -115,7 +124,14 @@ export function MedicineScan({
           </p>
         </div>
       )}
-      {scanning && <BarcodeScanner onRead={lookUp} onClose={close} finalFocus={rowRef} />}
+      {scanning && (
+        <BarcodeScanner
+          onRead={lookUp}
+          onClose={close}
+          onScanAgain={matchSound.unlock}
+          finalFocus={rowRef}
+        />
+      )}
     </div>
   )
 }

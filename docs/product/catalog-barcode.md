@@ -17,6 +17,8 @@ Flow, from _Scan the pack_ in Add medicine:
 
 **Manual medication creation stays the default.** A scan only fills the Add medicine form, every filled value stays editable, and nothing saves until _Save medication_.
 
+**A match plays the match sound**, "Two capsules", about 0.5s, once the form fills: on every match, including an unsupported form, and on each match after _Scan again_. No match, a failed lookup and a lookup that ends after Close stay silent; there is no error sound. It follows the iPhone silent switch, mixes with the user's music without pausing it, follows media volume on Android, and never delays the fill: a sound that is not ready, blocked or fails to decode stays silent. No mute setting, no vibration.
+
 ## Approved catalog boundary
 
 - Manual medicine entry works without a catalog match or barcode. UserMedication, schedules and dose history must exist independently of any external CatalogProduct identifier.
