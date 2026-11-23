@@ -123,6 +123,7 @@ test('cron and scheduler commands log one run outcome, counts and duration even 
         submitted: 1,
         dropped: 0,
         retrying: 0,
+        settlementFailures: 0,
       },
       {
         kind: 'scheduler',
@@ -133,6 +134,7 @@ test('cron and scheduler commands log one run outcome, counts and duration even 
         submitted: null,
         dropped: null,
         retrying: null,
+        settlementFailures: 0,
       },
       {
         kind: 'scheduler',
@@ -143,6 +145,7 @@ test('cron and scheduler commands log one run outcome, counts and duration even 
         submitted: 1,
         dropped: 0,
         retrying: 0,
+        settlementFailures: 0,
       },
       {
         kind: 'scheduler',
@@ -153,6 +156,7 @@ test('cron and scheduler commands log one run outcome, counts and duration even 
         submitted: null,
         dropped: null,
         retrying: null,
+        settlementFailures: 0,
       },
     ],
   )
@@ -303,6 +307,7 @@ test('logs exclude seeded personal data, credentials, arbitrary paths and storag
             'kind',
             'origin',
             'retrying',
+            'settlementFailures',
             'status',
             'submitted',
           ],

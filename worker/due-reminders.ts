@@ -189,6 +189,7 @@ export async function runDueReminders(
   provider: ReminderProvider,
   clock: () => Date,
   batch = DUE_REMINDER_BATCH,
+  onSettlementFailure?: () => void,
 ): Promise<DueReminderRun> {
   const seconds = () => new Date(Math.floor(clock().getTime() / 1000) * 1000)
   const now = seconds()
@@ -209,6 +210,7 @@ export async function runDueReminders(
     superseded,
     present: (ownerId, scheduleId, dueAt) => known.has(`${ownerId}:${scheduleId}:${dueAt}`),
     cutoff,
+    onSettlementFailure,
   }
   const current = occurrences
     .filter(
@@ -342,6 +344,7 @@ export async function runDueReminders(
 
 type Superseded = (ownerId: string, scheduleId: string, dueAt: string, now: Date) => boolean
 type Context = {
+  onSettlementFailure?: () => void
   cutoff: number
   superseded: Superseded
   /** Whether the Occurrence is one of a running Schedule version of an owner with a registration. */
@@ -436,7 +439,7 @@ async function deliver(
   provider: ReminderProvider,
   clock: () => Date,
   token: string,
-  { superseded, present, cutoff }: Context,
+  { superseded, present, cutoff, onSettlementFailure }: Context,
   reminders: Claimed[],
 ): Promise<(keyof DueReminderRun | null)[]> {
   const now = clock()
@@ -464,6 +467,10 @@ async function deliver(
       )
       .returning({ scheduleId: table.scheduleId })
   }
+  const settlementFailed = (error: unknown): never => {
+    onSettlementFailure?.()
+    throw error
+  }
   const stale = targetAt
     ? now.getTime() < Date.parse(targetAt) ||
       now.getTime() > Date.parse(targetAt) + SNOOZE_LATENESS_MS
@@ -473,7 +480,9 @@ async function deliver(
     (reminder && (await quietDrop(db, ownerId, targetAt ?? followUpTarget(dueAt, reminder), now)))
   )
     return (
-      await settlement(reminders.map(({ scheduleId }) => ({ scheduleId, result: 'dropped' })))
+      await settlement(
+        reminders.map(({ scheduleId }) => ({ scheduleId, result: 'dropped' })),
+      ).catch(settlementFailed)
     ).map(() => 'dropped')
 
   const stopped = new Set(
@@ -577,23 +586,25 @@ async function deliver(
         ? 'retrying'
         : 'submitted') as keyof DueReminderRun,
   }))
-  const [, , settled] = await db.batch([
-    db.insert(deliveryAttempts).select(sql`SELECT
+  const [, , settled] = await db
+    .batch([
+      db.insert(deliveryAttempts).select(sql`SELECT
       json_extract(value, '$.id'), json_extract(value, '$.ownerId'),
       json_extract(value, '$.scheduleId'), json_extract(value, '$.dueAt'),
       json_extract(value, '$.installationId'), json_extract(value, '$.outcome'),
       json_extract(value, '$.code'), json_extract(value, '$.attemptedAt'),
       json_extract(value, '$.reminder') FROM json_each(${JSON.stringify(attempts)})`),
-    db.delete(deviceRegistrations).where(
-      and(
-        eq(deviceRegistrations.ownerId, ownerId),
-        sql`EXISTS (SELECT 1 FROM json_each(${JSON.stringify(unregistered)})
+      db.delete(deviceRegistrations).where(
+        and(
+          eq(deviceRegistrations.ownerId, ownerId),
+          sql`EXISTS (SELECT 1 FROM json_each(${JSON.stringify(unregistered)})
         WHERE json_extract(value, '$.installationId') = ${deviceRegistrations.installationId}
           AND json_extract(value, '$.token') = ${deviceRegistrations.token})`,
+        ),
       ),
-    ),
-    settlement(results),
-  ])
+      settlement(results),
+    ])
+    .catch(settlementFailed)
   const resultOf = new Map(results.map((row) => [row.scheduleId, row.result]))
   return settled.map((row) => resultOf.get(row.scheduleId)!)
 }

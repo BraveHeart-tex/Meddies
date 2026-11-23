@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { drizzle } from 'drizzle-orm/d1'
-import { beforeAll, test } from 'vitest'
+import { beforeAll, test, vi } from 'vitest'
 import { saveDeviceRegistration } from '../worker/device-registrations'
 import {
   isHealthyRun,
@@ -1686,11 +1686,26 @@ test('A failed settlement rolls back Delivery attempts and Device registration r
       ? { outcome: 'rejected', code: 'UNREGISTERED' }
       : { outcome: 'accepted' },
   )
+  const log = vi.spyOn(console, 'log').mockImplementation(() => {})
   try {
-    assert.deepEqual(await run(provider, '2027-04-02T06:20:00.000Z'), {
+    const worker = createWorker(
+      () => new Date('2027-04-02T06:20:00.000Z'),
+      () => provider,
+    )
+    await worker.scheduled(undefined, bindings())
+    assert.equal(log.mock.calls.length, 1)
+    const [[{ durationMs, ...event }]] = log.mock.calls
+    assert.equal(typeof durationMs, 'number')
+    assert.deepEqual(event, {
+      kind: 'scheduler',
+      origin: 'cron',
+      status: 'completed',
+      errorCode: null,
+      cause: null,
       submitted: 2,
       dropped: 0,
       retrying: 0,
+      settlementFailures: 1,
     })
     assert.equal(sent.length, 4, 'provider accepted before the failed database write')
     assert.deepEqual(await attemptedSchedules(o.ownerId, o.due('09:00'), 0), [])
@@ -1701,6 +1716,7 @@ test('A failed settlement rolls back Delivery attempts and Device registration r
     )
     assert.equal((await attemptedSchedules(o.ownerId, o.due('09:10'), 0)).length, 4)
   } finally {
+    log.mockRestore()
     await db.prepare('DROP TRIGGER fail_reminder_settlement').run()
   }
   assert.equal(

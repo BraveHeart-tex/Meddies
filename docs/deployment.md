@@ -37,8 +37,10 @@ to query persisted Worker events. Workers Logs are enabled at full sampling in
   Paths come from the command allowlist (or `/due-reminders`), never the raw URL. Unknown
   paths are `null`; operations are `null` until decoded, or `run` for the scheduler command.
 - `kind: scheduler`: `origin` (`cron` or `command`), `status` (`completed` or `failed`),
-  `errorCode`, `cause`, `submitted`, `dropped`, `retrying` and `durationMs`. Counts are `null` on
-  failure because a run may have stopped after partial work.
+  `errorCode`, `cause`, `submitted`, `dropped`, `retrying`, `settlementFailures` and `durationMs`.
+  Delivery counts are `null` on a failed run because it may have stopped after partial work.
+  `settlementFailures` counts observed dose reminder instants whose D1 settlement failed. It
+  can be positive on a completed run because processing continues with the other claims.
 
 Each command emits one event. Each scheduler run emits one event; an authenticated scheduler
 command therefore emits both a command event and a scheduler event. A refused scheduler

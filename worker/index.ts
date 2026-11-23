@@ -109,7 +109,8 @@ function fcmProvider({ FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY }: Env)
  * Each command and each started run emits one allowlisted event. Never log raw input or errors;
  * only decoded operation names, known paths, safe error codes and causes cross the
  * logging boundary.
- * Failed run counts stay unknown: earlier submissions may already have happened.
+ * Settlement failures count failed instants. Failed run delivery counts stay unknown
+ * because earlier submissions may already have happened.
  * Only a Healthy run pings HEARTBEAT_URL, without data, in deferred bounded work.
  */
 export function createWorker(
@@ -128,13 +129,16 @@ export function createWorker(
       submitted: null as number | null,
       dropped: null as number | null,
       retrying: null as number | null,
+      settlementFailures: 0,
       durationMs: 0,
     }
     try {
       provider ??= reminderProvider(env)
       const { submitRefill } = provider
       if (submitRefill) await activateRefillPushes(env.DB)
-      const run = await runDueReminders(drizzle(env.DB), provider, clock)
+      const run = await runDueReminders(drizzle(env.DB), provider, clock, undefined, () => {
+        event.settlementFailures++
+      })
       if (submitRefill)
         await runRefillPushes(env.DB, { submitRefill: submitRefill.bind(provider) }, clock)
       if (env.HEARTBEAT_URL && (await isHealthyRun(drizzle(env.DB), clock()))) {
