@@ -14,7 +14,8 @@ Work **lean** throughout:
 - Discover unknown file paths with `rg --files`; read cited sections with `rg` and bounded
   line ranges. Do not concatenate documentation files. Read complete source files only
   when necessary to
-  understand or modify them; never reread unchanged content already in context.
+  understand or modify them; never reread unchanged content already in context, this
+  skill included.
 - Batch independent read-only inspections when useful, but cap their combined output.
 - Scope large diffs by file or hunk so each read stays bounded.
 - Send verbose command output to a temp file (`log=$(mktemp)`); read only failures and
@@ -49,17 +50,25 @@ Work **lean** throughout:
    follow-up ticket per [changing scope](../../../docs/tickets.md#changing-scope).
    _Done when_ the issue is within every limit, or the user approved building it as it is.
 
-3. **Read the docs.** Pick the rows of the AGENTS.md docs table the work touches, plus every
-   spec section and design frame the issue cites.
-   _Done when_ each acceptance criterion maps to the rule or frame that governs it.
+3. **Find the owner and its rules.** Start from the approved scope. First locate the owning
+   code: the files the issue's Ownership or Current state names, else find them with `rg`,
+   and read them. Then open the sections that govern it: every spec section, rule and design
+   frame the issue cites, plus the [AGENTS.md](../../../AGENTS.md#docs) row sections that
+   apply to the owner (authorization, layers, schema changes, saves and retries). Open
+   sections, not whole docs.
+   _Done when_ the owner is read and each acceptance criterion maps to the rule or frame
+   that governs it.
 
-4. **Name the evidence.** Each acceptance criterion names its evidence: an existing test, a
+4. **Name the proof.** Each acceptance criterion names its evidence: an existing test, a
    new test where [one is required](../../../docs/verification.md#when-a-test-is-required),
    or a visual or manual check. A required test goes at the
    [cheapest level](../../../docs/verification.md#cheapest-proof) and names the regression it
-   catches. Ask the user only when an ambiguity changes scope; otherwise pick the reading
-   that matches the cited spec and name it in the evidence.
-   _Done when_ every criterion names its evidence.
+   catches. Note any required preflight, test-first test or `before` capture. Ask the user
+   only when an ambiguity changes scope; otherwise pick the reading that matches the cited
+   spec and name it in the evidence.
+   _Done when_ every criterion names its evidence. Start building now. A further read
+   answers a named implementation or verification question; open the rest of verification,
+   commit rules and closing steps at the step that runs them.
 
 5. **Build.** For UI work, first follow [UI build routing](#ui-build-routing).
    Test-first only for the new tests step 4 requires (use the `tdd` skill).

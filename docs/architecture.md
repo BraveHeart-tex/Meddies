@@ -228,21 +228,24 @@ owner.
   Follow-up reminder and its action UUID, so a retry returns its original outcome and a reused
   action ID naming another dose returns conflict. The due-reminder operation sends it and drops
   the automatic reminders it rules out at send time.
-- **Schema changes:** write each migration by hand as the next numbered
-  `worker/migrations/NNNN_<name>.sql` and mirror it in the Drizzle tables in
-  `worker/schema.ts`. The local stack, tests and Release apply migrations in order. Keep
-  each one additive and backward compatible, since the old app with the new Worker and the
-  old Worker with the new schema coexist during release and recovery: a new column is
-  nullable or has a default. Leave applied migrations unchanged and repair forward with a
-  new one. A destructive change needs a separately planned expand/contract rollout and a
-  backup and recovery review. Never drop or rebuild a table with `ON DELETE CASCADE`
-  children: D1 executes those cascades even with `PRAGMA defer_foreign_keys = ON`, so
-  copying the parent rows back does not restore its children. In particular, do not reuse
-  migration 0017's `user_medications` rebuild now that stock movements, stock action
-  receipts and intake stock movements cascade from it. Use additive changes instead;
-  seed existing rows before later migrations in tests to prove they survive.
 
 Client retry and action-ID rules: [client state](client-state.md#saves).
+
+## Schema changes
+
+Write each migration by hand as the next numbered
+`worker/migrations/NNNN_<name>.sql` and mirror it in the Drizzle tables in
+`worker/schema.ts`. The local stack, tests and Release apply migrations in order. Keep
+each one additive and backward compatible, since the old app with the new Worker and the
+old Worker with the new schema coexist during release and recovery: a new column is
+nullable or has a default. Leave applied migrations unchanged and repair forward with a
+new one. A destructive change needs a separately planned expand/contract rollout and a
+backup and recovery review. Never drop or rebuild a table with `ON DELETE CASCADE`
+children: D1 executes those cascades even with `PRAGMA defer_foreign_keys = ON`, so
+copying the parent rows back does not restore its children. In particular, do not reuse
+migration 0017's `user_medications` rebuild now that stock movements, stock action
+receipts and intake stock movements cascade from it. Use additive changes instead;
+seed existing rows before later migrations in tests to prove they survive.
 
 ## Automated dependency checks
 

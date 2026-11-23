@@ -287,6 +287,6 @@ origin, with Access headers only on the Worker probe. Keep credentials out of sh
 artifacts. Never use `set -x` with release commands.
 
 D1 migrations, Worker deployment and Vercel deployment are separate operations, so
-migrations follow the [schema change rules](architecture.md#persistence-rules). Never roll
+migrations follow the [schema change rules](architecture.md#schema-changes). Never roll
 an old Worker over a schema it cannot read; repair forward with a reviewed additive
 migration or a compatible Worker/app version.
