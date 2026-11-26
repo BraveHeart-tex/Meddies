@@ -1,6 +1,6 @@
 # 05 - Turkish Medication Catalog & Barcode
 
-Discovery and preferred data direction, subject to source quality, licensing and feasibility.
+Catalog lookup, pack scanning and the approved barcode validation rules.
 
 ## Scope
 
@@ -18,6 +18,16 @@ Flow, from _Scan the pack_ in Add medicine:
 **Manual medication creation stays the default.** A scan only fills the Add medicine form, every filled value stays editable, and nothing saves until _Save medication_.
 
 **A match plays the match sound**, "Two capsules", about 0.5s, once the form fills: on every match, including an unsupported form, and on each match after _Scan again_. No match, a failed lookup and a lookup that ends after Close stay silent; there is no error sound. It follows the iPhone silent switch, mixes with the user's music without pausing it, follows media volume on Android, and never delays the fill: a sound that is not ready, blocked or fails to decode stays silent. No mute setting, no vibration.
+
+## Pack barcode identification
+
+These approved rules apply to the planned Scanner validation update.
+
+- Keep EAN-13, EAN-8, UPC-A, UPC-E and DataMatrix with `@yudiel/react-qr-scanner@2.6.0`. Use EAN-13 and GS1 DataMatrix as the primary Turkish pack verification cases. Confirm required carriers and fields against the current TİTCK packaging or İlaç Takip Sistemi guidance before implementing the DataMatrix rules.
+- Treat product identifiers as strings. Reuse the catalog's GTIN-14 normalizer and GS1 check-digit validation for lookup and candidate comparison. Preserve leading zeros and a nonzero GTIN-14 indicator digit. A compressed UPC-E must be expanded before normalization. The pinned decoder already returns an expanded identifier.
+- For DataMatrix, identify the Catalog product from a single GS1 application identifier `01` containing a valid 14-digit GTIN. Recognize the boundaries of the supported pack fields `17` (expiry), `10` (batch or lot) and `21` (serial) only as needed to identify the product reliably. Honor the GS separator after a variable-length field when another field follows. Keep parsing scoped to the pack formats covered by the lookup.
+- The decoder may return identical text for GS1 DataMatrix and ordinary DataMatrix and omit their symbology identifiers. Accept bare element text only when it conforms to the supported pack structure. Treat that as evidence for a Catalog product lookup, with the filled details still subject to user confirmation. Ignore explicit ordinary DataMatrix and payloads that cannot reliably yield a product identifier. Only the extracted GTIN may reach the lookup API. Discard raw DataMatrix payloads, expiry, batch and serial values after parsing and exclude them from telemetry.
+- Validate all candidates before freezing the Scanner. Ignore invalid reads. Equivalent identifiers count as one product. When distinct valid GTINs are visible together, keep the camera active and guide the user to present a single barcode. A single valid candidate retains the existing lookup, No match, failed lookup, Scan again and manual-entry behavior.
 
 ## Approved catalog boundary
 
