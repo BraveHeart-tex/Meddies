@@ -1,8 +1,9 @@
 import { spawnSync } from 'node:child_process'
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { delimiter, join } from 'node:path'
+import { join } from 'node:path'
 import { afterEach, expect, test } from 'vitest'
+import { createIssue } from '../scripts/create-issue.mjs'
 
 test('rejects missing required inputs before calling GitHub', () => {
   const result = spawnSync(process.execPath, ['scripts/create-issue.mjs'], {
@@ -15,44 +16,98 @@ test('rejects missing required inputs before calling GitHub', () => {
 
 const dirs: string[] = []
 afterEach(() => dirs.splice(0).forEach((dir) => rmSync(dir, { recursive: true, force: true })))
-const fake = `#!/usr/bin/env node
-const fs = require('node:fs')
-const a = process.argv.slice(2)
-const path = process.env.FAKE_STATE
-const s = JSON.parse(fs.readFileSync(path, 'utf8'))
-s.calls.push(a)
-const value = (key) => a[a.indexOf(key) + 1]
-let out = {}
-let failure = false
-if (s.failAt === a.slice(0,2).join(' ')) { process.stderr.write('injected failure'); process.exit(1) }
-const key = a.slice(0, 2).join(' ')
-if (key === 'project list') out = {projects:[{title:'Meddies',id:'P',number:3}]}
-else if (key === 'project field-list') out = {fields:[
- {name:'Status',id:'S',options:[{name:'Backlog',id:'B'}]},
- {name:'Priority',id:'F',options:['Urgent','High','Medium','Low'].map(name => ({name,id:name}))}]}
-else if (key === 'issue create') {
- s.creates++
- s.issue = {number:42,url:'https://github.com/BraveHeart-tex/Meddies/issues/42',title:value('--title'),body:fs.readFileSync(value('--body-file'),'utf8'),labels:a.flatMap((x,i) => x === '--label' ? [{name:a[i+1]}] : []),parent:null,blockedBy:{nodes:[]}}
- out = s.issue.url
+type SavedIssue = {
+  number: number
+  url: string
+  title: string
+  body: string
+  labels: { name: string }[]
+  parent: { number: number } | null
+  blockedBy: { nodes: { number: number }[] }
 }
-else if (key === 'issue view') out = {...s.issue, ...(s.mismatch === 'body' ? {body:'changed'} : {}), ...(s.mismatch === 'labels' ? {labels:[]} : {}), ...(s.mismatch === 'title' ? {title:'changed'} : {}), ...(s.mismatch === 'relationships' ? {parent:{number:999}} : {})}
-else if (key === 'project item-add') out = {id:'I'}
-else if (key === 'project item-edit') {
- if (s.fail) failure = true
- else s.fields[value('--field-id')] = value('--single-select-option-id')
+
+type FakeState = {
+  calls: string[][]
+  creates: number
+  fields: Record<string, string>
+  issue?: SavedIssue
+  fail?: boolean
+  failAt?: string | null
+  mismatch?: string
 }
-else if (key === 'api graphql') out = {data:{node:{fieldValues:{nodes:s.mismatch === 'fields' ? [] : Object.entries(s.fields).map(([key,name]) => ({name:name === 'B' ? 'Backlog':name,field:{name:key === 'S' ? 'Status':'Priority'}}))}}}}
-else if (a[0] === 'api') {
- const endpoint = a.find(x => x.startsWith('repos/'))
- if (a.includes('POST')) {
-  if (endpoint.endsWith('/sub_issues')) s.issue.parent = {number:Number(endpoint.split('/').at(-2))}
-  else s.issue.blockedBy.nodes.push({number:Number(value('-F').split('=').at(-1)) - 1000})
- } else out = {id:1000 + Number(endpoint.split('/').at(-1))}
-} else failure = true
-fs.writeFileSync(path,JSON.stringify(s))
-if (failure) { process.stderr.write('injected denial'); process.exit(1) }
-process.stdout.write(typeof out === 'string' ? out + '\\n' : JSON.stringify(out))
-`
+
+function fakeGh(state: FakeState, args: string[]): unknown {
+  state.calls.push(args)
+  const command = args.slice(0, 2).join(' ')
+  const value = (key: string) => args[args.indexOf(key) + 1]
+  if (state.failAt === command) throw new Error('injected failure')
+
+  switch (command) {
+    case 'project list':
+      return { projects: [{ title: 'Meddies', id: 'P', number: 3 }] }
+    case 'project field-list':
+      return {
+        fields: [
+          { name: 'Status', id: 'S', options: [{ name: 'Backlog', id: 'B' }] },
+          {
+            name: 'Priority',
+            id: 'F',
+            options: ['Urgent', 'High', 'Medium', 'Low'].map((name) => ({ name, id: name })),
+          },
+        ],
+      }
+    case 'issue create':
+      state.creates++
+      state.issue = {
+        number: 42,
+        url: 'https://github.com/BraveHeart-tex/Meddies/issues/42',
+        title: value('--title'),
+        body: readFileSync(value('--body-file'), 'utf8'),
+        labels: args.flatMap((arg, i) => (arg === '--label' ? [{ name: args[i + 1] }] : [])),
+        parent: null,
+        blockedBy: { nodes: [] },
+      }
+      return state.issue.url
+    case 'issue view':
+      return {
+        ...state.issue,
+        ...(state.mismatch === 'body' ? { body: 'changed' } : {}),
+        ...(state.mismatch === 'labels' ? { labels: [] } : {}),
+        ...(state.mismatch === 'title' ? { title: 'changed' } : {}),
+        ...(state.mismatch === 'relationships' ? { parent: { number: 999 } } : {}),
+      }
+    case 'project item-add':
+      return { id: 'I' }
+    case 'project item-edit':
+      if (state.fail) throw new Error('injected denial')
+      state.fields[value('--field-id')] = value('--single-select-option-id')
+      return {}
+    case 'api graphql': {
+      const nodes =
+        state.mismatch === 'fields'
+          ? []
+          : Object.entries(state.fields).map(([key, name]) => ({
+              name: name === 'B' ? 'Backlog' : name,
+              field: { name: key === 'S' ? 'Status' : 'Priority' },
+            }))
+      return { data: { node: { fieldValues: { nodes } } } }
+    }
+    case 'api --method': {
+      const endpoint = value('POST')
+      if (!state.issue) throw new Error('Missing fake issue')
+      if (endpoint.endsWith('/sub_issues')) {
+        state.issue.parent = { number: Number(endpoint.split('/').at(-2)) }
+      } else {
+        state.issue.blockedBy.nodes.push({ number: Number(value('-F').split('=').at(-1)) - 1000 })
+      }
+      return {}
+    }
+    default:
+      if (args[0] === 'api') return { id: 1000 + Number(args[1].split('/').at(-1)) }
+      throw new Error('injected denial')
+  }
+}
+
 const validTicket = [
   '## What to build',
   'Log a dose.',
@@ -69,21 +124,14 @@ const validTicket = [
 function harness() {
   const dir = mkdtempSync(join(tmpdir(), 'create-issue-'))
   dirs.push(dir)
-  const statePath = join(dir, 'state.json')
   const bodyPath = join(dir, 'body.md')
   const body = `  Exact body\r\n\nUnicode: İ 💊\n${validTicket}`
   writeFileSync(bodyPath, body)
-  writeFileSync(join(dir, 'gh'), fake)
-  chmodSync(join(dir, 'gh'), 0o755)
-  writeFileSync(statePath, JSON.stringify({ calls: [], creates: 0, fields: {} }))
-  const state = () => JSON.parse(readFileSync(statePath, 'utf8'))
-  const patch = (value: object) =>
-    writeFileSync(statePath, JSON.stringify({ ...state(), ...value }))
+  const state: FakeState = { calls: [], creates: 0, fields: {} }
+  const patch = (value: Partial<FakeState>) => Object.assign(state, value)
   const invoke = (extra: string[] = [], defaults = true) =>
-    spawnSync(
-      process.execPath,
+    createIssue(
       [
-        'scripts/create-issue.mjs',
         ...(defaults
           ? [
               '--title',
@@ -100,17 +148,12 @@ function harness() {
           : []),
         ...extra,
       ],
-      {
-        encoding: 'utf8',
-        env: {
-          ...process.env,
-          PATH: `${dir}${delimiter}${process.env.PATH}`,
-          NODE_NO_WARNINGS: '1',
-          FAKE_STATE: statePath,
-        },
+      (...args) => {
+        const result = fakeGh(state, args)
+        return typeof result === 'string' ? result + '\n' : JSON.stringify(result)
       },
     )
-  return { state, patch, invoke, body, bodyPath }
+  return { state: () => state, patch, invoke, body, bodyPath }
 }
 
 test('creates once, preserves exact body and verifies relationships and Project fields', () => {
@@ -127,7 +170,7 @@ test('creates once, preserves exact body and verifies relationships and Project 
     relationships: { verified: true, parent: 7, blockedBy: [8, 9] },
   })
   expect(h.state().creates).toBe(1)
-  expect(h.state().issue.body).toBe(h.body)
+  expect(h.state().issue?.body).toBe(h.body)
   expect(h.state().fields).toEqual({ S: 'B', F: 'High' })
 })
 
