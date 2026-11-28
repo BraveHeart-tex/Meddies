@@ -308,6 +308,8 @@ test('Type sits between Name and Strength, opens above, and Liquid saves', async
     'Liquid',
     'Inhaler',
     'Drops',
+    'Suppository',
+    'Ovule',
   ])
   for (const option of options) {
     expect(option).toHaveAttribute('aria-selected', 'false')

@@ -23,11 +23,15 @@
   --color-ring: var(--ring);
   --color-primary-pressed: var(--primary-pressed);
   --color-medication-butter: #fdf0c9;
+  --color-medication-seafoam: #d9eeea;
+  --color-medication-periwinkle: #e1e6f8;
   --color-medication-blush: #f7dce3;
   --color-medication-peach: #fce3d3;
   --color-medication-plum: #eadfe6;
   --color-medication-mist: #e6eef0;
   --color-medication-butter-glyph: #f2c85b;
+  --color-medication-seafoam-glyph: #55a593;
+  --color-medication-periwinkle-glyph: #7389d1;
   --color-medication-blush-glyph: #e9a3b6;
   --color-medication-peach-glyph: #e89a5f;
   --color-medication-plum-glyph: #9c6f86;

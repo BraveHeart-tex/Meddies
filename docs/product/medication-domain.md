@@ -46,8 +46,8 @@ earlier versions. Meddies never converts or rounds amounts to fit a different un
 Liquid amounts display decimals, such as `0.5 ml` and `1.5 ml`; `ml` never pluralizes. Tablet
 halves keep their existing half-glyph wording. Counted units use singular/plural wording,
 such as `1 puff` and `2 puffs`. The Type menu starts unset and lists Tablet, Capsule, Liquid,
-Inhaler, Drops in that order. Strength help follows the selected Medicine type and describes
-the pack's strength without recommending how much to take.
+Inhaler, Drops, Suppository and Ovule in that order. Strength help follows the selected
+Medicine type and describes the pack's strength without recommending how much to take.
 
 Future stock counts, refills, count corrections and low-stock thresholds use the Medicine's
 Quantity unit, such as ml, puffs, drops, suppositories or ovules, rather than containers.

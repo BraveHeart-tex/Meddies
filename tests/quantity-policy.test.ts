@@ -29,6 +29,8 @@ test('Types: the menu lists the selectable Types in order, with Strength help pe
     { value: 'liquid', label: 'Liquid' },
     { value: 'inhaler', label: 'Inhaler' },
     { value: 'drops', label: 'Drops' },
+    { value: 'suppository', label: 'Suppository' },
+    { value: 'ovule', label: 'Ovule' },
   ])
   const pack = 'On the pack, e.g. 200 mg. Not your dose amount.'
   for (const type of [null, 'tablet', 'capsule', 'suppository', 'ovule'] as const)

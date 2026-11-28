@@ -30,7 +30,7 @@ test('each Type draws a different icon', () => {
   const drawings = medicineTypeOptions.map(
     ({ value }) => render(<TypeTile type={value} />).container.querySelector('svg')?.innerHTML,
   )
-  expect(new Set(drawings).size).toBe(5)
+  expect(new Set(drawings).size).toBe(7)
 })
 
 // Ids ending 1, 2 and 3 each picked a different tint and shape when tiles came from the id.
@@ -93,3 +93,33 @@ test.each(tiles)('the %s tile shows the Type icon, whatever the id', (_, ui, tin
   })
   expect(new Set(drawings).size).toBe(1)
 })
+
+test.each([
+  ['suppository', 'bg-medication-seafoam', 'text-medication-seafoam-glyph', -35],
+  ['ovule', 'bg-medication-periwinkle', 'text-medication-periwinkle-glyph', -20],
+] as const)(
+  'the %s tile keeps its two-tone glyph at every size and on accent',
+  (type, tint, glyph, angle) => {
+    for (const [size, dimensions] of [
+      ['sm', 'size-7.5'],
+      ['md', 'size-11.5'],
+      ['lg', 'size-13'],
+    ] as const) {
+      for (const onAccent of [false, true]) {
+        const { container, unmount } = render(
+          <TypeTile type={type} size={size} onAccent={onAccent} />,
+        )
+        const tile = container.firstElementChild
+        expect(tile).toHaveAttribute('aria-hidden', 'true')
+        expect(tile).toHaveClass(dimensions, onAccent ? 'bg-card' : tint, glyph)
+        expect(tile?.querySelector('svg')).toHaveAttribute('viewBox', '0 0 24 24')
+        const drawing = tile?.querySelector('svg > g')
+        expect(drawing).toHaveAttribute('transform', `rotate(${angle} 12 12)`)
+        expect(drawing?.children[1]).toHaveStyle({ opacity: '0.45' })
+        // eslint-disable-next-line meddies/no-cosmetic-class-assertions -- highlights use the card token through this class
+        expect(drawing?.children[2]).toHaveClass('stroke-card')
+        unmount()
+      }
+    }
+  },
+)

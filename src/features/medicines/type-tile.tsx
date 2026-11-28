@@ -1,4 +1,3 @@
-import { Pill } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import type { MedicineType } from '@/lib/quantity-policy'
@@ -8,9 +7,6 @@ import type { MedicineType } from '@/lib/quantity-policy'
 // color. Drawn on a 24px grid with rounded joins so they sit beside the Two capsules mark.
 // Decorative only. Adding a Type adds its glyph and tint here.
 const soft = { opacity: 0.45 }
-// #493 owns the dedicated Suppository and Ovule tiles.
-const fallbackGlyph = <Pill />
-const fallbackTint = 'bg-muted text-muted-foreground'
 
 /** Glyph per Medicine type. */
 export const typeGlyphs: Record<MedicineType, ReactNode> = {
@@ -85,8 +81,36 @@ export const typeGlyphs: Record<MedicineType, ReactNode> = {
       />
     </>
   ),
-  suppository: fallbackGlyph,
-  ovule: fallbackGlyph,
+  // A bullet with a solid nose and body over a soft base.
+  suppository: (
+    <g transform="rotate(-35 12 12)">
+      <path d="M7.6 12C7.6 6.11 10.15 2.5 12 2.5C13.85 2.5 16.4 6.11 16.4 12V15.5H7.6z" />
+      <path d="M7.6 15.5H16.4V20.6Q16.4 21.5 15.5 21.5H8.5Q7.6 21.5 7.6 20.6z" style={soft} />
+      <path
+        d="M9.6 12.2c0-1.6.4-3 1.1-4.1"
+        className="stroke-card"
+        fill="none"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        opacity="0.85"
+      />
+    </g>
+  ),
+  // An egg with a solid cap above its widest line and a soft base below.
+  ovule: (
+    <g transform="rotate(-20 12 12)">
+      <path d="M12 2.5C16.34 2.5 19 9.34 19 13.9H5C5 9.34 7.66 2.5 12 2.5z" />
+      <path d="M19 13.9C19 18.84 15.85 21.5 12 21.5C8.15 21.5 5 18.84 5 13.9z" style={soft} />
+      <path
+        d="M7.7 11.4c.2-2.2 1.1-4 2.5-5.1"
+        className="stroke-card"
+        fill="none"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        opacity="0.85"
+      />
+    </g>
+  ),
 }
 
 /** Tile tint and glyph color per Medicine type. */
@@ -96,8 +120,8 @@ export const typeTints: Record<MedicineType, string> = {
   liquid: 'bg-medication-plum text-medication-plum-glyph',
   inhaler: 'bg-medication-mist text-medication-mist-glyph',
   drops: 'bg-medication-butter text-medication-butter-glyph',
-  suppository: fallbackTint,
-  ovule: fallbackTint,
+  suppository: 'bg-medication-seafoam text-medication-seafoam-glyph',
+  ovule: 'bg-medication-periwinkle text-medication-periwinkle-glyph',
 }
 
 export type TypeTileSize = 'sm' | 'md' | 'lg'
@@ -145,8 +169,8 @@ const glyphColors: Record<MedicineType, string> = {
   liquid: 'text-medication-plum-glyph',
   inhaler: 'text-medication-mist-glyph',
   drops: 'text-medication-butter-glyph',
-  suppository: 'text-muted-foreground',
-  ovule: 'text-muted-foreground',
+  suppository: 'text-medication-seafoam-glyph',
+  ovule: 'text-medication-periwinkle-glyph',
 }
 
 /**

@@ -115,13 +115,13 @@ const medicineTypes = {
     ...countedEntry('Suppository', 'suppository', 'suppositories'),
     strengthHelp: packHelp,
     writable: true,
-    selectable: false,
+    selectable: true,
   },
   ovule: {
     ...countedEntry('Ovule', 'ovule', 'ovules'),
     strengthHelp: packHelp,
     writable: true,
-    selectable: false,
+    selectable: true,
   },
 } as const satisfies Record<
   string,

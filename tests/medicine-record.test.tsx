@@ -1402,3 +1402,43 @@ test('Type correction keeps rejected entries editable and restarts stale review 
   expect(screen.getByRole('textbox', { name: 'Amount' })).toHaveValue('')
   expect(commands).toHaveLength(2)
 })
+
+test.each([
+  ['suppository', 'Suppository', 'suppositories'],
+  ['ovule', 'Ovule', 'ovules'],
+] as const)(
+  'Detail correction requires a whole replacement when changing to %s',
+  async (unit, label, plural) => {
+    server.use(
+      http.post('/api/medicines/type-correction', async ({ request }) => {
+        expect(await request.json()).toEqual({ medicineId: medicine.id, unit })
+        return HttpResponse.json({
+          review: {
+            medicineId: medicine.id,
+            unit,
+            fromUnit: 'tablet',
+            revision: 1,
+            reviewVersion: 5,
+            stockTracked: false,
+            compatibleAmounts: 0,
+            conflicts: [repairConflicts[0]],
+          },
+        })
+      }),
+    )
+    const { user } = open('fix', medicine)
+    await user.click(screen.getByRole('combobox', { name: 'Type' }))
+    await user.click(await screen.findByRole('option', { name: label }))
+    await user.click(screen.getByRole('button', { name: 'Review Type change' }))
+    await user.click(await screen.findByRole('button', { name: 'Check first amount' }))
+    expect(screen.getByRole('heading', { name: `How many ${plural} was this dose?` })).toHaveFocus()
+    const amount = screen.getByRole('textbox', { name: 'Amount' })
+    await user.type(amount, '1.5')
+    await user.click(screen.getByRole('button', { name: 'Review changes' }))
+    expect(screen.getByText(`Use whole ${plural}.`)).toBeVisible()
+    await user.clear(amount)
+    await user.type(amount, '2')
+    await user.click(screen.getByRole('button', { name: 'Review changes' }))
+    expect(screen.getByRole('heading', { name: 'Review your changes' })).toHaveFocus()
+  },
+)

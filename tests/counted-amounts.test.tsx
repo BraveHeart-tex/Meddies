@@ -1,9 +1,11 @@
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { expect, test, vi } from 'vitest'
 import { fixtureQueryClient } from '../src/features/design-lab/fixture-query'
 import type { Medicine } from '../src/features/medicines/contract'
+import { MedicineForm } from '../src/features/medicines/medicine-form'
 import { MedicinePanel } from '../src/features/medicines/medicine-panel'
 import { TypeTile } from '../src/features/medicines/type-tile'
 import type { DailySchedule, DoseRecord } from '../src/features/schedules/contract'
@@ -158,4 +160,34 @@ test.each([
   expect(screen.getByText(line)).toBeVisible()
   const region = screen.getByRole('group', { name: 'Schedule' })
   expect(within(region).getByText(amount)).toBeVisible()
+})
+
+test('Add medicine offers the new Types after Drops with counted Stock and pack Strength help', async () => {
+  const user = userEvent.setup()
+  render(
+    <QueryClientProvider client={fixtureQueryClient({ now: LATER })}>
+      <MedicineForm onSaved={vi.fn()} />
+    </QueryClientProvider>,
+  )
+
+  for (const [type, plural] of [
+    ['Suppository', 'suppositories'],
+    ['Ovule', 'ovules'],
+  ]) {
+    await user.click(screen.getByRole('combobox', { name: 'Type' }))
+    expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual([
+      'Tablet',
+      'Capsule',
+      'Liquid',
+      'Inhaler',
+      'Drops',
+      'Suppository',
+      'Ovule',
+    ])
+    await user.click(screen.getByRole('option', { name: type }))
+    expect(screen.getByText(plural, { exact: true })).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'Strength' })).toHaveAccessibleDescription(
+      'On the pack, e.g. 200 mg. Not your dose amount.',
+    )
+  }
 })
