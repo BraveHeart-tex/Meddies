@@ -84,8 +84,8 @@ Migrations 0 · New screens 1 · Owned frames 2 · Journeys 0 · Proofs 3
 
 - One outcome per line, with its one proof after `- Evidence:`. An outcome joined to
   another with a semicolon or listing several proofs is two criteria.
-- Criteria state product or technical outcomes. `pnpm verify:local`, pushing, evidence and
-  closing are the [done definition](../AGENTS.md), never criteria.
+- Criteria state product or technical outcomes. Checks, the PR, evidence and closing are the
+  [done definition](../AGENTS.md), never criteria.
 - There is no fixed criterion count; more than eight means the ticket holds two slices.
 - Visual criteria name no viewport or text size: every visual check runs at
   [402×874 with normal text](verification.md#visual-verification). Never ask for 320px,
@@ -196,7 +196,18 @@ ticket's description in the same change, then comments on both tickets.
 
 ## Closing
 
-Close a ticket once it is done ([AGENTS.md](../AGENTS.md)) with one command:
+A ticket closes when the PR that completes it merges into main: its description declares one
+whole issue per [PR descriptions](commits.md#pr-descriptions), and the agent hands it off green
+([handoff](verification.md#handoff)) without closing the issue. The Closeout workflow ticks the
+Acceptance criteria, comments the merged SHA and the PR link as the evidence, and closes the
+issue as completed; the Meddies Project's Item closed workflow sets Done. An unmerged PR, an
+ordinary reference or a PR with no declaration leaves issues alone; a malformed or repeated
+declaration, a missing Evidence section or an issue closed another way fails the run without
+writing. A failed run is replayed with `gh workflow run closeout.yml -f pr=<n>` or by hand with
+`node scripts/closeout-pr.mjs <n>`; replays resume without duplicating the comment.
+
+A ticket no single PR completes, such as a design ticket or one finished across several PRs,
+closes by hand once its work is merged:
 
 ```sh
 node scripts/finish-issue.mjs <n> --evidence <file> [--attach <png>...]
@@ -210,15 +221,6 @@ evidence must cite a commit on `origin/main`. The command checks everything befo
 then ticks the Acceptance criteria boxes, closes the issue as completed and sets Project
 Status to Done, reading each write back. A failed step stops it and prints the writes done
 and the steps remaining; finish those by hand.
-
-A PR merged into main closes its issue instead when its description declares one whole issue
-per [PR descriptions](commits.md#pr-descriptions). The Closeout workflow ticks the Acceptance
-criteria, comments the merged SHA and the PR link as the evidence, and closes the issue as
-completed; the Meddies Project's Item closed workflow sets Done. An unmerged PR, an ordinary
-reference or a PR with no declaration leaves issues alone; a malformed or repeated declaration,
-a missing Evidence section or an issue closed another way fails the run without writing. A
-failed run is replayed with `gh workflow run closeout.yml -f pr=<n>` or by hand with
-`node scripts/closeout-pr.mjs <n>`; replays resume without duplicating the comment.
 
 For any criterion that will not be finished, first create a follow-up ticket with a single
 owner, link it from this ticket, and remove the item here.

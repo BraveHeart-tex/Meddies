@@ -88,11 +88,14 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
    _Done when_ every criterion maps to an approved frame, native link and button roles are
    preserved, and every finding is fixed or rejected with a one-line reason.
 
-9. **Verify, commit and push.** With every change made, run `pnpm verify:local >"$log" 2>&1`
-   once and read the summary. On failure, fix the cause, rerun only the failed cases until
-   they pass, then run `pnpm verify:local` once more. Commit per
-   [docs/commits.md](../../../docs/commits.md) and push to main.
-   _Done when_ the final verify exited 0 on the final code and the commit is on `origin/main`.
+9. **Open the PR and get it merged.** With every change made, run `pnpm lab:check`,
+   `pnpm typecheck` and changed-file lint. On a branch from current `origin/main`, commit per
+   [docs/commits.md](../../../docs/commits.md), push, and open a PR per
+   [handoff](../../../docs/verification.md#handoff). Its description omits the issue
+   declaration (step 14 closes the ticket) and its `## Evidence` lists the frames, captures and
+   checks run. Fix Verify failures until `Merge check` is green, then send Bora the PR link to
+   review and squash-merge. Steps 10-13 may proceed while it waits.
+   _Done when_ the PR is merged and its squash commit is on `origin/main`.
 
 10. **Post the approval comment** on the design ticket from
     [templates/approval-comment.md](templates/approval-comment.md). Reference each 402x874 PNG

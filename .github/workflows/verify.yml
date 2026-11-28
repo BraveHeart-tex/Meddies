@@ -135,3 +135,22 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 14
+
+  # The required check for main. GitHub passes a skipped required check, so this job always runs
+  # on pull requests and fails unless every job above succeeded. Release gates on `needs` instead.
+  merge-check:
+    name: Merge check
+    needs: [eligibility, vitest, journeys]
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/merge-check.mjs
+          sparse-checkout-cone-mode: false
+      - name: Require every Verify job to succeed
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: node scripts/merge-check.mjs eligibility vitest journeys

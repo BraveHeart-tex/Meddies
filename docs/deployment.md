@@ -137,6 +137,19 @@ after the explicit typecheck;
 Vercel and local journey builds keep the check. ESLint and Prettier caches stay local in
 `.cache`.
 
+On pull requests a last job, `Merge check`, runs after the others whatever their outcome and
+passes only when every one succeeded (`scripts/merge-check.mjs`): GitHub counts a skipped
+required check as passing, so a failed, skipped or cancelled job must turn it red. It is
+main's only required status check, from the GitHub Actions app. Main's branch protection also
+requires a PR with zero approvals, a head up to date with main, linear history and enforcement
+for admins; the repository allows only squash merges, titled by the PR. Release skips
+`Merge check` and gates on Verify's jobs directly. Read the protection back with:
+
+```sh
+gh api repos/BraveHeart-tex/Meddies/branches/main/protection \
+  --jq '{checks: .required_status_checks, reviews: .required_pull_request_reviews.required_approving_review_count, admins: .enforce_admins.enabled}'
+```
+
 Verify and Release restore installed `node_modules` with an exact cache key: OS,
 architecture, resolved Node version, and hashes of the lockfile, package manifest and pnpm
 install policy. A miss runs a frozen install; there are no prefix restores. Only main runs

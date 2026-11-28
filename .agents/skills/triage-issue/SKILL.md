@@ -22,7 +22,7 @@ AI-authored issue body and comment** with:
 Work lean: read cited spec sections and relevant code, not entire doc bundles;
 batch independent searches, cap output, and never reread unchanged material.
 Do not implement the issue during triage. Never create, edit, close, relabel or
-reparent an issue, or commit/push docs, without approval of the exact write plan.
+reparent an issue, or commit docs or open a docs PR, without approval of the exact write plan.
 
 ## Steps
 
@@ -85,10 +85,12 @@ reparent an issue, or commit/push docs, without approval of the exact write plan
    Rewrite an approved split parent as `tracking-only` (slice table, shared
    constraints, sole completion criterion: slices closed). Add decisions comments
    only when useful. Apply approved spec/GLOSSARY.md edits, commit per
-   [commits](../../../docs/commits.md), and push. Read every GitHub write back
-   (`gh issue view`) and inspect the resulting docs commit (`git show --stat`).
+   [commits](../../../docs/commits.md) on a branch from `origin/main`, run
+   `pnpm format:check`, and open a PR per [handoff](../../../docs/verification.md#handoff)
+   for Bora to merge. Read every GitHub write back (`gh issue view`) and inspect the
+   resulting docs commit (`git show --stat`).
    Stop and report any mismatch or failure rather than silently changing scope.
    _Done when_ all approved writes match their read-back, or failures are reported.
 
 Report succinctly: route (Quick/Deep), ready or blocked, issue(s) changed or
-proposed, dependencies, docs commit if any, and remaining decisions.
+proposed, dependencies, docs PR if any, and remaining decisions.
