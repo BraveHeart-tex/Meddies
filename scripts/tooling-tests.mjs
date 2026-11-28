@@ -19,6 +19,7 @@ export const toolingTests = [
   'tests/lab-capture.test.ts',
   'tests/lab-compare.test.ts',
   'tests/next-output-lock.test.ts',
+  'tests/pre-commit.test.ts',
   'tests/release-guard.test.ts',
   'tests/release.test.ts',
   'tests/start-issue.test.ts',

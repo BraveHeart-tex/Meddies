@@ -1,1 +1,14 @@
 pnpm lint-staged
+
+staged=$(git diff --cached --name-only -- src/ tests/ docs/ .agents/ DESIGN.md PRODUCT.md AGENTS.md)
+[ -n "$staged" ] || exit 0
+
+# Load both the frame registry and scanned files from the index after formatting.
+snapshot=$(mktemp -d "${TMPDIR:-/tmp}/meddies-citations.XXXXXX")
+trap 'rm -rf "$snapshot"' EXIT
+git checkout-index --all --prefix="$snapshot/"
+ln -s "$PWD/node_modules" "$snapshot/node_modules"
+(
+  cd "$snapshot"
+  ./node_modules/.bin/vitest run --project unit tests/design-citations.test.ts
+)

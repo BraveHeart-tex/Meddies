@@ -46,7 +46,8 @@ are not allowed; 109 and 193 keep only their registered frames.
 literally, never from a template, so `rg` finds them. While a design has frames in the
 registry, every citation of it in `src`, `tests`, `docs`, `.agents`, `DESIGN.md`,
 `PRODUCT.md` and `AGENTS.md` must be a registered frame. `tests/design-citations.test.ts`
-enforces this in `pnpm verify:local`.
+enforces this in `pnpm verify:local`. Pre-commit runs it against the staged snapshot when
+a staged path is in scope.
 
 ## Rules
 
