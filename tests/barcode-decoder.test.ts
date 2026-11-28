@@ -32,17 +32,33 @@ beforeAll(async () => {
   detector = new BarcodeDetector({ formats: barcodeFormats })
 })
 
-// Fixtures encode 5901234123457 and (01)09501101530003(17)261231(10)AB12, written by zxing-wasm.
-async function read(fixture: string) {
+// Fixtures written by zxing-wasm: ean-13 5901234123457, ean-8 96385074, upc-a 036000291452,
+// upc-e 01234565 (compressed), gs1-datamatrix (01)09501101530003(17)261231(10)AB12 and
+// gs1-datamatrix-serial (01)08699536090115(21)AB12CD(17)271130(10)LOT9.
+async function detect(fixture: string) {
   const bytes = readFileSync(path.join(process.cwd(), 'tests/fixtures/barcodes', fixture))
   const [code] = await detector.detect(new Blob([bytes], { type: 'image/png' }))
-  return barcodeValue(code!)
+  return code!
 }
 
-test('an EAN-13 pack reads as its printed value', async () => {
-  await expect(read('ean-13.png')).resolves.toBe('5901234123457')
+// The detector's own output per symbology, which barcodeValue validates (#478).
+test.each([
+  ['ean-13.png', 'ean_13', '5901234123457'],
+  ['ean-8.png', 'ean_8', '96385074'],
+  ['upc-a.png', 'ean_13', '0036000291452'],
+  ['upc-e.png', 'upc_e', '0012345000065'],
+  ['gs1-datamatrix-serial.png', 'data_matrix', '010869953609011521AB12CD\u001d1727113010LOT9'],
+])('%s decodes as %s %j', async (fixture, format, rawValue) => {
+  await expect(detect(fixture)).resolves.toMatchObject({ format, rawValue })
 })
 
-test('a GS1 DataMatrix reads as its GTIN, without the expiry or batch', async () => {
-  await expect(read('gs1-datamatrix.png')).resolves.toBe('09501101530003')
+test.each([
+  ['ean-13.png', '5901234123457'],
+  ['ean-8.png', '96385074'],
+  ['upc-a.png', '0036000291452'],
+  ['upc-e.png', '0012345000065'],
+  ['gs1-datamatrix.png', '09501101530003'],
+  ['gs1-datamatrix-serial.png', '08699536090115'],
+])('%s is looked up as %s, a DataMatrix without its other fields', async (fixture, value) => {
+  expect(barcodeValue(await detect(fixture))).toBe(value)
 })

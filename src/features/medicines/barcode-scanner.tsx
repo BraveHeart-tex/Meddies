@@ -71,8 +71,8 @@ function torchTrack(stream: MediaStream): MediaStreamTrack | null {
 }
 
 /**
- * Full-cover camera (`193·B·Scanner`) that reports one barcode through `onRead` and freezes on it
- * while the caller looks it up. A `match` is the caller's to close; `noMatch` shows `B·No match`
+ * Full-cover camera (`193·B·Scanner`) that reports the first supported read through `onRead`
+ * (`barcodeValue`) and freezes on it while the caller looks it up; other reads are ignored. A `match` is the caller's to close; `noMatch` shows `B·No match`
  * and `failed` a lookup alert that never claims the barcode is unknown, both with Scan again.
  * The caller unmounts it on match or close, and unmounting or freezing stops every camera track.
  */
@@ -119,10 +119,12 @@ export function BarcodeScanner({
     }
   }, [cameraOff, paused])
 
-  async function handleScan([code]: IDetectedBarcode[]) {
-    if (!code || hasRead.current) return
+  // Reads are validated before the Scanner freezes: an unsupported one leaves the camera running.
+  async function handleScan(codes: IDetectedBarcode[]) {
+    if (hasRead.current) return
+    const value = codes.map(barcodeValue).find((candidate) => candidate !== null)
+    if (!value) return
     hasRead.current = true
-    const value = barcodeValue(code)
     setBarcode(value)
     setPhase('looking')
     setStalled(false)

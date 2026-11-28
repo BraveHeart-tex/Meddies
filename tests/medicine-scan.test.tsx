@@ -8,7 +8,7 @@ import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
 
 // The Scan the pack flow in Add medicine (#198). The camera library is replaced by a stand-in
-// whose Read barcode button reports one EAN-13; tests/barcode-scanner.test.tsx covers the real
+// whose Read barcode button reports `camera.codes`, one EAN-13 unless a test changes it; tests/barcode-scanner.test.tsx covers the real
 // camera, torch and stall clock.
 
 vi.mock('next/navigation', () => ({
@@ -22,6 +22,9 @@ vi.mock('next/dynamic', async () => ({
   default: (await vi.importActual<{ default: unknown }>('next/dist/shared/lib/app-dynamic.js'))
     .default,
 }))
+
+const ean13 = [{ format: 'ean_13', rawValue: '8699536090115' }]
+const camera = vi.hoisted(() => ({ codes: [] as { format: string; rawValue: string }[] }))
 
 vi.mock('@yudiel/react-qr-scanner', async () => {
   const { forwardRef, useImperativeHandle } = await import('react')
@@ -40,10 +43,7 @@ vi.mock('@yudiel/react-qr-scanner', async () => {
       return paused ? (
         <p>Frozen frame</p>
       ) : (
-        <button
-          type="button"
-          onClick={() => onScan([{ format: 'ean_13', rawValue: '8699536090115' }])}
-        >
+        <button type="button" onClick={() => onScan(camera.codes)}>
           Read barcode
         </button>
       )
@@ -56,6 +56,7 @@ let posts: unknown[]
 beforeEach(() => {
   client = createQueryClient()
   posts = []
+  camera.codes = ean13
   window.history.replaceState(null, '', '/medications?add')
   server.use(
     http.post('/api/medicines', async ({ request }) => {
@@ -206,6 +207,61 @@ test.each([
     expect(name()).toHaveValue('')
   },
 )
+
+// Synthetic serial, expiry and batch markers that must not leave the Scanner (#478).
+const packFields = ['SERIALX9', '991231', 'BATCHQ7']
+const packCode = `0108699536090115` + `21${packFields[0]}\u001d17${packFields[1]}10${packFields[2]}`
+
+test.each([
+  ['a bare pack DataMatrix', packCode],
+  ['a pack DataMatrix after ]d2', `]d2${packCode}`],
+])('%s looks up only its GTIN and logs none of its other fields', async (_, rawValue) => {
+  const logs = (['log', 'info', 'warn', 'error', 'debug'] as const).map((level) =>
+    vi.spyOn(console, level).mockImplementation(() => undefined),
+  )
+  const urls: string[] = []
+  server.use(
+    http.get('/api/catalog-products', ({ request }) => {
+      urls.push(request.url)
+      return HttpResponse.json({ outcome: 'noMatch' })
+    }),
+  )
+  camera.codes = [{ format: 'data_matrix', rawValue }]
+  const user = openDrawer()
+  await scanBarcode(user)
+  expect(await screen.findByRole('alert')).toHaveTextContent('Barcode 08699536090115.')
+  expect(urls.map((url) => new URL(url).search)).toEqual(['?barcode=08699536090115'])
+  const seen = JSON.stringify([
+    logs.flatMap((log) => log.mock.calls),
+    client
+      .getQueryCache()
+      .getAll()
+      .map((query) => query.queryKey),
+    document.body.textContent,
+  ])
+  for (const field of packFields) expect(seen).not.toContain(field)
+})
+
+test.each([
+  ['ordinary DataMatrix text', [{ format: 'data_matrix', rawValue: 'Hello, pharmacy' }]],
+  ['parenthesized AIs', [{ format: 'data_matrix', rawValue: '(01)08699536090115(17)991231' }]],
+  ['explicit ordinary DataMatrix', [{ format: 'data_matrix', rawValue: ']d10108699536090115' }]],
+  ['a failed check digit', [{ format: 'ean_13', rawValue: '8699536090116' }]],
+  ['a compressed UPC-E', [{ format: 'upc_e', rawValue: '01234565' }]],
+])('%s keeps the camera scanning without a lookup', async (_, codes) => {
+  const barcodes = lookupAnswers(() => HttpResponse.json(match))
+  camera.codes = codes
+  const user = openDrawer()
+  await scanBarcode(user)
+  expect(screen.getByRole('button', { name: 'Read barcode' })).toBeInTheDocument()
+  expect(screen.queryByText('Frozen frame')).not.toBeInTheDocument()
+  expect(screen.getByText('Hold the barcode inside the frame')).toBeInTheDocument()
+
+  camera.codes = ean13
+  await user.click(screen.getByRole('button', { name: 'Read barcode' }))
+  await waitFor(() => expect(scanner()).not.toBeInTheDocument())
+  expect(barcodes).toEqual(['8699536090115'])
+})
 
 test('closing the Scanner during a lookup fills nothing when the answer arrives', async () => {
   let answer!: (response: Response) => void
