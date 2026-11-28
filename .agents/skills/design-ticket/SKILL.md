@@ -39,12 +39,15 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
 3. **Build three directions.** Each direction is a set of lab frames from production
    components: `<n>-a1…`, `<n>-b1…`, `<n>-c1…`. States every direction shares (saving,
    errors, saved) are `<n>-s1…`. Write each slug and citation out literally. Put the frames
-   in `src/features/design-lab/draft/<topic>-frames.tsx`, their lab-only modules beside them
-   in `draft/`, and spread them into `draftFrames` in `draft/frames.tsx`. Example data shared
-   across designs goes in `lab-fixtures.ts`, data only this design uses in
-   `draft/<topic>-model.ts`.
-   _Done when_ every listed state has a frame in each direction (or in `-s*`), and
-   `pnpm lab:check` passes the production HTTP and citation checks.
+   in `src/features/design-lab/draft/` with one set of frame and lab-only modules per
+   direction, such as `<topic>-a-frames.tsx` and `<topic>-a-parts.tsx`. Put shared states
+   in `<topic>-shared-frames.tsx` and spread each frame set into `draftFrames` in
+   `draft/frames.tsx`. Keep reusable UI in production modules. Example data shared
+   across designs goes in `lab-fixtures.ts`, and data this design shares across directions
+   goes in `draft/<topic>-model.ts`. Each direction imports only its own modules and
+   shared dependencies. Shared frames import only shared dependencies.
+   _Done when_ each direction has its own modules, every listed state has a frame in each
+   direction (or in `-s*`), and `pnpm lab:check` passes the production HTTP and citation checks.
 
 4. **Capture.** Stop `pnpm dev`, then run `pnpm lab:capture <n>-`
    ([outputs](../../../docs/design/README.md#capture)); it prints the capture folder.
@@ -64,10 +67,12 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
 6. **Get Bora's pick.** Send the page link and ask which direction to approve.
    _Done when_ Bora has named a direction. Apply any requested changes and repeat steps 4 and 5.
 
-7. **Move the winner to `approved/`.** Delete the losing directions' frames and every lab
-   module only they used. `git mv` the winner's frames and modules from `draft/` to
-   `approved/`, and move its spread from `draftFrames` to `approvedFrames`. Republish the page
-   to the same URL as the approved record. Add a `decisions` array and, if known, the
+7. **Move the winner to `approved/`.** Use `git rm` on the losing directions' frame files
+   and lab modules used only by those directions. Use `git mv` to move the winner's frame
+   files and lab modules, including shared files it still uses, from `draft/` to `approved/`
+   unchanged. Update the frame registries in `draft/frames.tsx` and `approved/frames.tsx`
+   to remove the draft entries and register the moved frame sets. Republish the page to the same URL as the
+   approved record. Add a `decisions` array and, if known, the
    numeric `buildTicket` to the spec. Update `openQuestions` for the build ticket and run
    `node scripts/lab-compare.mjs <n> --spec <json> --captures <capture-folder> --approved <letter> > out.html`.
    _Done when_ `draft/` holds no `<n>-` frame, `rg -n '<n>·[BC][0-9]' src tests` (adjust
