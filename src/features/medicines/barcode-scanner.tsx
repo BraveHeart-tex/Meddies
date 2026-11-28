@@ -8,6 +8,7 @@ import { type ComponentProps, type RefObject, useEffect, useRef, useState } from
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { normalizeGtin } from '../catalog-products/contract'
 import { barcodeFormats, barcodeValue } from './barcode-value'
 
 // Browser-only, and the decoder must stay out of first load: it loads when the Scanner opens.
@@ -71,8 +72,11 @@ function torchTrack(stream: MediaStream): MediaStreamTrack | null {
 }
 
 /**
- * Full-cover camera (`193·B·Scanner`) that reports the first supported read through `onRead`
- * (`barcodeValue`) and freezes on it while the caller looks it up; other reads are ignored. A `match` is the caller's to close; `noMatch` shows `B·No match`
+ * Full-cover camera (`193·B·Scanner`) that validates every code in a frame (`barcodeValue`) and
+ * reports one product through `onRead`, freezing while the caller looks it up; invalid reads are
+ * ignored, and equivalent GTINs count as one product. A frame with distinct products keeps the
+ * camera running and asks for one barcode until a frame with a single product arrives (#479).
+ * A `match` is the caller's to close; `noMatch` shows `B·No match`
  * and `failed` a lookup alert that never claims the barcode is unknown, both with Scan again.
  * The caller unmounts it on match or close, and unmounting or freezing stops every camera track.
  */
@@ -95,6 +99,7 @@ export function BarcodeScanner({
   const [phase, setPhase] = useState<Phase>('scanning')
   const [barcode, setBarcode] = useState('')
   const [stalled, setStalled] = useState(false)
+  const [competing, setCompeting] = useState(false)
   const scanner = useRef<IScannerHandle>(null)
   const hasRead = useRef(false)
   const titleRef = useRef<HTMLHeadingElement>(null)
@@ -120,14 +125,22 @@ export function BarcodeScanner({
   }, [cameraOff, paused])
 
   // Reads are validated before the Scanner freezes: an unsupported one leaves the camera running.
+  // `allowMultiple` repeats a frame the detector already reported, so a frame that drops from two
+  // products to one still reaches here; `hasRead` keeps it to one lookup.
   async function handleScan(codes: IDetectedBarcode[]) {
     if (hasRead.current) return
-    const value = codes.map(barcodeValue).find((candidate) => candidate !== null)
+    const values = codes.map(barcodeValue).filter((candidate) => candidate !== null)
+    const [value] = values
     if (!value) return
+    if (new Set(values.map(normalizeGtin)).size > 1) {
+      setCompeting(true)
+      return
+    }
     hasRead.current = true
     setBarcode(value)
     setPhase('looking')
     setStalled(false)
+    setCompeting(false)
     setTorch(null)
     setTorchOn(false)
     const outcome = await onRead(value)
@@ -216,6 +229,7 @@ export function BarcodeScanner({
                     onScan={(codes) => void handleScan(codes)}
                     onError={handleError}
                     paused={paused}
+                    allowMultiple
                     formats={barcodeFormats}
                     components={noLibraryControls}
                     styles={fillCard}
@@ -265,9 +279,11 @@ export function BarcodeScanner({
             ) : (
               <div className="flex shrink-0 flex-col gap-3.5 px-4 py-1 text-center">
                 <p aria-live="polite" className="text-heading font-extrabold">
-                  {stalled
-                    ? 'Hold the barcode flat and close, in good light. Or type the details.'
-                    : 'Hold the barcode inside the frame'}
+                  {competing
+                    ? 'Show one barcode at a time'
+                    : stalled
+                      ? 'Hold the barcode flat and close, in good light. Or type the details.'
+                      : 'Hold the barcode inside the frame'}
                 </p>
               </div>
             )}

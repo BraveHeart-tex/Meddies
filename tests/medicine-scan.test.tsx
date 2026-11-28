@@ -8,8 +8,10 @@ import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
 
 // The Scan the pack flow in Add medicine (#198). The camera library is replaced by a stand-in
-// whose Read barcode button reports `camera.codes`, one EAN-13 unless a test changes it; tests/barcode-scanner.test.tsx covers the real
-// camera, torch and stall clock.
+// whose Read barcode button reports `camera.codes`, one EAN-13 unless a test changes it. Like the
+// library, it reports a frame only when it holds a value new since scanning (re)started, unless
+// `allowMultiple` is set. tests/barcode-scanner.test.tsx covers the real camera, torch and stall
+// clock.
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
@@ -27,26 +29,34 @@ const ean13 = [{ format: 'ean_13', rawValue: '8699536090115' }]
 const camera = vi.hoisted(() => ({ codes: [] as { format: string; rawValue: string }[] }))
 
 vi.mock('@yudiel/react-qr-scanner', async () => {
-  const { forwardRef, useImperativeHandle } = await import('react')
+  const { forwardRef, useImperativeHandle, useRef } = await import('react')
   const stream = { getVideoTracks: () => [], getTracks: () => [] }
-  type Props = {
-    onScan: (codes: { format: string; rawValue: string }[]) => void
-    paused?: boolean
+  type Code = { format: string; rawValue: string }
+  type Props = { onScan: (codes: Code[]) => void; paused?: boolean; allowMultiple?: boolean }
+  // Remounts when scanning resumes, which resets the values already reported.
+  function ReadButton({ onScan, allowMultiple }: Props) {
+    const seen = useRef(new Set<string>())
+    function read() {
+      const codes = camera.codes
+      const novel = codes.some((code) => !seen.current.has(code.rawValue))
+      if (novel) seen.current = new Set(codes.map((code) => code.rawValue))
+      if (novel || (allowMultiple && codes.length > 0)) onScan(codes)
+    }
+    return (
+      <button type="button" onClick={read}>
+        Read barcode
+      </button>
+    )
   }
   return {
     setZXingModuleOverrides: () => undefined,
-    Scanner: forwardRef<unknown, Props>(function CameraStandIn({ onScan, paused }, ref) {
+    Scanner: forwardRef<unknown, Props>(function CameraStandIn(props, ref) {
+      const { paused } = props
       useImperativeHandle(ref, () => ({
         getStream: () => (paused ? null : stream),
         getVideoElement: () => null,
       }))
-      return paused ? (
-        <p>Frozen frame</p>
-      ) : (
-        <button type="button" onClick={() => onScan(camera.codes)}>
-          Read barcode
-        </button>
-      )
+      return paused ? <p>Frozen frame</p> : <ReadButton {...props} />
     }),
   }
 })
@@ -259,6 +269,44 @@ test.each([
 
   camera.codes = ean13
   await user.click(screen.getByRole('button', { name: 'Read barcode' }))
+  await waitFor(() => expect(scanner()).not.toBeInTheDocument())
+  expect(barcodes).toEqual(['8699536090115'])
+})
+
+// Frames holding more than one code (#479).
+const readBarcode = () => screen.getByRole('button', { name: 'Read barcode' })
+
+test('an invalid first code does not hide a valid code later in the frame', async () => {
+  const barcodes = lookupAnswers(() => HttpResponse.json(match))
+  camera.codes = [{ format: 'ean_13', rawValue: '8699536090116' }, ...ean13]
+  const user = openDrawer()
+  await scanBarcode(user)
+  await waitFor(() => expect(scanner()).not.toBeInTheDocument())
+  expect(barcodes).toEqual(['8699536090115'])
+})
+
+test('an EAN-13 and a DataMatrix for the same pack look it up once', async () => {
+  const barcodes = lookupAnswers(() => HttpResponse.json(match))
+  camera.codes = [...ean13, { format: 'data_matrix', rawValue: '010869953609011521AB12' }]
+  const user = openDrawer()
+  await scanBarcode(user)
+  await waitFor(() => expect(scanner()).not.toBeInTheDocument())
+  expect(barcodes).toEqual(['8699536090115'])
+})
+
+test('two products keep the camera on and ask for one barcode until only one remains', async () => {
+  const barcodes = lookupAnswers(() => HttpResponse.json(match))
+  camera.codes = [...ean13, { format: 'ean_13', rawValue: '8699536090207' }]
+  const user = openDrawer()
+  await scanBarcode(user)
+  expect(screen.getByText('Show one barcode at a time')).toHaveAttribute('aria-live', 'polite')
+  expect(screen.queryByText('Frozen frame')).not.toBeInTheDocument()
+
+  expect(barcodes).toEqual([])
+
+  // The remaining code is not new to the detector, so only a repeated frame reports it.
+  camera.codes = ean13
+  await user.click(readBarcode())
   await waitFor(() => expect(scanner()).not.toBeInTheDocument())
   expect(barcodes).toEqual(['8699536090115'])
 })
