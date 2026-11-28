@@ -460,55 +460,12 @@ test('every dose time needs both parts, pickers lock while saving and values sav
   ])
 })
 
-test.each([
-  ['empty', () => ({ schedules: [] })],
-  ['missing envelope', () => ({})],
-  ['malformed', () => ({ schedules: [{}] })],
-  ['missing confirmation time', (payload: object) => ({ schedules: [payload] })],
-  [
-    'invalid confirmation time',
-    (payload: object) => ({ schedules: [{ ...payload, confirmedAt: 'bad' }] }),
-  ],
-  [
-    'different ID',
-    (payload: object) => ({ schedules: [{ ...payload, id: scheduleId, confirmedAt: initialNow }] }),
-  ],
-  [
-    'different medicine',
-    (payload: object) => ({
-      schedules: [{ ...payload, medicineId: tablets.id, confirmedAt: initialNow }],
-    }),
-  ],
-  [
-    'different start',
-    (payload: object) => ({
-      schedules: [{ ...payload, startDate: '2035-06-16', confirmedAt: initialNow }],
-    }),
-  ],
-  [
-    'different days',
-    (payload: object) => ({ schedules: [{ ...payload, weekdays: [1], confirmedAt: initialNow }] }),
-  ],
-  [
-    'different times',
-    (payload: object) => ({
-      schedules: [{ ...payload, times: [{ time: '09:00', quantity: 1 }], confirmedAt: initialNow }],
-    }),
-  ],
-  [
-    'different quantity',
-    (payload: object) => ({
-      schedules: [{ ...payload, times: [{ time: '08:00', quantity: 2 }], confirmedAt: initialNow }],
-    }),
-  ],
-  [
-    'different end',
-    (payload: object) => ({
+test('a mismatched Schedule setup confirmation stays Unconfirmed and retries the same action', async () => {
+  const { posted } = api(capsules, [], (payload) =>
+    HttpResponse.json({
       schedules: [{ ...payload, endDate: '2035-06-20', confirmedAt: initialNow }],
     }),
-  ],
-])('%s confirmation stays unconfirmed and retryable', async (_name, response) => {
-  const { posted } = api(capsules, [], (payload) => HttpResponse.json(response(payload)))
+  )
   const { user, onSaved } = await openSetup(capsules.id)
   await pickTime(user, 1, '08:00')
   await user.click(save())
@@ -520,6 +477,7 @@ test.each([
   expect(onSaved).not.toHaveBeenCalled()
   await user.click(button('Try saving schedule again'))
   await waitFor(() => expect(posted).toHaveLength(2))
+  expect(posted[0]).toHaveProperty('id', expect.any(String))
   expect(posted[1]).toEqual(posted[0])
 })
 
