@@ -36,22 +36,21 @@ pastes into implementation sessions.
    ```
    /implement-issue #<first>
 
-   Then run, in this same session and in this order, each after the previous one is pushed, has its evidence posted and is closed:
+   Then run, in this same session and in this order, each after the previous one's PR is handed off green:
    1. /implement-issue #<next>
 
    Rules for the whole run:
-   - Work unattended. Ask me only if an ambiguity changes scope, a blocker refuses to start, or verify:local keeps failing after two fix attempts. For anything else, pick the reading that matches the cited spec, then note that choice in the evidence comment.
-   - Before each issue, run `git status` and make sure the tree is clean and main is up to date with origin. If unrelated changes are present, stop and tell me.
+   - Work unattended. Ask me only if an ambiguity changes scope, a blocker refuses to start, or Verify keeps failing after two fix attempts. For anything else, pick the reading that matches the cited spec, then note that choice in the PR evidence.
+   - Before each issue, run `git status` and make sure the tree is clean, fetch origin and branch from current origin/main. If unrelated changes are present, stop and tell me.
    - <issue-specific guidance>
    - Between issues, run /compact if your context is heavy, keeping <the shared area these issues touch>.
-   - At the end, give one report covering all issues: what changed, what failed, what's next.
+   - At the end, give one report covering all issues: each PR link, what changed, what failed, what's next.
    ```
 
    Add issue-specific guidance only where it prevents a likely mistake: a scope limit,
    verbatim copy, a product doc rule to rewrite, the exact journey or visual check to run.
    A single-issue session drops the "Then run" block. A parallel session adds: "Work in your
-   own git worktree. Before pushing, rebase on origin/main and rerun verify:local if the
-   rebase pulled anything in."
+   own git worktree. Before handoff, rebase on origin/main and push if main moved."
 
 ## Reply
 

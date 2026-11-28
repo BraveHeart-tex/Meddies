@@ -12,7 +12,7 @@ Bora approved **Direction {{A}}, {{name}}** after comparing three directions ({{
 
 **Evidence**
 
-- Commit {{sha}}, pushed to main: `pnpm verify:local` passed.
+- Commit {{sha}} on main from PR #{{pr}}: Verify passed.
 - `pnpm lab:capture {{n}}-`: all {{count}} frames at normal-text 402x874 with no horizontal
   overflow and no console errors.
 - {{Tests added for any non-lab logic, such as a preview helper.}}

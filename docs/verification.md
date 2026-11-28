@@ -2,11 +2,17 @@
 
 ## Required checks
 
+Main accepts only a squash-merged PR whose head contains current main and whose
+`Merge check` passed; admins included. `Merge check` passes only when every
+[Verify](deployment.md#verify-workflow) job succeeded, so CI Verify is the full gate. Locally,
+run the targeted checks and the issue's own proof (validation order below).
+
 ```sh
 pnpm verify:local
 ```
 
-Runs lint, format check and typecheck in parallel, then, in order, the unit and component
+The full local runner, for recovery and for reproducing a Verify failure. It runs lint,
+format check and typecheck in parallel, then, in order, the unit and component
 tests plus every tooling suite, the build and the integration tests: run alongside, the build
 and integration starve the component tests of CPU. A static-check failure stops before the
 second stage; second-stage checks all run and report even when an earlier one fails, except
@@ -42,8 +48,8 @@ runner is interrupted before tests start. The dev-stack port warning above ident
 completed test stage. CI runs every Vitest project, `tooling` included, in parallel with
 journeys before Release ([Verify workflow](deployment.md#verify-workflow)).
 
-A change touching only `docs/**` and Markdown runs `pnpm format:check` instead; Release
-skips the same paths.
+Locally, a change touching only `docs/**` and Markdown runs `pnpm format:check` instead of
+targeted tests; its PR still runs Verify, and Release skips the same paths.
 
 Formatting is written, not reported, wherever it can be. The agent hook
 (`scripts/agent-format-hook.mjs`, wired in `.claude/settings.json` and `.codex/hooks.json`)
@@ -62,10 +68,12 @@ Validation runs in this order:
    pnpm test:related src/features/schedules/schedule-setup-form.tsx
    ```
 
-2. Run `pnpm verify:local` once, at the end, on the final code. It is the done gate
-   (`pnpm format:check` for a docs-only change).
-3. After a failure, fix it and rerun only the failed cases until they pass, then run
-   `pnpm verify:local` once more.
+2. On the final code, run `pnpm typecheck` and `pnpm exec eslint <changed JS/TS files>`,
+   plus the issue's required proof: new tests, journeys, visual and manual checks
+   (`pnpm format:check` alone for a docs-only change).
+3. Push the branch and open the PR ([handoff](#handoff)); Verify runs on it. After a Verify
+   failure, reproduce it with the failing command (or `pnpm verify:local`), fix it, push, and
+   repeat until `Merge check` is green.
 
 Test commands: [tests/README.md](../tests/README.md).
 
@@ -199,7 +207,7 @@ Add focused checks by risk:
 - **Synthetic vs device:** the `phone` project is Chromium at 402×874 and is never iPhone
   evidence. Device checks (installed-PWA behavior, safe areas, the software keyboard,
   gestures, VoiceOver, resume after suspend with a pending save) are human acceptance: list
-  them as outstanding in the evidence comment. Integrated accessibility review stays in #65.
+  them as outstanding in the evidence. Integrated accessibility review stays in #65.
 
 Pick cases that exercise each relevant risk rather than a viewport × motion × state
 matrix. Batch review after implementation, reuse current evidence for unchanged behavior,
@@ -229,9 +237,29 @@ needs a reason. Prettier rewraps after indentation changes also remain.
 
 ## Evidence
 
-Record one evidence comment in the active GitHub issue: the commit, each acceptance
-criterion's evidence (existing test, new test, or visual or manual check), journeys added or
-changed (by file), visual and manual checks performed, limitations, unverified deployment
-behavior and outstanding device checks. The assertions are the evidence: link them and
-existing evidence rather than copying measurements, results or another issue's evidence.
-Record a failed or blocked check explicitly; it keeps the work open.
+The PR description's `## Evidence` section holds it: the head commit, each acceptance
+criterion's evidence (existing test, new test, or visual or manual check), the checks run
+(local targeted checks and the Verify run), journeys added or changed (by file), visual and
+manual checks performed with their screenshots attached (`gh pr create --attach <png>` or
+`gh pr edit --attach <png>`), limitations, unverified deployment behavior and outstanding
+device checks. The assertions are the evidence: link them and existing evidence rather than
+copying measurements, results or another issue's evidence. After a push that changes
+behavior or proof, refresh the head commit and every affected line. Record a failed or
+blocked check explicitly; it keeps the work open. Work closed without a PR, such as a design
+ticket, records the same evidence in an issue comment ([closing](tickets.md#closing)).
+
+## Handoff
+
+An agent works on its own branch from current main, never on main, and hands off a PR:
+
+1. Commit per [commits](commits.md), push the branch and open the PR to main with
+   `gh pr create`. Its title is the squash commit header; its description follows
+   [PR descriptions](commits.md#pr-descriptions).
+2. Wait for Verify (`gh pr checks <n> --watch`). Fix each failure and push again. When main
+   moves, rebase on it and push, so the PR head contains current main and Verify reruns.
+3. Hand off once `Merge check` is green on the current head and the evidence names that head.
+   Report the PR link, each criterion's evidence and anything unverified. If required proof
+   is blocked, say so instead of handing off.
+
+The maintainer reviews and squash-merges; no approval is required. Merging runs Release on
+main and closes the declared issue ([closing](tickets.md#closing)).

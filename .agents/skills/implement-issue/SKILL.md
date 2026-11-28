@@ -1,13 +1,14 @@
 ---
 name: implement-issue
-description: Implement one Meddies GitHub issue end to end, from reading it to the closing evidence comment.
+description: Implement one Meddies GitHub issue end to end, from reading it to a green PR handed off for merge.
 disable-model-invocation: true
 ---
 
 Implement the GitHub issue the user passed with the invocation (a URL or `#n`). No issue
-given: ask for one. Done is the [AGENTS.md](../../../AGENTS.md) definition: `pnpm
-verify:local` green (`pnpm format:check` for a docs-only change), every criterion ticked,
-pushed to main, evidence posted, issue closed.
+given: ask for one. Done is the [AGENTS.md](../../../AGENTS.md) definition: a PR to main
+with a green `Merge check` on its current head, declaring the issue and carrying evidence for
+every criterion, handed off to the maintainer, who reviews and merges. Never push to main or
+close the issue yourself; the merge closes it.
 
 Work **lean** throughout:
 
@@ -93,22 +94,32 @@ Work **lean** throughout:
    _Done when_ every criterion points to code plus its named evidence, and every finding
    is fixed or rejected with a one-line reason.
 
-7. **Verify.** Start broad verification only after implementation, tests, captures,
-   outlines, review fixes and targeted checks are complete, with no changes ongoing.
-   For code changes, run `pnpm verify:local >"$log" 2>&1` once, then read the
-   summary. On failure, fix the cause, rerun only the failed cases until they pass, then
-   run `pnpm verify:local` once more. For docs-only changes, run `pnpm format:check` instead.
-   An environment blocker is not a passing result; stop before shipping if required
-   verification cannot complete.
-   _Done when_ the required final verification exits 0 on the final code or docs.
+7. **Verify locally.** Start only after implementation, tests, captures, outlines, review
+   fixes and targeted checks are complete, with no changes ongoing. Run the final local
+   checks from [validation order](../../../docs/verification.md#required-checks):
+   `pnpm typecheck`, changed-file lint and the issue's required proof; `pnpm format:check`
+   alone for docs-only changes. `pnpm verify:local` is for reproducing a Verify failure, not
+   a required step. An environment blocker is not a passing result; report blocked required
+   proof instead of handing off.
+   _Done when_ the final local checks exit 0 on the final code or docs.
 
-8. **Ship.** Commit per [commits](../../../docs/commits.md) and push to main. Write the
-   [evidence](../../../docs/verification.md#evidence) comment to a file citing the pushed
-   commit, then run `node scripts/finish-issue.mjs <n> --evidence <file>` per
-   [closing](../../../docs/tickets.md#closing), adding `--attach <png>` per reviewed
-   screenshot when visual checks are evidence. Close without waiting for Release.
-   _Done when_ the command exits 0: it read back every box ticked, the evidence comment
-   with its uploaded links, the closed issue and Project Status Done.
+8. **Open the PR.** Work on a branch from current `origin/main` (`git switch -c
+<n>-<slug> origin/main` before the first commit). Commit per
+   [commits](../../../docs/commits.md), push the branch, then write the description per
+   [PR descriptions](../../../docs/commits.md#pr-descriptions) to a file:
+   `Complete Meddies issue: #<n>` and an `## Evidence` section per
+   [evidence](../../../docs/verification.md#evidence) naming the head commit. Run
+   `gh pr create --base main --title "<type(#n): subject>" --body-file "$body_file"`, adding
+   `--attach <png>` per reviewed screenshot when visual checks are evidence. Read the saved
+   body back.
+   _Done when_ the PR exists with the declaration and evidence for every criterion.
+
+9. **Hand off green.** Follow [handoff](../../../docs/verification.md#handoff): wait with
+   `gh pr checks <n> --watch`; on a failure read the failed job log
+   (`gh run view <run> --log-failed`), fix, push and refresh the evidence. When main has
+   moved, rebase, push and refresh the head commit in the evidence. Do not merge, do not
+   run `finish-issue.mjs`.
+   _Done when_ `Merge check` is green on the current head and the evidence names that head.
 
 ## UI build routing
 
@@ -130,4 +141,4 @@ Work **lean** throughout:
   [visual verification](../../../docs/verification.md#visual-verification) baseline and
   final evidence still apply.
 
-Report: what changed, what failed, what's next.
+Report: the PR link, what changed, what failed, what's next.
