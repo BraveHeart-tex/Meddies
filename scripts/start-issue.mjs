@@ -1,11 +1,11 @@
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { assertRepositoryIssue, ensureProjectIssue, readProject, repo } from './meddies-project.mjs'
 
 // Starts work on an issue (docs/tickets.md "Selecting work"): reads the issue and its
 // relations, refuses a closed issue or an open blocker, then sets the issue's Meddies Project
-// Status to In progress, adding it to the Project first. Project, field and option IDs are
+// Status to In progress, adding it to the Project first. Field and option IDs are
 // looked up by name. Prints { issue, parent, subIssues, blockedBy, base, design } as JSON.
-const OWNER = 'BraveHeart-tex'
 const SCOPE_HINT = 'Run `gh auth refresh -s project` to grant the project scope.'
 
 function run(execute, command, args) {
@@ -17,7 +17,7 @@ function run(execute, command, args) {
     })
   } catch (error) {
     const stderr = String(error.stderr ?? '').trim()
-    const scope = args[0] === 'project' && /scope/i.test(stderr) ? `\n${SCOPE_HINT}` : ''
+    const scope = /scope/i.test(stderr) ? `\n${SCOPE_HINT}` : ''
     throw new Error(`${command} ${args.slice(0, 2).join(' ')} failed: ${stderr}${scope}`)
   }
 }
@@ -32,28 +32,11 @@ function refusal(issue) {
 
 function setInProgress(issue, runCommand) {
   const gh = (...args) => JSON.parse(runCommand('gh', args))
-  const { projects } = gh('project', 'list', '--owner', OWNER, '--format', 'json')
-  const project = projects.find((p) => p.title === 'Meddies')
-  if (!project) throw new Error(`Meddies Project not found for ${OWNER}.\n${SCOPE_HINT}`)
-  const number = String(project.number)
-  const { fields } = gh('project', 'field-list', number, '--owner', OWNER, '--format', 'json')
-  const status = fields.find((field) => field.name === 'Status')
+  const project = readProject(gh)
+  const status = project.status
   const option = status?.options?.find((o) => o.name === 'In progress')
   if (!option) throw new Error('Meddies Project has no Status option named In progress.')
-  const { items } = gh(
-    'project',
-    'item-list',
-    number,
-    '--owner',
-    OWNER,
-    '--format',
-    'json',
-    '--limit',
-    '1000',
-  )
-  const item =
-    items.find((i) => i.content?.url === issue.url) ??
-    gh('project', 'item-add', number, '--owner', OWNER, '--url', issue.url, '--format', 'json')
+  const item = ensureProjectIssue(gh, project, issue)
   runCommand('gh', [
     ...['project', 'item-edit', '--id', item.id, '--project-id', project.id],
     ...['--field-id', status.id, '--single-select-option-id', option.id],
@@ -69,10 +52,13 @@ export function startIssue(ref, execute = execFileSync) {
         'issue',
         'view',
         ref,
+        '--repo',
+        repo,
         '--json',
         'number,title,url,body,state,comments,parent,subIssues,blockedBy',
       ]),
     )
+    assertRepositoryIssue(raw)
     const relation = ({ number, state }) => ({ number, state })
     const issue = {
       ...raw,

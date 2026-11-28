@@ -3,6 +3,13 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  assertRepositoryIssue,
+  findProjectIssue,
+  readProject,
+  readProjectItem,
+  repo,
+} from './meddies-project.mjs'
 
 // Closes an issue (docs/tickets.md "Closing"), the counterpart to start-issue.mjs. Preflight
 // writes nothing to GitHub and refuses a closed issue, an Acceptance criteria section with no
@@ -12,7 +19,6 @@ import { fileURLToPath } from 'node:url'
 // as a design approval comment), closes the issue as completed and sets Project Status to
 // Done, reading each write back. A failed step stops the run and reports the verified writes
 // and the remaining steps.
-const OWNER = 'BraveHeart-tex'
 const SCOPE_HINT = 'Run `gh auth refresh -s project` to grant the project scope.'
 const USAGE = [
   'Usage: node scripts/finish-issue.mjs <n> --evidence <file> [--attach <png>...]',
@@ -30,7 +36,7 @@ function run(execute, command, args) {
     })
   } catch (error) {
     const stderr = String(error.stderr ?? error.message ?? '').trim()
-    const scope = args[0] === 'project' && /scope/i.test(stderr) ? `\n${SCOPE_HINT}` : ''
+    const scope = /scope/i.test(stderr) ? `\n${SCOPE_HINT}` : ''
     throw new Error(`${command} ${args.slice(0, 2).join(' ')} failed: ${stderr}${scope}`)
   }
 }
@@ -66,21 +72,9 @@ export function tickCriteria(body) {
   return { body: lines.join('\n'), boxes }
 }
 
-function findProject(gh) {
-  const { projects } = gh('project', 'list', '--owner', OWNER, '--format', 'json')
-  const project = projects.find((p) => p.title === 'Meddies')
-  if (!project) throw new Error(`Meddies Project not found for ${OWNER}.\n${SCOPE_HINT}`)
-  return { ...project, number: String(project.number) }
-}
-
-const findItem = (gh, project, url) =>
-  gh(
-    ...['project', 'item-list', project.number, '--owner', OWNER],
-    ...['--format', 'json', '--limit', '1000'],
-  ).items.find((i) => i.content?.url === url)
-
 function preflight({ ref, evidence, existing, attach }, gh, runCommand) {
-  const issue = gh('issue', 'view', ref, '--json', 'number,url,state,body,comments')
+  const issue = gh('issue', 'view', ref, '--repo', repo, '--json', 'number,url,state,body,comments')
+  assertRepositoryIssue(issue)
   const ticked = tickCriteria(issue.body)
   if (issue.state !== 'OPEN') throw new Error(`#${issue.number} is ${issue.state.toLowerCase()}.`)
   if (!ticked.boxes) throw new Error(`#${issue.number} has no Acceptance criteria boxes.`)
@@ -111,20 +105,11 @@ function preflight({ ref, evidence, existing, attach }, gh, runCommand) {
     )
   }
 
-  const project = findProject(gh)
-  const { fields } = gh(
-    'project',
-    'field-list',
-    project.number,
-    '--owner',
-    OWNER,
-    '--format',
-    'json',
-  )
-  const status = fields.find((field) => field.name === 'Status')
+  const project = readProject(gh)
+  const status = project.status
   const done = status?.options?.find((o) => o.name === 'Done')
   if (!done) throw new Error('Meddies Project has no Status option named Done.')
-  const item = findItem(gh, project, issue.url)
+  const item = findProjectIssue(gh, project, issue.number)
   if (!item) {
     throw new Error(`#${issue.number} is not in the Meddies Project; run start-issue.mjs first.`)
   }
@@ -203,7 +188,7 @@ function finish(options, runCommand) {
           ...['project', 'item-edit', '--id', item.id, '--project-id', project.id],
           ...['--field-id', status.id, '--single-select-option-id', done.id],
         ])
-        const read = findItem(gh, project, issue.url)?.status ?? null
+        const read = readProjectItem(gh, project, item.id).status?.name ?? null
         if (read !== 'Done') throw new Error(`Read-back: #${number} Project Status is ${read}.`)
       },
     ],

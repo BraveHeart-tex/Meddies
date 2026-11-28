@@ -6,21 +6,15 @@ How to write GitHub issues so an agent can finish them without guessing. The
 behavior lives in [docs/product](product/README.md); an issue cites and narrows it, never
 restates or changes it. A behavior change lands as a doc edit in the same change set.
 
-Use `gh` from the repo root (it targets `BraveHeart-tex/Meddies`). Issues live in the
-**Meddies** GitHub Project (`gh project list --owner BraveHeart-tex`), which holds
-`Status` (Backlog, To Do, In progress, In Review, Done, Canceled), `Priority` (Urgent, High, Medium, Low) and the
-legacy `Linear ID`.
+Use the [Meddies GitHub Project](https://github.com/users/BraveHeart-tex/projects/3) for
+issue discovery, including related tickets and legacy `FE-n` references in the `Linear ID`
+field. Use direct issue reads for known numbers or URLs. Ticket commands target Meddies
+Project 3, read fields by name and look up individual Project items by issue number.
+The Project holds Status, Priority and Linear ID.
 
 ## Selecting work
 
-When asked for the next task, take the top row of the Project's **Next up** view: open,
-`ready-for-agent`, no open blocker, highest Priority, then lowest number. From the CLI:
-
-```sh
-node scripts/next-issue.mjs | jq '{next, candidates}'
-```
-
-`next: null` means nothing is ready. Start the selected issue with one command:
+Select work in the Meddies Project. Start the selected issue with one command:
 
 ```sh
 node scripts/start-issue.mjs <n|url>
@@ -29,7 +23,7 @@ node scripts/start-issue.mjs <n|url>
 It refuses a closed issue or one with an open blocker, naming the reason. Otherwise it sets
 the issue's Project `Status` to In progress (adding the issue to the Project first) and
 prints JSON: the issue with its body and comments, `parent`, `subIssues`, `blockedBy`, the
-review baseline commit `base`, and `design` (title starts `Design:`). Both scripts need the
+review baseline commit `base`, and `design` (title starts `Design:`). Ticket commands need the
 `project` scope (`gh auth refresh -s project`).
 
 ## Shape
@@ -164,8 +158,10 @@ node scripts/create-issue.mjs --title "..." --body-file "$body_file" \
   [template](#template), [criteria](#criteria) and [size](#size) rules, naming each
   problem. Check a body for `gh issue edit` with `node scripts/ticket-lint.mjs <file>`.
   Design tickets (title starts `Design:`) follow the design-ticket skill instead.
-- The command resolves Meddies Project metadata, adds the issue, sets Backlog and applicable
-  Priority, then reads back title, exact body, labels, relationships and Project fields.
+- The command reads Status and Priority from the Meddies Project and checks that native
+  relationship targets belong to it. It creates the repository issue, attaches it to the
+  Project if needed, sets Backlog and applicable Priority, then reads back title, exact
+  body, labels, relationships and Project fields.
   Success prints only compact JSON with the number, URL, Status, applicable Priority,
   labels and verified relationships.
 - On partial failure, it exits non-zero with the existing issue URL, unfinished steps and

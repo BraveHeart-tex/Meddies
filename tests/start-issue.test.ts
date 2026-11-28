@@ -25,31 +25,6 @@ function start(
       subIssues: { nodes: [{ number: 43, state: 'CLOSED' }] },
       blockedBy: { nodes: blockedBy },
     },
-    'project list': {
-      projects: [
-        { number: 1, title: 'Other', id: 'PVT_other' },
-        { number: 3, title: 'Meddies', id: 'PVT_meddies' },
-      ],
-    },
-    'project field-list': {
-      fields: [
-        { id: 'F_priority', name: 'Priority', options: [{ id: 'O_high', name: 'In progress' }] },
-        {
-          id: 'F_status',
-          name: 'Status',
-          options: [
-            { id: 'O_todo', name: 'To Do' },
-            { id: 'O_progress', name: 'In progress' },
-          ],
-        },
-      ],
-    },
-    'project item-list': {
-      items: [
-        { id: 'I_other', content: { url: url.replace('42', '41') } },
-        ...(inProject ? [{ id: 'I_existing', content: { url } }] : []),
-      ],
-    },
     'project item-add': { id: 'I_added' },
     'project item-edit': {},
   }
@@ -59,9 +34,50 @@ function start(
     if (command === 'git' && args.join(' ') === 'rev-parse HEAD') return head + '\n'
     if (command === 'gh') {
       calls.push(args)
-      if (args[0] === 'project' && missingScope) {
+      if (key === 'api graphql' && missingScope) {
         throw Object.assign(new Error('gh exited with code 1'), {
           stderr: 'error: your authentication token is missing required scopes [read:project]',
+        })
+      }
+      if (key === 'api graphql') {
+        const query = args[3]
+        if (query.includes('query MeddiesProject(')) {
+          expect(args).toEqual(expect.arrayContaining(['owner=BraveHeart-tex', 'number=3']))
+          return JSON.stringify({
+            data: {
+              user: {
+                projectV2: {
+                  title: 'Meddies',
+                  id: 'PVT_meddies',
+                  status: {
+                    id: 'F_status',
+                    options: [{ id: 'O_progress', name: 'In progress' }],
+                  },
+                },
+              },
+            },
+          })
+        }
+        expect(args).toEqual(expect.arrayContaining(['project=PVT_meddies', 'filter=#42']))
+        return JSON.stringify({
+          data: {
+            node: {
+              items: {
+                nodes: inProject
+                  ? [
+                      {
+                        id: 'I_existing',
+                        content: {
+                          number: 42,
+                          repository: { nameWithOwner: 'BraveHeart-tex/Meddies' },
+                        },
+                      },
+                    ]
+                  : [],
+                pageInfo: { hasNextPage: false },
+              },
+            },
+          },
         })
       }
       if (Object.hasOwn(responses, key))
@@ -72,7 +88,10 @@ function start(
   return { ...startIssue('42', execute), calls }
 }
 
-const projectCalls = (calls: string[][]) => calls.filter((args) => args[0] === 'project')
+const projectCalls = (calls: string[][]) =>
+  calls.filter(
+    ([command, kind]) => command === 'project' || (command === 'api' && kind === 'graphql'),
+  )
 const edit = (item: string) => [
   ...['project', 'item-edit', '--id', item, '--project-id', 'PVT_meddies'],
   ...['--field-id', 'F_status', '--single-select-option-id', 'O_progress'],

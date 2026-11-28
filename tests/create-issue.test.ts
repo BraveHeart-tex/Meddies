@@ -31,6 +31,9 @@ type FakeState = {
   creates: number
   fields: Record<string, string>
   issue?: SavedIssue
+  inProject?: boolean
+  autoAdd?: boolean
+  missingTarget?: number
   fail?: boolean
   failAt?: string | null
   mismatch?: string
@@ -43,21 +46,9 @@ function fakeGh(state: FakeState, args: string[]): unknown {
   if (state.failAt === command) throw new Error('injected failure')
 
   switch (command) {
-    case 'project list':
-      return { projects: [{ title: 'Meddies', id: 'P', number: 3 }] }
-    case 'project field-list':
-      return {
-        fields: [
-          { name: 'Status', id: 'S', options: [{ name: 'Backlog', id: 'B' }] },
-          {
-            name: 'Priority',
-            id: 'F',
-            options: ['Urgent', 'High', 'Medium', 'Low'].map((name) => ({ name, id: name })),
-          },
-        ],
-      }
     case 'issue create':
       state.creates++
+      if (state.autoAdd) state.inProject = true
       state.issue = {
         number: 42,
         url: 'https://github.com/BraveHeart-tex/Meddies/issues/42',
@@ -77,20 +68,64 @@ function fakeGh(state: FakeState, args: string[]): unknown {
         ...(state.mismatch === 'relationships' ? { parent: { number: 999 } } : {}),
       }
     case 'project item-add':
+      if (state.inProject) throw new Error('Content already exists in this project')
+      state.inProject = true
       return { id: 'I' }
     case 'project item-edit':
       if (state.fail) throw new Error('injected denial')
       state.fields[value('--field-id')] = value('--single-select-option-id')
       return {}
     case 'api graphql': {
-      const nodes =
-        state.mismatch === 'fields'
-          ? []
-          : Object.entries(state.fields).map(([key, name]) => ({
-              name: name === 'B' ? 'Backlog' : name,
-              field: { name: key === 'S' ? 'Status' : 'Priority' },
-            }))
-      return { data: { node: { fieldValues: { nodes } } } }
+      if (args[3].includes('query MeddiesProject(')) {
+        expect(args).toEqual(expect.arrayContaining(['owner=BraveHeart-tex', 'number=3']))
+        return {
+          data: {
+            user: {
+              projectV2: {
+                title: 'Meddies',
+                id: 'P',
+                status: { id: 'S', options: [{ name: 'Backlog', id: 'B' }] },
+                priority: {
+                  id: 'F',
+                  options: ['Urgent', 'High', 'Medium', 'Low'].map((name) => ({ name, id: name })),
+                },
+              },
+            },
+          },
+        }
+      }
+      if (args[3].includes('query MeddiesProjectItem(')) {
+        expect(args).toContain('id=I')
+        return {
+          data: {
+            node: {
+              project: { id: 'P' },
+              status:
+                state.mismatch === 'fields'
+                  ? null
+                  : { name: state.fields.S === 'B' ? 'Backlog' : undefined },
+              priority: { name: state.fields.F },
+            },
+          },
+        }
+      }
+      const number = Number(args.find((arg) => arg.startsWith('filter=#'))?.slice(8))
+      expect(number).toBeGreaterThan(0)
+      expect(args).toContain('project=P')
+      const exists = number === 42 ? state.inProject : number !== state.missingTarget
+      const node = {
+        id: 'I',
+        content: {
+          number,
+          fullDatabaseId: String(1000 + number),
+          repository: { nameWithOwner: 'BraveHeart-tex/Meddies' },
+        },
+      }
+      return {
+        data: {
+          node: { items: { nodes: exists ? [node] : [], pageInfo: { hasNextPage: false } } },
+        },
+      }
     }
     case 'api --method': {
       const endpoint = value('POST')
@@ -172,6 +207,23 @@ test('creates once, preserves exact body and verifies relationships and Project 
   expect(h.state().creates).toBe(1)
   expect(h.state().issue?.body).toBe(h.body)
   expect(h.state().fields).toEqual({ S: 'B', F: 'High' })
+})
+
+test('uses the existing Project item when a Project workflow adds the new issue', () => {
+  const h = harness()
+  h.patch({ autoAdd: true })
+  const result = h.invoke()
+  expect(result.status, result.stderr).toBe(0)
+  expect(h.state().calls.some((args) => args[1] === 'item-add')).toBe(false)
+})
+
+test('refuses a relationship target outside the Meddies Project before creating an issue', () => {
+  const h = harness()
+  h.patch({ missingTarget: 8 })
+  const result = h.invoke(['--blocked-by', '8'])
+  expect(result.status).toBe(1)
+  expect(result.stderr).toContain('Relationship target #8 is not an issue in the Meddies Project')
+  expect(h.state().creates).toBe(0)
 })
 
 test.each([
@@ -329,7 +381,7 @@ test.each(['--parent', '--blocked-by', '--resume'])(
 test('resume diagnostics retain identity even when metadata discovery fails', () => {
   const h = harness()
   expect(h.invoke().status).toBe(0)
-  h.patch({ failAt: 'project list' })
+  h.patch({ failAt: 'api graphql' })
   const result = h.invoke(['--resume', '42'])
   expect(result.status).toBe(1)
   expect(result.stderr).toContain('https://github.com/BraveHeart-tex/Meddies/issues/42')

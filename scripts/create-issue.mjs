@@ -1,13 +1,18 @@
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import {
+  ensureProjectIssue,
+  findProjectIssue,
+  readProject,
+  readProjectItem,
+  repo,
+} from './meddies-project.mjs'
 import { lintTicket } from './ticket-lint.mjs'
 
 // Creates or resumes one issue under docs/tickets.md. All local inputs and Project
 // metadata are validated before writes. Resume reconciles the same expected specification;
 // it refuses different content rather than turning this into a generic editing command.
-const repo = 'BraveHeart-tex/Meddies'
-const owner = 'BraveHeart-tex'
 const states = ['needs-triage', 'needs-info', 'ready-for-agent', 'ready-for-human', 'wontfix']
 const priorities = ['Urgent', 'High', 'Medium', 'Low']
 function runGh(...args) {
@@ -106,35 +111,14 @@ export function createIssue(args, execute = runGh) {
     const labels = [options.category, ...areas, state]
     if (resume) issue = { number: resume, url: `https://github.com/${repo}/issues/${resume}` }
     unfinished.shift()
-    const project = json(
-      'project',
-      'list',
-      '--owner',
-      owner,
-      '--format',
-      'json',
-      '--limit',
-      '1000',
-    ).projects.find((p) => p.title === 'Meddies')
-    if (!project) throw new Error('Meddies Project not found')
-    const fields = json(
-      'project',
-      'field-list',
-      String(project.number),
-      '--owner',
-      owner,
-      '--format',
-      'json',
-      '--limit',
-      '1000',
-    ).fields
+    const project = readProject(json)
     const selections = [
       ['Status', 'Backlog'],
       ['Priority', options.priority],
     ]
       .filter(([, value]) => value)
       .map(([name, value]) => {
-        const field = fields.find((f) => f.name === name)
+        const field = project[name.toLowerCase()]
         const option = field?.options?.find((o) => o.name === value)
         if (!option) throw new Error(`Missing Project option ${name}: ${value}`)
         return { name, value, field: field.id, option: option.id }
@@ -149,16 +133,14 @@ export function createIssue(args, execute = runGh) {
         '--json',
         'number,url,title,body,labels,parent,blockedBy',
       )
-    // Resolve relationship targets before creation, including private/deleted/invalid references.
     const targets = new Map(
-      [...(parent ? [parent] : []), ...blockers].map((n) => [
-        n,
-        json('api', `repos/${repo}/issues/${n}`),
-      ]),
+      [...new Set([...(parent ? [parent] : []), ...blockers])].map((n) => {
+        const target = findProjectIssue(json, project, n)
+        if (!target?.content.fullDatabaseId)
+          throw new Error(`Relationship target #${n} is not an issue in the Meddies Project.`)
+        return [n, target.content.fullDatabaseId]
+      }),
     )
-    for (const target of targets.values())
-      if (target.pull_request)
-        throw new Error('Relationships must reference issues, not pull requests')
     unfinished.shift()
     const verifyContent = (saved) => {
       if (
@@ -215,21 +197,11 @@ export function createIssue(args, execute = runGh) {
           'POST',
           `repos/${repo}/issues/${issue.number}/dependencies/blocked_by`,
           '-F',
-          `issue_id=${targets.get(blocker).id}`,
+          `issue_id=${targets.get(blocker)}`,
         )
     }
     unfinished.shift()
-    const item = json(
-      'project',
-      'item-add',
-      String(project.number),
-      '--owner',
-      owner,
-      '--url',
-      issue.url,
-      '--format',
-      'json',
-    )
+    const item = ensureProjectIssue(json, project, issue)
     for (const selection of selections)
       run(
         'project',
@@ -254,20 +226,11 @@ export function createIssue(args, execute = runGh) {
       )
     )
       throw new Error('Read-back mismatch: relationships')
-    // Query the exact item, avoiding truncated Project item lists.
-    const result = json(
-      'api',
-      'graphql',
-      '-f',
-      `query=query($id:ID!){node(id:$id){... on ProjectV2Item{fieldValues(first:100){nodes{... on ProjectV2ItemFieldSingleSelectValue{name field{... on ProjectV2SingleSelectField{name}}}}}}}}`,
-      '-f',
-      `id=${item.id}`,
-    )
-    const actual = result.data.node.fieldValues.nodes
+    const actual = readProjectItem(json, project, item.id)
     for (const { name, value } of selections)
-      if (!actual.some((f) => f.field?.name === name && f.name === value))
+      if (actual[name.toLowerCase()]?.name !== value)
         throw new Error(`Read-back mismatch: Project ${name}`)
-    if (options['parent-ticket'] && actual.some((f) => f.field?.name === 'Priority' && f.name))
+    if (options['parent-ticket'] && actual.priority?.name)
       throw new Error('Read-back mismatch: parent ticket has Priority')
     unfinished.shift()
     return {

@@ -85,24 +85,50 @@ function setup(fake: Fake = {}) {
         issue.state = 'CLOSED'
         issue.stateReason = 'COMPLETED'
         return ''
-      case 'project list':
-        return JSON.stringify({ projects: [{ number: 3, title: 'Meddies', id: 'PVT_meddies' }] })
-      case 'project field-list':
-        return JSON.stringify({
-          fields: [
-            {
-              id: 'F_status',
-              name: 'Status',
-              options: [
-                { id: 'O_progress', name: 'In progress' },
-                ...(fake.doneOption === false ? [] : [{ id: 'O_done', name: 'Done' }]),
-              ],
+      case 'api graphql':
+        if (args[3].includes('query MeddiesProject(')) {
+          return JSON.stringify({
+            data: {
+              user: {
+                projectV2: {
+                  title: 'Meddies',
+                  id: 'PVT_meddies',
+                  status: {
+                    id: 'F_status',
+                    options: fake.doneOption === false ? [] : [{ id: 'O_done', name: 'Done' }],
+                  },
+                },
+              },
             },
-          ],
-        })
-      case 'project item-list':
+          })
+        }
+        if (args[3].includes('query MeddiesProjectItem(')) {
+          expect(args).toContain('id=I_42')
+          return JSON.stringify({
+            data: { node: { project: { id: 'PVT_meddies' }, status: { name: status } } },
+          })
+        }
+        expect(args).toEqual(expect.arrayContaining(['project=PVT_meddies', 'filter=#42']))
         return JSON.stringify({
-          items: fake.inProject === false ? [] : [{ id: 'I_42', status, content: { url } }],
+          data: {
+            node: {
+              items: {
+                nodes:
+                  fake.inProject === false
+                    ? []
+                    : [
+                        {
+                          id: 'I_42',
+                          content: {
+                            number: 42,
+                            repository: { nameWithOwner: 'BraveHeart-tex/Meddies' },
+                          },
+                        },
+                      ],
+                pageInfo: { hasNextPage: false },
+              },
+            },
+          },
         })
       case 'project item-edit':
         status = flag('--single-select-option-id') === 'O_done' ? 'Done' : status
