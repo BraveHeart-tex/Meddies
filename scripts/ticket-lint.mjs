@@ -12,7 +12,7 @@ export const sizeLimits = {
   Proofs: 6,
 }
 const required = ['What to build', 'Ownership', 'Size', 'Acceptance criteria']
-const optional = ['Rules', 'Current state']
+const optional = ['Rules', 'Current state', 'Frame-to-proof mapping']
 const maxCriteria = 8
 const doneDefinition =
   /verify:local|push(ed)? to main|evidence comment|close (the|this) (issue|ticket)/i

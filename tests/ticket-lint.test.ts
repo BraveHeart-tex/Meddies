@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { lintTicket } from '../scripts/ticket-lint.mjs'
 
@@ -25,6 +26,51 @@ const ticket = ({
 test('a template-shaped ticket passes', () => {
   expect(lintTicket(ticket())).toEqual([])
   expect(lintTicket(ticket({ extra: '## Rules\n- x\n## Current state\n- y' }))).toEqual([])
+})
+
+test('the filled design build-ticket template passes with a frame-to-proof mapping', () => {
+  const template = readFileSync('.agents/skills/design-ticket/templates/build-ticket.md', 'utf8')
+  const replacements = {
+    '{{frames this ticket builds, such as {{n}}·A1, A2}}': '292·A1, A2, A3, A5',
+    'New screens {{n}}': 'New screens 1',
+    'Owned frames {{n}}': 'Owned frames 4',
+    'Proofs {{n}}': 'Proofs 2',
+    '{{n}}': '292',
+    "{{The behaviour from the user's side, at most 150 words.}}":
+      'Confirm restoring an Archived medicine.',
+    '{{link}}': 'https://github.com/BraveHeart-tex/Meddies/issues/292',
+    '{{What the screen shows and does, with copy in quotes.}}': 'Show “Restore medicine”.',
+    '{{Rules from "Decided by Bora after approval", each on its own line.}}':
+      'Cancel returns to the list.',
+    '{{files}}': 'restore-dialog.tsx',
+    '{{existing items it builds on, with their owner issue}}': 'Archived medicine list (#291)',
+    '{{each nearby item and the issue that owns it}}': 'Restore command (#323)',
+    '{{Built frame ID or named production state}}': '292·A1',
+    '{{Default, navigation steps or fixture setup}}': 'Default',
+    '{{direct uploaded capture URL}}':
+      'https://github.com/user-attachments/assets/restore-confirmation',
+    '{{Repeat for every owned frame}}': '292·A2',
+    '{{Direct capture link}}': 'https://github.com/user-attachments/assets/restore-cancel',
+    '{{One checkable outcome}}': 'The confirmation shows “Restore medicine”',
+    '{{one proof}}': 'Built frame capture',
+  }
+  let body = template
+  for (const [placeholder, value] of Object.entries(replacements)) {
+    body = body.replaceAll(placeholder, value)
+  }
+  for (const value of [
+    'Show the cancel action.',
+    'Show the restored medicine.',
+    'Cancel confirmation',
+    'Open the confirmation and select Cancel',
+    'The list shows the restored medicine',
+    'Component test',
+  ]) {
+    body = body.replace('{{...}}', value)
+  }
+
+  expect(body).not.toContain('{{')
+  expect(lintTicket(body)).toEqual([])
 })
 
 test('sections are required, unique and known', () => {

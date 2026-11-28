@@ -81,6 +81,8 @@ Migrations 0 · New screens 1 · Owned frames 2 · Journeys 0 · Proofs 3
   controls also lists every test and browser spec that drives them, found by searching
   `tests/` for their labels; each counts toward Proofs. Omit the section when nothing
   relevant is missing.
+- **Frame-to-proof mapping** is an optional ticket section. Approved design handoffs
+  require it as described in the [build ticket template](../.agents/skills/design-ticket/templates/build-ticket.md).
 - The parent is a native sub-issue link and blockers are native blocked-by relationships,
   not body sections. Add a "Blocked by" section only when a blocker cannot be linked.
 
