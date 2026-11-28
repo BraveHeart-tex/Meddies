@@ -1,21 +1,39 @@
 #!/usr/bin/env node
 // Captures design lab frames for review: one normal-text 402x874 PNG plus one JSON summary
-// per frame, with the Next dev overlay hidden. Exits non-zero on horizontal overflow or a
-// console error. Probes the configured browser before builds or services; setup stays explicit.
+// per frame, plus an optional high-DPI PNG. Hides the Next dev overlay and exits non-zero
+// on horizontal overflow or a console error. Probes the browser before builds or services.
 // Runs its own next dev, so stop pnpm dev first. Holds the generated Next.js files lock
 // (scripts/next-output-lock.mjs) from before the preflight; its journeys re-enter it.
-// Usage: pnpm lab:capture <slug-prefix> [--out <dir>]   e.g. pnpm lab:capture 241-
+// Usage: pnpm lab:capture <slug-prefix> [--out <dir>] [--scale <n>]
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { parseArgs } from 'node:util'
 import * as playwright from '@playwright/test'
 import { browserUse } from './browser-config.mjs'
 import { devServerError } from './dev-server.mjs'
 import { acquireNextOutputLock } from './next-output-lock.mjs'
 
-const [prefix, flag, dir] = process.argv.slice(2)
-if (!prefix || prefix.startsWith('-') || (flag && (flag !== '--out' || !dir))) {
-  console.error('Usage: pnpm lab:capture <slug-prefix> [--out <dir>]   e.g. pnpm lab:capture 241-')
+const [prefix, ...args] = process.argv.slice(2)
+let dir
+let scale
+try {
+  if (!prefix || prefix.startsWith('-')) throw new Error('Provide a frame slug prefix.')
+  const { values } = parseArgs({
+    args,
+    options: { out: { type: 'string' }, scale: { type: 'string' } },
+  })
+  dir = values.out
+  if (dir === '') throw new Error('--out requires a directory.')
+  if (values.scale !== undefined) {
+    scale = Number(values.scale)
+    if (!/^\d+$/.test(values.scale) || !Number.isSafeInteger(scale) || scale <= 1) {
+      throw new Error('--scale requires an integer greater than 1.')
+    }
+  }
+} catch (error) {
+  console.error(`[lab:capture] ${error.message}`)
+  console.error('Usage: pnpm lab:capture <slug-prefix> [--out <dir>] [--scale <n>]')
   process.exit(2)
 }
 const devServer = await devServerError(process.cwd())
@@ -70,6 +88,7 @@ const status = run(
     MEDDIES_BROWSER_DEV: '1',
     MEDDIES_VISUAL_OUT: out,
     MEDDIES_LAB_PREFIX: prefix,
+    MEDDIES_LAB_SCALE: scale === undefined ? '' : String(scale),
   },
 )
 console.log(`[lab:capture] ${status === 0 ? 'PASS' : 'FAIL'}: captures and JSON in ${out}`)

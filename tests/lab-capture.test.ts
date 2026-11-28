@@ -1,3 +1,4 @@
+import { resolve } from 'node:path'
 import { afterEach, expect, test, vi } from 'vitest'
 
 const { launch, spawnSync } = vi.hoisted(() => ({ launch: vi.fn(), spawnSync: vi.fn() }))
@@ -16,8 +17,8 @@ afterEach(() => {
   vi.resetModules()
 })
 
-async function capture() {
-  process.argv = ['node', 'scripts/lab-capture.mjs', '109-']
+async function capture(...args: string[]) {
+  process.argv = ['node', 'scripts/lab-capture.mjs', '109-', ...args]
   const status = vi.spyOn(process, 'exit').mockImplementation(() => {
     throw exit
   })
@@ -60,6 +61,7 @@ test('successful preflight closes Chromium before continuing the existing captur
   expect(spawnSync.mock.calls[1][2].env).toMatchObject({
     MEDDIES_BROWSER_DEV: '1',
     MEDDIES_LAB_PREFIX: '109-',
+    MEDDIES_LAB_SCALE: '',
   })
   expect(status).toHaveBeenCalledWith(0)
 })
@@ -75,4 +77,29 @@ test('a probe failure after launch closes Chromium and stops builds and services
   expect(status).toHaveBeenCalledWith(1)
   expect(spawnSync).not.toHaveBeenCalled()
   expect(error.mock.calls.flat().join('\n')).toContain('browser disconnected')
+})
+
+test.each([
+  ['--scale', '3', '--out', 'captures'],
+  ['--out', 'captures', '--scale', '3'],
+])('accepts capture flags in either order: %s %s %s %s', async (...args) => {
+  launch.mockResolvedValue({ newPage: vi.fn(), close: vi.fn() })
+  const { status } = await capture(...args)
+  expect(status).toHaveBeenCalledWith(0)
+  expect(spawnSync.mock.calls[1][2].env).toMatchObject({
+    MEDDIES_LAB_SCALE: '3',
+    MEDDIES_VISUAL_OUT: resolve('captures'),
+  })
+})
+
+test.each(
+  [[], ['--out', 'captures'], ['1'], ['0'], ['-3'], ['2.5'], ['3x'], ['Infinity']].map((args) => ({
+    args,
+  })),
+)('rejects missing or invalid scale before preflight: $args', async ({ args }) => {
+  const { status, error } = await capture('--scale', ...args)
+  expect(status).toHaveBeenCalledWith(2)
+  expect(error.mock.calls[0][0]).toContain('--scale')
+  expect(launch).not.toHaveBeenCalled()
+  expect(spawnSync).not.toHaveBeenCalled()
 })

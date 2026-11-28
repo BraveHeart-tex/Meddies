@@ -48,7 +48,8 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
 
 4. **Capture.** Stop `pnpm dev`, then run `pnpm lab:capture <n>-`
    ([outputs](../../../docs/design/README.md#capture)); it prints the capture folder.
-   Open every 402x874 PNG and fix what looks wrong.
+   Open every 402x874 PNG and fix what looks wrong. Add `--scale 3` to inspect details
+   such as icons in a supplemental PNG at the same CSS viewport and text size.
    _Done when_ it exits 0 and you have looked at every frame.
 
 5. **Publish the comparison page.** Save a temporary JSON spec with `title`, optional `intro`

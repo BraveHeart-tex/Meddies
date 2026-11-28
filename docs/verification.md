@@ -185,6 +185,8 @@ visual captures at this viewport and text size; do not add enlarged-text or alte
 captures. Capture Today and Medications with the
 [screen-capture journey](../tests/browser/README.md#screen-captures);
 lab frames use `pnpm lab:capture <slug-prefix>` for one normal-text capture per frame.
+Add `--scale 3` for a supplemental high-DPI PNG at the same CSS viewport and text size.
+The standard PNG and JSON summary are still written.
 Compare against the screen's built frame, and give a significant visual change to a
 design-critical screen the
 [capture review](design/README.md#capture).

@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { hydrated, scrollsHorizontally, stylesheetsLoaded } from './actions'
-import type { Page } from '@playwright/test'
+import type { Browser, Page } from '@playwright/test'
 import { captureCases } from './capture'
 import { expect, test } from './fixtures'
 
@@ -13,7 +13,59 @@ test.use({ journey: { auth: false, storage: false } })
 // would show are collected from the console and page errors instead.
 const hideDevOverlay = 'nextjs-portal { display: none !important; }'
 
-test('capture lab frames by slug prefix', { tag: '@visual' }, async ({ page }) => {
+async function openLabFrame(page: Page, slug: string) {
+  await page.goto(`/lab/${slug}`)
+  await page.addStyleTag({ content: hideDevOverlay })
+  await expect
+    .poll(() => stylesheetsLoaded(page), { message: 'stylesheets should load' })
+    .toBe(true)
+  // Hydration errors arrive once the client chunks have loaded and run.
+  await expect.poll(() => hydrated(page), { message: 'the frame should hydrate' }).toBe(true)
+}
+
+async function captureHighDpi(
+  browser: Browser,
+  baseURL: string | undefined,
+  out: string,
+  slugs: string[],
+) {
+  const scale = process.env.MEDDIES_LAB_SCALE
+  if (!scale) return
+
+  const { viewport, reducedMotion } = captureCases.phone
+  const size = `${viewport.width}x${viewport.height}`
+  const page = await browser.newPage({
+    baseURL,
+    viewport,
+    reducedMotion,
+    deviceScaleFactor: Number(scale),
+  })
+  const errors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text())
+  })
+  page.on('pageerror', (error) => errors.push(error.message))
+
+  try {
+    for (const slug of slugs) {
+      errors.length = 0
+      await openLabFrame(page, slug)
+      await page.screenshot({
+        path: resolve(out, `${slug}-${size}@${scale}x.png`),
+        animations: 'disabled',
+        scale: 'device',
+      })
+      expect(await scrollsHorizontally(page), `${slug} at ${scale}×: horizontal overflow`).toBe(
+        false,
+      )
+      expect(errors, `${slug} at ${scale}×: console errors`).toEqual([])
+    }
+  } finally {
+    await page.close()
+  }
+}
+
+test('capture lab frames by prefix', { tag: '@visual' }, async ({ page, browser, baseURL }) => {
   const out = process.env.MEDDIES_VISUAL_OUT
   const prefix = process.env.MEDDIES_LAB_PREFIX
   // eslint-disable-next-line playwright/no-skipped-test -- local dev-only design review opt-in
@@ -49,13 +101,7 @@ test('capture lab frames by slug prefix', { tag: '@visual' }, async ({ page }) =
     errors = []
     await page.setViewportSize(viewport)
     await page.emulateMedia({ reducedMotion })
-    await page.goto(`/lab/${slug}`)
-    await page.addStyleTag({ content: hideDevOverlay })
-    await expect
-      .poll(() => stylesheetsLoaded(page), { message: 'stylesheets should load' })
-      .toBe(true)
-    // Hydration errors arrive once the client chunks have loaded and run.
-    await expect.poll(() => hydrated(page), { message: 'the frame should hydrate' }).toBe(true)
+    await openLabFrame(page, slug)
     const screenshot = `${slug}-${size}.png`
     // Screen-size, not full-page: what the phone shows without scrolling.
     await page.screenshot({ path: resolve(out!, screenshot), animations: 'disabled' })
@@ -76,6 +122,7 @@ test('capture lab frames by slug prefix', { tag: '@visual' }, async ({ page }) =
     ]),
   )
   expect(problems, `Frames captured to ${out}`).toEqual([])
+  await captureHighDpi(browser, baseURL, out!, slugs)
 })
 
 // The Scanner from Add medicine at the default viewport: the Scan row, framing, a stalled read,

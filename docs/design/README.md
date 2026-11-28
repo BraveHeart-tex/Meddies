@@ -129,7 +129,8 @@ no slug prefix and reuses a fresh successful production build.
 Capture frames for review by slug prefix, with `pnpm dev` stopped:
 
 ```sh
-pnpm lab:capture 241-            # or --out <dir>; prints the capture folder
+pnpm lab:capture 241-            # prints the capture folder
+pnpm lab:capture 241- --scale 3  # inspect details like icons
 ```
 
 Before building the Worker or starting services, the command launches and closes a browser
@@ -138,10 +139,14 @@ with the launch error and a setup command. Install explicitly with
 `pnpm exec playwright install --with-deps chromium`; capture never installs dependencies.
 
 It writes one normal-text `<slug>-402x874.png` (screen-size) and `<slug>.json` per
-frame, with one entry in the existing `captures` array. It hides the Next dev overlay and
-exits non-zero on horizontal overflow or a console error. The design-ticket skill
-(`.agents/skills/design-ticket/`) runs the full process,
-including attaching captures to the issue. Choose additional checks by risk under
+frame, with one entry in the existing `captures` array. An integer `--scale <n>` greater
+than 1 adds a `<slug>-402x874@<n>x.png` at the same CSS viewport and normal text size.
+For example, `--scale 3` adds a 1206×2622 PNG and preserves the standard PNG and JSON.
+Use `--out <dir>` to choose the output folder, in either order with `--scale`.
+
+The command hides the Next dev overlay and exits non-zero on horizontal overflow or a
+console error. The design-ticket skill (`.agents/skills/design-ticket/`) runs the full
+process, including attaching captures to the issue. Choose additional checks by risk under
 [verification](../verification.md#visual-verification). The deeper `109·L1` shell geometry
 check stays opt-in:
 
