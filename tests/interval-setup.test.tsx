@@ -9,6 +9,7 @@ import { scheduleToday } from '../src/features/schedules/occurrences'
 import { SchedulePanel } from '../src/features/schedules/schedule-panel'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
+import { seedScheduleDraft } from './helpers/schedule-draft'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
@@ -296,10 +297,15 @@ describe('next 3 doses', () => {
   })
 })
 
+const intervalDraft = {
+  kind: 'interval',
+  values: { hours: '8', date: '2026-11-09', time: '08:00', quantity: '1', lastDay: null },
+} as const
+
 describe('saving', () => {
-  test('a confirmed save posts one Interval schedule', async () => {
+  test('Every few hours setup confirms the same request from a Session draft and from empty inputs', async () => {
     const { posted } = api()
-    const { user, onSaved } = await openSetup()
+    const { user, onSaved, unmount } = await openSetup()
     await fillIn(user)
     await user.click(button('Save schedule'))
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
@@ -310,6 +316,21 @@ describe('saving', () => {
       intervalHours: 8,
       times: [{ time: '08:00', quantity: 1 }],
     })
+
+    unmount()
+    client.clear()
+    const { posted: restored } = api()
+    seedScheduleDraft(client, magnesium.id, intervalDraft)
+    const draft = await openSetup()
+    await draft.user.click(button('Save schedule'))
+    await waitFor(() => expect(draft.onSaved).toHaveBeenCalledTimes(1))
+
+    expect(restored).toHaveLength(1)
+    const [{ id: enteredId, ...enteredBody }] = posted
+    const [{ id: restoredId, ...restoredBody }] = restored
+    expect(enteredId).toEqual(expect.any(String))
+    expect(restoredId).toEqual(expect.any(String))
+    expect(restoredBody).toEqual(enteredBody)
   })
 
   // #265: catches the Amount sheet stepping, validating or saving Liquid off the 0.1 ml grid.
@@ -378,8 +399,8 @@ describe('saving', () => {
     const { posted } = api([], () =>
       offline ? new HttpResponse(null, { status: 503 }) : undefined,
     )
+    seedScheduleDraft(client, magnesium.id, intervalDraft)
     const { user, onSaved } = await openSetup()
-    await fillIn(user)
     await user.click(button('Save schedule'))
     const retry = await screen.findByRole('button', { name: 'Try saving schedule again' })
     expect(everyRow()).toHaveAccessibleName('Every: 8 hours')

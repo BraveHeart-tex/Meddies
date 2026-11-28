@@ -7,11 +7,13 @@ import type { Medicine } from '../src/features/medicines/contract'
 import { ALL_WEEKDAYS } from '../src/features/schedules/weekdays'
 import type { DailySchedule } from '../src/features/schedules/contract'
 import { scheduleToday } from '../src/features/schedules/occurrences'
+import { scheduleChangeDefaults } from '../src/features/schedules/schedule-form-schema'
 import { SchedulePanel } from '../src/features/schedules/schedule-panel'
 import { confirmScheduleSaved } from '../src/features/schedules/medication-confirmations'
 import { Toaster } from '../src/components/ui/toast'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
+import { seedScheduleDraft } from './helpers/schedule-draft'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
@@ -179,6 +181,19 @@ async function addTime(user: User, time: string) {
   await pickPart(user, `Time ${row} minute`, minute)
 }
 
+function seedAddedTime(current: DailySchedule) {
+  const defaults = scheduleChangeDefaults(current, magnesium.unit, '2026-11-09')
+  seedScheduleDraft(
+    client,
+    magnesium.id,
+    {
+      kind: 'times',
+      values: { ...defaults, times: [...defaults.times, { time: '14:00', quantity: '1' }] },
+    },
+    current,
+  )
+}
+
 async function chooseHours(user: User, label: string) {
   await user.click(everyRow())
   const dialog = await sheet('Every')
@@ -238,9 +253,10 @@ describe('Medication detail', () => {
 
 describe('changing a Clock schedule', () => {
   test('a time-only change explicitly sends and confirms the current Last day', async () => {
-    const { edits } = api([{ ...clockVersion, endDate: '2026-11-10' }])
+    const current = { ...clockVersion, endDate: '2026-11-10' }
+    const { edits } = api([current])
+    seedAddedTime(current)
     const { user, onSaved } = await openChange()
-    await addTime(user, '14:00')
     await user.click(saveChanges())
     await waitFor(() => expect(onSaved).toHaveBeenCalled())
     expect(edits[0].endDate).toBe('2026-11-10')
@@ -482,8 +498,8 @@ describe('recovery', () => {
 
   test('215·S2 a stale conflict applies nothing and offers the current schedule', async () => {
     api([clockVersion], () => HttpResponse.json({ error: 'conflict' }, { status: 409 }))
+    seedAddedTime(clockVersion)
     const { user, onSaved, unmount } = await openChange()
-    await addTime(user, '14:00')
     await user.click(saveChanges())
     expect(await screen.findByText('This schedule changed elsewhere.')).toBeVisible()
     expect(screen.getByText("Your changes weren't saved.")).toBeVisible()
@@ -503,8 +519,8 @@ describe('recovery', () => {
     const { edits } = api([clockVersion], () =>
       fail ? new HttpResponse(null, { status: 503 }) : undefined,
     )
+    seedAddedTime(clockVersion)
     const { user, onSaved } = await openChange()
-    await addTime(user, '14:00')
     await user.click(saveChanges())
     expect(await screen.findByText('That might not have saved.')).toBeVisible()
     expect(

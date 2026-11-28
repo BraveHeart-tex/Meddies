@@ -9,9 +9,11 @@ import type { Medicine } from '../src/features/medicines/contract'
 import type { DailySchedule } from '../src/features/schedules/contract'
 import { scheduleToday } from '../src/features/schedules/occurrences'
 import { ScheduleForm } from '../src/features/schedules/schedule-form'
+import { scheduleFormDefaults } from '../src/features/schedules/schedule-form-schema'
 import { SchedulePanel } from '../src/features/schedules/schedule-panel'
 import { createQueryClient } from '../src/lib/session-query-client'
 import { server } from './helpers/msw-server'
+import { seedScheduleDraft } from './helpers/schedule-draft'
 import { listedOption } from './helpers/select'
 import { Toaster } from '../src/components/ui/toast'
 
@@ -58,7 +60,7 @@ type Respond = (payload: object) => Response | undefined | Promise<Response | un
 /** Serves one medicine and its schedules, recording every save. `respond` can override a save. */
 function api(medicine: Medicine, initial: DailySchedule[] = [], respond?: Respond) {
   let schedules = initial
-  const posted: object[] = []
+  const posted: Record<string, unknown>[] = []
   server.use(
     http.get('/api/medicines', () => HttpResponse.json({ medicines: [medicine] })),
     http.get('/api/schedules', () =>
@@ -69,7 +71,7 @@ function api(medicine: Medicine, initial: DailySchedule[] = [], respond?: Respon
       }),
     ),
     http.post('/api/schedules', async ({ request }) => {
-      const payload = (await request.json()) as object
+      const payload = (await request.json()) as Record<string, unknown>
       posted.push(payload)
       const response = await respond?.(payload)
       if (response) return response
@@ -298,10 +300,39 @@ test('new rows take focus, and errors and focus follow their rows through remova
   expect(screen.queryByRole('button', { name: /^Remove time/ })).not.toBeInTheDocument()
 })
 
+const clockDraft = {
+  ...scheduleFormDefaults(capsules.unit, '2035-06-15'),
+  times: [{ time: '08:00', quantity: '1' }],
+}
+
+test('Set times setup confirms the same request from a Session draft and from empty inputs', async () => {
+  const { posted: entered } = api(capsules)
+  const ui = await openSetup(capsules.id)
+  await pickTime(ui.user, 1, '08:00')
+  await ui.user.click(save())
+  await waitFor(() => expect(ui.onSaved).toHaveBeenCalledTimes(1))
+  ui.unmount()
+  client.clear()
+
+  const { posted: restored } = api(capsules)
+  seedScheduleDraft(client, capsules.id, { kind: 'times', values: clockDraft })
+  const draft = await openSetup(capsules.id)
+  await draft.user.click(save())
+  await waitFor(() => expect(draft.onSaved).toHaveBeenCalledTimes(1))
+
+  expect(entered).toHaveLength(1)
+  expect(restored).toHaveLength(1)
+  const [{ id: enteredId, ...enteredBody }] = entered
+  const [{ id: restoredId, ...restoredBody }] = restored
+  expect(enteredId).toEqual(expect.any(String))
+  expect(restoredId).toEqual(expect.any(String))
+  expect(restoredBody).toEqual(enteredBody)
+})
+
 test('known offline blocks saving and keeps the details until the connection returns', async () => {
   const { posted } = api(capsules)
-  const { user } = await openSetup(capsules.id)
-  await pickTime(user, 1, '08:00')
+  seedScheduleDraft(client, capsules.id, { kind: 'times', values: clockDraft })
+  await openSetup(capsules.id)
   const onLine = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
   act(() => {
     window.dispatchEvent(new Event('offline'))
@@ -326,8 +357,8 @@ test('a rejected save keeps the medicine and the details, and can be saved again
     reject = false
     return HttpResponse.json({ error: 'validation' }, { status: 400 })
   })
+  seedScheduleDraft(client, capsules.id, { kind: 'times', values: clockDraft })
   const { user, onSaved } = await openSetup(capsules.id)
-  await pickTime(user, 1, '08:00')
   await user.click(save())
   expect(await screen.findByText("Schedule wasn't saved.")).toBeVisible()
   expect(screen.getByText(/^Omega-3 is saved without a schedule\./)).toBeVisible()
@@ -483,8 +514,8 @@ test('a mismatched Schedule setup confirmation stays Unconfirmed and retries the
 
 test('an existing-schedule conflict keeps explicit recovery and does not confirm the attempt', async () => {
   api(capsules, [], () => HttpResponse.json({ error: 'conflict' }, { status: 409 }))
+  seedScheduleDraft(client, capsules.id, { kind: 'times', values: clockDraft })
   const { user, onSaved } = await openSetup(capsules.id)
-  await pickTime(user, 1, '08:00')
   await user.click(save())
   expect(await screen.findByText('Omega-3 already has a schedule.')).toBeVisible()
   expect(screen.getByRole('link', { name: 'View schedule' })).toHaveAttribute(
