@@ -211,5 +211,14 @@ then ticks the Acceptance criteria boxes, closes the issue as completed and sets
 Status to Done, reading each write back. A failed step stops it and prints the writes done
 and the steps remaining; finish those by hand.
 
+A PR merged into main closes its issue instead when its description declares one whole issue
+per [PR descriptions](commits.md#pr-descriptions). The Closeout workflow ticks the Acceptance
+criteria, comments the merged SHA and the PR link as the evidence, and closes the issue as
+completed; the Meddies Project's Item closed workflow sets Done. An unmerged PR, an ordinary
+reference or a PR with no declaration leaves issues alone; a malformed or repeated declaration,
+a missing Evidence section or an issue closed another way fails the run without writing. A
+failed run is replayed with `gh workflow run closeout.yml -f pr=<n>` or by hand with
+`node scripts/closeout-pr.mjs <n>`; replays resume without duplicating the comment.
+
 For any criterion that will not be finished, first create a follow-up ticket with a single
 owner, link it from this ticket, and remove the item here.

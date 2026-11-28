@@ -1,0 +1,43 @@
+name: Closeout
+
+# Completes the Meddies issue a merged PR declares (docs/tickets.md "Closing"). pull_request_target
+# runs main's script with an issue-writing token and never checks out PR code; the PR text is read
+# by the script as data, never interpolated here. Dispatch replays a merge after a failed run.
+on:
+  pull_request_target:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Merged PR number to replay
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: closeout-${{ github.event.pull_request.number || inputs.pr }}
+
+jobs:
+  closeout:
+    name: Complete Meddies issue
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Close out the declared issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
+        run: node scripts/closeout-pr.mjs "$PR"

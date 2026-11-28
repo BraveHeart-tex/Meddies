@@ -16,3 +16,10 @@ Write commits without trailers. Before committing, validate the exact message:
 ```sh
 printf '%s\n' "$msg" | pnpm exec commitlint
 ```
+
+## PR descriptions
+
+A PR that completes one whole issue carries one line `Complete Meddies issue: #<n>` and an
+`## Evidence` section holding the [evidence](verification.md#evidence); merging it closes the
+issue ([closing](tickets.md#closing)). Omit the line when the PR completes no issue or only part
+of one.
