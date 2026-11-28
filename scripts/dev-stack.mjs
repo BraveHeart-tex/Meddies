@@ -14,6 +14,7 @@ const stateFile = path.join(stateDir, 'state.json')
 const lockDir = path.join(stateDir, 'lock')
 const appUrl = 'http://127.0.0.1:3000'
 const workerUrl = 'http://127.0.0.1:8787'
+const readinessRetryMs = 100
 const action = process.argv[2]
 const runnerToken = process.argv[3]
 const isRunner = action === 'run'
@@ -512,7 +513,7 @@ async function runStack() {
         return cleanup(
           `Worker exited with code ${workerChild.exitCode ?? 'null'}, signal ${workerChild.signalCode || 'none'}; probe HTTP ${workerProbe.status ?? workerProbe.error}`,
         )
-      await sleep(1000)
+      await sleep(readinessRetryMs)
     }
     if (!workerProbe.ok)
       return cleanup(
@@ -537,7 +538,7 @@ async function runStack() {
         return cleanup(
           `App exited with code ${appChild.exitCode ?? 'null'}, signal ${appChild.signalCode || 'none'}; probe HTTP ${appProbe.status ?? appProbe.error}`,
         )
-      await sleep(1000)
+      await sleep(readinessRetryMs)
     }
     if (!appProbe.ok)
       return cleanup(
