@@ -17,6 +17,7 @@ export const toolingTests = [
   'tests/journey-server.test.ts',
   'tests/journey-worker.test.ts',
   'tests/lab-capture.test.ts',
+  'tests/lab-compare.test.ts',
   'tests/next-output-lock.test.ts',
   'tests/release-guard.test.ts',
   'tests/release.test.ts',

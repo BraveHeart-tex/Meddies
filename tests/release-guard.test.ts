@@ -103,7 +103,7 @@ test.each<[string, boolean]>([
   ['docs/brand/two-capsules.svg', true],
   ['README.md', true],
   ['nested/notes.md', true],
-  ['.agents/skills/design-ticket/embed-captures.mjs', false],
+  ['.agents/skills/design-ticket/templates/comparison.html', false],
   ['src/app.ts', false],
   ['worker/http.ts', false],
   ['tests/browser/example.spec.ts', false],

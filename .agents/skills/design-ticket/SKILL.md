@@ -53,11 +53,12 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
    Open every 402x874 PNG and fix what looks wrong.
    _Done when_ it exits 0 and you have looked at every frame.
 
-5. **Publish the comparison page.** Copy [templates/comparison.html](templates/comparison.html),
-   fill each direction (pitch, one figure per frame, facts, trade-offs), mark your
-   recommendation and list open questions. Inline the captures, then publish with the
-   Artifact tool:
-   `node .agents/skills/design-ticket/embed-captures.mjs page.html <capture-folder> > out.html`
+5. **Publish the comparison page.** Save a temporary JSON spec with `title`, optional `intro`
+   for the worked example, and `directions` keyed by `A`, `B` and `C`. Each direction has
+   `name`, `pitch`, `facts` and `tradeOffs` (both label-to-text objects). Set `recommendation`
+   to an object with `direction` and a `reasons` array, and set the `openQuestions` array.
+   Generate HTML from the registry and step 4 captures, then publish with the Artifact tool:
+   `node scripts/lab-compare.mjs <n> --spec <json> --captures <capture-folder> > out.html`
    _Done when_ the page is published, shows every frame, and names one recommended direction
    with its reasons.
 
@@ -67,8 +68,9 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
 7. **Move the winner to `approved/`.** Delete the losing directions' frames and every lab
    module only they used. `git mv` the winner's frames and modules from `draft/` to
    `approved/`, and move its spread from `draftFrames` to `approvedFrames`. Republish the page
-   to the same URL as the approved record: approved direction, shared frames, decisions,
-   open questions for the build ticket.
+   to the same URL as the approved record. Add a `decisions` array and, if known, the
+   numeric `buildTicket` to the spec. Update `openQuestions` for the build ticket and run
+   `node scripts/lab-compare.mjs <n> --spec <json> --captures <capture-folder> --approved <letter> > out.html`.
    _Done when_ `draft/` holds no `<n>-` frame, `rg -n '<n>·[BC][0-9]' src tests` (adjust
    letters to the losers) finds nothing, and the HTTP test from step 3 passes.
 
