@@ -198,7 +198,20 @@ ticket's description in the same change, then comments on both tickets.
 
 ## Closing
 
-Close a ticket once it is done ([AGENTS.md](../AGENTS.md)). Post the
-[evidence](verification.md#evidence) with `gh issue comment <n> --body-file <file>`, read it
-back, then `gh issue close <n> --reason completed`. For any criterion that will not be finished, create a follow-up ticket with a single
+Close a ticket once it is done ([AGENTS.md](../AGENTS.md)) with one command:
+
+```sh
+node scripts/finish-issue.mjs <n> --evidence <file> [--attach <png>...]
+node scripts/finish-issue.mjs <n> --existing-evidence <comment-url>
+```
+
+`--evidence` posts the [evidence](verification.md#evidence) file as a new comment; reference
+each attached PNG as `![frame](./<png>)` in it. `--existing-evidence` reuses a comment
+already on the issue, such as a design approval comment, without posting a duplicate. The
+evidence must cite a commit on `origin/main`. The command checks everything before writing,
+then ticks the Acceptance criteria boxes, closes the issue as completed and sets Project
+Status to Done, reading each write back. A failed step stops it and prints the writes done
+and the steps remaining; finish those by hand.
+
+For any criterion that will not be finished, first create a follow-up ticket with a single
 owner, link it from this ticket, and remove the item here.

@@ -91,6 +91,7 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
     [templates/approval-comment.md](templates/approval-comment.md). Reference each 402x874 PNG
     as `![frame](./<png>)` in the body and pass `--attach ./<png>` per file to
     `gh issue comment <n> --body-file <file>`; gh uploads them and rewrites the references.
+    Record the printed comment URL; step 14 closes with it.
     _Done when_ the read-back comment shows every approved frame.
 
 11. **Add the frame table** to the design ticket's description as its "Approved design"
@@ -131,9 +132,11 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
     reference-capture links, has no criterion without a frame ID and no reference to "the
     approved frames" without IDs, and every rewritten ticket has its scope comment.
 
-14. **Close the design ticket.** The approval comment is its evidence; build work is
-    tracked in the build tickets. Close it without waiting for Release:
-    `gh issue close <n> --reason completed` ([tickets](../../../docs/tickets.md#closing)).
-    _Done when_ `gh issue view <n> --json state` reads `CLOSED`.
+14. **Close the design ticket.** The approval comment is its evidence and keeps the
+    capture links the build tickets cite; build work is tracked in the build tickets. Close
+    it without waiting for Release:
+    `node scripts/finish-issue.mjs <n> --existing-evidence <approval comment URL>`
+    ([closing](../../../docs/tickets.md#closing)).
+    _Done when_ the command exits 0 with the issue closed and Project Status Done.
 
 Report: what changed, what failed, what's next.

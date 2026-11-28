@@ -102,14 +102,13 @@ Work **lean** throughout:
    verification cannot complete.
    _Done when_ the required final verification exits 0 on the final code or docs.
 
-8. **Ship.** Commit per [commits](../../../docs/commits.md) and push to main. Tick each
-   criterion box in the issue body (`gh issue edit <n> --body-file`), post the
-   [evidence](../../../docs/verification.md#evidence) comment, read both back, then close
-   per [tickets](../../../docs/tickets.md#closing). Attach reviewed screenshots with
-   `gh issue comment --attach` when visual checks are evidence, and read back their links.
-   Close without waiting for Release.
-   _Done when_ the read-back shows every box ticked, the evidence comment cites the pushed
-   commit and includes any required screenshot attachments, and the issue is closed.
+8. **Ship.** Commit per [commits](../../../docs/commits.md) and push to main. Write the
+   [evidence](../../../docs/verification.md#evidence) comment to a file citing the pushed
+   commit, then run `node scripts/finish-issue.mjs <n> --evidence <file>` per
+   [closing](../../../docs/tickets.md#closing), adding `--attach <png>` per reviewed
+   screenshot when visual checks are evidence. Close without waiting for Release.
+   _Done when_ the command exits 0: it read back every box ticked, the evidence comment
+   with its uploaded links, the closed issue and Project Status Done.
 
 ## UI build routing
 

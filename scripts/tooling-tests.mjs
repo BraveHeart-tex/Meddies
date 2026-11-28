@@ -12,6 +12,7 @@ export const toolingTests = [
   'tests/create-issue.test.ts',
   'tests/dev-server.test.ts',
   'tests/dev-stack.test.ts',
+  'tests/finish-issue.test.ts',
   'tests/journey-build.test.ts',
   'tests/journey-server.test.ts',
   'tests/journey-worker.test.ts',
