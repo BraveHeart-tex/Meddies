@@ -123,6 +123,9 @@ built frame reads the network.
 
 ## Capture
 
+Run `pnpm lab:check` for the whole lab's production HTTP and citation checks. The command takes
+no slug prefix and reuses a fresh successful production build.
+
 Capture frames for review by slug prefix, with `pnpm dev` stopped:
 
 ```sh

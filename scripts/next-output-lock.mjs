@@ -8,7 +8,8 @@ import { join } from 'node:path'
  * creating or removing. `next dev --webpack` wipes `.next/dev` (route types included) on every
  * start, `next build` wipes `.next/types` and `next typegen` rewrites them, while tsc includes
  * both. Holders: typecheck's typegen and tsc, production builds, dev-mode journeys and
- * lab:capture. Ordinary `pnpm dev` holds nothing, so verification still runs alongside it.
+ * lab:capture and lab:check. Ordinary `pnpm dev` holds nothing, so verification still runs
+ * alongside it.
  *
  * A competing holder fails fast with an actionable conflict instead of waiting. Holders release
  * on success and failure; a holder killed before releasing leaves its pid behind, and the next

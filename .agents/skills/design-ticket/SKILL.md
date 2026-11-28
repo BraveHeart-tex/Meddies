@@ -44,10 +44,7 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
    across designs goes in `lab-fixtures.ts`, data only this design uses in
    `draft/<topic>-model.ts`.
    _Done when_ every listed state has a frame in each direction (or in `-s*`), and
-   both `pnpm exec vitest run --project unit tests/design-citations.test.ts` and
-   `pnpm exec vitest run --project integration tests/design-lab-http.test.ts` pass. The HTTP test
-   runs `next start` on the build in `.next`, so with `pnpm dev` stopped, run `pnpm build`
-   first when `.next` holds no build.
+   `pnpm lab:check` passes the production HTTP and citation checks.
 
 4. **Capture.** Stop `pnpm dev`, then run `pnpm lab:capture <n>-`
    ([outputs](../../../docs/design/README.md#capture)); it prints the capture folder.
@@ -73,7 +70,8 @@ Write `<n>` for the design ticket's issue number; examples below show `215`.
    numeric `buildTicket` to the spec. Update `openQuestions` for the build ticket and run
    `node scripts/lab-compare.mjs <n> --spec <json> --captures <capture-folder> --approved <letter> > out.html`.
    _Done when_ `draft/` holds no `<n>-` frame, `rg -n '<n>·[BC][0-9]' src tests` (adjust
-   letters to the losers) finds nothing, and the citation and HTTP tests from step 3 pass.
+   letters to the losers) finds nothing, and `pnpm lab:check` passes the
+   production HTTP and citation checks.
 
 8. **Review.** Read `git diff $base` against the
    [lab rules](../../../docs/design/README.md#rules),
