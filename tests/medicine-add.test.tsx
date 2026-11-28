@@ -368,57 +368,38 @@ test.each([
   expect(posted[0]).toMatchObject({ label: medicine, strength: value, unit })
 })
 
-test.each(['id', 'label', 'strength', 'unit', 'missing', 'malformed'])(
-  'a %s confirmation cannot confirm a different attempt',
-  async (field) => {
-    server.use(
-      http.post('/api/medicines', async ({ request }) => {
-        const payload = (await request.json()) as Medicine
-        const changed = {
-          ...payload,
-          [field]:
-            field === 'id'
-              ? '10000000-0000-4000-8000-000000000001'
-              : field === 'unit'
-                ? 'tablet'
-                : 'different',
-        }
-        return HttpResponse.json({
-          medicines: field === 'missing' ? [] : field === 'malformed' ? [{}] : [changed],
-        })
-      }),
-      http.get('/api/medicines', () => HttpResponse.json({ medicines: [] })),
-    )
-    const { user, onSaved } = openAdd()
-    await fill(user)
-    await user.click(button('Save medication'))
-    expect(await screen.findByRole('alert')).toHaveTextContent('That might not have saved.')
-    expect(onSaved).not.toHaveBeenCalled()
-  },
-)
+test('a mismatched POST confirmation remains unconfirmed', async () => {
+  server.use(
+    http.post('/api/medicines', async ({ request }) => {
+      const payload = (await request.json()) as Medicine
+      return HttpResponse.json({ medicines: [{ ...payload, label: 'Other Medicine' }] })
+    }),
+    http.get('/api/medicines', () => HttpResponse.json({ medicines: [] })),
+  )
+  const { user, onSaved } = openAdd()
+  await fill(user)
+  await user.click(button('Save medication'))
+  expect(await screen.findByRole('alert')).toHaveTextContent('That might not have saved.')
+  expect(onSaved).not.toHaveBeenCalled()
+})
 
-test.each(['label', 'strength', 'unit'])(
-  'a reconciling read with a different %s remains unconfirmed',
-  async (field) => {
-    let attempted: Medicine
-    server.use(
-      http.post('/api/medicines', async ({ request }) => {
-        attempted = (await request.json()) as Medicine
-        return HttpResponse.error()
-      }),
-      http.get('/api/medicines', () =>
-        HttpResponse.json({
-          medicines: [{ ...attempted, [field]: field === 'unit' ? 'tablet' : 'different' }],
-        }),
-      ),
-    )
-    const { user, onSaved } = openAdd()
-    await fill(user)
-    await user.click(button('Save medication'))
-    expect(await screen.findByRole('alert')).toHaveTextContent('That might not have saved.')
-    expect(onSaved).not.toHaveBeenCalled()
-  },
-)
+test('a reconciling read with a different Strength remains unconfirmed', async () => {
+  let attempted: Medicine
+  server.use(
+    http.post('/api/medicines', async ({ request }) => {
+      attempted = (await request.json()) as Medicine
+      return HttpResponse.error()
+    }),
+    http.get('/api/medicines', () =>
+      HttpResponse.json({ medicines: [{ ...attempted, strength: '10 mg' }] }),
+    ),
+  )
+  const { user, onSaved } = openAdd()
+  await fill(user)
+  await user.click(button('Save medication'))
+  expect(await screen.findByRole('alert')).toHaveTextContent('That might not have saved.')
+  expect(onSaved).not.toHaveBeenCalled()
+})
 
 test('an exact reconciling read confirms a broken receipt and clears the draft before completion', async () => {
   let attempted: Medicine

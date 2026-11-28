@@ -4,26 +4,11 @@ import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { sessionSaves, requestSave } from '@/lib/session-saves'
 import { discardSessionFormDraft } from '@/lib/session-drafts'
-import { parseMedicine, parseMedicineResponse, type Medicine, type MedicineInput } from './contract'
+import { parseMedicine, parseMedicineResponse, type Medicine } from './contract'
 import { medicineAddKey, type MedicineFormOutput } from './medicine-form-schema'
+import { confirmMedicineResponse, reconcileMedicineSave } from './medicine-save-confirmation'
 import { confirmMedicine, medicinesQuery } from './queries'
 import { medicationsHref } from './routes'
-
-function matchingMedicine(value: unknown, attempted: MedicineInput): Medicine {
-  const saved = parseMedicineResponse(value)
-  if (
-    saved.id !== attempted.id ||
-    saved.label !== attempted.label ||
-    saved.strength !== attempted.strength ||
-    saved.unit !== attempted.unit ||
-    // A count in Add turns stock on at that count (#46); only a full record carries stock.
-    (attempted.startingCount !== undefined &&
-      saved.stock !== undefined &&
-      (!saved.stock.tracked || saved.stock.count !== attempted.startingCount))
-  )
-    throw new Error('Medicine confirmation does not match attempt')
-  return saved
-}
 
 /** Add owns persistence for the session; the form observes presentation state only. */
 export function useMedicineSave(onSaved: (medicine: Medicine) => void) {
@@ -56,17 +41,13 @@ export function useMedicineSave(onSaved: (medicine: Medicine) => void) {
         },
         async (payload, active) => {
           const attempted = parseMedicine(payload)
-          let result = await requestSave('/api/medicines', payload, (data) => {
-            const envelope = data as { medicines?: unknown[] } | null
-            return matchingMedicine(envelope?.medicines?.[0], attempted)
-          })
+          let result = await requestSave('/api/medicines', payload, (data) =>
+            confirmMedicineResponse(data, attempted),
+          )
           if (result.problem === 'unconfirmed' && active()) {
             try {
               const list = await client.fetchQuery({ ...medicinesQuery(client), staleTime: 0 })
-              const saved = matchingMedicine(
-                list.find((item) => item.id === attempted.id),
-                attempted,
-              )
+              const saved = reconcileMedicineSave(list, attempted)
               result = { saved }
             } catch {
               // Only an exact saved medicine can resolve an unconfirmed attempt.
