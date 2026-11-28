@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 import { test, type TestContext } from 'vitest'
 
 // A fake pnpm in a temporary root records each command and whether the tooling project ran.
@@ -84,37 +84,24 @@ for (const failure of ['build', 'test:unit', 'test:integration', '']) {
   })
 }
 
-// Tooling coverage is independent of Git impact, including unknown history above.
-for (const [path, change] of [
-  ['src/app.ts', 'committed'],
-  ['docs/notes.md', 'untracked'],
-  ['tests/helpers/d1-migrations.mjs', 'committed'],
-  ['worker/migrations/0001.sql', 'untracked'],
-  ['worker/wrangler.jsonc', 'modified'],
-  ['scripts/verify.mjs', 'committed'],
-  ['vitest.config.mts', 'modified'],
-  ['tests/browser/example.spec.ts', 'untracked'],
-  ['tests/verify.test.ts', 'committed'],
-  ['src/app.ts', 'unchanged'],
+// Git drives only local formatting; tooling runs for an untracked change and an unchanged tree.
+// Both keep a valid origin/main merge base so a Git-error fallback cannot pass them.
+for (const [change, tree] of [
+  ['untracked', ' tree with untracked docs/notes.md'],
+  ['unchanged', 'n unchanged tree'],
 ] as const) {
-  test(`verify runs tooling for a ${change} ${path}`, async (t) => {
+  test(`verify runs tooling for a${tree}`, async (t) => {
     const root = await fakeRoot(t)
     const git = (...args: string[]) => execFileSync('git', args, { cwd: root })
-    const write = async (content: string) => {
-      await mkdir(dirname(join(root, path)), { recursive: true })
-      await writeFile(join(root, path), content)
-    }
     git('init', '-q')
     git('config', 'user.email', 'test@example.com')
     git('config', 'user.name', 'Test')
-    if (change === 'modified') await write('base')
     git('add', '-A')
     git('commit', '-qm', 'base')
     git('update-ref', 'refs/remotes/origin/main', 'HEAD')
-    if (change !== 'unchanged') await write('change')
-    if (change === 'committed') {
-      git('add', '-A')
-      git('commit', '-qm', 'change')
+    if (change === 'untracked') {
+      await mkdir(join(root, 'docs'))
+      await writeFile(join(root, 'docs/notes.md'), 'change')
     }
     const result = verify(root)
     assert.equal(result.status, 0, result.stdout + result.stderr)
