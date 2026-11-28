@@ -7,6 +7,8 @@ import { test, type TestContext } from 'vitest'
 
 // A fake pnpm in a temporary root records each command and whether the tooling project ran.
 // The build fails unless unit tests already finished, failed or not, so a parallel start fails.
+// Unit tests finish instantly unless a case opts in to UNIT_DELAY, which gives a parallel build
+// time to start before unit-finished exists.
 async function fakeRoot(t: TestContext) {
   const root = await mkdtemp(join(tmpdir(), 'verify-stages-'))
   t.onTestFinished(() => rm(root, { recursive: true, force: true }))
@@ -34,7 +36,7 @@ case "$1" in
     case " $* " in *" --project tooling "*) touch tooling-ran ;; esac
     for report; do :; done
     echo '{"testResults":[{"name":"/tests/dev-stack.test.ts","assertionResults":[{"status":"pending"}]}]}' > "$report"
-    sleep 0.2
+    if [ "$UNIT_DELAY" = 1 ]; then sleep 0.2; fi
     touch unit-finished
     if [ "$FAIL_CHECK" = signal ]; then kill -TERM $$; fi ;;
 esac
@@ -45,7 +47,7 @@ esac
   return root
 }
 
-function verify(root: string, failure = '', ci = '') {
+function verify(root: string, failure = '', ci = '', unitDelay = false) {
   return spawnSync(process.execPath, [resolve('scripts/verify.mjs')], {
     cwd: root,
     encoding: 'utf8',
@@ -55,6 +57,7 @@ function verify(root: string, failure = '', ci = '') {
       PATH: `${root}:${process.env.PATH}`,
       COMMAND_LOG: join(root, 'commands'),
       FAIL_CHECK: failure,
+      UNIT_DELAY: unitDelay ? '1' : '',
     },
   })
 }
@@ -62,7 +65,7 @@ function verify(root: string, failure = '', ci = '') {
 for (const failure of ['build', 'test:unit', 'test:integration', '']) {
   test(`verify collects stage 2 results when ${failure || 'nothing'} fails`, async (t) => {
     const root = await fakeRoot(t)
-    const result = verify(root, failure)
+    const result = verify(root, failure, '', true)
     assert.equal(result.status, failure ? 1 : 0, result.stdout + result.stderr)
     const commands = (await readFile(join(root, 'commands'), 'utf8')).trim().split('\n')
     assert.deepEqual(commands.slice(0, 3).sort(), ['format:check', 'lint', 'typecheck'])
