@@ -1,28 +1,11 @@
-import { execFileSync, spawnSync } from 'node:child_process'
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { delimiter, join, resolve } from 'node:path'
-import { afterEach, expect, test } from 'vitest'
+import { spawnSync } from 'node:child_process'
+import { resolve } from 'node:path'
+import { expect, test } from 'vitest'
+import { startIssue } from '../scripts/start-issue.mjs'
 
 const script = resolve('scripts/start-issue.mjs')
-const directories: string[] = []
 const url = 'https://github.com/BraveHeart-tex/Meddies/issues/42'
-
-// A fake `gh` first on PATH: answers from a fixture and logs every call, so the script runs
-// end to end without touching the real board.
-const fakeGh = `#!/usr/bin/env node
-const { appendFileSync, readFileSync } = require('node:fs')
-const args = process.argv.slice(2)
-appendFileSync(process.env.FAKE_GH_LOG, JSON.stringify(args) + '\\n')
-const fixture = JSON.parse(readFileSync(process.env.FAKE_GH_FIXTURE, 'utf8'))
-if (args[0] === 'project' && fixture.missingScope) {
-  process.stderr.write('error: your authentication token is missing required scopes [read:project]')
-  process.exit(1)
-}
-const key = args.slice(0, 2).join(' ')
-if (!(key in fixture.responses)) process.exit(1)
-process.stdout.write(JSON.stringify(fixture.responses[key]))
-`
+const head = 'edf75b516437360fa6fabb208b88107c0a7c5f22'
 
 type Issue = { state?: string; title?: string; blockedBy?: { number: number; state: string }[] }
 
@@ -30,12 +13,6 @@ function start(
   { state = 'OPEN', title = 'Add a dose', blockedBy = [] }: Issue = {},
   { inProject = true, missingScope = false } = {},
 ) {
-  const dir = mkdtempSync(join(tmpdir(), 'start-issue-'))
-  directories.push(dir)
-  writeFileSync(join(dir, 'gh'), fakeGh)
-  chmodSync(join(dir, 'gh'), 0o755)
-  const log = join(dir, 'calls.log')
-  writeFileSync(log, '')
   const responses = {
     'issue view': {
       number: 42,
@@ -76,22 +53,23 @@ function start(
     'project item-add': { id: 'I_added' },
     'project item-edit': {},
   }
-  const fixture = join(dir, 'fixture.json')
-  writeFileSync(fixture, JSON.stringify({ responses, missingScope }))
-  const result = spawnSync(process.execPath, [script, '42'], {
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      PATH: `${dir}${delimiter}${process.env.PATH}`,
-      FAKE_GH_LOG: log,
-      FAKE_GH_FIXTURE: fixture,
-    },
-  })
-  const calls = readFileSync(log, 'utf8')
-    .split('\n')
-    .filter(Boolean)
-    .map((line) => JSON.parse(line) as string[])
-  return { ...result, calls }
+  const calls: string[][] = []
+  const execute = (command: string, args: string[]) => {
+    const key = args.slice(0, 2).join(' ')
+    if (command === 'git' && args.join(' ') === 'rev-parse HEAD') return head + '\n'
+    if (command === 'gh') {
+      calls.push(args)
+      if (args[0] === 'project' && missingScope) {
+        throw Object.assign(new Error('gh exited with code 1'), {
+          stderr: 'error: your authentication token is missing required scopes [read:project]',
+        })
+      }
+      if (Object.hasOwn(responses, key))
+        return JSON.stringify(responses[key as keyof typeof responses])
+    }
+    throw new Error(`Unexpected command: ${command} ${args.join(' ')}`)
+  }
+  return { ...startIssue('42', execute), calls }
 }
 
 const projectCalls = (calls: string[][]) => calls.filter((args) => args[0] === 'project')
@@ -99,8 +77,6 @@ const edit = (item: string) => [
   ...['project', 'item-edit', '--id', item, '--project-id', 'PVT_meddies'],
   ...['--field-id', 'F_status', '--single-select-option-id', 'O_progress'],
 ]
-
-afterEach(() => directories.splice(0).forEach((dir) => rmSync(dir, { recursive: true })))
 
 test('refuses a closed issue without touching the Project', () => {
   const { status, stderr, calls } = start({ state: 'CLOSED' })
@@ -137,7 +113,6 @@ test('adds an issue missing from the Project, then sets it to In progress', () =
 })
 
 test('prints the issue, its relations, the base commit and the design flag', () => {
-  const head = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
   expect(JSON.parse(start().stdout)).toEqual({
     issue: {
       number: 42,
@@ -159,4 +134,10 @@ test('a missing project scope tells the user how to grant it', () => {
   const { status, stderr } = start({}, { missingScope: true })
   expect(status).not.toBe(0)
   expect(stderr).toContain('gh auth refresh -s project')
+})
+
+test('the CLI prints usage and exits with status 1 when the issue reference is missing', () => {
+  const { status, stderr } = spawnSync(process.execPath, [script], { encoding: 'utf8' })
+  expect(status).toBe(1)
+  expect(stderr).toBe('Usage: node scripts/start-issue.mjs <issue number or URL>\n')
 })
