@@ -22,7 +22,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { medicineTypeOptions, strengthHelp, unitName } from '@/lib/quantity-policy'
+import {
+  medicineTypeLabel,
+  medicineTypeOptions,
+  strengthHelp,
+  unitName,
+} from '@/lib/quantity-policy'
 import { TypeTile } from './type-tile'
 import type { MedicineDetails, MedicineDetailsValues } from './medicine-form-schema'
 
@@ -163,7 +168,9 @@ export function DetailCorrectionFields({
                   <SelectValue
                     placeholder="Choose"
                     className="font-bold in-data-placeholder:font-semibold"
-                  />
+                  >
+                    {field.value ? medicineTypeLabel(field.value) : null}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent side="top" align="end" className="w-61 rounded-lg p-0.5">
                   <SelectGroup>

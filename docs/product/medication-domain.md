@@ -30,6 +30,10 @@ between dose amounts and container counts.
 | Liquid        | ml            | Positive multiples of 0.1 | 0.1              | 1               |
 | Inhaler       | puff          | Positive whole numbers    | 1                | 1               |
 | Drops         | drop          | Positive whole numbers    | 1                | 1               |
+| Suppository   | suppository   | Positive whole numbers    | 1                | 1               |
+| Ovule         | ovule         | Positive whole numbers    | 1                | 1               |
+
+Suppository refers to the rectal form and Ovule to the vaginal form.
 
 These rules apply to Clock and Interval schedules, scheduled Taken quantities and their
 corrections, and Unscheduled doses and their changes. Numeric bounds preserve safe quantity
@@ -46,8 +50,8 @@ Inhaler, Drops in that order. Strength help follows the selected Medicine type a
 the pack's strength without recommending how much to take.
 
 Future stock counts, refills, count corrections and low-stock thresholds use the Medicine's
-Quantity unit, such as ml, puffs or drops, rather than bottles or inhalers. Stock remains
-optional and follows its existing non-negative display and truthful-intake rules.
+Quantity unit, such as ml, puffs, drops, suppositories or ovules, rather than containers.
+Stock remains optional and follows its existing non-negative display and truthful-intake rules.
 
 Injection is unsupported until its forms and Quantity units have been separately approved.
 
@@ -187,10 +191,10 @@ See **Stock** and **Quantity unit** (GLOSSARY.md).
 - The user turns it on with a starting count, from the Stock row on Medication detail or
   with the optional count in Add medicine. Left empty in Add, stock stays off.
 - The starting count is required to turn tracking on. It counts in the Medicine's Quantity unit
-  and follows that unit's step: halves of a tablet, tenths of a ml, whole capsules, puffs and
-  drops. Zero is allowed and negative counts are rejected. Numeric bounds keep arithmetic safe;
-  there is no medical maximum. Strength never enters the count: 30 tablets of 500 mg is 30
-  tablets.
+  and follows that unit's step: halves of a tablet, tenths of a ml, whole capsules, puffs, drops,
+  suppositories and ovules. Zero is allowed and negative counts are rejected. Numeric bounds
+  keep arithmetic safe; there is no medical maximum. Strength never enters the count: 30 tablets
+  of 500 mg is 30 tablets.
 - The starting count is a reconciliation point, like a count correction: a Taken dose whose
   Taken time is before it never changes stock, and turning tracking on never deducts earlier
   doses.
@@ -214,6 +218,8 @@ See **Stock** and **Quantity unit** (GLOSSARY.md).
 | Turn on           | Tablets, stock off; Track stock with 30                  | "30 tablets left" on Medication detail and the list. |
 | Half tablet       | Starting count 12.5 tablets                              | Accepted; shows "12½ tablets left".                  |
 | Half capsule      | Starting count 7.5 capsules                              | Rejected with a field error.                         |
+| Suppository       | Starting count 0 suppositories                           | Accepted; shows "0 suppositories left".              |
+| Ovule             | Starting count 7.5 ovules                                | Rejected with a field error.                         |
 | Liquid            | Starting count 150 ml                                    | Accepted; shows "150 ml left".                       |
 | Zero              | Starting count 0 tablets                                 | Accepted; shows "0 tablets left".                    |
 | Add with count    | Add a Capsule medication with count 28                   | Saved with stock on at 28 capsules.                  |

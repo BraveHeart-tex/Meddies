@@ -4,7 +4,7 @@ import { test } from 'vitest'
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare'
 import { applyD1Migrations } from './helpers/d1-migrations.mjs'
 
-test('migrations after 0028 preserve Stock movements, action receipts, intake movements and counts', async () => {
+test('migrations preserve populated Stock history and enforce counted quantities on direct writes', async () => {
   const runtime = new Miniflare(
     convertV4MiniflareOptions({
       modules: true,
@@ -30,6 +30,25 @@ test('migrations after 0028 preserve Stock movements, action receipts, intake mo
     let seeded = false
     let checked = 0
     let receipts: unknown
+    let beforeTypeMigration: unknown
+    const readMedicineRows = async () =>
+      Promise.all(
+        [
+          'user_medications',
+          'medicine_strength_revisions',
+          'unscheduled_doses',
+          'low_stock_episodes',
+          ...stockTables,
+        ].map(
+          async (table) =>
+            (
+              await db
+                .prepare(`SELECT * FROM ${table} WHERE owner_id=? ORDER BY rowid`)
+                .bind(ownerId)
+                .all()
+            ).results,
+        ),
+      )
     await applyD1Migrations(db, {
       async afterMigration(file) {
         if (file === '0028_refill.sql') {
@@ -109,6 +128,39 @@ test('migrations after 0028 preserve Stock movements, action receipts, intake mo
             low: true,
           })
         }
+        if (file === '0037_catalog_products.sql') {
+          await db
+            .prepare(
+              'UPDATE user_medications SET quantity_scale=2,quantity_max=? WHERE owner_id=? AND id=?',
+            )
+            .bind(Number.MAX_SAFE_INTEGER / 2, ownerId, medicineId)
+            .run()
+          beforeTypeMigration = await readMedicineRows()
+        }
+        if (file === '0039_suppository_ovule.sql') {
+          assert.ok(beforeTypeMigration)
+          assert.deepEqual(await readMedicineRows(), beforeTypeMigration)
+          await assert.rejects(
+            () =>
+              db
+                .prepare('UPDATE user_medications SET unit=? WHERE owner_id=? AND id=?')
+                .bind('ovule', ownerId, medicineId)
+                .run(),
+            /medicine_unit_locked/,
+          )
+          await assert.rejects(
+            () =>
+              db
+                .prepare(
+                  `INSERT INTO unscheduled_doses
+                  (owner_id,id,revision,action_id,medicine_id,taken_at,quantity,request)
+                  VALUES(?,?,0,?,?,'2026-11-21T10:00:00.000Z',1.25,'{}')`,
+                )
+                .bind(ownerId, randomUUID(), randomUUID(), medicineId)
+                .run(),
+            /medicine_quantity_changed/,
+          )
+        }
         if (!seeded) return
         // Assert at every boundary: a later migration must not hide earlier data loss.
         assert.deepEqual(await rowCounts(), [1, 1, 1], `${file}: stock row counts`)
@@ -140,6 +192,54 @@ test('migrations after 0028 preserve Stock movements, action receipts, intake mo
         if (file !== '0028_refill.sql') checked++
       },
     })
+    for (const unit of ['suppository', 'ovule']) {
+      const id = randomUUID()
+      const owner = `google:${unit}-migration`
+      const insertMedicine = (startingCount: number) =>
+        db
+          .prepare(
+            `INSERT INTO user_medications(owner_id,id,label,unit,starting_count,stock_started_at)
+             VALUES(?,?,'Counted',?,?,'2026-11-21T09:00:00.000Z')`,
+          )
+          .bind(owner, id, unit, startingCount)
+          .run()
+      for (const count of [-1, 1.5]) await assert.rejects(() => insertMedicine(count))
+      await insertMedicine(0)
+
+      const insertSchedule = (quantity: number) =>
+        db
+          .prepare(
+            `INSERT INTO daily_schedules(owner_id,id,medicine_id,start_date,times,confirmed_at)
+             VALUES(?,?,?,'2026-11-21',?,'2026-11-21T09:00:00.000Z')`,
+          )
+          .bind(owner, randomUUID(), id, JSON.stringify([{ time: '13:00', quantity }]))
+          .run()
+      const insertDose = (quantity: number) =>
+        db
+          .prepare(
+            `INSERT INTO unscheduled_doses
+             (owner_id,id,revision,action_id,medicine_id,taken_at,quantity,request)
+             VALUES(?,?,0,?,?,'2026-11-21T10:00:00.000Z',?,'{}')`,
+          )
+          .bind(owner, randomUUID(), randomUUID(), id, quantity)
+          .run()
+      for (const quantity of [-1, 0, 1.5]) {
+        await assert.rejects(() => insertSchedule(quantity), /medicine_quantity_changed/)
+        await assert.rejects(() => insertDose(quantity))
+      }
+      await insertSchedule(1)
+      await insertDose(1)
+      for (const count of [-1, 0, 1.5])
+        await assert.rejects(() =>
+          db
+            .prepare(
+              `INSERT INTO stock_movements(owner_id,id,medicine_id,count,unit,occurred_at,kind)
+               VALUES(?,?,?,?,?,'2026-11-21T11:00:00.000Z','refill')`,
+            )
+            .bind(owner, randomUUID(), id, count, unit)
+            .run(),
+        )
+    }
     assert.ok(seeded, 'stock fixture migration must run')
     assert.ok(checked > 0, 'at least one later migration must run')
   } finally {

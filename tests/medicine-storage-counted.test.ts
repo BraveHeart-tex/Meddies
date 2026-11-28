@@ -4,7 +4,7 @@ import { test } from 'vitest'
 import { createWorker } from '../worker/index'
 import { runtime, secret, startWorkerRuntime } from './helpers/medicine-storage-runtime'
 
-// #267: Inhaler and Drops persist whole puff and drop amounts through the real Worker and D1.
+// Counted Types persist whole amounts through the real Worker and D1.
 startWorkerRuntime()
 
 const now = new Date('2026-11-16T12:00:00.000Z')
@@ -12,6 +12,8 @@ const handler = createWorker(() => now)
 const types = [
   ['inhaler', '100 mcg per puff'],
   ['drops', '0.5%'],
+  ['suppository', '200 mg'],
+  ['ovule', '500 mg'],
 ] as const
 // Fractional, zero, negative and unsafe amounts.
 const invalid = [0.5, 1.5, 0, -1, Number.MAX_SAFE_INTEGER]

@@ -9,7 +9,8 @@
 // Amount labels join number and unit with a no-break space so they never wrap apart.
 //
 // Access: every entry is readable, so read contracts accept stored amounts for it; only
-// `writable` entries reach the Type menu, write contracts and Worker validation.
+// `writable` entries reach write contracts and Worker validation. The Type menu also
+// requires a selectable entry.
 //
 // Adding a Type: add one entry below, in menu order, with its own unit words, grid, minimum,
 // new dose amount, Strength help and errors (counted units use `countedEntry`). Never reuse another Type's
@@ -76,11 +77,13 @@ const medicineTypes = {
     offGrid: 'Use whole or half tablets.',
     strengthHelp: packHelp,
     writable: true,
+    selectable: true,
   },
   capsule: {
     ...countedEntry('Capsule', 'capsule', 'capsules'),
     strengthHelp: packHelp,
     writable: true,
+    selectable: true,
   },
   liquid: {
     label: 'Liquid',
@@ -94,18 +97,36 @@ const medicineTypes = {
     offGrid: 'Use steps of 0.1 ml, like 1.2 ml.',
     strengthHelp: 'On the bottle, e.g. 250 mg/5 ml. Not your dose amount.',
     writable: true,
+    selectable: true,
   },
   inhaler: {
     ...countedEntry('Inhaler', 'puff', 'puffs'),
     strengthHelp: 'On the inhaler, e.g. 100 mcg per puff. Not your dose amount.',
     writable: true,
+    selectable: true,
   },
   drops: {
     ...countedEntry('Drops', 'drop', 'drops'),
     strengthHelp: 'On the bottle, e.g. 0.5%. Not your dose amount.',
     writable: true,
+    selectable: true,
   },
-} as const satisfies Record<string, QuantityEntry & { strengthHelp: string; writable: boolean }>
+  suppository: {
+    ...countedEntry('Suppository', 'suppository', 'suppositories'),
+    strengthHelp: packHelp,
+    writable: true,
+    selectable: false,
+  },
+  ovule: {
+    ...countedEntry('Ovule', 'ovule', 'ovules'),
+    strengthHelp: packHelp,
+    writable: true,
+    selectable: false,
+  },
+} as const satisfies Record<
+  string,
+  QuantityEntry & { strengthHelp: string; writable: boolean; selectable: boolean }
+>
 
 type Entries = typeof medicineTypes
 /** A Medicine type a read may show. */
@@ -124,15 +145,14 @@ const writableKeys = typeKeys.filter((type) => medicineTypes[type].writable) as 
   ...WritableMedicineType[],
 ]
 
-/** Writable Types in menu order, as stored values; the Worker schema reads this. */
+/** Writable Types as stored values; the Worker schema reads this. */
 export const writableMedicineTypes: readonly [WritableMedicineType, ...WritableMedicineType[]] =
   writableKeys
 
-/** The Type menu: writable Types in menu order. */
-export const medicineTypeOptions = writableKeys.map((value) => ({
-  value,
-  label: medicineTypes[value].label,
-}))
+/** The Type menu: selectable Types in menu order. */
+export const medicineTypeOptions = writableKeys
+  .filter((type) => medicineTypes[type].selectable)
+  .map((value) => ({ value, label: medicineTypes[value].label }))
 
 export function isMedicineType(value: unknown): value is MedicineType {
   return typeKeys.includes(value as MedicineType)

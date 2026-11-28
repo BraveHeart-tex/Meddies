@@ -1,3 +1,4 @@
+import { Pill } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import type { MedicineType } from '@/lib/quantity-policy'
@@ -7,6 +8,9 @@ import type { MedicineType } from '@/lib/quantity-policy'
 // color. Drawn on a 24px grid with rounded joins so they sit beside the Two capsules mark.
 // Decorative only. Adding a Type adds its glyph and tint here.
 const soft = { opacity: 0.45 }
+// #493 owns the dedicated Suppository and Ovule tiles.
+const fallbackGlyph = <Pill />
+const fallbackTint = 'bg-muted text-muted-foreground'
 
 /** Glyph per Medicine type. */
 export const typeGlyphs: Record<MedicineType, ReactNode> = {
@@ -81,6 +85,8 @@ export const typeGlyphs: Record<MedicineType, ReactNode> = {
       />
     </>
   ),
+  suppository: fallbackGlyph,
+  ovule: fallbackGlyph,
 }
 
 /** Tile tint and glyph color per Medicine type. */
@@ -90,6 +96,8 @@ export const typeTints: Record<MedicineType, string> = {
   liquid: 'bg-medication-plum text-medication-plum-glyph',
   inhaler: 'bg-medication-mist text-medication-mist-glyph',
   drops: 'bg-medication-butter text-medication-butter-glyph',
+  suppository: fallbackTint,
+  ovule: fallbackTint,
 }
 
 export type TypeTileSize = 'sm' | 'md' | 'lg'
@@ -137,6 +145,8 @@ const glyphColors: Record<MedicineType, string> = {
   liquid: 'text-medication-plum-glyph',
   inhaler: 'text-medication-mist-glyph',
   drops: 'text-medication-butter-glyph',
+  suppository: 'text-muted-foreground',
+  ovule: 'text-muted-foreground',
 }
 
 /**

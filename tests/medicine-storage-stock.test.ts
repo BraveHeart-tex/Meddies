@@ -6,14 +6,14 @@ import type { MedicineRecord } from '../src/features/medicines/contract'
 import { startWorkerRuntime, secret, runtime } from './helpers/medicine-storage-runtime'
 
 startWorkerRuntime()
-async function fixture() {
+async function fixture(unit = 'tablet') {
   const ownerId = `google:${randomUUID()}`
   const db = await runtime.getD1Database('DB')
   const handler = createWorker(() => new Date('2026-11-19T10:00:00.000Z'))
-  const medicine = { id: randomUUID(), label: 'Example', strength: null, unit: 'tablet' }
-  const send = async (command: object) => {
+  const medicine = { id: randomUUID(), label: 'Example', strength: null, unit }
+  const send = async (command: object, path = 'medicines') => {
     const response = await handler.fetch(
-      new Request('http://worker/medicines', {
+      new Request(`http://worker/${path}`, {
         method: 'POST',
         headers: { authorization: `Bearer ${secret}` },
         body: JSON.stringify({ ownerId, ...command }),
@@ -170,3 +170,57 @@ test('stock retries apply once, preserve receipts after later writes, and reject
     .first()
   assert.deepEqual(movements, { n: 1 })
 })
+
+test.each(['suppository', 'ovule'])(
+  '%s Stock counts whole units and allows zero counts',
+  async (unit) => {
+    const f = await fixture(unit)
+    for (const startingCount of [-1, 1.5])
+      assert.equal(
+        (await f.send({ operation: 'save', medicine: { ...f.medicine, startingCount } })).status,
+        400,
+      )
+    const saved = await f.send({ operation: 'save', medicine: { ...f.medicine, startingCount: 0 } })
+    assert.equal(saved.status, 200)
+    assert.deepEqual(saved.body.medicines[0].stock, { tracked: true, count: 0 })
+
+    const stock = { ...f.key(0), unit }
+    for (const count of [-1, 1.5])
+      assert.equal(
+        (await f.send({ operation: 'stockCorrection', stock: { ...stock, count } })).status,
+        400,
+      )
+    for (const amount of [-1, 0, 1.5])
+      assert.equal(
+        (await f.send({ operation: 'stockRefill', stock: { ...stock, amount } })).status,
+        400,
+      )
+
+    const refill = await f.send({ operation: 'stockRefill', stock: { ...stock, amount: 3 } })
+    assert.equal(refill.status, 200)
+    assert.deepEqual(refill.body.medicines[0].stock, { tracked: true, count: 3 })
+    const taken = await f.send(
+      {
+        operation: 'saveUnscheduled',
+        dose: {
+          actionId: randomUUID(),
+          medicineId: f.medicine.id,
+          quantity: 2,
+          takenAt: '2026-11-19T10:00:00.000Z',
+        },
+      },
+      'schedules',
+    )
+    assert.equal(taken.status, 200)
+    assert.deepEqual((await f.send({ operation: 'list' })).body.medicines[0].stock, {
+      tracked: true,
+      count: 1,
+    })
+    const corrected = await f.send({
+      operation: 'stockCorrection',
+      stock: { ...f.key(1), unit, count: 0 },
+    })
+    assert.equal(corrected.status, 200)
+    assert.deepEqual(corrected.body.medicines[0].stock, { tracked: true, count: 0 })
+  },
+)

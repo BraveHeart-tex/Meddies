@@ -10,11 +10,12 @@ Something the user takes and tracks in Meddies, with a label, quantity unit and 
 _Avoid_: medicine, in UI copy; write medication there
 
 **Medicine type**:
-The form of a Medicine, such as Tablet, Capsule, Liquid, Inhaler or Drops.
+The form of a Medicine, such as Tablet, Capsule, Liquid, Inhaler, Drops, Suppository or Ovule.
 _Avoid_: unit, when naming the Medicine type; write Type in UI copy
 
 **Quantity unit**:
-What a Medicine's dose amount counts or measures, such as tablets, capsules, ml, puffs or drops.
+What a Medicine's dose amount counts or measures, such as tablets, capsules, ml, puffs, drops,
+suppositories or ovules.
 It is separate from the Medicine's strength and the container it comes in.
 _Avoid_: type, when naming the Quantity unit; strength unit
 

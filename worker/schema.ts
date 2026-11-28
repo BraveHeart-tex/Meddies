@@ -38,10 +38,10 @@ export const userMedications = sqliteTable(
   },
   (table) => [
     primaryKey({ columns: [table.ownerId, table.id] }),
-    // Reserve approved Types in storage; the shared policy controls Worker acceptance.
+    // The migration enforces presence with insert and update guards on the replacement column.
     check(
       'user_medications_unit',
-      sql`${table.unit} IN ('tablet', 'capsule', 'liquid', 'inhaler', 'drops')`,
+      sql`${table.unit} IN ('tablet', 'capsule', 'liquid', 'inhaler', 'drops', 'suppository', 'ovule')`,
     ),
   ],
 )
@@ -571,6 +571,17 @@ export const stockMovements = sqliteTable(
   },
   (table) => [
     primaryKey({ columns: [table.ownerId, table.id] }),
+    check('stock_movements_refill_count', sql`${table.kind} != 'refill' OR ${table.count} > 0`),
+    check(
+      'stock_movements_quantity',
+      sql`(${table.unit} = 'tablet' AND ${table.count} BETWEEN 0 AND 4503599627370495.5
+        AND ${table.count} * 2 = CAST(${table.count} * 2 AS INTEGER))
+        OR (${table.unit} = 'liquid' AND ${table.count} BETWEEN 0 AND 900719925474099
+        AND ROUND(${table.count} * 10) / 10 = ${table.count})
+        OR (${table.unit} IN ('capsule', 'inhaler', 'drops', 'suppository', 'ovule')
+        AND ${table.count} BETWEEN 0 AND 4503599627370495.5
+        AND ${table.count} = CAST(${table.count} AS INTEGER))`,
+    ),
     foreignKey({
       columns: [table.ownerId, table.medicineId],
       foreignColumns: [userMedications.ownerId, userMedications.id],

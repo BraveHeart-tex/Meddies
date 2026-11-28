@@ -20,7 +20,7 @@ const date = '2026-11-05'
 const dueAt = date + 'T06:00:00.000Z'
 const earlier = date + 'T05:00:00.000Z'
 
-async function fixture(startingCount?: number) {
+async function fixture(startingCount?: number, target = 'capsule') {
   let now = new Date('2026-11-05T04:00:00.000Z')
   const handler = createWorker(() => now)
   const db = await runtime.getD1Database('DB')
@@ -73,7 +73,7 @@ async function fixture(startingCount?: number) {
       (
         await medicines({
           operation: 'reviewTypeCorrection',
-          review: { medicineId, unit: 'capsule' },
+          review: { medicineId, unit: target },
         })
       ).review,
     )
@@ -87,6 +87,7 @@ async function fixture(startingCount?: number) {
     medicines,
     schedules,
     saveSchedule,
+    target,
     preflight,
     read,
     list,
@@ -98,7 +99,7 @@ async function fixture(startingCount?: number) {
 }
 
 test('read-only preflight finds incompatible current doses and earlier Schedule versions, and Stock stays off', async () => {
-  const f = await fixture()
+  const f = await fixture(undefined, 'ovule')
   const next = randomUUID()
   await f.schedules({
     operation: 'edit',
@@ -138,7 +139,7 @@ test('read-only preflight finds incompatible current doses and earlier Schedule 
     operation: 'correctType',
     correction: {
       medicineId: f.medicineId,
-      unit: 'capsule',
+      unit: f.target,
       actionId: randomUUID(),
       expectedRevision: review.revision,
       reviewVersion: review.reviewVersion,
@@ -147,11 +148,13 @@ test('read-only preflight finds incompatible current doses and earlier Schedule 
     },
   })
   assert.deepEqual(result.medicines[0].stock, { tracked: false })
-  assert.equal((await f.read()).unscheduledDoses[0].quantity, 2)
+  const snapshot = await f.read()
+  assert.equal(snapshot.unscheduledDoses[0].quantity, 2)
   assert.equal(
-    (await f.read()).schedules.find((s: { id: string }) => s.id === next).times[0].quantity,
-    1,
+    snapshot.schedules.find((s: { id: string }) => s.id === f.scheduleId).times[0].quantity,
+    2,
   )
+  assert.equal(snapshot.schedules.find((s: { id: string }) => s.id === next).times[0].quantity, 1)
 })
 
 type Fixture = Awaited<ReturnType<typeof fixture>>
@@ -159,7 +162,7 @@ async function reviewedCorrection(f: Fixture, stockCount: number | null = null) 
   const review = await f.preflight()
   return {
     medicineId: f.medicineId,
-    unit: 'capsule',
+    unit: f.target,
     actionId: randomUUID(),
     expectedRevision: review.revision,
     reviewVersion: review.reviewVersion,
@@ -206,7 +209,7 @@ test('threshold, tracking and Type changes open, preserve or end a low-stock epi
 })
 
 test('correction preserves dose and Schedule identities, applies explicit repairs across Strength periods, and reconciles tracked Stock', async () => {
-  const f = await fixture(10)
+  const f = await fixture(10, 'ovule')
   const scheduled = { scheduleId: f.scheduleId, dueAt, takenAt: dueAt, quantity: 0.5 }
   await f.schedules({ operation: 'recordTaken', record: scheduled })
   const doseCorrection = {
@@ -276,8 +279,8 @@ test('correction preserves dose and Schedule identities, applies explicit repair
       }) => [id, label, strength, unit],
     ),
     [
-      [first.id, 'Fixed', '250 mg', 'capsule'],
-      [latest.id, 'Example', '400 mg', 'capsule'],
+      [first.id, 'Fixed', '250 mg', 'ovule'],
+      [latest.id, 'Example', '400 mg', 'ovule'],
     ],
   )
   assert.deepEqual(saved.strengthRevisions[0].previousValues, [
@@ -290,11 +293,11 @@ test('correction preserves dose and Schedule identities, applies explicit repair
     recordedAt: date + 'T12:00:00.000Z',
     strength: '250 mg',
     medicineLabel: 'Fixed',
-    unit: 'capsule',
+    unit: 'ovule',
   })
   assert.deepEqual(snapshot.unscheduledDoses[0], {
     ...unscheduledReceipt.unscheduledDoses[0],
-    unit: 'capsule',
+    unit: 'ovule',
   })
   const history = await f.request('dose-history', { operation: 'read', medicineId: f.medicineId })
   assert.deepEqual(
@@ -303,8 +306,8 @@ test('correction preserves dose and Schedule identities, applies explicit repair
       dose.unit,
     ]),
     [
-      [1, 'capsule'],
-      [2, 'capsule'],
+      [1, 'ovule'],
+      [2, 'ovule'],
     ],
   )
   assert.equal(snapshot.schedules[0].id, f.scheduleId)
@@ -341,7 +344,7 @@ test('correction preserves dose and Schedule identities, applies explicit repair
     { count_change: -0.5, unit: 'tablet' },
     { count_change: -1, unit: 'tablet' },
     { count_change: -1, unit: 'tablet' },
-    { count_change: -1, unit: 'capsule' },
+    { count_change: -1, unit: 'ovule' },
   ])
   const counts = await f.db
     .prepare('SELECT count,unit,kind FROM stock_movements WHERE owner_id=? ORDER BY occurred_at')
@@ -349,12 +352,12 @@ test('correction preserves dose and Schedule identities, applies explicit repair
     .all()
   assert.deepEqual(counts.results, [
     { count: 10, unit: 'tablet', kind: 'startingCount' },
-    { count: 20, unit: 'capsule', kind: 'countCorrection' },
+    { count: 20, unit: 'ovule', kind: 'countCorrection' },
   ])
 })
 
 test('missing, invalid or unsolicited repairs and a missing fresh count leave the entire correction unapplied', async () => {
-  const f = await fixture(10)
+  const f = await fixture(10, 'ovule')
   const correction = await reviewedCorrection(f, 5)
   const before = { medicine: await f.list(), snapshot: await f.read() }
   const [repair] = correction.repairs

@@ -22,7 +22,7 @@ import {
 
 const nbsp = '\u00a0'
 
-test('Types: the menu lists every writable Type in order, with Strength help per Type', () => {
+test('Types: the menu lists the selectable Types in order, with Strength help per Type', () => {
   assert.deepEqual(medicineTypeOptions, [
     { value: 'tablet', label: 'Tablet' },
     { value: 'capsule', label: 'Capsule' },
@@ -31,14 +31,15 @@ test('Types: the menu lists every writable Type in order, with Strength help per
     { value: 'drops', label: 'Drops' },
   ])
   const pack = 'On the pack, e.g. 200 mg. Not your dose amount.'
-  for (const type of [null, 'tablet', 'capsule'] as const) assert.equal(strengthHelp(type), pack)
+  for (const type of [null, 'tablet', 'capsule', 'suppository', 'ovule'] as const)
+    assert.equal(strengthHelp(type), pack)
   assert.equal(strengthHelp('liquid'), 'On the bottle, e.g. 250 mg/5 ml. Not your dose amount.')
   assert.equal(
     strengthHelp('inhaler'),
     'On the inhaler, e.g. 100 mcg per puff. Not your dose amount.',
   )
   assert.equal(strengthHelp('drops'), 'On the bottle, e.g. 0.5%. Not your dose amount.')
-  const types = ['tablet', 'capsule', 'liquid', 'inhaler', 'drops']
+  const types = ['tablet', 'capsule', 'liquid', 'inhaler', 'drops', 'suppository', 'ovule']
   assert.deepEqual(writableMedicineTypes, types)
   for (const type of types) {
     assert.equal(isMedicineType(type), true)
@@ -167,9 +168,12 @@ test('writes accept Liquid, Inhaler and Drops amounts and keep unsupported Types
 test.each([
   ['inhaler', 'puff', 'puffs'],
   ['drops', 'drop', 'drops'],
+  ['suppository', 'suppository', 'suppositories'],
+  ['ovule', 'ovule', 'ovules'],
 ] as const)(
-  '%s: whole %s amounts from 1 with the #265 wording and errors',
+  '%s: whole %s amounts from 1 with unit-specific wording and errors',
   (type, unit, plural) => {
+    assert.deepEqual(quantityRule(type), { step: 1, min: 1, initial: '1' })
     assert.equal(quantityLabel(1, type), `1${nbsp}${unit}`)
     assert.equal(quantityLabel(2, type), `2${nbsp}${plural}`)
     assert.equal(quantityLabel(12, type), `12${nbsp}${plural}`)

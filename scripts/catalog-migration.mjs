@@ -12,7 +12,15 @@ export const catalogCsv = 'worker/catalog-products.csv'
 export const catalogHeader = ['barcode', 'original_name', 'name', 'strength', 'type', 'status']
 // Writable Medicine types (src/lib/quantity-policy.ts) and Catalog statuses
 // (src/features/catalog-products/contract.ts); the tooling test asserts they match.
-export const catalogTypes = ['tablet', 'capsule', 'liquid', 'inhaler', 'drops']
+export const catalogTypes = [
+  'tablet',
+  'capsule',
+  'liquid',
+  'inhaler',
+  'drops',
+  'suppository',
+  'ovule',
+]
 export const catalogStatuses = ['classified', 'unresolved', 'unsupported']
 // D1 rejects a statement over 100 KB; each INSERT stays well under it.
 export const statementBudget = 90_000

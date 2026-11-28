@@ -142,6 +142,17 @@ test('prints added, removed and changed GTIN counts against the previous CSV', (
 })
 
 test('accepts exactly the writable Medicine types and the Catalog statuses', () => {
+  const result = generate(
+    [
+      header,
+      '8699809018853,DEMO SUPPOSITORY,DEMO,200 mg,suppository,classified',
+      '036000291452,DEMO OVULE,DEMO,500 mg,ovule,classified',
+    ].join('\n'),
+  )
+  expect(result.stderr).toBe('')
+  expect(result.status).toBe(0)
+  expect(result.sql(result.written[0]!)).toContain("'suppository', 'classified'")
+  expect(result.sql(result.written[0]!)).toContain("'ovule', 'classified'")
   expect([...catalogTypes].sort()).toEqual([...writableMedicineTypes].sort())
   expect(scriptStatuses).toEqual([...catalogStatuses])
 })

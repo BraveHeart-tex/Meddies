@@ -1,6 +1,11 @@
 'use client'
 
-import { medicineTypeOptions, strengthHelp, unitName } from '@/lib/quantity-policy'
+import {
+  medicineTypeLabel,
+  medicineTypeOptions,
+  strengthHelp,
+  unitName,
+} from '@/lib/quantity-policy'
 
 import { useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
@@ -204,7 +209,9 @@ export function MedicineForm({ onSaved }: { onSaved: (medicine: Medicine) => voi
                       <SelectValue
                         placeholder="Choose"
                         className="font-bold in-data-placeholder:font-semibold"
-                      />
+                      >
+                        {field.value ? medicineTypeLabel(field.value) : null}
+                      </SelectValue>
                     </SelectTrigger>
                     {/* Opens above the row, so it never hides Save medication. */}
                     <SelectContent side="top" align="end" className="w-61 rounded-lg p-0.5">
