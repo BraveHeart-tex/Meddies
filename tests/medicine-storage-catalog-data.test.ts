@@ -77,6 +77,16 @@ test('a real 13-digit, 12-digit and 14-digit pack barcode resolve through the lo
   }
 })
 
+test('an ovule pack barcode looks up a supported Ovule Medicine type', async () => {
+  const response = await GET(
+    new Request('http://app.test/api/catalog-products?barcode=8699708900297'),
+  )
+  assert.equal(response.status, 200)
+  const match = await response.json()
+  assert.equal(match.type, 'ovule')
+  assert.equal(match.supportedForm, true)
+})
+
 test('every other test database is migrated without catalog data', async () => {
   const data = await latest()
   assert.ok(!(await d1MigrationFiles()).includes(data), 'the default chain skips data migrations')
