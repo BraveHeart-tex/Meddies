@@ -42,15 +42,22 @@ the reference.
   its handlers with `server.use`, counting reads where needed. An unhandled request fails
   the test.
 - **Query:** each test creates a client with `createQueryClient()` (the session client
-  stays out of tests) and seeds cached data with `setQueryData` and `updatedAt`.
+  stays out of tests). Seed existing query data with `setQueryData` and `updatedAt`.
+- **Forms:** when filling a form is only setup, seed values through the
+  [production session-draft restore path](../docs/client-state.md#session-drafts), as
+  [`seedScheduleDraft`](helpers/schedule-draft.ts) does. Keep one full UI path for each form.
 - **Next.js:** mock `next/navigation` with `vi.mock`. Link clicks change the view only inside
   `WithRouter` (`helpers/router.tsx`); without it, `next/link` ignores them.
 - **Time:** `vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 1 })`; wrap
   `vi.advanceTimersByTimeAsync` in `act` and pass it to `userEvent.setup({ advanceTimers })`.
   The 1ms tick matters: with the 20ms default, React's scheduler and MSW's zero-delay timers
   wait for the next tick at every step. A fixed library or polling delay is skipped with
-  `vi.advanceTimersByTimeAsync`, never waited out.
+  `vi.advanceTimersByTimeAsync`, never waited out. Keep the default `userEvent` delay so
+  actions yield between steps.
 - **Focus and reconnect:** dispatch real DOM events on `window` (`focus` or
   `visibilitychange`, then `offline` and `online`) so the app's listener wiring is proven.
 - `helpers/component-setup.ts` unmounts, resets MSW handlers and restores real timers after
   each test.
+
+Compare test cost with isolated file runs (`pnpm exec vitest run tests/<file>`) because
+full-suite times vary with load.

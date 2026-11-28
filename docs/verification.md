@@ -106,10 +106,16 @@ applies only where a test is required.
 Prove each behavior that needs a test at the cheapest level that can prove it, with delays
 and failures injected through MSW or journey fixtures, never timers in product code.
 
-- **Unit tests** prove logic: parsing, scheduling rules, reducers.
+- **Unit tests** prove variations of pure logic as table cases, as in the
+  [Schedule](../tests/schedule-save-confirmation.test.ts) and
+  [Medicine Add](../tests/medicine-save-confirmation.test.ts) confirmation tests.
 - **[Component tests](../tests/README.md#component-tests)** prove UI states with MSW:
   refresh keeps content, stale or out-of-order responses lose to newer state, focus and
-  reconnect refresh, rejection, unconfirmed save and conflict recovery.
+  reconnect refresh, rejection, unconfirmed save and conflict recovery. Keep one
+  representative case per UI state.
+- **Tooling tests** use fixed delays only in cases that prove ordering, as in
+  [the verify tests](../tests/verify.test.ts). Poll for readiness at short intervals
+  within the script's deadline, as in [the dev stack](../scripts/dev-stack.mjs).
 - **[Browser journeys](../tests/browser/README.md)** prove only the
   [allowed reasons](#when-a-journey-is-allowed).
 
