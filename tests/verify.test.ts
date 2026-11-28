@@ -21,6 +21,7 @@ case "$HOLD_CHECK:$1" in
     while [ ! -f release ]; do sleep 0.02; done ;;
 esac
 case "$1" in
+  exec) printf '%s\\n' "$*" > exec-args ;;
   typecheck) touch types-finished ;;
   build)
     test -f types-finished || exit 90
@@ -44,13 +45,13 @@ esac
   return root
 }
 
-function verify(root: string, failure = '') {
+function verify(root: string, failure = '', ci = '') {
   return spawnSync(process.execPath, [resolve('scripts/verify.mjs')], {
     cwd: root,
     encoding: 'utf8',
     env: {
       ...process.env,
-      CI: '',
+      CI: ci,
       PATH: `${root}:${process.env.PATH}`,
       COMMAND_LOG: join(root, 'commands'),
       FAIL_CHECK: failure,
@@ -225,3 +226,37 @@ test('runner SIGTERM names every interrupted static stage and retains their diag
   assert.match(output, /Summary/)
   assert.match(output, /\[verify\] FAIL/)
 })
+
+// Shell edits miss the agent format hook, so local runs format uncommitted files first; CI never
+// writes. Catches a check failing on formatting a local run could fix, and CI rewriting files.
+for (const ci of ['', 'true']) {
+  test(`verify ${ci ? 'in CI leaves files alone' : 'locally formats only uncommitted files'}`, async (t) => {
+    const root = await fakeRoot(t)
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: root })
+    git('init', '-q')
+    git('config', 'user.email', 'test@example.com')
+    git('config', 'user.name', 'Test')
+    await writeFile(join(root, 'committed.ts'), 'base')
+    await writeFile(join(root, 'deleted.ts'), 'base')
+    git('add', '-A')
+    git('commit', '-qm', 'base')
+    await writeFile(join(root, 'committed.ts'), 'change')
+    await rm(join(root, 'deleted.ts'))
+    await writeFile(join(root, 'untracked.ts'), 'new')
+    const result = verify(root, '', ci)
+    assert.equal(result.status, 0, result.stdout + result.stderr)
+    const commands = (await readFile(join(root, 'commands'), 'utf8')).trim().split('\n')
+    if (ci) {
+      assert.equal(commands.includes('exec'), false)
+      return
+    }
+    assert.equal(commands[0], 'exec')
+    const args = (await readFile(join(root, 'exec-args'), 'utf8')).trim().split(' ')
+    assert.deepEqual(args.slice(0, 3), ['exec', 'prettier', '--write'])
+    assert.deepEqual(args.filter((arg) => arg.endsWith('.ts')).sort(), [
+      'committed.ts',
+      'untracked.ts',
+    ])
+    assert.match(result.stdout, /Formatted 2 changed files/)
+  })
+}

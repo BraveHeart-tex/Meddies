@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/scripts/agent-format-hook.mjs\"",
+            "timeout": 30,
+            "statusMessage": "Formatting with ESLint layout fixes and Prettier"
+          }
+        ]
+      }
+    ]
+  }
+}

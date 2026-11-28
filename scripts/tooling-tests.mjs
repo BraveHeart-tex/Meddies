@@ -5,6 +5,7 @@
  * source and runtime configuration. No tooling checks are CI-only.
  */
 export const toolingTests = [
+  'tests/agent-format-hook.test.ts',
   'tests/architecture-build.test.ts',
   'tests/browser-measure.test.ts',
   'tests/catalog-migration.test.ts',

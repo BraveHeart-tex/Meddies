@@ -45,6 +45,11 @@ journeys before Release ([Verify workflow](deployment.md#verify-workflow)).
 A change touching only `docs/**` and Markdown runs `pnpm format:check` instead; Release
 skips the same paths.
 
+Formatting is written, not reported, wherever it can be. The agent hook
+(`scripts/agent-format-hook.mjs`, wired in `.claude/settings.json` and `.codex/hooks.json`)
+formats each file an editor tool writes. A local `pnpm verify:local` runs Prettier on
+uncommitted files before its format check, covering shell edits; CI only checks.
+
 The verify and journey wrappers reuse a build only when its inputs are unchanged and their
 success marker exists, so a hand-run `pnpm build` is always rebuilt.
 

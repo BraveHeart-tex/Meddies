@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { spawn } from 'node:child_process'
-import { closeSync, openSync, writeSync } from 'node:fs'
+import { spawn, spawnSync } from 'node:child_process'
+import { closeSync, existsSync, openSync, writeSync } from 'node:fs'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -98,6 +98,30 @@ async function check(label, action) {
 }
 
 const cached = !process.env.CI
+// Locally, uncommitted changes are formatted before the format check, whatever wrote them: the
+// agent format hook sees only editor tools, not shell edits. CI only checks.
+if (cached) formatChanged()
+
+function formatChanged() {
+  const git = (...args) =>
+    spawnSync('git', args, { encoding: 'utf8' }).stdout?.split('\n').filter(Boolean) ?? []
+  const files = [
+    ...git('diff', '--name-only', '--diff-filter=d', 'HEAD'),
+    ...git('ls-files', '--others', '--exclude-standard'),
+  ].filter((file) => existsSync(file))
+  if (files.length === 0) return
+  const result = spawnSync(
+    'pnpm',
+    ['exec', 'prettier', '--write', '--ignore-unknown', '--log-level', 'warn', ...files],
+    { stdio: ['ignore', 'ignore', 'inherit'] },
+  )
+  console.log(
+    result.status === 0
+      ? `[verify] Formatted ${files.length} changed files`
+      : '[verify] Could not format changed files; the format check reports them',
+  )
+}
+
 const stage1 = await Promise.all([
   check('lint', (run) =>
     run('pnpm', ['lint', ...(cached ? ['--cache', '--cache-location', '.cache/eslint'] : [])]),
